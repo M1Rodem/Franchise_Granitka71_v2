@@ -1,0 +1,133 @@
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using WebApplication1.Models;
+using WebApplication1.Services.Repositories;
+using System.Security.Claims;
+
+namespace WebApplication1.Controllers
+{
+    [Authorize]
+    [ApiController]
+    [Route("api/[controller]")]
+    public class ProfileController : ControllerBase
+    {
+        private readonly IManagerRepository _managerRepository;
+        private readonly ILogger<ProfileController> _logger;
+
+        public ProfileController(IManagerRepository managerRepository, ILogger<ProfileController> logger)
+        {
+            _managerRepository = managerRepository;
+            _logger = logger;
+        }
+
+        // Вспомогательный метод для получения ID текущего пользователя
+        private int GetCurrentUserId()
+        {
+            var userId = User.FindFirst(ClaimTypes.Name)?.Value;
+            if (string.IsNullOrEmpty(userId) || !int.TryParse(userId, out int id))
+            {
+                throw new UnauthorizedAccessException("Неверный идентификатор пользователя");
+            }
+            return id;
+        }
+
+        // Получить данные текущего пользователя
+        [HttpGet]
+        public async Task<ActionResult<ManagerResponseDto>> GetMyProfile()  // ✅ Добавил async Task<>
+        {
+            try
+            {
+                var userId = GetCurrentUserId();
+                _logger.LogInformation("Получение профиля пользователя ID: {UserId}", userId);
+
+                // ✅ ИСПРАВЛЕНО: используем async версию
+                var manager = await _managerRepository.GetByIdAsync(userId);
+                if (manager == null) return NotFound("Пользователь не найден");
+
+                var response = new ManagerResponseDto
+                {
+                    Id = manager.Id,
+                    Username = manager.Username,
+                    FullName = manager.FullName,
+                    Role = manager.Role.ToString(),  // ✅ ИСПРАВЛЕНО: enum -> string
+                    IsBlocked = manager.IsBlocked
+                };
+
+                return Ok(response);
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return Unauthorized(ex.Message);
+            }
+        }
+
+        // Сменить пароль
+        // В ProfileController.cs - исправить метод ChangePassword:
+        [HttpPost("change-password")]
+        public async Task<ActionResult> ChangePassword([FromBody] ChangePasswordDto changePasswordDto)
+        {
+            try
+            {
+                var userId = GetCurrentUserId();
+                _logger.LogInformation("Смена пароля для пользователя ID: {UserId}", userId);
+
+                // ✅ ИСПРАВЛЕНО: используем async версию
+                var manager = await _managerRepository.GetByIdAsync(userId);
+                if (manager == null) return NotFound("Пользователь не найден");
+
+                // ✅ Исправлено: проверка на null
+                if (manager.PasswordHash == null || !_managerRepository.VerifyPassword(changePasswordDto.CurrentPassword, manager.PasswordHash))
+                {
+                    return BadRequest("Текущий пароль неверен");
+                }
+
+                // Меняем на новый пароль
+                _managerRepository.ChangePassword(userId, changePasswordDto.NewPassword);
+
+                _logger.LogInformation("Пароль успешно изменен для пользователя ID: {UserId}", userId);
+                return Ok("Пароль успешно изменен");
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return Unauthorized(ex.Message);
+            }
+        }
+
+        // Обновить профиль (имя)
+        [HttpPut("update-profile")]
+        public async Task<ActionResult<ManagerResponseDto>> UpdateProfile([FromBody] UpdateProfileDto updateProfileDto)  // ✅ async Task<>
+        {
+            try
+            {
+                var userId = GetCurrentUserId();
+                _logger.LogInformation("Обновление профиля для пользователя ID: {UserId}", userId);
+
+                // ✅ ИСПРАВЛЕНО: используем async версию
+                var manager = await _managerRepository.GetByIdAsync(userId);
+                if (manager == null) return NotFound("Пользователь не найден");
+
+                _managerRepository.UpdateProfile(userId, updateProfileDto.FullName);
+
+                // ✅ ИСПРАВЛЕНО: используем async версию
+                manager = await _managerRepository.GetByIdAsync(userId);
+                if (manager == null) return NotFound("Пользователь не найден после обновления");
+
+                var response = new ManagerResponseDto
+                {
+                    Id = manager.Id,
+                    Username = manager.Username,
+                    FullName = manager.FullName,
+                    Role = manager.Role.ToString(),  // ✅ ИСПРАВЛЕНО: enum -> string
+                    IsBlocked = manager.IsBlocked
+                };
+
+                _logger.LogInformation("Профиль успешно обновлен для пользователя ID: {UserId}", userId);
+                return Ok(response);
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return Unauthorized(ex.Message);
+            }
+        }
+    }
+}

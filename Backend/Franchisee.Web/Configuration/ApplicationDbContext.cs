@@ -71,6 +71,10 @@ namespace WebApplication1.Configuration
 
             modelBuilder.Entity<TempUpload>()
                 .HasQueryFilter(t => t.ExpiresAt > DateTime.UtcNow);  // Auto filter expired
+
+            modelBuilder.Entity<Order>()
+                 .Property(o => o.InspectionPlace)
+                 .HasMaxLength(200); // Ограничение длины
         }
     }
 }

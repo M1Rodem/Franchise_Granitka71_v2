@@ -89,6 +89,8 @@ namespace WebApplication1.Controllers
                 {
                     OrderNumber = orderNumber,
                     Place = request.Place,
+                    InspectionPlace = request.InspectionPlace ?? string.Empty,
+                    OrderDate = request.OrderDate.ToUniversalTime(),
                     DeceasedFullName = request.DeceasedFullName,
                     CustomerFullName = request.CustomerFullName,
                     CustomerEmail = request.CustomerEmail,
@@ -163,18 +165,46 @@ namespace WebApplication1.Controllers
 
             try
             {
-                // Partial update
                 if (!string.IsNullOrEmpty(request.Place)) order.Place = request.Place;
-                if (!string.IsNullOrEmpty(request.DeceasedFullName)) order.DeceasedFullName = request.DeceasedFullName;
-                // ... аналогично для Address, Phone, MonumentSize, AdditionalInfo (?? string.Empty)
-                order.AdditionalInfo = request.AdditionalInfo ?? order.AdditionalInfo;  // 🔥 Фикс
-                if (request.Status.HasValue) order.Status = request.Status.Value;  // 🔥 Фикс: теперь в DTO
+
+                if (!string.IsNullOrEmpty(request.InspectionPlace))
+                    order.InspectionPlace = request.InspectionPlace;
+
+                if (request.OrderDate.HasValue)
+                    order.OrderDate = request.OrderDate.Value;
+
+                if (!string.IsNullOrEmpty(request.DeceasedFullName))
+                    order.DeceasedFullName = request.DeceasedFullName;
+
+                if (!string.IsNullOrEmpty(request.CustomerFullName))
+                    order.CustomerFullName = request.CustomerFullName;
+
+                if (!string.IsNullOrEmpty(request.CustomerEmail))
+                    order.CustomerEmail = request.CustomerEmail;
+
+                if (!string.IsNullOrEmpty(request.Phone))
+                    order.Phone = request.Phone;
+
+                if (!string.IsNullOrEmpty(request.Address))
+                    order.Address = request.Address;
+
+                if (!string.IsNullOrEmpty(request.MonumentType))
+                    order.MonumentType = request.MonumentType;
+
+                if (!string.IsNullOrEmpty(request.MonumentSize))
+                    order.MonumentSize = request.MonumentSize;
+
+                order.AdditionalInfo = request.AdditionalInfo ?? order.AdditionalInfo;
+
+                if (request.Status.HasValue)
+                    order.Status = request.Status.Value;
+
                 order.UpdatedAt = DateTime.UtcNow;
 
                 // WorkItems: full replace если provided (как в оригинале)
                 if (request.WorkItems != null && request.WorkItems.Any())
                 {
-                    _context.RemoveRange(order.WorkItems);  // 🔥 _context для RemoveRange
+                    _context.RemoveRange(order.WorkItems);
                     order.WorkItems.Clear();
                     foreach (var wi in request.WorkItems)
                     {
@@ -184,6 +214,16 @@ namespace WebApplication1.Controllers
                 }
 
                 // Аналогично для Payments (если нужно)
+                if (request.Payments != null && request.Payments.Any())
+                {
+                    _context.RemoveRange(order.Payments);
+                    order.Payments.Clear();
+                    foreach (var payment in request.Payments)
+                    {
+                        payment.OrderId = id;
+                        order.Payments.Add(payment);
+                    }
+                }
 
                 await _orderRepository.UpdateAsync(order);
 
@@ -201,13 +241,13 @@ namespace WebApplication1.Controllers
             catch (DbUpdateConcurrencyException ex) when (!OrderExists(id))
             {
                 await transaction.RollbackAsync();
-                _logger.LogError(ex, "Concurrency ошибка обновления {OrderId}", id);  // 🔥 Используем ex
+                _logger.LogError(ex, "Concurrency ошибка обновления {OrderId}", id);
                 return NotFound();
             }
             catch (Exception ex)
             {
                 await transaction.RollbackAsync();
-                _logger.LogError(ex, "Ошибка обновления заказа {OrderId}", id);  // 🔥 Используем ex
+                _logger.LogError(ex, "Ошибка обновления заказа {OrderId}", id);
                 return StatusCode(500, "Ошибка обновления");
             }
         }
@@ -233,14 +273,20 @@ namespace WebApplication1.Controllers
             var userId = GetCurrentUserId();
             _logger.LogInformation("Восстановление заказа {OrderId} для {UserId}", id, userId);
 
-            var order = await _context.Orders.FirstOrDefaultAsync(o => o.Id == id && o.IsDeleted);  // 🔥 Фикс _context
-            if (order == null) return NotFound("Заказ не найден или не удален");
+            // ✅ ИСПРАВЛЯЕМ: ищем заказ без учета IsDeleted
+            var order = await _context.Orders.FirstOrDefaultAsync(o => o.Id == id);
+            if (order == null)
+                return NotFound("Заказ не найден");
 
-            if (!IsAdmin() && order.ManagerId != userId) return Forbid();
+            if (!order.IsDeleted)
+                return BadRequest("Заказ не был удален");
+
+            if (!IsAdmin() && order.ManagerId != userId)
+                return Forbid();
 
             order.IsDeleted = false;
             order.DeletedAt = null;
-            await _context.SaveChangesAsync();  // 🔥 _context
+            await _context.SaveChangesAsync();
 
             return Ok(new { message = "Заказ восстановлен", orderId = id });
         }
@@ -267,6 +313,7 @@ namespace WebApplication1.Controllers
                 Id = order.Id,
                 OrderNumber = order.OrderNumber,
                 Place = order.Place,
+                InspectionPlace = order.InspectionPlace,
                 OrderDate = order.OrderDate,
                 DeceasedFullName = order.DeceasedFullName,
                 CustomerFullName = order.CustomerFullName,
@@ -295,6 +342,172 @@ namespace WebApplication1.Controllers
                     Height = p.Height ?? 0
                 }).ToList()
             };
+        }
+
+        // ДОБАВИТЕ эти методы в класс OrdersController:
+
+        // GET: api/Orders/archived - Получить архивные заказы
+        [HttpGet("archived")]
+        public async Task<ActionResult<PagedResult<OrderResponseDto>>> GetArchivedOrders([FromQuery] OrderFilterRequest filter)
+        {
+            var userId = GetCurrentUserId();
+            _logger.LogInformation("Получение архивных заказов для пользователя {UserId}", userId);
+
+            try
+            {
+                // Игнорируем фильтр IsDeleted чтобы получить удаленные
+                var query = _context.Orders
+                    .IgnoreQueryFilters()
+                    .Where(o => o.IsDeleted)
+                    .Include(o => o.WorkItems)
+                    .Include(o => o.Payments)
+                    .Include(o => o.Photos)
+                    .Include(o => o.Manager)
+                    .AsNoTracking();
+
+                // Применяем фильтры
+                if (!string.IsNullOrWhiteSpace(filter.SearchQuery))
+                {
+                    var search = filter.SearchQuery.ToLowerInvariant();
+                    query = query.Where(o => o.OrderNumber.ToLower().Contains(search) ||
+                                             o.CustomerFullName.ToLower().Contains(search) ||
+                                             o.Phone.Contains(search) ||
+                                             o.DeceasedFullName.ToLower().Contains(search));
+                }
+
+                if (filter.CreatedFrom.HasValue)
+                    query = query.Where(o => o.CreatedAt >= filter.CreatedFrom.Value);
+                if (filter.CreatedTo.HasValue)
+                    query = query.Where(o => o.CreatedAt <= filter.CreatedTo.Value);
+
+                var totalCount = await query.CountAsync();
+                var orders = await query
+                    .OrderByDescending(o => o.DeletedAt)
+                    .Skip((filter.Page - 1) * filter.PageSize)
+                    .Take(filter.PageSize)
+                    .ToListAsync();
+
+                var responseDtos = orders.Select(MapToResponseDto).ToList();
+
+                var paged = new PagedResult<OrderResponseDto>
+                {
+                    Items = responseDtos,
+                    TotalCount = totalCount,
+                    Page = filter.Page,
+                    PageSize = filter.PageSize
+                };
+
+                return Ok(paged);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Ошибка получения архивных заказов для {UserId}", userId);
+                return StatusCode(500, "Ошибка получения архивных заказов");
+            }
+        }
+
+        // DELETE: api/Orders/archived/{id} - Полностью удалить из архива
+        [HttpDelete("archived/{id}")]
+        public async Task<IActionResult> PermanentDeleteFromArchive(int id)
+        {
+            var userId = GetCurrentUserId();
+            _logger.LogInformation("Полное удаление архивного заказа {OrderId} пользователем {UserId}", id, userId);
+
+            try
+            {
+                // Ищем заказ в архиве
+                var order = await _context.Orders
+                    .IgnoreQueryFilters()
+                    .FirstOrDefaultAsync(o => o.Id == id && o.IsDeleted);
+
+                if (order == null)
+                    return NotFound("Архивный заказ не найден");
+
+                // Проверяем права (только админ или создатель заказа)
+                if (!IsAdmin() && order.ManagerId != userId)
+                    return Forbid("Недостаточно прав для полного удаления заказа");
+
+                using var transaction = await _context.Database.BeginTransactionAsync();
+
+                try
+                {
+                    // Удаляем фото и файлы
+                    var photos = await _context.OrderPhotos
+                        .Where(p => p.OrderId == id)
+                        .ToListAsync();
+
+                    foreach (var photo in photos)
+                    {
+                        if (System.IO.File.Exists(photo.FilePath))
+                        {
+                            await Task.Run(() => System.IO.File.Delete(photo.FilePath));
+                        }
+                        _context.OrderPhotos.Remove(photo);
+                    }
+
+                    // Удаляем work items
+                    var workItems = await _context.OrderWorkItems
+                        .Where(w => w.OrderId == id)
+                        .ToListAsync();
+                    _context.OrderWorkItems.RemoveRange(workItems);
+
+                    // Удаляем payments
+                    var payments = await _context.OrderPayments
+                        .Where(p => p.OrderId == id)
+                        .ToListAsync();
+                    _context.OrderPayments.RemoveRange(payments);
+
+                    // Удаляем сам заказ
+                    _context.Orders.Remove(order);
+
+                    await _context.SaveChangesAsync();
+                    await transaction.CommitAsync();
+
+                    _logger.LogInformation("Заказ {OrderId} полностью удален из архива пользователем {UserId}", id, userId);
+                    return Ok(new { message = "Заказ полностью удален из архива" });
+                }
+                catch (Exception ex)
+                {
+                    await transaction.RollbackAsync();
+                    _logger.LogError(ex, "Ошибка полного удаления заказа {OrderId}", id);
+                    return StatusCode(500, "Ошибка полного удаления заказа");
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Ошибка при попытке полного удаления заказа {OrderId}", id);
+                return StatusCode(500, "Внутренняя ошибка");
+            }
+        }
+
+        // GET: api/Orders/archived/{id} - Получить архивный заказ
+        [HttpGet("archived/{id}")]
+        public async Task<ActionResult<OrderResponseDto>> GetArchivedOrder(int id)
+        {
+            var userId = GetCurrentUserId();
+            _logger.LogInformation("Получение архивного заказа {OrderId} для пользователя {UserId}", id, userId);
+
+            try
+            {
+                var order = await _context.Orders
+                    .IgnoreQueryFilters()
+                    .Include(o => o.WorkItems)
+                    .Include(o => o.Payments)
+                    .Include(o => o.Photos)
+                    .Include(o => o.Manager)
+                    .FirstOrDefaultAsync(o => o.Id == id && o.IsDeleted);
+
+                if (order == null)
+                    return NotFound("Архивный заказ не найден");
+
+                var dto = MapToResponseDto(order);
+                return Ok(dto);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Ошибка получения архивного заказа {OrderId}", id);
+                return StatusCode(500, "Ошибка получения заказа");
+            }
         }
 
         #endregion

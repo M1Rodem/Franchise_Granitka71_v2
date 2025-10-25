@@ -27,7 +27,7 @@ namespace WebApplication1.Models
 
         [Required] public string Address { get; set; } = string.Empty;
 
-        [Required] public MonumentType MonumentType { get; set; } = MonumentType.Надгробный;  // Новый!
+        [Required] public string MonumentType { get; set; } = string.Empty;  // Новый!
         [Required]
         [RegularExpression(@"^\d{1,3}x\d{1,3}x\d{1,3} см$", ErrorMessage = "Формат: ВxШxГ см (e.g., 100x50x20 см)")]
         public string MonumentSize { get; set; } = string.Empty;  // Новый!
@@ -37,16 +37,15 @@ namespace WebApplication1.Models
 
         [NotMapped]  // Computed
         public decimal TotalPrice { get; set; } = 0;  // 🔥 Убрали [NotMapped] — writable, computed в сервисе/DTO если нужно
-
+            
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
         public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 
         public virtual List<OrderWorkItem> WorkItems { get; set; } = new();
         public virtual List<OrderPayment> Payments { get; set; } = new();
         public virtual List<OrderPhoto> Photos { get; set; } = new();
-
         public bool IsDeleted { get; set; } = false;
-        public bool IsArchived { get; set; } = false;
         public DateTime? DeletedAt { get; set; }
+        public bool IsArchived { get; set; } = false;
     }
 }

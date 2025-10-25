@@ -15,7 +15,7 @@ namespace WebApplication1.Models
         [Required] public string Address { get; set; } = string.Empty;
         [Required] public string Phone { get; set; } = string.Empty;
 
-        [Required] public MonumentType MonumentType { get; set; } = MonumentType.Надгробный;
+        [Required] public string MonumentType { get; set; } = string.Empty;
         [Required] public string MonumentSize { get; set; } = string.Empty;
 
         public string? AdditionalInfo { get; set; } 

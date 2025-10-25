@@ -1,14 +1,24 @@
 ﻿using Serilog;
 using WebApplication1.Configuration;
 using WebApplication1.Models;
+using WebApplication1.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Инициализация Serilog
 Log.Logger = new LoggerConfiguration()
-    .WriteTo.File("logs/app.log", rollingInterval: RollingInterval.Day)
+    .MinimumLevel.Debug()
+    .WriteTo.Console(
+        outputTemplate: "[{Timestamp:HH:mm:ss} {Level:u3}] {Message:lj}{NewLine}{Exception}"
+    )
+    .WriteTo.File(
+        "logs/app.log",
+        rollingInterval: RollingInterval.Day,
+        outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] {Message:lj}{NewLine}{Exception}"
+    )
     .CreateLogger();
 builder.Host.UseSerilog();
+builder.Services.AddHostedService<ExpiredTempCleanupService>();
 
 // Регистрация сервисов с учетом окружения
 AppConfiguration.ConfigureServices(builder.Services, builder.Configuration, builder.Environment);

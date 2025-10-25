@@ -23,7 +23,7 @@ namespace WebApplication1.Models
         public string? CustomerEmail { get; set; }
         public string Phone { get; set; } = string.Empty;
         public string Address { get; set; } = string.Empty;
-        public MonumentType MonumentType { get; set; }
+        public string MonumentType { get; set; } = string.Empty;
         public string MonumentSize { get; set; } = string.Empty;
         public string AdditionalInfo { get; set; } = string.Empty;
         public OrderStatus Status { get; set; }

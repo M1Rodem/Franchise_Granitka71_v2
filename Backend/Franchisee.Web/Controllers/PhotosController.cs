@@ -33,6 +33,15 @@ namespace WebApplication1.Controllers
             _logger = logger;
             _photoService = photoService;  // ✅ Инжекция
         }
+        private int GetCurrentUserId()
+        {
+            var userIdStr = User.FindFirst("UserId")?.Value;
+            if (string.IsNullOrEmpty(userIdStr) || !int.TryParse(userIdStr, out int userId))
+            {
+                throw new UnauthorizedAccessException("Неверный ID пользователя");
+            }
+            return userId;
+        }
 
         // POST: api/Photos/upload-temp
         [HttpPost("upload-temp")]
@@ -104,24 +113,26 @@ namespace WebApplication1.Controllers
         [HttpGet("{id}/download")]
         public async Task<IActionResult> DownloadPhoto(int id)
         {
-            var photo = await _context.OrderPhotos.FindAsync(id);
-            if (photo == null || !System.IO.File.Exists(photo.FilePath))
-                return NotFound("Фото не найдено");
+            try
+            {
+                var photo = await _context.OrderPhotos.FindAsync(id);
+                if (photo == null || !System.IO.File.Exists(photo.FilePath))
+                    return NotFound("Фото не найдено");
 
-            // Проверяем доступ к заказу
-            var order = await _context.Orders
-                .FirstOrDefaultAsync(o => o.Id == photo.OrderId && !o.IsDeleted);
+                // Все авторизованные пользователи видят все фото
+                if (User.Identity?.IsAuthenticated != true)
+                    return Unauthorized("Требуется авторизация");
 
-            if (order == null) return NotFound("Заказ не найден");
+                var fileBytes = await System.IO.File.ReadAllBytesAsync(photo.FilePath);
+                var fileName = photo.OriginalFileName ?? $"photo_{id}{Path.GetExtension(photo.FilePath)}";
 
-            var userId = int.Parse(User.FindFirst("UserId")?.Value ?? "0");
-            if (order.ManagerId != userId && !User.IsInRole("Admin"))
-                return Forbid("Доступ запрещен");
-
-            var fileBytes = await System.IO.File.ReadAllBytesAsync(photo.FilePath);
-            var fileName = photo.OriginalFileName ?? $"photo_{id}.jpg";
-
-            return File(fileBytes, photo.ContentType, fileName);
+                return File(fileBytes, photo.ContentType, fileName);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error downloading photo {PhotoId}", id);
+                return StatusCode(500, "Ошибка загрузки фото");
+            }
         }
 
         // GET: api/Photos/order/{orderId}
@@ -162,10 +173,17 @@ namespace WebApplication1.Controllers
             if (photo == null || !System.IO.File.Exists(photo.FilePath))
                 return NotFound("Фото не найдено");
 
-            // ✅ ДОБАВЛЯЕМ АУТЕНТИФИКАЦИЮ
-            var userId = int.Parse(User.FindFirst("UserId")?.Value ?? "0");
-            if (photo.UploaderId != userId && !User.IsInRole("Admin"))
-                return Forbid("Доступ запрещен");
+            // ✅ ИСПРАВЛЯЕМ: все менеджеры видят все фото заказов
+            // Проверяем, что пользователь имеет доступ к заказу
+            var order = await _context.Orders
+                .FirstOrDefaultAsync(o => o.Id == photo.OrderId && !o.IsDeleted);
+
+            if (order == null)
+                return NotFound("Заказ не найден");
+
+            // Все авторизованные менеджеры видят все заказы и их фото
+            if (User.Identity?.IsAuthenticated != true)
+                return Unauthorized("Требуется авторизация");
 
             var contentType = photo.ContentType ?? "image/jpeg";
             return PhysicalFile(photo.FilePath, contentType, enableRangeProcessing: true);
@@ -182,7 +200,7 @@ namespace WebApplication1.Controllers
                     return NotFound("Фото не найдено");
 
                 // ✅ Более мягкая проверка авторизации
-                if (!User.Identity.IsAuthenticated)
+                if (User.Identity?.IsAuthenticated != true)
                     return Unauthorized("Требуется авторизация");
 
                 // ✅ Проверяем, что заказ существует и пользователь имеет к нему доступ
@@ -194,9 +212,9 @@ namespace WebApplication1.Controllers
                     return NotFound("Заказ не найден");
 
                 // ✅ Проверяем права доступа к заказу
-                var userId = int.Parse(User.FindFirst("UserId")?.Value ?? "0");
-                if (order.ManagerId != userId && !User.IsInRole("Admin"))
-                    return Forbid("Доступ запрещен");
+                var userIdClaim = User.FindFirst("UserId");
+                if (userIdClaim == null || !int.TryParse(userIdClaim.Value, out int userId))
+                    return Unauthorized("Invalid user ID");
 
                 var contentType = photo.ContentType ?? "image/jpeg";
                 return PhysicalFile(photo.FilePath, contentType, enableRangeProcessing: true);
@@ -208,15 +226,46 @@ namespace WebApplication1.Controllers
             }
         }
 
-        // DELETE: api/Photos/{id}
-        [HttpDelete("{id}")]
-        public async Task<IActionResult> DeletePhoto(int id)
+        //// DELETE: api/Photos/{id}
+        //[HttpDelete("{id}")]
+        //public async Task<IActionResult> DeletePhoto(int id)
+        //{
+        //    try
+        //    {
+        //        var photo = await _context.OrderPhotos.FindAsync(id);
+        //        if (photo == null)
+        //            return NoContent();
+
+        //        if (System.IO.File.Exists(photo.FilePath))
+        //            await Task.Run(() => System.IO.File.Delete(photo.FilePath));
+
+        //        _context.OrderPhotos.Remove(photo);
+        //        await _context.SaveChangesAsync();
+
+        //        _logger.LogInformation("Photo {PhotoId} deleted", id);
+        //        return NoContent();
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        _logger.LogError(ex, "Error deleting photo {PhotoId}", id);
+        //        return Problem("Ошибка удаления фото");
+        //    }
+        //}
+
+        // ✅ ДОБАВЛЯЕМ - удаление фото только при редактировании заказа
+        [HttpDelete("edit/{id}")]
+        public async Task<IActionResult> DeletePhotoDuringEdit(int id)
         {
             try
             {
+                var userId = GetCurrentUserId(); // ✅ Теперь метод существует
                 var photo = await _context.OrderPhotos.FindAsync(id);
-                if (photo == null)
-                    return NoContent();
+
+                if (photo == null) return NoContent();
+
+                // ✅ ПРАВИЛО: Любой авторизованный менеджер или админ может удалять
+                if (User.Identity?.IsAuthenticated != true) // ✅ Исправлено разыменование
+                    return Unauthorized("Требуется авторизация");
 
                 if (System.IO.File.Exists(photo.FilePath))
                     await Task.Run(() => System.IO.File.Delete(photo.FilePath));
@@ -224,12 +273,12 @@ namespace WebApplication1.Controllers
                 _context.OrderPhotos.Remove(photo);
                 await _context.SaveChangesAsync();
 
-                _logger.LogInformation("Photo {PhotoId} deleted", id);
+                _logger.LogInformation("Photo {PhotoId} deleted during edit by user {UserId}", id, userId);
                 return NoContent();
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error deleting photo {PhotoId}", id);
+                _logger.LogError(ex, "Error deleting photo {PhotoId} during edit", id);
                 return Problem("Ошибка удаления фото");
             }
         }
@@ -239,18 +288,22 @@ namespace WebApplication1.Controllers
         public async Task<IActionResult> GetTempPreview(int tempId)
         {
             var temp = await _context.TempUploads
-                .IgnoreQueryFilters() // Чтобы видеть expired для preview
+                .IgnoreQueryFilters()
                 .FirstOrDefaultAsync(t => t.Id == tempId);
 
             if (temp == null) return NotFound("Temp file not found");
 
-            var userId = int.Parse(User.FindFirst("UserId")?.Value ?? "0");
+            // ✅ ИСПРАВЛЯЕМ: безопасное получение userId
+            var userIdClaim = User.FindFirst("UserId");
+            if (userIdClaim == null || !int.TryParse(userIdClaim.Value, out int userId))
+                return Unauthorized("Invalid user ID");
+
             if (temp.UploaderId != userId) return Forbid("Access denied");
 
             if (!System.IO.File.Exists(temp.FilePath)) return NotFound("File not found on disk");
 
             var contentType = temp.ContentType ?? "application/octet-stream";
-            return PhysicalFile(temp.FilePath, contentType, enableRangeProcessing: true);  // Stream file
+            return PhysicalFile(temp.FilePath, contentType, enableRangeProcessing: true);
         }
 
         // DELETE: api/Photos/temp/{fileName}

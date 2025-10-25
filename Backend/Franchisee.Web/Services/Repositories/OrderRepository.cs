@@ -1,4 +1,6 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿// 🔥 ЗАМЕНИТЕ ВЕСЬ OrderRepository.cs на этот код:
+
+using Microsoft.EntityFrameworkCore;
 using WebApplication1.Configuration;
 using WebApplication1.Models;
 
@@ -13,19 +15,18 @@ namespace WebApplication1.Services.Repositories
             _context = context;
         }
 
-        // 🔥 Base query: общие Includes + !IsDeleted + optional manager filter
-        private IQueryable<Order> BaseQuery(int? managerId = null)
+        // 🔥 Base query: общие Includes + !IsDeleted (БЕЗ manager фильтра)
+        private IQueryable<Order> BaseQuery()
         {
-            var query = _context.Orders
+            return _context.Orders
                 .Where(o => !o.IsDeleted)
                 .Include(o => o.WorkItems)
                 .Include(o => o.Payments)
                 .Include(o => o.Photos)
                 .Include(o => o.Manager)
-                .AsNoTracking();  // Read-only perf
-
-            return query;
+                .AsNoTracking();
         }
+
         public async Task<bool> ExistsAsync(int id)
         {
             return await _context.Orders.AnyAsync(o => o.Id == id);
@@ -36,21 +37,24 @@ namespace WebApplication1.Services.Repositories
             return await BaseQuery().FirstOrDefaultAsync(o => o.Id == id);
         }
 
+        // 🔥 ИСПРАВЛЕНО: Убрали managerId фильтр - все видят все заказы
         public async Task<IEnumerable<Order>> GetAllAsync(int? managerId = null)
         {
-            return await BaseQuery(managerId).OrderByDescending(o => o.CreatedAt).ToListAsync();
+            return await BaseQuery().OrderByDescending(o => o.CreatedAt).ToListAsync();
         }
 
+        // 🔥 ИСПРАВЛЕНО: Для совместимости, но теперь возвращает все заказы
         public async Task<IEnumerable<Order>> GetByManagerAsync(int managerId)
         {
-            return await GetAllAsync(managerId);  // Reuse!
+            return await BaseQuery().OrderByDescending(o => o.CreatedAt).ToListAsync();
         }
 
+        // 🔥 ИСПРАВЛЕНО: Убрали managerId фильтр из base query
         public async Task<(IEnumerable<Order> Orders, int TotalCount)> GetFilteredOrdersAsync(OrderFilterRequest filter, int? managerId = null)
         {
-            var query = BaseQuery(managerId).AsQueryable();
+            var query = BaseQuery().AsQueryable();
 
-            // Поиск (ex-Search)
+            // Поиск
             if (!string.IsNullOrWhiteSpace(filter.SearchQuery))
             {
                 var search = filter.SearchQuery.ToLowerInvariant();
@@ -58,7 +62,7 @@ namespace WebApplication1.Services.Repositories
                                          o.CustomerFullName.ToLower().Contains(search) ||
                                          o.Phone.Contains(search) ||
                                          o.DeceasedFullName.ToLower().Contains(search) ||
-                                         o.MonumentType.ToString().ToLower().Contains(search));  // 🔥 Фикс: enum.ToString()
+                                         o.MonumentType.ToString().ToLower().Contains(search));
             }
 
             // Фильтры по датам
@@ -73,8 +77,8 @@ namespace WebApplication1.Services.Repositories
             if (filter.MaxPrice.HasValue)
                 query = query.Where(o => o.TotalPrice <= filter.MaxPrice.Value);
 
-            // По менеджеру (если не в base)
-            if (filter.ManagerId.HasValue && !managerId.HasValue)
+            // 🔥 ИСПРАВЛЕНО: Фильтр по менеджеру только если явно указан
+            if (filter.ManagerId.HasValue)
                 query = query.Where(o => o.ManagerId == filter.ManagerId.Value);
 
             // По клиенту/телефону
@@ -87,7 +91,7 @@ namespace WebApplication1.Services.Repositories
             if (filter.PaymentStatus.HasValue && filter.PaymentStatus != PaymentStatus.All)
                 query = ApplyPaymentStatusFilter(query, filter.PaymentStatus.Value);
 
-            // Новый: По статусу заказа
+            // По статусу заказа
             if (filter.Status.HasValue)
                 query = query.Where(o => o.Status == filter.Status.Value);
 
@@ -135,7 +139,7 @@ namespace WebApplication1.Services.Repositories
             }
         }
 
-        // Приват: фильтр по оплате (без изменений)
+        // Приват: фильтр по оплате
         private IQueryable<Order> ApplyPaymentStatusFilter(IQueryable<Order> query, PaymentStatus status)
         {
             return status switch
@@ -147,6 +151,7 @@ namespace WebApplication1.Services.Repositories
                 _ => query
             };
         }
+
         public async Task<string> GenerateOrderNumberAsync()
         {
             try
@@ -158,9 +163,6 @@ namespace WebApplication1.Services.Repositories
 
                 var nextId = (lastOrder?.Id ?? 0) + 1;
                 var orderNumber = $"ORD-{nextId:00000}-{DateTime.UtcNow:yyyyMMdd}";
-
-                // 🔥 Логирование для отладки
-                Console.WriteLine($"🔧 GenerateOrderNumberAsync: lastOrderId={lastOrder?.Id}, nextId={nextId}, orderNumber={orderNumber}");
 
                 return orderNumber;
             }

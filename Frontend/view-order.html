@@ -27,6 +27,7 @@
             <a href="dashboard.html" class="nav-item">📊 Дашборд</a>
             <a href="orders.html" class="nav-item active">📋 Заказы</a>
             <a href="create-order.html" class="nav-item">➕ Создать заказ</a>
+            <a href="archived-orders.html" class="nav-item">🗑️ Архив</a>
             <a href="users.html" class="nav-item admin-only" style="display:none;">👥 Пользователи</a>
         </div>
     </nav>
@@ -42,30 +43,15 @@
                 Загрузка...
             </div>
 
-            <!-- Секция фотографий -->
+            <!-- Секция фотографий (ТОЛЬКО ПРОСМОТР) -->
             <div class="card photo-section" style="padding:1rem; margin-top:1rem;">
                 <h3>Фотографии</h3>
-                
-                <!-- Область загрузки новых фото -->
-                <div class="photo-upload-area" id="photoUploadArea" style="display: none;">
-                    <p>📷 Перетащите фото сюда или кликните для выбора</p>
-                    <input type="file" id="photoInput" accept="image/*" multiple style="display: none;">
-                    <button type="button" class="btn btn-outline" onclick="document.getElementById('photoInput').click()">
-                        Выбрать файлы
-                    </button>
-                    <small style="display:block;color:#666;margin-top:0.5rem;">
-                        Поддерживаются форматы: JPG, PNG, GIF. Максимальный размер: 10MB
-                    </small>
-                </div>
                 
                 <div id="orderPhotos" class="photo-preview">
                     Загрузка фотографий...
                 </div>
                 
-                <!-- Кнопка для показа области загрузки -->
-                <button id="addPhotoBtn" class="btn btn-outline" style="margin-top: 1rem;">
-                    ➕ Добавить фотографии
-                </button>
+                <!-- 🔥 УБРАЛИ КНОПКУ ДОБАВЛЕНИЯ ФОТО И ОБЛАСТЬ ЗАГРУЗКИ -->
             </div>
 
             <div style="margin-top:1rem;">
@@ -87,6 +73,7 @@
     <script src="js/api.js"></script>
     <script src="js/utils.js"></script>
     <script src="js/photo-utils.js"></script>
+    <script src="js/modal-utils.js"></script>
     <script src="js/view-order.js"></script>
-<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'98f203190d505bb8',t:'MTc2MDU1OTU3NC4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+</body>
 </html>

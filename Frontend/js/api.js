@@ -1,39 +1,11 @@
-// api.js
-const API_BASE_URL = 'https://localhost:7137/api'; // или 'http://localhost:5137/api'
+const API_BASE_URL = 'https://localhost:7137/api';
 
 class ApiService {
     constructor() {
         this.token = localStorage.getItem('token');
     }
 
-    async testConnection() {
-        try {
-            const response = await fetch(`${API_BASE_URL}/test`);
-            return response.ok;
-        } catch (error) {
-            console.error('Connection test failed:', error);
-            return false;
-        }
-    }
-    
-    async getMyProfile() {
-        return this.request('/Profile');
-    }
-    
-    async changePassword(passwordData) {
-        return this.request('/Profile/change-password', {
-            method: 'POST',
-            body: JSON.stringify(passwordData)
-        });
-    }
-    
-    async updateProfile(profileData) {
-        return this.request('/Profile/update-profile', {
-            method: 'PUT',
-            body: JSON.stringify(profileData)
-        });
-    }
-
+    // ОСНОВНОЙ МЕТОД ЗАПРОСА
     async request(endpoint, options = {}) {
         const url = `${API_BASE_URL}${endpoint}`;
         
@@ -52,88 +24,117 @@ class ApiService {
         try {
             const response = await fetch(url, config);
             
+            // Автоматический logout при 401
             if (response.status === 401) {
-                this.logout();
-                return;
+                this.handleUnauthorized();
+                throw new Error('Требуется авторизация');
             }
 
-            let data;
-            const contentType = response.headers.get('content-type') || '';
-            if (contentType.includes('application/json')) {
-                data = await response.json();
-            } else {
-                const text = await response.text();
-                data = { message: text };
-            }
+            const data = await this.parseResponse(response);
             
             if (!response.ok) {
-                let msg = data.message || data.title || 'Ошибка сервера';
-                if (data.errors && typeof data.errors === 'object') {
-                    const details = Object.entries(data.errors)
-                        .map(([k, v]) => `${k}: ${(Array.isArray(v)?v.join(', '):String(v))}`)
-                        .join('\n');
-                    if (details) msg += `\n${details}`;
-                }
-                const err = new Error(msg);
-                err.status = response.status;
-                throw err;
+                throw this.createError(response, data);
             }
 
             return data;
         } catch (error) {
-            console.error('API Error:', error);
+            console.error(`API Error [${endpoint}]:`, error);
             throw error;
         }
     }
 
-    // Убраны ненужные методы getTempPreview и checkPhotoExists для оптимизации
-    async getAuthorizedTempPreview(tempId) {
-        try {
-            const url = `${API_BASE_URL}/Photos/temp-preview/${tempId}`;
-            const response = await fetch(url, {
-                method: 'GET',
-                headers: {
-                    'Authorization': `Bearer ${this.token}`
-                }
-            });
-            
-            if (!response.ok) {
-                throw new Error(`Failed to load preview: ${response.status}`);
-            }
-            
-            const blob = await response.blob();
-            const blobUrl = URL.createObjectURL(blob);
-            return blobUrl;
-        } catch (error) {
-            console.error('❌ Ошибка загрузки временного фото:', error);
-            throw error;
+    // ВСПОМОГАТЕЛЬНЫЕ МЕТОДЫ
+    async parseResponse(response) {
+        const contentType = response.headers.get('content-type') || '';
+        if (contentType.includes('application/json')) {
+            return await response.json();
         }
+        return { message: await response.text() };
     }
 
-    setToken(token) {
-        this.token = token;
-        localStorage.setItem('token', token);
+    createError(response, data) {
+        let message = data.message || data.title || `Ошибка ${response.status}`;
+        
+        if (data.errors && typeof data.errors === 'object') {
+            const details = Object.entries(data.errors)
+                .map(([key, value]) => `${key}: ${Array.isArray(value) ? value.join(', ') : value}`)
+                .join('\n');
+            if (details) message += `\n${details}`;
+        }
+        
+        const error = new Error(message);
+        error.status = response.status;
+        error.data = data;
+        return error;
     }
 
-    logout() {
+    handleUnauthorized() {
         this.token = null;
         localStorage.removeItem('token');
+        localStorage.removeItem('userData');
         window.location.href = 'login.html';
     }
 
-    // Auth
+    // АУТЕНТИФИКАЦИЯ
     async login(credentials) {
-        return this.request('/Auth/login', {
+        const result = await this.request('/Auth/login', {
             method: 'POST',
             body: JSON.stringify(credentials)
         });
+        
+        if (result.token) {
+            this.setToken(result.token);
+            // Сохраняем данные пользователя
+            localStorage.setItem('userData', JSON.stringify({
+                id: result.id,
+                username: result.username,
+                fullName: result.fullName,
+                role: result.role
+            }));
+        }
+        
+        return result;
     }
 
-    // Orders
-    async getOrders() {
-        const response = await this.request('/Orders');
-        return response;
-    }   
+    async logout() {
+        try {
+            await this.request('/Auth/logout', { method: 'POST' });
+        } catch (error) {
+            console.warn('Logout request failed:', error);
+        } finally {
+            this.handleUnauthorized();
+        }
+    }
+
+    // ПРОФИЛЬ
+    async getMyProfile() {
+        return this.request('/Profile');
+    }
+
+    async changePassword(passwordData) {
+        return this.request('/Profile/change-password', {
+            method: 'POST',
+            body: JSON.stringify(passwordData)
+        });
+    }
+
+    async updateProfile(profileData) {
+        return this.request('/Profile/update-profile', {
+            method: 'PUT',
+            body: JSON.stringify(profileData)
+        });
+    }
+
+    // ЗАКАЗЫ С ПАГИНАЦИЕЙ
+    async getOrders(filter = {}) {
+        const queryParams = new URLSearchParams({
+            page: filter.page || 1,
+            pageSize: filter.pageSize || 10,
+            ...filter
+        }).toString();
+        
+        return this.request(`/Orders?${queryParams}`);
+    }
 
     async getOrder(id) {
         return this.request(`/Orders/${id}`);
@@ -157,31 +158,47 @@ class ApiService {
         return this.request(`/Orders/${id}`, { method: 'DELETE' });
     }
 
-    // Photos (staging flow)
+    // АРХИВ ЗАКАЗОВ
+    async getArchivedOrders(filter = {}) {
+        const queryParams = new URLSearchParams({
+            page: filter.page || 1,
+            pageSize: filter.pageSize || 10,
+            ...filter
+        }).toString();
+        
+        return this.request(`/Orders/archived?${queryParams}`);
+    }
+
+    async getArchivedOrder(id) {
+        return this.request(`/Orders/archived/${id}`);
+    }
+
+    async restoreOrder(id) {
+        return this.request(`/Orders/${id}/restore`, { method: 'POST' });
+    }
+
+    async permanentDeleteOrder(id) {
+        return this.request(`/Orders/archived/${id}`, { method: 'DELETE' });
+    }
+
+    // ФОТОГРАФИИ
     async uploadTempPhoto(file) {
-        try {
-            const formData = new FormData();
-            formData.append('file', file);
-            
-            const response = await fetch(`${API_BASE_URL}/Photos/upload-temp`, {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${this.token}`
-                },
-                body: formData
-            });
-            
-            if (!response.ok) {
-                const errorText = await response.text();
-                throw new Error(`Upload failed: ${response.status} - ${errorText}`);
-            }
-            
-            const data = await response.json();
-            return data;
-        } catch (error) {
-            console.error('❌ Ошибка загрузки временного фото:', error);
-            throw error;
+        const formData = new FormData();
+        formData.append('file', file);
+        
+        const response = await fetch(`${API_BASE_URL}/Photos/upload-temp`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${this.token}`
+            },
+            body: formData
+        });
+
+        if (!response.ok) {
+            throw new Error(`Upload failed: ${response.status}`);
         }
+        
+        return await response.json();
     }
 
     async commitPhotos(orderId, tempIds) {
@@ -191,46 +208,51 @@ class ApiService {
         });
     }
 
-    async uploadPhoto(orderId, file) {
-        try {
-            const formData = new FormData();
-            formData.append('file', file);
-            
-            const response = await fetch(`${API_BASE_URL}/Photos/upload/${orderId}`, {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${this.token}`
-                },
-                body: formData
-            });
-            
-            if (!response.ok) {
-                const errorText = await response.text();
-                throw new Error(`Upload failed: ${response.status} - ${errorText}`);
-            }
-            
-            const data = await response.json();
-            return data;
-        } catch (error) {
-            console.error('❌ Ошибка загрузки фото в заказ:', error);
-            throw error;
-        }
-    }
-
     async getOrderPhotos(orderId) {
-        const photos = await this.request(`/Photos/order/${orderId}`);
-        return photos;
+        return this.request(`/Photos/order/${orderId}`);
     }
 
     async deletePhoto(photoId) {
-        return this.request(`/Photos/${photoId}`, { method: 'DELETE' });
+        return this.request(`/Photos/edit/${photoId}`, { method: 'DELETE' });
     }
 
     async deleteTempPhoto(tempId) {
         return this.request(`/Photos/temp/${tempId}`, { method: 'DELETE' });
     }
 
-    // Users (admin)
+    // НОВЫЙ МЕТОД ДЛЯ СКАЧИВАНИЯ ФОТО
+    async downloadPhoto(photoId) {
+        const response = await fetch(`${API_BASE_URL}/Photos/${photoId}/download`, {
+            headers: {
+                'Authorization': `Bearer ${this.token}`
+            }
+        });
+
+        if (!response.ok) {
+            throw new Error(`Download failed: ${response.status}`);
+        }
+
+        const blob = await response.blob();
+        const url = URL.createObjectURL(blob);
+        return url;
+    }
+
+    async getTempPreview(tempId) {
+        const response = await fetch(`${API_BASE_URL}/Photos/temp-preview/${tempId}`, {
+            headers: {
+                'Authorization': `Bearer ${this.token}`
+            }
+        });
+
+        if (!response.ok) {
+            throw new Error(`Preview failed: ${response.status}`);
+        }
+
+        const blob = await response.blob();
+        return URL.createObjectURL(blob);
+    }
+
+    // ПОЛЬЗОВАТЕЛИ (админ)
     async getUsers() {
         return this.request('/Users');
     }
@@ -266,6 +288,22 @@ class ApiService {
 
     async unblockUser(id) {
         return this.request(`/Users/${id}/unblock`, { method: 'POST' });
+    }
+
+    // Утилиты
+    setToken(token) {
+        this.token = token;
+        localStorage.setItem('token', token);
+    }
+
+    getCurrentUser() {
+        const userData = localStorage.getItem('userData');
+        return userData ? JSON.parse(userData) : null;
+    }
+
+    isAdmin() {
+        const user = this.getCurrentUser();
+        return user && user.role === 'Admin';
     }
 }
 

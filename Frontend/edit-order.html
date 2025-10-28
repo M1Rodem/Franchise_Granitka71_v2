@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Новый заказ - Granitka71</title>
+    <title>Редактировать заказ - Granitka71</title>
     <link rel="stylesheet" href="CSS/style.css">
     <link rel="stylesheet" href="CSS/dashboard.css">
     <link rel="stylesheet" href="CSS/orders.css">
@@ -24,31 +24,23 @@
 
     <nav class="sidebar">
         <div class="nav-menu">
-            <a href="dashboard.html" class="nav-item">
-                📊 Дашборд
-            </a>
-            <a href="orders.html" class="nav-item">
-                📋 Заказы
-            </a>
-            <a href="create-order.html" class="nav-item active">
-                ➕ Создать заказ
-            </a>
+            <a href="dashboard.html" class="nav-item">📊 Дашборд</a>
+            <a href="orders.html" class="nav-item">📋 Заказы</a>
+            <a href="create-order.html" class="nav-item">➕ Создать заказ</a>
             <a href="archived-orders.html" class="nav-item">🗑️ Архив</a>
-            <a href="users.html" class="nav-item admin-only" style="display: none;">
-                👥 Пользователи
-            </a>
+            <a href="users.html" class="nav-item admin-only" style="display: none;">👥 Пользователи</a>
         </div>
     </nav>
 
     <main class="main-content">
         <div class="container">
             <div class="page-header">
-                <h1 id="pageTitle">Создать новый заказ</h1>
+                <h1 id="pageTitle">Редактировать заказ</h1>
                 <a href="orders.html" class="btn btn-outline">← Назад к списку</a>
             </div>
 
-            <!-- 🔥 УБЕДИТЕСЬ ЧТО ФОРМА СУЩЕСТВУЕТ С ПРАВИЛЬНЫМ ID -->
-            <form id="createOrderForm" class="card" style="padding: 1rem;">
+            <form id="editOrderForm" class="card" style="padding: 1rem;">
+                
                 <div class="form-group">
                     <label for="customerFullName">ФИО заказчика *</label>
                     <input type="text" id="customerFullName" required placeholder="Иванов Иван Иванович">
@@ -85,8 +77,8 @@
                 </div>
 
                 <div class="form-group">
-                    <label for="monument">Памятник *</label>
-                    <input type="text" id="monument" placeholder="Тип памятника">
+                    <label for="monumentType">Тип памятника *</label>
+                    <input type="text" id="monumentType" placeholder="Тип памятника">
                 </div>
 
                 <div class="form-group">
@@ -102,9 +94,7 @@
                 <!-- Секция работ -->
                 <div class="card" style="padding: 1rem; margin: 1rem 0;">
                     <h3 style="margin-bottom: 0.75rem;">Работы</h3>
-                    <div id="workItemsContainer">
-                        <!-- Строки работ будут добавляться сюда -->
-                    </div>
+                    <div id="workItemsContainer"></div>
                     <button type="button" id="addWorkItemBtn" class="btn btn-outline" style="margin-top: 0.5rem;">
                         + Добавить работу
                     </button>
@@ -155,7 +145,8 @@
                 </div>
 
                 <div class="form-actions" style="margin-top: 1rem;">
-                    <button type="submit" class="btn btn-primary" id="submitBtn">Создать заказ</button>
+                    <button type="submit" class="btn btn-primary" id="submitBtn">Сохранить изменения</button>
+                    <a href="orders.html" class="btn btn-outline">Отмена</a>
                 </div>
 
                 <div id="formError" class="error-message"></div>
@@ -167,6 +158,6 @@
     <script src="js/api.js"></script>
     <script src="js/utils.js"></script>
     <script src="js/photo-utils.js"></script>
-    <script src="js/create-order.js"></script>
+    <script src="js/edit-order.js"></script>
 </body>
 </html>

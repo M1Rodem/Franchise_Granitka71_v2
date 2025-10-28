@@ -1,4 +1,3 @@
-// create-order.js
 let editingOrderId = null;
 let tempPhotos = [];
 let orderPhotos = [];
@@ -15,6 +14,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (userNameEl) userNameEl.textContent = userData.fullName || 'Пользователь';
     if (userData.role === 'Admin') {
         document.querySelectorAll('.admin-only').forEach(el => el.style.display = 'block');
+    }
+
+    const orderDateInput = document.getElementById('orderDate');
+    if (orderDateInput && !orderDateInput.value) {
+        orderDateInput.value = new Date().toISOString().slice(0, 10);
     }
 
     const form = document.getElementById('createOrderForm');
@@ -253,32 +257,41 @@ async function removePhoto(photoId) {
 
 // ====== ОСНОВНАЯ ЛОГИКА ======
 function collectFormData() {
-    const parseNumber = (elId) => {
-        const v = document.getElementById(elId)?.value.trim() ?? '';
-        if (v === '') return 0;
-        const num = Number(v);
-        return Number.isFinite(num) ? num : 0;
-    };
-
+    const userData = JSON.parse(localStorage.getItem('userData') || '{}');
+    
     const workItems = readWorkItems();
     const total = workItems.reduce((sum, wi) => sum + (Number(wi.price) * (Number(wi.quantity) || 1)), 0);
     const manualTotal = parseNumber('totalPrice');
     const finalTotal = manualTotal > 0 ? manualTotal : total;
 
     const data = {
-        customerFullName: document.getElementById('customerFullName')?.value.trim() ?? '',
-        phone: normalizePhone(document.getElementById('phone')?.value),
-        customerEmail: document.getElementById('customerEmail')?.value.trim() ?? null,
-        deceasedFullName: document.getElementById('deceasedFullName')?.value.trim() ?? null,
-        place: document.getElementById('place')?.value.trim() ?? null,
-        address: document.getElementById('address')?.value.trim() ?? null,
-        additionalInfo: document.getElementById('additionalInfo')?.value.trim() ?? null,
-        monument: document.getElementById('monument')?.value.trim() ?? null,
-        monumentSize: document.getElementById('monumentSize')?.value.trim() ?? null,
+        // === ОБЯЗАТЕЛЬНЫЕ ПОЛЯ ===
+        place: getFormValue('place') || '',
+        address: getFormValue('address') || '',
+        customerFullName: getFormValue('customerFullName') || '',
+        phone: normalizePhone(getFormValue('phone')),
+        deceasedFullName: getFormValue('deceasedFullName') || '',
+        
+        // === НЕОБЯЗАТЕЛЬНЫЕ ПОЛЯ ===
+        inspectionPlace: getFormValue('inspectionPlace') || '',
+        customerEmail: getFormValue('customerEmail'),
+        additionalInfo: getFormValue('additionalInfo'),
+        monumentType: getFormValue('monumentType'),
+        monumentSize: getFormValue('monumentSize'),
+        
+        // === АВТОМАТИЧЕСКИЕ ПОЛЯ ===
+        orderDate: getFormValue('orderDate') || new Date().toISOString(),
+        
+        // === РАСЧЕТНЫЕ ПОЛЯ ===
         totalPrice: finalTotal,
         workItems: workItems.filter(wi => wi.workDescription),
-        payments: buildPayments()
+        payments: buildPayments(),
+        tempUploadIds: tempPhotos.map(p => p.id)
     };
+
+    if (data.inspectionPlace === '') delete data.inspectionPlace;
+    if (!data.customerEmail) delete data.customerEmail;
+    if (!data.additionalInfo) delete data.additionalInfo;
 
     return data;
 }
@@ -323,6 +336,17 @@ function addPaymentRow(payment = {}) {
     row.querySelector('.pm-remove').addEventListener('click', () => row.remove());
 }
 
+function parseNumber(value) {
+    if (!value) return 0;
+    const num = Number(value);
+    return Number.isFinite(num) ? num : 0;
+}
+
+function getFormValue(elementId) {
+    const element = document.getElementById(elementId);
+    return element ? element.value.trim() : '';
+}
+
 function buildPayments() {
     const payments = [];
     // Аванс
@@ -351,60 +375,89 @@ function buildPayments() {
 
 // ====== Загрузка данных для редактирования ======
 async function loadOrderForEdit(id) {
-    const order = await apiService.getOrder(id);
-    // Основные поля
-    document.getElementById('customerFullName').value = order.customerFullName || '';
-    document.getElementById('phone').value = order.phone || '';
-    document.getElementById('customerEmail').value = order.customerEmail || '';
-    document.getElementById('deceasedFullName').value = order.deceasedFullName || '';
-    document.getElementById('place').value = order.place || '';
-    document.getElementById('address').value = order.address || '';
-    document.getElementById('additionalInfo').value = order.additionalInfo || '';
-    document.getElementById('monument').value = order.monument || '';
-    document.getElementById('monumentSize').value = order.monumentSize || '';
-    setTotalPrice(order.totalPrice || 0);
-
-    // Работы
-    const container = document.getElementById('workItemsContainer');
-    container.innerHTML = '';
-    const items = Array.isArray(order.workItems) ? order.workItems : [];
-    if (items.length === 0) {
-        addWorkItemRow();
-    } else {
-        for (const wi of items) {
-            addWorkItemRow(wi);
-        }
-    }
-
-    // Платежи: один аванс (первый с типом Аванс), остальные — доплаты
-    const adv = (order.payments||[]).find(p => (p.paymentType||'').toLowerCase() === 'аванс');
-    if (adv) {
-        document.getElementById('advanceAmount').value = Number(adv.amount||0);
-        document.getElementById('advanceDate').value = adv.paymentDate ? new Date(adv.paymentDate).toISOString().slice(0,10) : '';
-        document.getElementById('advanceNote').value = adv.note || '';
-    } else {
-        document.getElementById('advanceAmount').value = '';
-        document.getElementById('advanceDate').value = '';
-        document.getElementById('advanceNote').value = '';
-    }
-    const additional = (order.payments||[]).filter(p => (p.paymentType||'').toLowerCase() !== 'аванс');
-    const payContainer = document.getElementById('additionalPaymentsContainer');
-    payContainer.innerHTML = '';
-    for (const p of additional) {
-        addPaymentRow(p);
-    }
-
     try {
-        const existingPhotos = await apiService.getOrderPhotos(id);
+        const order = await apiService.getOrder(id);
+        console.log('📝 Загружен заказ для редактирования:', order);
+        
+        // 🔥 ЗАПОЛНЯЕМ ВСЕ ПОЛЯ АВТОМАТИЧЕСКИ
+        setFormValue('customerFullName', order.customerFullName);
+        setFormValue('phone', order.phone);
+        setFormValue('inspectionPlace', order.inspectionPlace);
+        setFormValue('orderDate', order.orderDate ? new Date(order.orderDate).toISOString().slice(0,10) : '');
+        setFormValue('customerEmail', order.customerEmail);
+        setFormValue('deceasedFullName', order.deceasedFullName);
+        setFormValue('place', order.place);
+        setFormValue('monumentType', order.monumentType); // 🔥 ИСПРАВЛЕНО
+        setFormValue('monumentSize', order.monumentSize);
+        setFormValue('address', order.address);
+        setFormValue('additionalInfo', order.additionalInfo);
+        setFormValue('totalPrice', order.totalPrice || 0);
+
+        // Работы
+        const container = document.getElementById('workItemsContainer');
+        container.innerHTML = '';
+        const items = Array.isArray(order.workItems) ? order.workItems : [];
+        if (items.length === 0) {
+            addWorkItemRow();
+        } else {
+            items.forEach(wi => addWorkItemRow(wi));
+        }
+
+        // Платежи
+        await loadPaymentsForEdit(order.payments || []);
+        
+        // Фотографии
+        await loadPhotosForEdit(id);
+
+    } catch (error) {
+        console.error('❌ Ошибка загрузки заказа для редактирования:', error);
+        throw error;
+    }
+}
+
+async function loadPaymentsForEdit(payments) {
+    if (!payments || !Array.isArray(payments)) return;
+    
+    // Очищаем контейнеры
+    const additionalContainer = document.getElementById('additionalPaymentsContainer');
+    if (additionalContainer) additionalContainer.innerHTML = '';
+    
+    // Сбрасываем поля аванса
+    setFormValue('advanceAmount', '');
+    setFormValue('advanceDate', '');
+    setFormValue('advanceNote', '');
+    
+    payments.forEach(payment => {
+        if (payment.paymentType === 'Аванс') {
+            // Заполняем поля аванса
+            setFormValue('advanceAmount', payment.amount);
+            if (payment.paymentDate) {
+                setFormValue('advanceDate', new Date(payment.paymentDate).toISOString().slice(0,10));
+            }
+            setFormValue('advanceNote', payment.note);
+        } else if (payment.paymentType === 'Доплата') {
+            // Добавляем строку доплаты
+            addPaymentRow(payment);
+        }
+    });
+}
+
+
+async function loadPhotosForEdit(orderId) {
+    try {
+        const existingPhotos = await apiService.getOrderPhotos(orderId);
         orderPhotos = existingPhotos || [];
         renderExistingPhotos();
     } catch (error) {
         console.error('Ошибка загрузки фото заказа:', error);
+        orderPhotos = [];
     }
 }
 
 function renderExistingPhotos() {
     const preview = document.getElementById('photoPreview');
+    if (!preview) return;
+    
     preview.innerHTML = '';
     
     orderPhotos.forEach(photo => {
@@ -412,29 +465,42 @@ function renderExistingPhotos() {
         const photoItem = document.createElement('div');
         photoItem.className = 'photo-item';
         photoItem.id = photoId;
+        photoItem.dataset.serverId = photo.id;
         
-        // Используем URL от сервера или создаем endpoint
-        const imgUrl = photo.url ? `${API_BASE_URL.replace('/api', '')}${photo.url}` : 
-                                  `${API_BASE_URL}/Photos/${photo.id}/file`;
+        // Используем proxy endpoint для авторизованного доступа
+        const imgUrl = `${API_BASE_URL}/Photos/proxy/${photo.id}`;
         
         photoItem.innerHTML = `
-            <img src="${imgUrl}" alt="${photo.originalFileName}" 
+            <img src="${imgUrl}" alt="${escapeHtml(photo.originalFileName)}" 
                  style="cursor: pointer; max-height: 150px; object-fit: cover;"
-                 onclick="openPhotoPreview('${imgUrl}', '${photo.originalFileName}')">
+                 onclick="openPhotoPreview('${imgUrl}', '${escapeHtml(photo.originalFileName)}')">
             <button class="photo-remove" onclick="removePhoto('${photoId}')">✖</button>
         `;
-        photoItem.dataset.serverId = photo.id;
+        
         preview.appendChild(photoItem);
     });
 }
 
 function validate(data) {
+    // ПРОВЕРКА ОБЯЗАТЕЛЬНЫХ ПОЛЕЙ
+    if (!data.place) return 'Укажите участок';
+    if (!data.address) return 'Укажите адрес';
     if (!data.customerFullName) return 'Укажите ФИО заказчика';
     if (!data.phone) return 'Укажите телефон';
-    if (!/^\d{11}$/.test(data.phone)) return 'Телефон должен содержать ровно 11 цифр';
-    if (data.customerEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.customerEmail)) return 'Некорректный email заказчика';
+    if (!data.deceasedFullName) return 'Укажите ФИО усопшего';
+    if (!data.monumentType) return 'Укажите тип памятника';
+    if (!data.monumentSize) return 'Укажите размер памятника';
     
-    // Валидация работ (если введены частично)
+    // Валидация телефона
+    const phoneDigits = data.phone.replace(/\D/g, '');
+    if (phoneDigits.length < 10) return 'Телефон должен содержать не менее 10 цифр';
+    
+    // Валидация email
+    if (data.customerEmail && !isValidEmail(data.customerEmail)) {
+        return 'Некорректный email заказчика';
+    }
+    
+    // Валидация работ
     const items = data.workItems || [];
     for (const wi of items) {
         if (!wi.workDescription) return 'У каждой работы должно быть описание';
@@ -443,6 +509,12 @@ function validate(data) {
     }
     
     return '';
+}
+
+function isValidEmail(email) {
+    if (!email) return false;
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
 }
 
 // Добавляем функцию handleOrderCreation

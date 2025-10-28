@@ -1,27 +1,34 @@
-// dashboard.js - упрощенная версия
 document.addEventListener('DOMContentLoaded', function() {
-    checkAuth();
-    setupEventListeners();
+    initializeDashboard();
 });
 
-function checkAuth() {
-    const token = localStorage.getItem('token');
-    if (!token) {
-        window.location.href = 'login.html';
-        return;
-    }
-    
-    // Просто показываем имя из localStorage
-    const userData = JSON.parse(localStorage.getItem('userData') || '{}');
-    document.getElementById('userName').textContent = userData.fullName || 'Пользователь';
-    
-    // Пытаемся загрузить данные, но не блокируем интерфейс при ошибке
-    loadDashboardData().catch(console.error);
+async function initializeDashboard() {
+    try {
+        // Используем улучшенную проверку авторизации
+        const userData = checkAuth();
+        if (!userData) return;
 
-        // Показываем админские пункты меню если пользователь админ
+        setupDashboardUI(userData);
+        setupEventListeners();
+        await loadDashboardData();
+        
+    } catch (error) {
+        console.error('Dashboard initialization error:', error);
+        showErrorMessage('Ошибка инициализации дашборда');
+    }
+}
+
+function setupDashboardUI(userData) {
+    // Устанавливаем имя пользователя
+    const userNameElement = document.getElementById('userName');
+    if (userNameElement) {
+        userNameElement.textContent = userData.fullName || 'Пользователь';
+    }
+
+    // Показываем админские пункты меню
     if (userData.role === 'Admin') {
-        document.querySelectorAll('.admin-only').forEach(el => {
-            el.style.display = 'block';
+        document.querySelectorAll('.admin-only').forEach(element => {
+            element.style.display = 'block';
         });
     }
 }
@@ -29,61 +36,150 @@ function checkAuth() {
 function setupEventListeners() {
     const logoutBtn = document.getElementById('logoutBtn');
     if (logoutBtn) {
-        logoutBtn.addEventListener('click', function() {
-            localStorage.removeItem('token');
-            localStorage.removeItem('userData');
-            window.location.href = 'login.html';
-        });
+        logoutBtn.addEventListener('click', handleLogout);
     }
 }
 
 async function loadDashboardData() {
     try {
-        console.log('Loading dashboard data...');
-        const orders = await apiService.getOrders();
-        console.log('Orders loaded:', orders);
+        showLoadingState(true);
         
-        // Простая статистика
-        updateDashboardStats(orders);
-        showRecentOrders(orders);
+        // Загружаем заказы с базовыми фильтрами
+        const ordersResponse = await apiService.getOrders({
+            page: 1,
+            pageSize: 50 // Больше заказов для точной статистики
+        });
+
+        updateDashboardStats(ordersResponse);
+        showRecentOrders(ordersResponse);
         
     } catch (error) {
-        console.error('Dashboard load error:', error);
-        document.getElementById('recentOrdersList').innerHTML = 
-            '<div class="error">Ошибка загрузки данных</div>';
+        console.error('Dashboard data load error:', error);
+        showErrorMessage('Не удалось загрузить данные дашборда');
+    } finally {
+        showLoadingState(false);
     }
 }
 
-function updateDashboardStats(orders) {
-    // Простая логика - считаем что orders это массив
-    const ordersArray = Array.isArray(orders) ? orders : (orders.items || []);
+function updateDashboardStats(ordersResponse) {
+    const orders = ordersResponse.items || [];
     
-    document.getElementById('totalOrders').textContent = ordersArray.length;
-    document.getElementById('todayOrders').textContent = '0'; // временно
-    document.getElementById('unpaidOrders').textContent = '0'; // временно
+    // Подсчет статистики
+    const totalOrders = orders.length;
+    const todayOrders = countTodayOrders(orders);
+    const unpaidOrders = countUnpaidOrders(orders);
+
+    // Обновление DOM
+    updateStatElement('totalOrders', totalOrders);
+    updateStatElement('todayOrders', todayOrders);
+    updateStatElement('unpaidOrders', unpaidOrders);
 }
 
-function showRecentOrders(orders) {
-    const ordersArray = Array.isArray(orders) ? orders : (orders.items || []);
-    const recentOrders = ordersArray.slice(0, 5);
+function countTodayOrders(orders) {
+    const today = new Date().toDateString();
+    return orders.filter(order => {
+        const orderDate = new Date(order.orderDate || order.createdAt).toDateString();
+        return orderDate === today;
+    }).length;
+}
+
+function countUnpaidOrders(orders) {
+    // Логика подсчета неоплаченных заказов
+    // Можно улучшить когда будут реальные данные о платежах
+    return orders.filter(order => {
+        // Временная логика - считаем все заказы без статуса "Оплачено"
+        return order.status !== 'Оплачено' && order.status !== 'paid';
+    }).length;
+}
+
+function updateStatElement(elementId, value) {
+    const element = document.getElementById(elementId);
+    if (element) {
+        element.textContent = value;
+    }
+}
+
+function showRecentOrders(ordersResponse) {
+    const orders = ordersResponse.items || [];
+    const recentOrders = orders.slice(0, 5); // Последние 5 заказов
     const ordersList = document.getElementById('recentOrdersList');
     
+    if (!ordersList) return;
+
     if (recentOrders.length === 0) {
         ordersList.innerHTML = '<div class="order-item"><p>Заказов пока нет</p></div>';
         return;
     }
     
     ordersList.innerHTML = recentOrders.map(order => `
-        <div class="order-item">
+        <div class="order-item" onclick="viewOrder(${order.id})" style="cursor: pointer;">
             <div class="order-info">
-                <h4>${order.orderNumber} - ${order.customerFullName}</h4>
+                <h4>${escapeHtml(order.orderNumber)} - ${escapeHtml(order.customerFullName)}</h4>
                 <div class="order-meta">
-                    ${order.phone} • ${new Date(order.createdAt).toLocaleDateString('ru-RU')}
+                    ${escapeHtml(order.phone)} • ${formatDate(order.orderDate || order.createdAt)}
                 </div>
             </div>
-            <div class="order-status">
-                ${order.status || 'Новый'}
+            <div class="order-status ${getStatusClass(order.status)}">
+                ${getStatusText(order.status)}
             </div>
         </div>
     `).join('');
+}
+
+function getStatusClass(status) {
+    const statusMap = {
+        'Новый': 'status-new',
+        'paid': 'status-paid',
+        'Оплачено': 'status-paid',
+        'partial': 'status-partial',
+        'not_paid': 'status-unpaid'
+    };
+    return statusMap[status] || 'status-default';
+}
+
+function getStatusText(status) {
+    const statusMap = {
+        'Новый': 'Новый',
+        'paid': 'Оплачено',
+        'Оплачено': 'Оплачено',
+        'partial': 'Частично оплачено',
+        'not_paid': 'Не оплачено'
+    };
+    return statusMap[status] || status || 'Новый';
+}
+
+function viewOrder(orderId) {
+    window.location.href = `view-order.html?id=${orderId}`;
+}
+
+function showLoadingState(loading) {
+    // Можно добавить индикатор загрузки если нужно
+    const recentOrdersList = document.getElementById('recentOrdersList');
+    if (recentOrdersList && loading) {
+        recentOrdersList.innerHTML = '<div class="loading">Загрузка данных...</div>';
+    }
+}
+
+function showErrorMessage(message) {
+    const recentOrdersList = document.getElementById('recentOrdersList');
+    if (recentOrdersList) {
+        recentOrdersList.innerHTML = `<div class="error">${message}</div>`;
+    }
+}
+
+// Вспомогательные функции которые вероятно дублируются в utils.js
+function formatDate(dateString) {
+    if (!dateString) return '—';
+    try {
+        return new Date(dateString).toLocaleDateString('ru-RU');
+    } catch {
+        return '—';
+    }
+}
+
+function escapeHtml(text) {
+    if (!text) return '';
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
 }

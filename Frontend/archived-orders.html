@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Заказы - Granitka71</title>
+    <title>Архив заказов - Granitka71</title>
     <link rel="stylesheet" href="CSS/style.css">
     <link rel="stylesheet" href="CSS/dashboard.css">
     <link rel="stylesheet" href="CSS/orders.css">
@@ -23,43 +23,39 @@
 
     <nav class="sidebar">
         <div class="nav-menu">
-            <a href="dashboard.html" class="nav-item">
-                📊 Дашборд
-            </a>
-            <a href="orders.html" class="nav-item active">
-                📋 Заказы
-            </a>
-            <a href="create-order.html" class="nav-item">
-                ➕ Создать заказ
-            </a>
-            <a href="archived-orders.html" class="nav-item">🗑️ Архив</a>
-            <a href="users.html" class="nav-item admin-only" style="display: none;">
-                👥 Пользователи
-            </a>
+            <a href="dashboard.html" class="nav-item">📊 Дашборд</a>
+            <a href="orders.html" class="nav-item">📋 Заказы</a>
+            <a href="create-order.html" class="nav-item">➕ Создать заказ</a>
+            <a href="archived-orders.html" class="nav-item active">🗑️ Архив</a>
+            <a href="users.html" class="nav-item admin-only" style="display: none;">👥 Пользователи</a>
         </div>
     </nav>
 
     <main class="main-content">
         <div class="container">
             <div class="page-header">
-                <h1>Управление заказами</h1>
-                <a href="create-order.html" class="btn btn-primary">➕ Новый заказ</a>
+                <h1>Архив заказов</h1>
+                <div>
+                    <a href="orders.html" class="btn btn-outline">← Назад к заказам</a>
+                </div>
+            </div>
+
+            <div class="archive-info card" style="padding: 1rem; margin-bottom: 1rem; background: #fff3cd; border-color: #ffeaa7;">
+                <h3 style="margin-top: 0; color: #856404;">📦 Информация об архиве</h3>
+                <p style="margin: 0.5rem 0; color: #856404;">
+                    Заказы хранятся в архиве 7 дней, после чего автоматически удаляются.
+                    Вы можете восстановить заказ или удалить его окончательно.
+                </p>
             </div>
 
             <!-- Фильтры -->
             <div class="filters">
                 <input type="text" id="searchInput" placeholder="Поиск по номеру, имени, телефону..." class="search-input">
-                <select id="statusFilter" class="filter-select">
-                    <option value="all">Все статусы</option>
-                    <option value="not_paid">Не оплачено</option>
-                    <option value="partial">Частично оплачено</option>
-                    <option value="paid">Оплачено</option>
-                </select>
                 <button id="applyFilters" class="btn btn-primary">Применить</button>
                 <button id="resetFilters" class="btn btn-outline">Сбросить</button>
             </div>
 
-            <!-- Таблица заказов -->
+            <!-- Таблица архивных заказов -->
             <div class="orders-table-container">
                 <table class="orders-table">
                     <thead>
@@ -67,14 +63,15 @@
                             <th>№ Заказа</th>
                             <th>Клиент</th>
                             <th>Телефон</th>
-                            <th>Дата</th>
-                            <th>Сумма</th>
-                            <th>Статус оплаты</th>
+                            <th>Дата удаления</th>
+                            <th>Осталось дней</th>
                             <th>Действия</th>
                         </tr>
                     </thead>
-                    <tbody id="ordersTableBody">
-                        <!-- Заказы будут здесь -->
+                    <tbody id="archivedOrdersTableBody">
+                        <tr>
+                            <td colspan="6" class="loading">Загрузка архивных заказов...</td>
+                        </tr>
                     </tbody>
                 </table>
             </div>
@@ -90,6 +87,6 @@
 
     <script src="js/api.js"></script>
     <script src="js/modal-utils.js"></script>
-    <script src="js/orders.js"></script>
+    <script src="js/archived-orders.js"></script>
 </body>
 </html>

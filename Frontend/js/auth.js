@@ -1,53 +1,145 @@
-// auth.js - упрощенная версия
 document.addEventListener('DOMContentLoaded', function() {
     const loginForm = document.getElementById('loginForm');
     const errorMessage = document.getElementById('error-message');
 
+    // Проверяем, не авторизован ли пользователь уже
+    checkExistingAuth();
+
     if (loginForm) {
-        loginForm.addEventListener('submit', async function(e) {
-            e.preventDefault();
+        loginForm.addEventListener('submit', handleLogin);
+    }
+
+    async function handleLogin(e) {
+        e.preventDefault();
+        
+        const username = document.getElementById('username').value.trim();
+        const password = document.getElementById('password').value;
+        const submitButton = loginForm.querySelector('button[type="submit"]');
+
+        // Базовая валидация
+        if (!username || !password) {
+            showError('Заполните все поля');
+            return;
+        }
+
+        try {
+            // Показываем индикатор загрузки
+            setLoadingState(submitButton, true);
+            hideError();
+
+            console.log('Попытка входа для пользователя:', username);
+            const result = await apiService.login({ username, password });
+            console.log('Успешный вход:', result);
             
-            const username = document.getElementById('username').value;
-            const password = document.getElementById('password').value;
-
-            // Базовая валидация
-            if (!username || !password) {
-                showError('Заполните все поля');
-                return;
+            // Сохраняем данные пользователя
+            localStorage.setItem('userData', JSON.stringify({
+                id: result.id,
+                username: result.username,
+                fullName: result.fullName,
+                role: result.role
+            }));
+            
+            // Редирект на дашборд
+            window.location.href = 'dashboard.html';
+            
+        } catch (error) {
+            console.error('Ошибка входа:', error);
+            
+            // Специфичная обработка ошибок
+            let errorMessage = 'Ошибка входа';
+            if (error.status === 401) {
+                errorMessage = 'Неверный логин или пароль';
+            } else if (error.status === 403) {
+                errorMessage = 'Аккаунт заблокирован';
+            } else if (error.message) {
+                errorMessage = error.message;
             }
+            
+            showError(errorMessage);
+        } finally {
+            // Снимаем индикатор загрузки
+            setLoadingState(submitButton, false);
+        }
+    }
 
-            try {
-                console.log('Attempting login...');
-                const result = await apiService.login({ username, password });
-                console.log('Login success:', result);
-                
-                // Сохраняем токен
-                apiService.setToken(result.token);
-                
-                // Сохраняем данные пользователя
-                localStorage.setItem('userData', JSON.stringify({
-                    id: result.id,
-                    username: result.username,
-                    fullName: result.fullName,
-                    role: result.role
-                }));
-                
-                // Редирект
-                window.location.href = 'dashboard.html';
-                
-            } catch (error) {
-                console.error('Login error:', error);
-                showError(error.message || 'Ошибка входа');
-            }
-        });
+    function checkExistingAuth() {
+        // Если пользователь уже авторизован и находится на странице логина - редирект
+        const token = localStorage.getItem('token');
+        const userData = localStorage.getItem('userData');
+        
+        if (token && userData && window.location.pathname.includes('login.html')) {
+            console.log('Пользователь уже авторизован, редирект на дашборд');
+            window.location.href = 'dashboard.html';
+        }
+    }
+
+    function setLoadingState(button, isLoading) {
+        if (!button) return;
+        
+        if (isLoading) {
+            button.disabled = true;
+            button.textContent = 'Вход...';
+            button.style.opacity = '0.7';
+        } else {
+            button.disabled = false;
+            button.textContent = 'Войти';
+            button.style.opacity = '1';
+        }
     }
 
     function showError(message) {
         if (errorMessage) {
             errorMessage.textContent = message;
             errorMessage.style.display = 'block';
+            
+            // Автоматически скрываем ошибку через 5 секунд
+            setTimeout(hideError, 5000);
         } else {
             alert(message); // fallback
         }
     }
+
+    function hideError() {
+        if (errorMessage) {
+            errorMessage.style.display = 'none';
+            errorMessage.textContent = '';
+        }
+    }
 });
+
+// Глобальная функция для проверки авторизации на других страницах
+function checkAuth() {
+    const token = localStorage.getItem('token');
+    const userData = localStorage.getItem('userData');
+    
+    if (!token || !userData) {
+        // Если нет токена или данных пользователя - на логин
+        window.location.href = 'login.html';
+        return null;
+    }
+    
+    try {
+        return JSON.parse(userData);
+    } catch (error) {
+        console.error('Ошибка парсинга userData:', error);
+        window.location.href = 'login.html';
+        return null;
+    }
+}
+
+// Функция для выхода
+function handleLogout() {
+    // Очищаем все связанные данные
+    localStorage.removeItem('token');
+    localStorage.removeItem('userData');
+    localStorage.removeItem('orderFilters');
+    localStorage.removeItem('lastOrderView');
+    
+    // Делаем запрос на сервер для выхода
+    apiService.logout().catch(error => {
+        console.warn('Ошибка при выходе:', error);
+    });
+    
+    // Редирект на страницу логина
+    window.location.href = 'login.html';
+}

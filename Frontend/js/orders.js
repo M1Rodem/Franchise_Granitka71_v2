@@ -4,69 +4,86 @@ let allOrders = [];
 let filteredOrders = [];
 
 document.addEventListener('DOMContentLoaded', function() {
-    checkAuth();
-    loadOrders();
-    setupEventListeners();
+    initializeOrdersPage();
 });
 
-function checkAuth() {
-    const token = localStorage.getItem('token');
-    if (!token) {
-        window.location.href = 'login.html';
-        return;
+async function initializeOrdersPage() {
+    try {
+        // Используем глобальную проверку авторизации
+        const userData = checkAuth();
+        if (!userData) return;
+
+        setupPageUI(userData);
+        setupOrdersEventListeners();
+        await loadOrders();
+        
+    } catch (error) {
+        console.error('Orders page initialization error:', error);
+        showErrorMessage('Ошибка инициализации страницы заказов');
     }
-    
-    const userData = JSON.parse(localStorage.getItem('userData') || '{}');
-    document.getElementById('userName').textContent = userData.fullName || 'Пользователь';
-    
+}
+
+function setupPageUI(userData) {
+    // Устанавливаем имя пользователя
+    const userNameElement = document.getElementById('userName');
+    if (userNameElement) {
+        userNameElement.textContent = userData.fullName || 'Пользователь';
+    }
+
+    // Показываем админские пункты меню
     if (userData.role === 'Admin') {
-        document.querySelectorAll('.admin-only').forEach(el => {
-            el.style.display = 'block';
+        document.querySelectorAll('.admin-only').forEach(element => {
+            element.style.display = 'block';
         });
     }
 }
 
-function setupEventListeners() {
-    document.getElementById('logoutBtn').addEventListener('click', logout);
+function setupOrdersEventListeners() {
+    // Используем глобальную функцию выхода
+    const logoutBtn = document.getElementById('logoutBtn');
+    if (logoutBtn) {
+        logoutBtn.addEventListener('click', handleLogout);
+    }
+
+    // Локальные обработчики для заказов
     document.getElementById('applyFilters').addEventListener('click', applyFilters);
     document.getElementById('resetFilters').addEventListener('click', resetFilters);
     document.getElementById('prevPage').addEventListener('click', prevPage);
     document.getElementById('nextPage').addEventListener('click', nextPage);
     
-    // Поиск при вводе
-    document.getElementById('searchInput').addEventListener('input', debounce(applyFilters, 300));
+    // Поиск при вводе (debounce должен быть в utils.js)
+    const searchInput = document.getElementById('searchInput');
+    if (searchInput) {
+        searchInput.addEventListener('input', debounce(applyFilters, 300));
+    }
 }
 
 async function loadOrders() {
     try {
-        showLoading();
-        const response = await apiService.getOrders();
+        showLoadingState(true);
         
-        // 🔥 ИСПРАВЛЕНИЕ: Извлекаем массив заказов из ответа
-        console.log('📦 Ответ от API:', response);
-        
+        // Используем пагинацию из API
+        const response = await apiService.getOrders({
+            page: currentPage,
+            pageSize: pageSize
+        });
+
+        // Обрабатываем ответ API
         if (response && Array.isArray(response.items)) {
-            // Если ответ в формате { items: [], totalCount: number }
             allOrders = response.items;
-            console.log(`✅ Загружено ${allOrders.length} заказов из response.items`);
-        } else if (Array.isArray(response)) {
-            // Если ответ - просто массив
-            allOrders = response;
-            console.log(`✅ Загружено ${allOrders.length} заказов из response`);
-        } else if (response && response.data && Array.isArray(response.data)) {
-            // Если ответ в формате { data: [] }
-            allOrders = response.data;
-            console.log(`✅ Загружено ${allOrders.length} заказов из response.data`);
+            console.log(`Загружено ${allOrders.length} заказов`);
         } else {
-            console.warn('⚠️ Неожиданный формат ответа:', response);
+            console.warn('Неожиданный формат ответа:', response);
             allOrders = [];
         }
         
-        console.log('📋 Заказы для отображения:', allOrders);
         applyFilters();
+        
     } catch (error) {
-        console.error('❌ Ошибка загрузки заказов:', error);
-        showError('Не удалось загрузить заказы: ' + error.message);
+        console.error('Ошибка загрузки заказов:', error);
+        showErrorMessage('Не удалось загрузить заказы: ' + error.message);
+    } finally {
+        showLoadingState(false);
     }
 }
 
@@ -74,43 +91,66 @@ function applyFilters() {
     const searchText = document.getElementById('searchInput').value.toLowerCase();
     const statusFilter = document.getElementById('statusFilter').value;
     
-    // 🔥 ЗАЩИТА: Убеждаемся, что allOrders - массив
+    // Защита от некорректных данных
     if (!Array.isArray(allOrders)) {
-        console.error('❌ allOrders не является массивом:', allOrders);
         allOrders = [];
     }
     
-    console.log(`🔍 Применение фильтров. Заказов: ${allOrders.length}, поиск: "${searchText}", статус: ${statusFilter}`);
-    
     filteredOrders = allOrders.filter(order => {
-        // 🔥 ЗАЩИТА: Проверяем, что order существует
         if (!order) return false;
         
-        // 🔥 ЗАЩИТА: Проверяем наличие полей перед использованием
-        const orderNumber = order.orderNumber || '';
-        const customerFullName = order.customerFullName || '';
-        const phone = order.phone || '';
-        
-        // Поиск
-        const matchesSearch = 
-            orderNumber.toString().toLowerCase().includes(searchText) ||
-            customerFullName.toLowerCase().includes(searchText) ||
-            phone.includes(searchText);
-        
-        // Фильтр по статусу
-        const paymentStatus = getPaymentStatus(order);
-        const matchesStatus = 
-            statusFilter === 'all' ||
-            (statusFilter === 'not_paid' && paymentStatus === 'unpaid') ||
-            (statusFilter === 'partial' && paymentStatus === 'partial') ||
-            (statusFilter === 'paid' && paymentStatus === 'paid');
+        const matchesSearch = matchesOrderSearch(order, searchText);
+        const matchesStatus = matchesOrderStatus(order, statusFilter);
         
         return matchesSearch && matchesStatus;
     });
     
-    console.log(`✅ Отфильтровано заказов: ${filteredOrders.length}`);
     currentPage = 1;
-    renderOrders();
+    renderOrdersTable();
+}
+
+function matchesOrderSearch(order, searchText) {
+    if (!searchText) return true;
+    
+    const searchFields = [
+        order.orderNumber || '',
+        order.customerFullName || '',
+        order.phone || '',
+        order.deceasedFullName || ''
+    ];
+    
+    return searchFields.some(field => 
+        field.toString().toLowerCase().includes(searchText)
+    );
+}
+
+function matchesOrderStatus(order, statusFilter) {
+    if (statusFilter === 'all') return true;
+    
+    const paymentStatus = calculatePaymentStatus(order);
+    return paymentStatus === statusFilter;
+}
+
+function calculatePaymentStatus(order) {
+    if (!order || !order.payments) return 'not_paid';
+    
+    const payments = Array.isArray(order.payments) ? order.payments : [];
+    const totalPaid = payments.reduce((sum, payment) => sum + (Number(payment.amount) || 0), 0);
+    const totalPrice = Number(order.totalPrice) || 0;
+    
+    if (totalPaid === 0) return 'not_paid';
+    if (totalPaid < totalPrice) return 'partial';
+    return 'paid';
+}
+
+function getPaymentStatusText(order) {
+    const status = calculatePaymentStatus(order);
+    const statusMap = {
+        'not_paid': 'Не оплачено',
+        'partial': 'Частично оплачено', 
+        'paid': 'Оплачено'
+    };
+    return statusMap[status] || 'Не оплачено';
 }
 
 function resetFilters() {
@@ -119,102 +159,112 @@ function resetFilters() {
     applyFilters();
 }
 
-function renderOrders() {
+function renderOrdersTable() {
     const tbody = document.getElementById('ordersTableBody');
-    
-    // 🔥 ЗАЩИТА: Убеждаемся, что filteredOrders - массив
+    if (!tbody) return;
+
+    // Защита от некорректных данных
     if (!Array.isArray(filteredOrders)) {
-        console.error('❌ filteredOrders не является массивом:', filteredOrders);
         filteredOrders = [];
     }
     
     const startIndex = (currentPage - 1) * pageSize;
     const pageOrders = filteredOrders.slice(startIndex, startIndex + pageSize);
     
-    console.log(`📄 Рендеринг страницы ${currentPage}: ${pageOrders.length} заказов`);
-    
     if (pageOrders.length === 0) {
         tbody.innerHTML = `
             <tr>
-                <td colspan="7" class="loading">Заказы не найдены</td>
+                <td colspan="7" class="no-data">Заказы не найдены</td>
             </tr>
         `;
     } else {
-        tbody.innerHTML = pageOrders.map(order => {
-            // 🔥 ЗАЩИТА: Проверяем наличие полей
-            if (!order) return '';
-            
-            const orderNumber = order.orderNumber || 'Н/Д';
-            const customerFullName = order.customerFullName || 'Н/Д';
-            const phone = order.phone || 'Н/Д';
-            const createdAt = order.createdAt ? new Date(order.createdAt).toLocaleDateString('ru-RU') : 'Н/Д';
-            const totalPrice = order.totalPrice || 0;
-            
-            return `
-            <tr>
-                <td>${orderNumber}</td>
-                <td>${customerFullName}</td>
-                <td>${phone}</td>
-                <td>${createdAt}</td>
-                <td>${formatCurrency(totalPrice)}</td>
-                <td>
-                    <span class="status-badge status-${getPaymentStatus(order)}">
-                        ${getPaymentStatusText(order)}
-                    </span>
-                </td>
-                <td class="actions">
-                    <button class="btn btn-primary btn-sm" onclick="viewOrder(${order.id})">👁️</button>
-                    <button class="btn btn-danger btn-sm" onclick="deleteOrder(${order.id})">🗑️</button>
-                </td>
-            </tr>
-        `}).join('');
+        tbody.innerHTML = pageOrders.map(order => createOrderRow(order)).join('');
     }
     
     updatePagination();
 }
 
-function getPaymentStatus(order) {
-    if (!order) return 'unpaid';
+function createOrderRow(order) {
+    if (!order) return '';
     
-    const payments = Array.isArray(order.payments) ? order.payments : [];
-    const totalPaid = payments.reduce((sum, payment) => sum + (Number(payment.amount)||0), 0);
-    const totalPrice = Number(order.totalPrice) || 0;
+    const orderNumber = order.orderNumber || 'Н/Д';
+    const customerFullName = order.customerFullName || 'Н/Д';
+    const phone = order.phone || 'Н/Д';
+    const createdAt = formatDate(order.createdAt);
+    const totalPrice = order.totalPrice || 0;
+    const paymentStatus = calculatePaymentStatus(order);
     
-    if (totalPaid === 0) return 'unpaid';
-    if (totalPaid < totalPrice) return 'partial';
-    return 'paid';
+    return `
+        <tr>
+            <td>${escapeHtml(orderNumber)}</td>
+            <td>${escapeHtml(customerFullName)}</td>
+            <td>${escapeHtml(phone)}</td>
+            <td>${createdAt}</td>
+            <td>${formatCurrency(totalPrice)}</td>
+            <td>
+                <span class="status-badge status-${paymentStatus}">
+                    ${getPaymentStatusText(order)}
+                </span>
+            </td>
+            <td class="actions">
+                <button class="btn btn-primary btn-sm" onclick="viewOrder(${order.id})">👁️</button>
+                <button class="btn btn-danger btn-sm" onclick="deleteOrder(${order.id})">🗑️</button>
+            </td>
+        </tr>
+    `;
 }
 
-function getPaymentStatusText(order) {
-    if (!order) return 'Не оплачено';
+async function deleteOrder(orderId) {
+    const order = allOrders.find(o => o.id === orderId);
+    if (!order) {
+        showErrorMessage('Заказ не найден');
+        return;
+    }
     
-    const payments = Array.isArray(order.payments) ? order.payments : [];
-    const totalPaid = payments.reduce((sum, payment) => sum + (Number(payment.amount)||0), 0);
-    const totalPrice = Number(order.totalPrice) || 0;
+    const orderNumber = order.orderNumber || 'Н/Д';
     
-    if (totalPaid === 0) return 'Не оплачено';
-    if (totalPaid < totalPrice) return 'Частично оплачено';
-    return 'Оплачено';
-}
-
-function formatCurrency(amount) {
-    return new Intl.NumberFormat('ru-RU', {
-        style: 'currency',
-        currency: 'RUB'
-    }).format(amount || 0);
+    try {
+        const confirmed = await showConfirmModal({
+            title: 'Удаление заказа',
+            message: `Вы уверены, что хотите удалить заказ №${orderNumber}? Заказ будет перемещен в архив.`,
+            confirmText: 'Удалить',
+            danger: true
+        });
+        
+        if (confirmed) {
+            await apiService.deleteOrder(orderId);
+            showSuccessMessage(`Заказ №${orderNumber} перемещен в архив`);
+            await loadOrders(); // Перезагружаем список
+        }
+    } catch (error) {
+        console.error('Ошибка удаления заказа:', error);
+        showErrorMessage('Ошибка удаления заказа: ' + error.message);
+    }
 }
 
 function updatePagination() {
     const totalPages = Math.ceil(filteredOrders.length / pageSize);
-    document.getElementById('pageInfo').textContent = `Страница ${currentPage} из ${totalPages}`;
-    document.getElementById('prevPage').disabled = currentPage === 1;
-    document.getElementById('nextPage').disabled = currentPage === totalPages || totalPages === 0;
+    const pageInfo = document.getElementById('pageInfo');
+    const prevButton = document.getElementById('prevPage');
+    const nextButton = document.getElementById('nextPage');
+    
+    if (pageInfo) {
+        pageInfo.textContent = `Страница ${currentPage} из ${totalPages}`;
+    }
+    
+    if (prevButton) {
+        prevButton.disabled = currentPage === 1;
+    }
+    
+    if (nextButton) {
+        nextButton.disabled = currentPage === totalPages || totalPages === 0;
+    }
 }
 
 function prevPage() {
     if (currentPage > 1) {
         currentPage--;
-        renderOrders();
+        renderOrdersTable();
     }
 }
 
@@ -222,57 +272,34 @@ function nextPage() {
     const totalPages = Math.ceil(filteredOrders.length / pageSize);
     if (currentPage < totalPages) {
         currentPage++;
-        renderOrders();
+        renderOrdersTable();
     }
 }
 
-function showLoading() {
-    document.getElementById('ordersTableBody').innerHTML = `
-        <tr>
-            <td colspan="7" class="loading">Загрузка...</td>
-        </tr>
-    `;
-}
-
-function showError(message) {
-    document.getElementById('ordersTableBody').innerHTML = `
-        <tr>
-            <td colspan="7" class="loading" style="color: #dc3545;">${message}</td>
-        </tr>
-    `;
-}
-
-function logout() {
-    localStorage.removeItem('token');
-    localStorage.removeItem('userData');
-    window.location.href = 'login.html';
-}
-
-// Вспомогательная функция для задержки поиска
-function debounce(func, wait) {
-    let timeout;
-    return function executedFunction(...args) {
-        const later = () => {
-            clearTimeout(timeout);
-            func(...args);
-        };
-        clearTimeout(timeout);
-        timeout = setTimeout(later, wait);
-    };
-}
-
-// Заглушки для действий
-function viewOrder(id) {
-    window.location.href = `view-order.html?id=${id}`;
-}
-
-async function deleteOrder(id) {
-    if (!confirm('Удалить заказ?')) return;
-    try {
-        await apiService.deleteOrder(id);
-        // Обновим данные и фильтры
-        await loadOrders();
-    } catch (e) {
-        alert(e.message || 'Не удалось удалить заказ');
+function showLoadingState(loading) {
+    const tbody = document.getElementById('ordersTableBody');
+    if (!tbody) return;
+    
+    if (loading) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="7" class="loading">Загрузка заказов...</td>
+            </tr>
+        `;
     }
 }
+
+function showErrorMessage(message) {
+    showTempMessage(message, 'error');
+}
+
+function showSuccessMessage(message) {
+    showTempMessage(message, 'success');
+}
+
+// Глобальные функции для использования в HTML
+window.viewOrder = function(orderId) {
+    window.location.href = `view-order.html?id=${orderId}`;
+};
+
+window.deleteOrder = deleteOrder;

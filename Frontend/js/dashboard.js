@@ -1,12 +1,17 @@
+import { apiService } from './api.js';
+import { formatDate, escapeHtml, showTempMessage, isToday, getPaymentStatus, getPaymentStatusText } from './utils.js';
+
 document.addEventListener('DOMContentLoaded', function() {
     initializeDashboard();
 });
 
 async function initializeDashboard() {
     try {
-        // Используем улучшенную проверку авторизации
-        const userData = checkAuth();
-        if (!userData) return;
+        const userData = apiService.getCurrentUser();
+        if (!userData) {
+            window.location.href = 'login.html';
+            return;
+        }
 
         setupDashboardUI(userData);
         setupEventListeners();
@@ -14,18 +19,16 @@ async function initializeDashboard() {
         
     } catch (error) {
         console.error('Dashboard initialization error:', error);
-        showErrorMessage('Ошибка инициализации дашборда');
+        showTempMessage('Ошибка инициализации', 'error');
     }
 }
 
 function setupDashboardUI(userData) {
-    // Устанавливаем имя пользователя
     const userNameElement = document.getElementById('userName');
     if (userNameElement) {
         userNameElement.textContent = userData.fullName || 'Пользователь';
     }
 
-    // Показываем админские пункты меню
     if (userData.role === 'Admin') {
         document.querySelectorAll('.admin-only').forEach(element => {
             element.style.display = 'block';
@@ -36,18 +39,30 @@ function setupDashboardUI(userData) {
 function setupEventListeners() {
     const logoutBtn = document.getElementById('logoutBtn');
     if (logoutBtn) {
-        logoutBtn.addEventListener('click', handleLogout);
+        logoutBtn.addEventListener('click', () => apiService.logout());
     }
+
+    // Кнопки навигации (если в HTML onclick, но лучше addEventListener)
+    const createBtn = document.getElementById('createOrderBtn');
+    if (createBtn) createBtn.addEventListener('click', () => window.location.href = 'create-order.html');
+    
+    const ordersBtn = document.getElementById('ordersBtn');
+    if (ordersBtn) ordersBtn.addEventListener('click', () => window.location.href = 'orders.html');
+    
+    const profileBtn = document.getElementById('profileBtn');
+    if (profileBtn) profileBtn.addEventListener('click', () => window.location.href = 'profile.html');
+    
+    const archiveBtn = document.getElementById('archiveBtn');
+    if (archiveBtn) archiveBtn.addEventListener('click', () => window.location.href = 'archived-orders.html');
 }
 
 async function loadDashboardData() {
     try {
         showLoadingState(true);
         
-        // Загружаем заказы с базовыми фильтрами
         const ordersResponse = await apiService.getOrders({
             page: 1,
-            pageSize: 50 // Больше заказов для точной статистики
+            pageSize: 50  // Для точной статистики
         });
 
         updateDashboardStats(ordersResponse);
@@ -55,7 +70,7 @@ async function loadDashboardData() {
         
     } catch (error) {
         console.error('Dashboard data load error:', error);
-        showErrorMessage('Не удалось загрузить данные дашборда');
+        showTempMessage('Не удалось загрузить данные', 'error');
     } finally {
         showLoadingState(false);
     }
@@ -64,32 +79,21 @@ async function loadDashboardData() {
 function updateDashboardStats(ordersResponse) {
     const orders = ordersResponse.items || [];
     
-    // Подсчет статистики
     const totalOrders = orders.length;
     const todayOrders = countTodayOrders(orders);
     const unpaidOrders = countUnpaidOrders(orders);
 
-    // Обновление DOM
     updateStatElement('totalOrders', totalOrders);
     updateStatElement('todayOrders', todayOrders);
     updateStatElement('unpaidOrders', unpaidOrders);
 }
 
 function countTodayOrders(orders) {
-    const today = new Date().toDateString();
-    return orders.filter(order => {
-        const orderDate = new Date(order.orderDate || order.createdAt).toDateString();
-        return orderDate === today;
-    }).length;
+    return orders.filter(order => isToday(order.createdAt || order.orderDate)).length;
 }
 
 function countUnpaidOrders(orders) {
-    // Логика подсчета неоплаченных заказов
-    // Можно улучшить когда будут реальные данные о платежах
-    return orders.filter(order => {
-        // Временная логика - считаем все заказы без статуса "Оплачено"
-        return order.status !== 'Оплачено' && order.status !== 'paid';
-    }).length;
+    return orders.filter(order => getPaymentStatus(order) === 'not_paid').length;
 }
 
 function updateStatElement(elementId, value) {
@@ -101,7 +105,7 @@ function updateStatElement(elementId, value) {
 
 function showRecentOrders(ordersResponse) {
     const orders = ordersResponse.items || [];
-    const recentOrders = orders.slice(0, 5); // Последние 5 заказов
+    const recentOrders = orders.slice(0, 5).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));  // Сортировка по дате desc
     const ordersList = document.getElementById('recentOrdersList');
     
     if (!ordersList) return;
@@ -111,41 +115,32 @@ function showRecentOrders(ordersResponse) {
         return;
     }
     
-    ordersList.innerHTML = recentOrders.map(order => `
-        <div class="order-item" onclick="viewOrder(${order.id})" style="cursor: pointer;">
-            <div class="order-info">
-                <h4>${escapeHtml(order.orderNumber)} - ${escapeHtml(order.customerFullName)}</h4>
-                <div class="order-meta">
-                    ${escapeHtml(order.phone)} • ${formatDate(order.orderDate || order.createdAt)}
+    ordersList.innerHTML = recentOrders.map(order => {
+        const statusClass = getStatusClass(getPaymentStatus(order));
+        return `
+            <div class="order-item" onclick="viewOrder(${order.id})" style="cursor: pointer;">
+                <div class="order-info">
+                    <h4>${escapeHtml(order.orderNumber)} - ${escapeHtml(order.customerFullName)}</h4>
+                    <div class="order-meta">
+                        ${escapeHtml(order.phone)} • ${formatDate(order.createdAt)}
+                    </div>
+                </div>
+                <div class="order-status ${statusClass}">
+                    ${getPaymentStatusText(order)}
                 </div>
             </div>
-            <div class="order-status ${getStatusClass(order.status)}">
-                ${getStatusText(order.status)}
-            </div>
-        </div>
-    `).join('');
+        `;
+    }).join('');
 }
 
 function getStatusClass(status) {
     const statusMap = {
-        'Новый': 'status-new',
-        'paid': 'status-paid',
-        'Оплачено': 'status-paid',
+        'not_paid': 'status-unpaid',
         'partial': 'status-partial',
-        'not_paid': 'status-unpaid'
+        'paid': 'status-paid',
+        'Новый': 'status-new'
     };
     return statusMap[status] || 'status-default';
-}
-
-function getStatusText(status) {
-    const statusMap = {
-        'Новый': 'Новый',
-        'paid': 'Оплачено',
-        'Оплачено': 'Оплачено',
-        'partial': 'Частично оплачено',
-        'not_paid': 'Не оплачено'
-    };
-    return statusMap[status] || status || 'Новый';
 }
 
 function viewOrder(orderId) {
@@ -153,33 +148,11 @@ function viewOrder(orderId) {
 }
 
 function showLoadingState(loading) {
-    // Можно добавить индикатор загрузки если нужно
     const recentOrdersList = document.getElementById('recentOrdersList');
     if (recentOrdersList && loading) {
         recentOrdersList.innerHTML = '<div class="loading">Загрузка данных...</div>';
     }
 }
 
-function showErrorMessage(message) {
-    const recentOrdersList = document.getElementById('recentOrdersList');
-    if (recentOrdersList) {
-        recentOrdersList.innerHTML = `<div class="error">${message}</div>`;
-    }
-}
-
-// Вспомогательные функции которые вероятно дублируются в utils.js
-function formatDate(dateString) {
-    if (!dateString) return '—';
-    try {
-        return new Date(dateString).toLocaleDateString('ru-RU');
-    } catch {
-        return '—';
-    }
-}
-
-function escapeHtml(text) {
-    if (!text) return '';
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
-}
+// Глобальные для HTML onclick
+window.viewOrder = viewOrder;

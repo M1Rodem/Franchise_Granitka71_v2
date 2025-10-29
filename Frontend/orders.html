@@ -23,19 +23,11 @@
 
     <nav class="sidebar">
         <div class="nav-menu">
-            <a href="dashboard.html" class="nav-item">
-                📊 Дашборд
-            </a>
-            <a href="orders.html" class="nav-item active">
-                📋 Заказы
-            </a>
-            <a href="create-order.html" class="nav-item">
-                ➕ Создать заказ
-            </a>
-            <a href="archived-orders.html" class="nav-item">🗑️ Архив</a>
-            <a href="users.html" class="nav-item admin-only" style="display: none;">
-                👥 Пользователи
-            </a>
+            <a href="dashboard.html" class="nav-item">Дашборд</a>
+            <a href="orders.html" class="nav-item active">Заказы</a>
+            <a href="create-order.html" class="nav-item">Создать заказ</a>
+            <a href="archived-orders.html" class="nav-item">Архив</a>
+            <a href="users.html" class="nav-item admin-only" style="display: none;">Пользователи</a>
         </div>
     </nav>
 
@@ -43,7 +35,7 @@
         <div class="container">
             <div class="page-header">
                 <h1>Управление заказами</h1>
-                <a href="create-order.html" class="btn btn-primary">➕ Новый заказ</a>
+                <a href="create-order.html" class="btn btn-primary">Новый заказ</a>
             </div>
 
             <!-- Фильтры -->
@@ -70,6 +62,7 @@
                             <th>Дата</th>
                             <th>Сумма</th>
                             <th>Статус оплаты</th>
+                            <th>Менеджер</th>  <!-- П.1 -->
                             <th>Действия</th>
                         </tr>
                     </thead>
@@ -88,8 +81,6 @@
         </div>
     </main>
 
-    <script src="js/api.js"></script>
-    <script src="js/modal-utils.js"></script>
-    <script src="js/orders.js"></script>
+    <script type="module" src="js/orders.js"></script>
 </body>
 </html>

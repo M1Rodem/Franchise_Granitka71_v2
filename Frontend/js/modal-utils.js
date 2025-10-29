@@ -1,4 +1,6 @@
-class ModalUtils {
+import { showTempMessage } from './utils.js';  // Для сообщений
+
+export class ModalUtils {
     // ====== КОНФИРМАЦИОННЫЕ ОКНА ======
     
     static confirm(options) {
@@ -158,23 +160,16 @@ class ModalUtils {
                                 border: 1px solid #ddd;
                                 border-radius: 4px;
                                 margin-bottom: 1.5rem;
-                                font-size: 1rem;
-                           "
-                           ${options.required ? 'required' : ''}>
+                           ">
                     <div style="display: flex; gap: 1rem; justify-content: center;">
-                        <button class="btn btn-outline" id="modalCancel">
-                            ${options.cancelText || 'Отмена'}
-                        </button>
-                        <button class="btn btn-primary" id="modalConfirm">
-                            ${options.confirmText || 'OK'}
-                        </button>
+                        <button class="btn btn-outline" id="modalCancel" style="min-width: 100px;">Отмена</button>
+                        <button class="btn btn-primary" id="modalConfirm" style="min-width: 100px;">OK</button>
                     </div>
                 </div>
             `;
             
             document.body.appendChild(modal);
             
-            // Фокус на поле ввода
             const input = modal.querySelector('#modalInput');
             input.focus();
             input.select();
@@ -208,7 +203,6 @@ class ModalUtils {
     // ====== БАЗОВЫЕ ФУНКЦИИ ======
     
     static createModalBase() {
-        // Закрываем существующие модальные окна
         this.closeAllModals();
         
         const modal = document.createElement('div');
@@ -246,14 +240,12 @@ class ModalUtils {
     }
     
     static setupModalClose(modal, closeHandler) {
-        // Закрытие по клику на фон
         modal.addEventListener('click', (e) => {
             if (e.target === modal) {
                 closeHandler();
             }
         });
         
-        // Закрытие по ESC
         const escapeHandler = (e) => {
             if (e.key === 'Escape') {
                 closeHandler();
@@ -262,7 +254,6 @@ class ModalUtils {
         };
         document.addEventListener('keydown', escapeHandler);
         
-        // Убираем обработчик при закрытии модального окна
         const originalClose = closeHandler;
         closeHandler = () => {
             document.removeEventListener('keydown', escapeHandler);
@@ -275,107 +266,5 @@ class ModalUtils {
     }
 }
 
-// ====== ФУНКЦИИ ДЛЯ ВРЕМЕННЫХ СООБЩЕНИЙ ======
-
-function showTempMessage(message, type = 'success', duration = 4000) {
-    // Закрываем существующие сообщения
-    closeTempMessages();
-    
-    const messageEl = document.createElement('div');
-    messageEl.className = `temp-message temp-message-${type}`;
-    messageEl.style.cssText = `
-        position: fixed;
-        top: 20px;
-        right: 20px;
-        padding: 1rem 1.5rem;
-        border-radius: 6px;
-        z-index: 10001;
-        color: white;
-        background: ${type === 'success' ? '#28a745' : 
-                     type === 'error' ? '#dc3545' : 
-                     type === 'warning' ? '#ffc107' : 
-                     type === 'info' ? '#17a2b8' : '#6c757d'};
-        max-width: 400px;
-        word-wrap: break-word;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-        transform: translateX(100%);
-        transition: transform 0.3s ease;
-    `;
-    
-    messageEl.innerHTML = `
-        <div style="display: flex; align-items: center; gap: 0.5rem;">
-            <span style="font-size: 1.2em;">
-                ${type === 'success' ? '✅' : 
-                  type === 'error' ? '❌' : 
-                  type === 'warning' ? '⚠️' : 
-                  type === 'info' ? 'ℹ️' : '💬'}
-            </span>
-            <span>${message}</span>
-        </div>
-    `;
-    
-    document.body.appendChild(messageEl);
-    
-    // Анимация появления
-    setTimeout(() => {
-        messageEl.style.transform = 'translateX(0)';
-    }, 10);
-    
-    // Автоматическое закрытие
-    const timeoutId = setTimeout(() => {
-        closeMessage(messageEl);
-    }, duration);
-    
-    // Закрытие по клику
-    messageEl.addEventListener('click', () => {
-        clearTimeout(timeoutId);
-        closeMessage(messageEl);
-    });
-    
-    return {
-        close: () => closeMessage(messageEl)
-    };
-}
-
-function closeTempMessages() {
-    document.querySelectorAll('.temp-message').forEach(msg => {
-        msg.style.transform = 'translateX(100%)';
-        setTimeout(() => msg.remove(), 300);
-    });
-}
-
-function closeMessage(messageEl) {
-    if (messageEl && messageEl.parentNode) {
-        messageEl.style.transform = 'translateX(100%)';
-        setTimeout(() => {
-            if (messageEl.parentNode) {
-                messageEl.remove();
-            }
-        }, 300);
-    }
-}
-
-// ====== УПРОЩЕННЫЕ ФУНКЦИИ ДЛЯ ЧАСТЫХ СЦЕНАРИЕВ ======
-
-function showSuccessMessage(message, duration) {
-    return showTempMessage(message, 'success', duration);
-}
-
-function showErrorMessage(message, duration) {
-    return showTempMessage(message, 'error', duration);
-}
-
-function showWarningMessage(message, duration) {
-    return showTempMessage(message, 'warning', duration);
-}
-
-function showInfoMessage(message, duration) {
-    return showTempMessage(message, 'info', duration);
-}
-
-// ====== ГЛОБАЛЬНЫЕ ФУНКЦИИ ДЛЯ HTML ======
-
-window.showTempMessage = showTempMessage;
-window.showSuccessMessage = showSuccessMessage;
-window.showErrorMessage = showErrorMessage;
-window.closeTempMessages = closeTempMessages;
+// Глобальные для legacy (если в HTML onclick)
+window.ModalUtils = ModalUtils;

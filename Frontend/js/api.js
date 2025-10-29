@@ -1,4 +1,4 @@
-const API_BASE_URL = 'https://localhost:7137/api';
+const API_BASE_URL = 'https://localhost:7137/api';  // Убедитесь, что URL правильный (ваш сервер)
 
 class ApiService {
     constructor() {
@@ -72,7 +72,11 @@ class ApiService {
         this.token = null;
         localStorage.removeItem('token');
         localStorage.removeItem('userData');
-        window.location.href = 'login.html';
+        if (typeof handleLogout === 'function') {
+            handleLogout();
+        } else {
+            window.location.href = 'login.html';
+        }
     }
 
     // АУТЕНТИФИКАЦИЯ
@@ -84,7 +88,6 @@ class ApiService {
         
         if (result.token) {
             this.setToken(result.token);
-            // Сохраняем данные пользователя
             localStorage.setItem('userData', JSON.stringify({
                 id: result.id,
                 username: result.username,
@@ -125,15 +128,10 @@ class ApiService {
         });
     }
 
-    // ЗАКАЗЫ С ПАГИНАЦИЕЙ
+    // ЗАКАЗЫ
     async getOrders(filter = {}) {
-        const queryParams = new URLSearchParams({
-            page: filter.page || 1,
-            pageSize: filter.pageSize || 10,
-            ...filter
-        }).toString();
-        
-        return this.request(`/Orders?${queryParams}`);
+        const params = new URLSearchParams(filter);
+        return this.request(`/Orders?${params.toString()}`);
     }
 
     async getOrder(id) {
@@ -158,26 +156,21 @@ class ApiService {
         return this.request(`/Orders/${id}`, { method: 'DELETE' });
     }
 
-    // АРХИВ ЗАКАЗОВ
+    // АРХИВ ЗАКАЗОВ (исправленные методы с правильными эндпоинтами)
     async getArchivedOrders(filter = {}) {
-        const queryParams = new URLSearchParams({
-            page: filter.page || 1,
-            pageSize: filter.pageSize || 10,
-            ...filter
-        }).toString();
-        
-        return this.request(`/Orders/archived?${queryParams}`);
+        const params = new URLSearchParams(filter);
+        return this.request(`/Orders/archived?${params.toString()}`);
     }
 
     async getArchivedOrder(id) {
         return this.request(`/Orders/archived/${id}`);
     }
 
-    async restoreOrder(id) {
+    async restoreArchivedOrder(id) {
         return this.request(`/Orders/${id}/restore`, { method: 'POST' });
     }
 
-    async permanentDeleteOrder(id) {
+    async permanentDeleteArchivedOrder(id) {
         return this.request(`/Orders/archived/${id}`, { method: 'DELETE' });
     }
 
@@ -220,7 +213,6 @@ class ApiService {
         return this.request(`/Photos/temp/${tempId}`, { method: 'DELETE' });
     }
 
-    // НОВЫЙ МЕТОД ДЛЯ СКАЧИВАНИЯ ФОТО
     async downloadPhoto(photoId) {
         const response = await fetch(`${API_BASE_URL}/Photos/${photoId}/download`, {
             headers: {
@@ -234,6 +226,13 @@ class ApiService {
 
         const blob = await response.blob();
         const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `photo_${photoId}.jpg`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
         return url;
     }
 
@@ -307,4 +306,4 @@ class ApiService {
     }
 }
 
-const apiService = new ApiService();
+export const apiService = new ApiService();

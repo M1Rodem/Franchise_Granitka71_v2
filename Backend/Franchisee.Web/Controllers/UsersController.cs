@@ -71,6 +71,7 @@ namespace WebApplication1.Controllers
                     IsBlocked = false
                 };
 
+                manager.PasswordHash = _managerRepository.HashPassword(createDto.Password);
                 await _managerRepository.AddAsync(manager);
 
                 var response = new ManagerResponseDto

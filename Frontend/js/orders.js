@@ -1,3 +1,7 @@
+import { apiService } from './api.js';
+import { formatDate, formatCurrency, escapeHtml, showTempMessage, debounce, getPaymentStatus, getPaymentStatusText, getUserNameFromOrder } from './utils.js';
+import { ModalUtils } from './modal-utils.js';
+
 let currentPage = 1;
 const pageSize = 10;
 let allOrders = [];
@@ -9,9 +13,11 @@ document.addEventListener('DOMContentLoaded', function() {
 
 async function initializeOrdersPage() {
     try {
-        // Используем глобальную проверку авторизации
-        const userData = checkAuth();
-        if (!userData) return;
+        const userData = apiService.getCurrentUser();
+        if (!userData) {
+            window.location.href = 'login.html';
+            return;
+        }
 
         setupPageUI(userData);
         setupOrdersEventListeners();
@@ -19,18 +25,16 @@ async function initializeOrdersPage() {
         
     } catch (error) {
         console.error('Orders page initialization error:', error);
-        showErrorMessage('Ошибка инициализации страницы заказов');
+        showTempMessage('Ошибка инициализации', 'error');
     }
 }
 
 function setupPageUI(userData) {
-    // Устанавливаем имя пользователя
     const userNameElement = document.getElementById('userName');
     if (userNameElement) {
         userNameElement.textContent = userData.fullName || 'Пользователь';
     }
 
-    // Показываем админские пункты меню
     if (userData.role === 'Admin') {
         document.querySelectorAll('.admin-only').forEach(element => {
             element.style.display = 'block';
@@ -39,22 +43,26 @@ function setupPageUI(userData) {
 }
 
 function setupOrdersEventListeners() {
-    // Используем глобальную функцию выхода
     const logoutBtn = document.getElementById('logoutBtn');
     if (logoutBtn) {
-        logoutBtn.addEventListener('click', handleLogout);
+        logoutBtn.addEventListener('click', () => apiService.logout());
     }
 
-    // Локальные обработчики для заказов
     document.getElementById('applyFilters').addEventListener('click', applyFilters);
     document.getElementById('resetFilters').addEventListener('click', resetFilters);
     document.getElementById('prevPage').addEventListener('click', prevPage);
     document.getElementById('nextPage').addEventListener('click', nextPage);
     
-    // Поиск при вводе (debounce должен быть в utils.js)
+    // Поиск с debounce
     const searchInput = document.getElementById('searchInput');
     if (searchInput) {
         searchInput.addEventListener('input', debounce(applyFilters, 300));
+    }
+
+    // Новый фильтр по менеджеру
+    const managerFilter = document.getElementById('managerFilter');
+    if (managerFilter) {
+        managerFilter.addEventListener('change', applyFilters);
     }
 }
 
@@ -62,18 +70,15 @@ async function loadOrders() {
     try {
         showLoadingState(true);
         
-        // Используем пагинацию из API
         const response = await apiService.getOrders({
             page: currentPage,
             pageSize: pageSize
         });
 
-        // Обрабатываем ответ API
         if (response && Array.isArray(response.items)) {
             allOrders = response.items;
             console.log(`Загружено ${allOrders.length} заказов`);
         } else {
-            console.warn('Неожиданный формат ответа:', response);
             allOrders = [];
         }
         
@@ -81,7 +86,7 @@ async function loadOrders() {
         
     } catch (error) {
         console.error('Ошибка загрузки заказов:', error);
-        showErrorMessage('Не удалось загрузить заказы: ' + error.message);
+        showTempMessage('Не удалось загрузить заказы: ' + error.message, 'error');
     } finally {
         showLoadingState(false);
     }
@@ -90,8 +95,8 @@ async function loadOrders() {
 function applyFilters() {
     const searchText = document.getElementById('searchInput').value.toLowerCase();
     const statusFilter = document.getElementById('statusFilter').value;
+    const managerFilter = document.getElementById('managerFilter')?.value || 'all';
     
-    // Защита от некорректных данных
     if (!Array.isArray(allOrders)) {
         allOrders = [];
     }
@@ -101,8 +106,9 @@ function applyFilters() {
         
         const matchesSearch = matchesOrderSearch(order, searchText);
         const matchesStatus = matchesOrderStatus(order, statusFilter);
+        const matchesManager = matchesOrderManager(order, managerFilter);
         
-        return matchesSearch && matchesStatus;
+        return matchesSearch && matchesStatus && matchesManager;
     });
     
     currentPage = 1;
@@ -127,35 +133,21 @@ function matchesOrderSearch(order, searchText) {
 function matchesOrderStatus(order, statusFilter) {
     if (statusFilter === 'all') return true;
     
-    const paymentStatus = calculatePaymentStatus(order);
+    const paymentStatus = getPaymentStatus(order);
     return paymentStatus === statusFilter;
 }
 
-function calculatePaymentStatus(order) {
-    if (!order || !order.payments) return 'not_paid';
+function matchesOrderManager(order, managerFilter) {
+    if (managerFilter === 'all') return true;
     
-    const payments = Array.isArray(order.payments) ? order.payments : [];
-    const totalPaid = payments.reduce((sum, payment) => sum + (Number(payment.amount) || 0), 0);
-    const totalPrice = Number(order.totalPrice) || 0;
-    
-    if (totalPaid === 0) return 'not_paid';
-    if (totalPaid < totalPrice) return 'partial';
-    return 'paid';
-}
-
-function getPaymentStatusText(order) {
-    const status = calculatePaymentStatus(order);
-    const statusMap = {
-        'not_paid': 'Не оплачено',
-        'partial': 'Частично оплачено', 
-        'paid': 'Оплачено'
-    };
-    return statusMap[status] || 'Не оплачено';
+    const managerName = getUserNameFromOrder(order);
+    return managerName.toLowerCase().includes(managerFilter.toLowerCase());
 }
 
 function resetFilters() {
     document.getElementById('searchInput').value = '';
     document.getElementById('statusFilter').value = 'all';
+    document.getElementById('managerFilter').value = 'all';
     applyFilters();
 }
 
@@ -163,7 +155,6 @@ function renderOrdersTable() {
     const tbody = document.getElementById('ordersTableBody');
     if (!tbody) return;
 
-    // Защита от некорректных данных
     if (!Array.isArray(filteredOrders)) {
         filteredOrders = [];
     }
@@ -174,7 +165,7 @@ function renderOrdersTable() {
     if (pageOrders.length === 0) {
         tbody.innerHTML = `
             <tr>
-                <td colspan="7" class="no-data">Заказы не найдены</td>
+                <td colspan="8" class="no-data">Заказы не найдены</td>
             </tr>
         `;
     } else {
@@ -192,7 +183,8 @@ function createOrderRow(order) {
     const phone = order.phone || 'Н/Д';
     const createdAt = formatDate(order.createdAt);
     const totalPrice = order.totalPrice || 0;
-    const paymentStatus = calculatePaymentStatus(order);
+    const paymentStatus = getPaymentStatus(order);
+    const managerName = getUserNameFromOrder(order);  // П.1: Менеджер
     
     return `
         <tr>
@@ -206,8 +198,10 @@ function createOrderRow(order) {
                     ${getPaymentStatusText(order)}
                 </span>
             </td>
+            <td>${escapeHtml(managerName)}</td>  <!-- П.1: Колонка менеджера -->
             <td class="actions">
                 <button class="btn btn-primary btn-sm" onclick="viewOrder(${order.id})">👁️</button>
+                <button class="btn btn-warning btn-sm" onclick="window.location.href='create-order.html?edit=${order.id}'">✏️</button>  <!-- Edit -->
                 <button class="btn btn-danger btn-sm" onclick="deleteOrder(${order.id})">🗑️</button>
             </td>
         </tr>
@@ -217,14 +211,14 @@ function createOrderRow(order) {
 async function deleteOrder(orderId) {
     const order = allOrders.find(o => o.id === orderId);
     if (!order) {
-        showErrorMessage('Заказ не найден');
+        showTempMessage('Заказ не найден', 'error');
         return;
     }
     
     const orderNumber = order.orderNumber || 'Н/Д';
     
     try {
-        const confirmed = await showConfirmModal({
+        const confirmed = await ModalUtils.confirm({
             title: 'Удаление заказа',
             message: `Вы уверены, что хотите удалить заказ №${orderNumber}? Заказ будет перемещен в архив.`,
             confirmText: 'Удалить',
@@ -233,12 +227,13 @@ async function deleteOrder(orderId) {
         
         if (confirmed) {
             await apiService.deleteOrder(orderId);
-            showSuccessMessage(`Заказ №${orderNumber} перемещен в архив`);
-            await loadOrders(); // Перезагружаем список
+            showTempMessage(`Заказ №${orderNumber} перемещен в архив`, 'success');
+            await loadOrders(); // Reload
+            // Опционально: window.location.href = 'archived-orders.html';  // Если сразу в архив
         }
     } catch (error) {
         console.error('Ошибка удаления заказа:', error);
-        showErrorMessage('Ошибка удаления заказа: ' + error.message);
+        showTempMessage('Ошибка удаления: ' + error.message, 'error');
     }
 }
 
@@ -283,21 +278,13 @@ function showLoadingState(loading) {
     if (loading) {
         tbody.innerHTML = `
             <tr>
-                <td colspan="7" class="loading">Загрузка заказов...</td>
+                <td colspan="8" class="loading">Загрузка заказов...</td>
             </tr>
         `;
     }
 }
 
-function showErrorMessage(message) {
-    showTempMessage(message, 'error');
-}
-
-function showSuccessMessage(message) {
-    showTempMessage(message, 'success');
-}
-
-// Глобальные функции для использования в HTML
+// Глобальные для HTML onclick
 window.viewOrder = function(orderId) {
     window.location.href = `view-order.html?id=${orderId}`;
 };

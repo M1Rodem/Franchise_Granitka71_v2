@@ -24,11 +24,11 @@
 
     <nav class="sidebar">
         <div class="nav-menu">
-            <a href="dashboard.html" class="nav-item">📊 Дашборд</a>
-            <a href="orders.html" class="nav-item active">📋 Заказы</a>
-            <a href="create-order.html" class="nav-item">➕ Создать заказ</a>
-            <a href="archived-orders.html" class="nav-item">🗑️ Архив</a>
-            <a href="users.html" class="nav-item admin-only" style="display:none;">👥 Пользователи</a>
+            <a href="dashboard.html" class="nav-item">Дашборд</a>
+            <a href="orders.html" class="nav-item active">Заказы</a>
+            <a href="create-order.html" class="nav-item">Создать заказ</a>
+            <a href="archived-orders.html" class="nav-item">Архив</a>
+            <a href="users.html" class="nav-item admin-only" style="display: none;">Пользователи</a>
         </div>
     </nav>
 
@@ -42,16 +42,12 @@
             <div id="orderView" class="card" style="padding:1rem;">
                 Загрузка...
             </div>
-
-            <!-- Секция фотографий (ТОЛЬКО ПРОСМОТР) -->
             <div class="card photo-section" style="padding:1rem; margin-top:1rem;">
                 <h3>Фотографии</h3>
                 
                 <div id="orderPhotos" class="photo-preview">
                     Загрузка фотографий...
                 </div>
-                
-                <!-- 🔥 УБРАЛИ КНОПКУ ДОБАВЛЕНИЯ ФОТО И ОБЛАСТЬ ЗАГРУЗКИ -->
             </div>
 
             <div style="margin-top:1rem;">
@@ -60,8 +56,6 @@
             </div>
         </div>
     </main>
-
-    <!-- Модальное окно для просмотра фото -->
     <div id="photoModal" class="modal" style="display:none;">
         <div class="modal-content">
             <span class="close">&times;</span>
@@ -70,10 +64,6 @@
         </div>
     </div>
 
-    <script src="js/api.js"></script>
-    <script src="js/utils.js"></script>
-    <script src="js/photo-utils.js"></script>
-    <script src="js/modal-utils.js"></script>
-    <script src="js/view-order.js"></script>
+    <script type="module" src="js/view-order.js"></script>
 </body>
 </html>

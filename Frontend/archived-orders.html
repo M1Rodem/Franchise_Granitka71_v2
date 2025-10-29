@@ -23,11 +23,11 @@
 
     <nav class="sidebar">
         <div class="nav-menu">
-            <a href="dashboard.html" class="nav-item">📊 Дашборд</a>
-            <a href="orders.html" class="nav-item">📋 Заказы</a>
-            <a href="create-order.html" class="nav-item">➕ Создать заказ</a>
-            <a href="archived-orders.html" class="nav-item active">🗑️ Архив</a>
-            <a href="users.html" class="nav-item admin-only" style="display: none;">👥 Пользователи</a>
+            <a href="dashboard.html" class="nav-item">Дашборд</a>
+            <a href="orders.html" class="nav-item">Заказы</a>
+            <a href="create-order.html" class="nav-item">Создать заказ</a>
+            <a href="archived-orders.html" class="nav-item active">Архив</a>
+            <a href="users.html" class="nav-item admin-only" style="display: none;">Пользователи</a>
         </div>
     </nav>
 
@@ -41,7 +41,7 @@
             </div>
 
             <div class="archive-info card" style="padding: 1rem; margin-bottom: 1rem; background: #fff3cd; border-color: #ffeaa7;">
-                <h3 style="margin-top: 0; color: #856404;">📦 Информация об архиве</h3>
+                <h3 style="margin-top: 0; color: #856404;">Информация об архиве</h3>
                 <p style="margin: 0.5rem 0; color: #856404;">
                     Заказы хранятся в архиве 7 дней, после чего автоматически удаляются.
                     Вы можете восстановить заказ или удалить его окончательно.
@@ -85,8 +85,7 @@
         </div>
     </main>
 
-    <script src="js/api.js"></script>
-    <script src="js/modal-utils.js"></script>
-    <script src="js/archived-orders.js"></script>
+    <!-- Теперь просто src — JS сам init'ится -->
+    <script type="module" src="js/archived-orders.js"></script>
 </body>
 </html>

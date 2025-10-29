@@ -23,19 +23,11 @@
 
     <nav class="sidebar">
         <div class="nav-menu">
-            <a href="dashboard.html" class="nav-item">
-                📊 Дашборд
-            </a>
-            <a href="orders.html" class="nav-item">
-                📋 Заказы
-            </a>
-            <a href="create-order.html" class="nav-item">
-                ➕ Создать заказ
-            </a>
-            <a href="archived-orders.html" class="nav-item">🗑️ Архив</a>
-            <a href="users.html" class="nav-item active admin-only" style="display: none;">
-                👥 Пользователи
-            </a>
+            <a href="dashboard.html" class="nav-item">Дашборд</a>
+            <a href="orders.html" class="nav-item">Заказы</a>
+            <a href="create-order.html" class="nav-item">Создать заказ</a>
+            <a href="archived-orders.html" class="nav-item">Архив</a>
+            <a href="users.html" class="nav-item active admin-only">Пользователи</a>
         </div>
     </nav>
 
@@ -87,24 +79,12 @@
                         </tr>
                     </thead>
                     <tbody id="usersTableBody">
-                        <!-- Пользователи будут здесь -->
                     </tbody>
                 </table>
             </div>
         </div>
     </main>
 
-    <script src="js/api.js"></script>
-    <script src="js/users.js"></script>
-    <script>
-        // Скрыть страницу для не-админов
-        (function(){
-            const userData = JSON.parse(localStorage.getItem('userData') || '{}');
-            if (userData.role !== 'Admin') {
-                window.location.href = 'dashboard.html';
-            }
-        })();
-    </script>
+    <script type="module" src="js/users.js"></script>
 </body>
 </html>
-

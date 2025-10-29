@@ -10,7 +10,7 @@ namespace WebApplication1.Configuration
         {
         }
 
-        // ✅ Таблицы (DbSet)
+        // Таблицы (DbSet)
         public DbSet<Manager> Managers { get; set; }
         public DbSet<Order> Orders { get; set; }
         public DbSet<OrderWorkItem> OrderWorkItems { get; set; }

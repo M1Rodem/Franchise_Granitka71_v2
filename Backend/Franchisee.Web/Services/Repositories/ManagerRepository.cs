@@ -13,11 +13,11 @@ namespace WebApplication1.Services.Repositories
         {
             _context = context;
         }
-        // 🔥 Base query для GetAllAsync
         private IQueryable<Manager> BaseQuery()
         {
             return _context.Managers.AsNoTracking();
         }
+
         public async Task<Manager?> GetByUsernameAsync(string username)
         {
             return await _context.Managers.FirstOrDefaultAsync(m => m.Username == username);
@@ -28,7 +28,7 @@ namespace WebApplication1.Services.Repositories
         }
         public async Task<IEnumerable<Manager>> GetAllAsync(bool activeOnly = false)
         {
-            var query = _context.Managers.AsNoTracking();
+            var query = BaseQuery();
             if (activeOnly) query = query.Where(m => !m.IsBlocked);
             return await query.ToListAsync();
         }
@@ -84,7 +84,7 @@ namespace WebApplication1.Services.Repositories
             if (manager != null)
             {
                 manager.PasswordHash = HashPassword(newPassword);
-                _context.SaveChanges();  // Sync ок для single update
+                _context.SaveChanges(); 
             }
         }
         public string HashPassword(string password)
@@ -101,7 +101,7 @@ namespace WebApplication1.Services.Repositories
             if (manager != null)
             {
                 manager.FullName = fullName;
-                _context.SaveChanges();  // Sync
+                _context.SaveChanges();
             }
         }
     }

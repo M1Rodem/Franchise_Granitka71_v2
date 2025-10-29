@@ -13,7 +13,7 @@ namespace WebApplication1.Services
         private readonly ApplicationDbContext _context;
         private readonly IWebHostEnvironment _env;
         private readonly ILogger<PhotoService> _logger;
-        private const long MaxFileSize = 10 * 1024 * 1024;  // 10MB
+        private const long MaxFileSize = 10 * 1024 * 1024;
         private const int MaxPhotosPerOrder = 10;
         private const int MaxDimension = 4096;
         private static readonly string[] AllowedMimeTypes = { "image/jpeg", "image/png", "image/gif", "image/webp" };
@@ -67,7 +67,7 @@ namespace WebApplication1.Services
                 var contentType = !string.IsNullOrEmpty(decodedFormat) ? $"image/{decodedFormat}" : fileContentType;
                 if (!AllowedMimeTypes.Contains(contentType))
                 {
-                    _logger.LogWarning("UploadTempAsync: Неверный decoded type '{Decoded}' для {Name}", contentType, file.FileName);
+                    _logger.LogWarning("UploadTempAsync: Неверный декодированный тип «{Decoded}» для {Name}", contentType, file.FileName);
                     return null;
                 }
 
@@ -102,7 +102,7 @@ namespace WebApplication1.Services
                 };
                 _context.TempUploads.Add(tempUpload);
                 await _context.SaveChangesAsync();
-                _logger.LogInformation("UploadTempAsync: Temp upload {Id} создан для user {UserId}, путь: {Path}",
+                _logger.LogInformation("UploadTempAsync: временная загрузка {Id} создана для пользователя {UserId}, путь: {Path}",
                     tempUpload.Id, uploaderId, filePath);
 
                 return new TempUploadDto
@@ -128,7 +128,7 @@ namespace WebApplication1.Services
             var order = await _context.Orders.FindAsync(orderId);
             if (order == null || order.Photos.Count >= MaxPhotosPerOrder)
             {
-                _logger.LogWarning("Commit: Order null or limit {Max} for {Id}", MaxPhotosPerOrder, orderId);
+                _logger.LogWarning("Фиксация: заказ null или ограничение {Max} для {Id}", MaxPhotosPerOrder, orderId);
                 return 0;
             }
 
@@ -209,7 +209,7 @@ namespace WebApplication1.Services
             }
 
             if (expired.Any()) await _context.SaveChangesAsync();
-            _logger.LogInformation("Cleaned {Count} expired temps", expired.Count);
+            _logger.LogInformation("Очищено {Count} просроченных временных файлов", expired.Count);
         }
 
         public string GetTempPreviewUrl(int tempId) => $"/api/photos/temp-preview/{tempId}";

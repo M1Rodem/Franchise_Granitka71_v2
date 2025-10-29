@@ -7,10 +7,10 @@ namespace WebApplication1.Services
         Task<TempUploadDto?> UploadTempAsync(IFormFile file, int uploaderId);
         Task<int> CommitTempToOrderAsync(int orderId, List<int> tempIds, int uploaderId);
         Task DeletePhotoFilesAsync(int photoId);
-        Task CleanupExpiredTempsAsync();  // For background
+        Task CleanupExpiredTempsAsync();
         Task<OrderPhotoDto?> GetPhotoDtoAsync(int photoId);
-        string GetTempPreviewUrl(int tempId);  // For UI
-        string GetPhotoUrl(int photoId, bool isThumb = false);  // Proxy paths
+        string GetTempPreviewUrl(int tempId); 
+        string GetPhotoUrl(int photoId, bool isThumb = false);
 
     }
 }

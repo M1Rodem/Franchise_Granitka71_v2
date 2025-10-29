@@ -15,7 +15,7 @@ namespace WebApplication1.Controllers
     [Route("api/[controller]")]
     [ApiController]
     [Authorize]
-    [RequestSizeLimit(10 * 1024 * 1024)] // 10MB
+    [RequestSizeLimit(10 * 1024 * 1024)]
     public class PhotosController : ControllerBase
     {
         private readonly ApplicationDbContext _context;
@@ -24,14 +24,14 @@ namespace WebApplication1.Controllers
         private const long MaxFileSize = 10 * 1024 * 1024;
         private static readonly string[] AllowedExtensions = { ".jpg", ".jpeg", ".png", ".gif" };
         private const int ThumbSize = 150;
-        private readonly IPhotoService _photoService;  // ✅ Добавь поле
+        private readonly IPhotoService _photoService;
 
         public PhotosController(ApplicationDbContext context, IWebHostEnvironment environment, ILogger<PhotosController> logger, IPhotoService photoService)
         {
             _context = context;
             _environment = environment;
             _logger = logger;
-            _photoService = photoService;  // ✅ Инжекция
+            _photoService = photoService;
         }
         private int GetCurrentUserId()
         {
@@ -46,7 +46,7 @@ namespace WebApplication1.Controllers
         // POST: api/Photos/upload-temp
         [HttpPost("upload-temp")]
         [Consumes("multipart/form-data")]
-        public async Task<ActionResult<TempUploadDto>> UploadTemp(IFormFile file) // ✅ Без [FromForm]
+        public async Task<ActionResult<TempUploadDto>> UploadTemp(IFormFile file)
         {
             try
             {
@@ -56,7 +56,6 @@ namespace WebApplication1.Controllers
                     return BadRequest("Файл не предоставлен");
                 }
 
-                // ✅ Pre-check size (early reject)
                 if (file.Length > MaxFileSize)
                 {
                     _logger.LogWarning("UploadTemp: Файл слишком большой {Size} > {Max}B", file.Length, MaxFileSize);
@@ -85,7 +84,7 @@ namespace WebApplication1.Controllers
 
         // POST: api/Photos/move-temp-to-order/{orderId}
         [HttpPost("move-temp-to-order/{orderId}")]
-        public async Task<ActionResult> MoveTempToOrder(int orderId, [FromBody] List<int> tempIds) // ✅ параметр tempIds
+        public async Task<ActionResult> MoveTempToOrder(int orderId, [FromBody] List<int> tempIds)
         {
             if (tempIds == null || !tempIds.Any())
                 return BadRequest("Нет файлов для перемещения");
@@ -97,7 +96,7 @@ namespace WebApplication1.Controllers
             try
             {
                 var uploaderId = int.Parse(User.FindFirst("UserId")?.Value ?? "0");
-                var committedCount = await _photoService.CommitTempToOrderAsync(orderId, tempIds, uploaderId); // ✅ используем tempIds
+                var committedCount = await _photoService.CommitTempToOrderAsync(orderId, tempIds, uploaderId);
 
                 _logger.LogInformation("Moved {Count} temp photos to order {OrderId}", committedCount, orderId);
                 return Ok(new { message = $"Перемещено {committedCount} фото", addedCount = committedCount });
@@ -173,15 +172,12 @@ namespace WebApplication1.Controllers
             if (photo == null || !System.IO.File.Exists(photo.FilePath))
                 return NotFound("Фото не найдено");
 
-            // ✅ ИСПРАВЛЯЕМ: все менеджеры видят все фото заказов
-            // Проверяем, что пользователь имеет доступ к заказу
             var order = await _context.Orders
                 .FirstOrDefaultAsync(o => o.Id == photo.OrderId && !o.IsDeleted);
 
             if (order == null)
                 return NotFound("Заказ не найден");
 
-            // Все авторизованные менеджеры видят все заказы и их фото
             if (User.Identity?.IsAuthenticated != true)
                 return Unauthorized("Требуется авторизация");
 
@@ -199,11 +195,9 @@ namespace WebApplication1.Controllers
                 if (photo == null || !System.IO.File.Exists(photo.FilePath))
                     return NotFound("Фото не найдено");
 
-                // ✅ Более мягкая проверка авторизации
                 if (User.Identity?.IsAuthenticated != true)
                     return Unauthorized("Требуется авторизация");
 
-                // ✅ Проверяем, что заказ существует и пользователь имеет к нему доступ
                 var order = await _context.Orders
                     .Include(o => o.Photos)
                     .FirstOrDefaultAsync(o => o.Id == photo.OrderId && !o.IsDeleted);
@@ -211,7 +205,6 @@ namespace WebApplication1.Controllers
                 if (order == null)
                     return NotFound("Заказ не найден");
 
-                // ✅ Проверяем права доступа к заказу
                 var userIdClaim = User.FindFirst("UserId");
                 if (userIdClaim == null || !int.TryParse(userIdClaim.Value, out int userId))
                     return Unauthorized("Invalid user ID");
@@ -226,45 +219,18 @@ namespace WebApplication1.Controllers
             }
         }
 
-        //// DELETE: api/Photos/{id}
-        //[HttpDelete("{id}")]
-        //public async Task<IActionResult> DeletePhoto(int id)
-        //{
-        //    try
-        //    {
-        //        var photo = await _context.OrderPhotos.FindAsync(id);
-        //        if (photo == null)
-        //            return NoContent();
-
-        //        if (System.IO.File.Exists(photo.FilePath))
-        //            await Task.Run(() => System.IO.File.Delete(photo.FilePath));
-
-        //        _context.OrderPhotos.Remove(photo);
-        //        await _context.SaveChangesAsync();
-
-        //        _logger.LogInformation("Photo {PhotoId} deleted", id);
-        //        return NoContent();
-        //    }
-        //    catch (Exception ex)
-        //    {
-        //        _logger.LogError(ex, "Error deleting photo {PhotoId}", id);
-        //        return Problem("Ошибка удаления фото");
-        //    }
-        //}
-
-        // ✅ ДОБАВЛЯЕМ - удаление фото только при редактировании заказа
+        // удаление фото только при редактировании заказа
         [HttpDelete("edit/{id}")]
         public async Task<IActionResult> DeletePhotoDuringEdit(int id)
         {
             try
             {
-                var userId = GetCurrentUserId(); // ✅ Теперь метод существует
+                var userId = GetCurrentUserId();
                 var photo = await _context.OrderPhotos.FindAsync(id);
 
                 if (photo == null) return NoContent();
 
-                // ✅ ПРАВИЛО: Любой авторизованный менеджер или админ может удалять
-                if (User.Identity?.IsAuthenticated != true) // ✅ Исправлено разыменование
+                if (User.Identity?.IsAuthenticated != true)
                     return Unauthorized("Требуется авторизация");
 
                 if (System.IO.File.Exists(photo.FilePath))
@@ -293,7 +259,6 @@ namespace WebApplication1.Controllers
 
             if (temp == null) return NotFound("Temp file not found");
 
-            // ✅ ИСПРАВЛЯЕМ: безопасное получение userId
             var userIdClaim = User.FindFirst("UserId");
             if (userIdClaim == null || !int.TryParse(userIdClaim.Value, out int userId))
                 return Unauthorized("Invalid user ID");
@@ -313,16 +278,16 @@ namespace WebApplication1.Controllers
             try
             {
                 var tempPhoto = await _context.TempUploads
-                    .IgnoreQueryFilters() // Чтобы увидеть expired
+                    .IgnoreQueryFilters() 
                     .FirstOrDefaultAsync(t => t.Id == tempId);
 
                 if (tempPhoto == null)
                 {
                     _logger.LogInformation("Temp photo not found: {TempId}", tempId);
-                    return NoContent(); // Нет ошибки, просто NoContent
+                    return NoContent();
                 }
 
-                var tempPath = tempPhoto.FilePath; // Используем FilePath из модели
+                var tempPath = tempPhoto.FilePath;
                 if (!string.IsNullOrEmpty(tempPath) && System.IO.File.Exists(tempPath))
                 {
                     await Task.Run(() => System.IO.File.Delete(tempPath));
@@ -342,26 +307,6 @@ namespace WebApplication1.Controllers
             {
                 _logger.LogError(ex, "Error deleting temp photo {TempId}", tempId);
                 return Problem("Ошибка удаления временного файла");
-            }
-        }
-
-        // Private thumb gen — 🔥 Sync Load + async Save (fix CS8417)
-        private async Task<string?> GenerateThumbnailAsync(string filePath, string thumbPath)
-        {
-            try
-            {
-                using var image = Image.Load(filePath); // 🔥 Sync Load, no await using issue
-                image.Mutate(x => x.Resize(ThumbSize, ThumbSize));
-
-                await using var outStream = new FileStream(thumbPath, FileMode.Create, FileAccess.Write, FileShare.None, bufferSize: 4096, useAsync: true);
-                await image.SaveAsJpegAsync(outStream);
-
-                return thumbPath;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogWarning(ex, "Failed to generate thumb for {FilePath}", filePath);
-                return null;
             }
         }
     }

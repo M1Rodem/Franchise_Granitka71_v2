@@ -34,7 +34,7 @@ namespace WebApplication1.Services
                 catch (Exception ex)
                 {
                     _logger.LogError(ex, "Ошибка в ExpiredTempCleanupService");
-                    await Task.Delay(TimeSpan.FromMinutes(5), stoppingToken); // Пауза при ошибке
+                    await Task.Delay(TimeSpan.FromMinutes(5), stoppingToken);
                 }
             }
         }
@@ -79,7 +79,6 @@ namespace WebApplication1.Services
 
             foreach (var order in expiredArchivedOrders)
             {
-                // Удаляем связанные файлы фото
                 var photos = await context.OrderPhotos
                     .Where(p => p.OrderId == order.Id)
                     .ToListAsync();
@@ -93,7 +92,6 @@ namespace WebApplication1.Services
                     context.OrderPhotos.Remove(photo);
                 }
 
-                // Удаляем work items и payments
                 var workItems = await context.OrderWorkItems
                     .Where(w => w.OrderId == order.Id)
                     .ToListAsync();
@@ -104,7 +102,6 @@ namespace WebApplication1.Services
                     .ToListAsync();
                 context.OrderPayments.RemoveRange(payments);
 
-                // Удаляем сам заказ
                 context.Orders.Remove(order);
 
                 _logger.LogInformation("Полностью удален архивный заказ {OrderId} (удален {DeletedAt})",

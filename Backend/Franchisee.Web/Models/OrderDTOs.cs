@@ -10,8 +10,7 @@ namespace WebApplication1.Models
         public int PageSize { get; set; }
         public int TotalPages => (int)Math.Ceiling((double)TotalCount / PageSize);
     }
-
-    public class OrderResponseDto  // Для API, без nav full
+    public class OrderResponseDto
     {
         public int Id { get; set; }
         public string OrderNumber { get; set; } = string.Empty;
@@ -27,13 +26,13 @@ namespace WebApplication1.Models
         public string MonumentSize { get; set; } = string.Empty;
         public string AdditionalInfo { get; set; } = string.Empty;
         public OrderStatus Status { get; set; }
-        public decimal TotalPrice { get; set; }  // Computed
+        public decimal TotalPrice { get; set; } 
         public DateTime CreatedAt { get; set; }
         public DateTime UpdatedAt { get; set; }
         public int ManagerId { get; set; }
-        public string ManagerFullName { get; set; } = string.Empty;  // Из nav
+        public string ManagerFullName { get; set; } = string.Empty; 
         public List<OrderWorkItem> WorkItems { get; set; } = new();
         public List<OrderPayment> Payments { get; set; } = new();
-        public List<OrderPhotoDto> Photos { get; set; } = new();  // DTO для фото
+        public List<OrderPhotoDto> Photos { get; set; } = new(); 
     }
 }

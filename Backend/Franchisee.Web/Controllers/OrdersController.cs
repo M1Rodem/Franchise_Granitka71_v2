@@ -1,7 +1,7 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;  // 🔥 Для транзакций
-using WebApplication1.Configuration;  // ApplicationDbContext
+using Microsoft.EntityFrameworkCore;
+using WebApplication1.Configuration;
 using WebApplication1.Models;
 using WebApplication1.Services;
 using WebApplication1.Services.Repositories;
@@ -14,13 +14,13 @@ namespace WebApplication1.Controllers
     [Authorize]
     public class OrdersController : ControllerBase
     {
-        private readonly ApplicationDbContext _context;  // 🔥 Восстановили для транзакций/Restore
+        private readonly ApplicationDbContext _context;
         private readonly IOrderRepository _orderRepository;
         private readonly IPhotoService _photoService;
         private readonly ILogger<OrdersController> _logger;
 
         public OrdersController(
-            ApplicationDbContext context,  // 🔥 Добавили обратно
+            ApplicationDbContext context,
             IOrderRepository orderRepository,
             IPhotoService photoService,
             ILogger<OrdersController> logger)
@@ -61,9 +61,6 @@ namespace WebApplication1.Controllers
             var order = await _orderRepository.GetByIdAsync(id);
             if (order == null) return NotFound($"Заказ с ID {id} не найден");
 
-            //if (!IsAdmin() && order.ManagerId != userId)
-            //    return Forbid("Доступ запрещен к чужому заказу");
-
             var dto = MapToResponseDto(order);
             return Ok(dto);
         }
@@ -80,7 +77,7 @@ namespace WebApplication1.Controllers
 
             try
             {
-                // 🔥 ОТЛАДКА: Добавим логирование
+                // логирование
                 _logger.LogInformation("Генерация номера заказа...");
                 var orderNumber = await _orderRepository.GenerateOrderNumberAsync();
                 _logger.LogInformation("Сгенерирован номер заказа: {OrderNumber}", orderNumber);
@@ -114,7 +111,7 @@ namespace WebApplication1.Controllers
                 _logger.LogInformation("Сохранение заказа в БД...");
                 await _orderRepository.AddAsync(order);
 
-                // 🔥 Рассчитываем TotalPrice
+                // Рассчеет TotalPrice
                 order.TotalPrice = request.TotalPrice > 0 ? request.TotalPrice : order.WorkItems.Sum(w => w.Price * w.Quantity);
                 await _orderRepository.UpdateAsync(order);
 
@@ -201,7 +198,7 @@ namespace WebApplication1.Controllers
 
                 order.UpdatedAt = DateTime.UtcNow;
 
-                // WorkItems: full replace если provided (как в оригинале)
+                // WorkItems: full replace если provided
                 if (request.WorkItems != null && request.WorkItems.Any())
                 {
                     _context.RemoveRange(order.WorkItems);
@@ -213,7 +210,7 @@ namespace WebApplication1.Controllers
                     }
                 }
 
-                // Аналогично для Payments (если нужно)
+                // Аналогично для Payments
                 if (request.Payments != null && request.Payments.Any())
                 {
                     _context.RemoveRange(order.Payments);
@@ -275,9 +272,9 @@ namespace WebApplication1.Controllers
 
             try
             {
-                // 🔥 ИСПРАВЛЕНИЕ: Ищем заказ ИГНОРИРУЯ фильтр IsDeleted
+                // Ищем заказ ИГНОРИРУЯ фильтр IsDeleted
                 var order = await _context.Orders
-                    .IgnoreQueryFilters() // 🔥 КЛЮЧЕВОЕ ИСПРАВЛЕНИЕ!
+                    .IgnoreQueryFilters()
                     .FirstOrDefaultAsync(o => o.Id == id);
 
                 if (order == null)
@@ -298,7 +295,7 @@ namespace WebApplication1.Controllers
                     return Forbid("Недостаточно прав для восстановления заказа");
                 }
 
-                // 🔥 ВОССТАНАВЛИВАЕМ заказ
+                // ВОССТАНАВЛЕНИЕ ЗАКАЗА
                 order.IsDeleted = false;
                 order.DeletedAt = null;
                 order.UpdatedAt = DateTime.UtcNow;
@@ -330,11 +327,11 @@ namespace WebApplication1.Controllers
 
         private bool IsAdmin() => User.IsInRole("Admin");
 
-        private bool OrderExists(int id) => _context.Orders.Any(e => e.Id == id);  // 🔥 _context
+        private bool OrderExists(int id) => _context.Orders.Any(e => e.Id == id);
 
         private OrderResponseDto MapToResponseDto(Order order)
         {
-            // 🔥 Computed TotalPrice здесь (если [NotMapped])
+            // Computed TotalPrice
             var total = order.TotalPrice > 0 ? order.TotalPrice : order.WorkItems.Sum(w => w.Price * w.Quantity);
 
             return new OrderResponseDto
@@ -353,7 +350,7 @@ namespace WebApplication1.Controllers
                 MonumentSize = order.MonumentSize,
                 AdditionalInfo = order.AdditionalInfo,
                 Status = order.Status,
-                TotalPrice = total,  // 🔥 Computed
+                TotalPrice = total,
                 CreatedAt = order.CreatedAt,
                 UpdatedAt = order.UpdatedAt,
                 ManagerId = order.ManagerId,
@@ -373,8 +370,6 @@ namespace WebApplication1.Controllers
             };
         }
 
-        // ДОБАВИТЕ эти методы в класс OrdersController:
-
         // GET: api/Orders/archived - Получить архивные заказы
         [HttpGet("archived")]
         public async Task<ActionResult<PagedResult<OrderResponseDto>>> GetArchivedOrders([FromQuery] OrderFilterRequest filter)
@@ -384,7 +379,6 @@ namespace WebApplication1.Controllers
 
             try
             {
-                // Игнорируем фильтр IsDeleted чтобы получить удаленные
                 var query = _context.Orders
                     .IgnoreQueryFilters()
                     .Where(o => o.IsDeleted)
@@ -538,7 +532,6 @@ namespace WebApplication1.Controllers
                 return StatusCode(500, "Ошибка получения заказа");
             }
         }
-
         #endregion
     }
 }

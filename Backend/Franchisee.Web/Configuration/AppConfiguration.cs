@@ -18,31 +18,31 @@ namespace WebApplication1.Configuration
     {
         public static void ConfigureServices(IServiceCollection services, IConfiguration configuration, IWebHostEnvironment env)
         {
-            // ✅ ДОБАВЛЯЕМ CORS В САМОМ НАЧАЛЕ
+            // ДОБАВЛЯЕМ CORS В САМОМ НАЧАЛЕ
             services.AddCors(options =>
             {
                 options.AddPolicy("AllowFrontend", policy =>
                 {
-                    policy.WithOrigins("http://localhost:3000", "http://127.0.0.1:3000", "http://localhost:5000")
+                    policy.WithOrigins("http://localhost:3000", "http://127.0.0.1:3000", "http://localhost:5000","https://localhost:7137","https://localhost:7000")
                           .AllowAnyHeader()
                           .AllowAnyMethod()
                           .AllowCredentials();
                 });
             });
 
-            // ✅ ДОБАВЛЯЕМ ПОДДЕРЖКУ ФАЙЛОВ
+            // ДОБАВЛЯЕМ ПОДДЕРЖКУ ФАЙЛОВ
             services.Configure<IISServerOptions>(options =>
             {
                 options.AllowSynchronousIO = true;
             });
 
-            // ✅ ДОБАВЛЯЕМ ЛИМИТ ДЛЯ БОЛЬШИХ ФАЙЛОВ
+            // ДОБАВЛЯЕМ ЛИМИТ ДЛЯ БОЛЬШИХ ФАЙЛОВ
             services.Configure<FormOptions>(options =>
             {
                 options.MultipartBodyLengthLimit = 100_000_000; // 100 MB
             });
 
-            // ✅ Основные сервисы MVC + JSON игнор циклов
+            // Основные сервисы MVC + JSON игнор циклов
             services.AddControllers()
                 .AddJsonOptions(options =>
                 {
@@ -51,7 +51,7 @@ namespace WebApplication1.Configuration
                 });
             services.AddEndpointsApiExplorer();
 
-            // ✅ Swagger + JWT Authorize кнопка + File Upload
+            // Swagger + JWT Authorize кнопка + File Upload
             services.AddSwaggerGen(c =>
             {
                 c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
@@ -78,11 +78,11 @@ namespace WebApplication1.Configuration
             }
         });
 
-                // ✅ ДОБАВЛЕНО: Поддержка загрузки файлов в Swagger
+                // загрузки файлов в Swagger
                 c.OperationFilter<FileUploadOperationFilter>();
             });
 
-            // ✅ JWT Authentication
+            // JWT Authentication
             var key = configuration["Jwt:Key"];
             if (string.IsNullOrEmpty(key))
                 throw new ArgumentNullException(nameof(key), "JWT Key не может быть пустым.");
@@ -104,41 +104,41 @@ namespace WebApplication1.Configuration
                     ValidateAudience = false,
                     ClockSkew = TimeSpan.Zero // без запаса по времени
                 };
-                // ✅ Логи JWT ошибок
+                // Логи JWT ошибок
                 options.Events = new JwtBearerEvents
                 {
                     OnAuthenticationFailed = context =>
                     {
                         var logger = context.HttpContext.RequestServices.GetRequiredService<ILogger<Program>>();
-                        logger.LogError(context.Exception, "❌ Аутентификация не удалась");
+                        logger.LogError(context.Exception, "Аутентификация не удалась");
                         return Task.CompletedTask;
                     },
                     OnTokenValidated = context =>
                     {
                         var logger = context.HttpContext.RequestServices.GetRequiredService<ILogger<Program>>();
-                        logger.LogInformation("✅ Токен валиден. Пользователь: {User}", context.Principal?.Identity?.Name);
+                        logger.LogInformation("Токен валиден. Пользователь: {User}", context.Principal?.Identity?.Name);
                         return Task.CompletedTask;
                     },
                     OnChallenge = context =>
                     {
                         var logger = context.HttpContext.RequestServices.GetRequiredService<ILogger<Program>>();
-                        logger.LogWarning("⚠️ Неавторизованный доступ: {Status}", context.Response.StatusCode);
+                        logger.LogWarning("Неавторизованный доступ: {Status}", context.Response.StatusCode);
                         return Task.CompletedTask;
                     }
                 };
             });
 
-            // ✅ Авторизация по ролям
+            // Авторизация по ролям
             services.AddAuthorization(options =>
             {
                 options.AddPolicy("Admin", policy => policy.RequireRole("Admin"));
             });
 
-            // ✅ Регистрируем контекст БД
+            // Регистрируем контекст БД
             services.AddDbContext<ApplicationDbContext>(options =>
                 options.UseNpgsql(configuration.GetConnectionString("DefaultConnection")));
 
-            // ✅ Репозитории и сервисы
+            // Репозитории и сервисы
             services.AddScoped<IPhotoService, PhotoService>();
             services.AddScoped<IManagerRepository, ManagerRepository>();
             services.AddScoped<IOrderRepository, OrderRepository>();
@@ -146,7 +146,7 @@ namespace WebApplication1.Configuration
 
         public static void ConfigurePipeline(IApplicationBuilder app, IWebHostEnvironment env)
         {
-            // ✅ СОЗДАЕМ ПАПКИ ДЛЯ ЗАГРУЗОК ПЕРЕД ВСЕМ
+            // СОЗДАЕМ ПАПКИ ДЛЯ ЗАГРУЗОК ПЕРЕД ВСЕМ
             CreateUploadDirectories(app, env);
 
             if (env.IsDevelopment())
@@ -157,7 +157,7 @@ namespace WebApplication1.Configuration
 
             app.UseHttpsRedirection();
 
-            // ✅ ДОБАВЛЯЕМ ПОДДЕРЖКУ СТАТИЧЕСКИХ ФАЙЛОВ ДО UseRouting()
+            // ДОБАВЛЯЕМ ПОДДЕРЖКУ СТАТИЧЕСКИХ ФАЙЛОВ ДО UseRouting()
             app.UseStaticFiles(); // Для wwwroot
             app.UseStaticFiles(new StaticFileOptions
             {
@@ -168,7 +168,7 @@ namespace WebApplication1.Configuration
 
             app.UseRouting();
 
-            // ✅ ДОБАВЛЯЕМ UseCors ПОСЛЕ UseRouting()
+            // ДОБАВЛЯЕМ UseCors ПОСЛЕ UseRouting()
             app.UseCors("AllowFrontend");
 
             app.UseAuthentication();

@@ -12,8 +12,6 @@ namespace WebApplication1.Services.Repositories
         Task DeleteAsync(int id);
         Task BlockAsync(int id);
         Task UnblockAsync(int id);
-
-        // Только эти методы остаются синхронными (хеширование)
         void ChangePassword(int managerId, string newPassword);
         bool VerifyPassword(string password, string passwordHash);
         string HashPassword(string password);

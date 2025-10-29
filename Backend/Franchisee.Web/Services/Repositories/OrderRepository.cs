@@ -14,8 +14,6 @@ namespace WebApplication1.Services.Repositories
         {
             _context = context;
         }
-
-        // 🔥 Base query: общие Includes + !IsDeleted (БЕЗ manager фильтра)
         private IQueryable<Order> BaseQuery()
         {
             return _context.Orders
@@ -36,20 +34,14 @@ namespace WebApplication1.Services.Repositories
         {
             return await BaseQuery().FirstOrDefaultAsync(o => o.Id == id);
         }
-
-        // 🔥 ИСПРАВЛЕНО: Убрали managerId фильтр - все видят все заказы
         public async Task<IEnumerable<Order>> GetAllAsync(int? managerId = null)
         {
             return await BaseQuery().OrderByDescending(o => o.CreatedAt).ToListAsync();
         }
-
-        // 🔥 ИСПРАВЛЕНО: Для совместимости, но теперь возвращает все заказы
         public async Task<IEnumerable<Order>> GetByManagerAsync(int managerId)
         {
             return await BaseQuery().OrderByDescending(o => o.CreatedAt).ToListAsync();
         }
-
-        // 🔥 ИСПРАВЛЕНО: Убрали managerId фильтр из base query
         public async Task<(IEnumerable<Order> Orders, int TotalCount)> GetFilteredOrdersAsync(OrderFilterRequest filter, int? managerId = null)
         {
             var query = BaseQuery().AsQueryable();
@@ -77,7 +69,7 @@ namespace WebApplication1.Services.Repositories
             if (filter.MaxPrice.HasValue)
                 query = query.Where(o => o.TotalPrice <= filter.MaxPrice.Value);
 
-            // 🔥 ИСПРАВЛЕНО: Фильтр по менеджеру только если явно указан
+            // Фильтр по менеджеру только если явно указан
             if (filter.ManagerId.HasValue)
                 query = query.Where(o => o.ManagerId == filter.ManagerId.Value);
 
@@ -168,7 +160,7 @@ namespace WebApplication1.Services.Repositories
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"❌ GenerateOrderNumberAsync error: {ex.Message}");
+                Console.WriteLine($"GenerateOrderNumberAsync error: {ex.Message}");
                 throw;
             }
         }

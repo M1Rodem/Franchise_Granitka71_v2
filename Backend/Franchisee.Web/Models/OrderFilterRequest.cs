@@ -2,7 +2,7 @@
 {
     public class OrderFilterRequest
     {
-        public string? SearchQuery { get; set; }  // Новый: универсальный поиск
+        public string? SearchQuery { get; set; }
         public DateTime? CreatedFrom { get; set; }
         public DateTime? CreatedTo { get; set; }
         public PaymentStatus? PaymentStatus { get; set; }
@@ -15,7 +15,6 @@
         public int Page { get; set; } = 1;
         public int PageSize { get; set; } = 20;
     }
-
     public enum PaymentStatus
     {
         All = 0,        // Все заказы

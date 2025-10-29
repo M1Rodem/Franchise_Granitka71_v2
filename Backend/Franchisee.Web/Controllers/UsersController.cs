@@ -29,7 +29,7 @@ namespace WebApplication1.Controllers
                 Id = m.Id,
                 Username = m.Username,
                 FullName = m.FullName,
-                Role = m.Role.ToString(),  // ✅ Enum to string
+                Role = m.Role.ToString(),
                 IsBlocked = m.IsBlocked
             });
             return Ok(response);
@@ -47,7 +47,7 @@ namespace WebApplication1.Controllers
                 Id = manager.Id,
                 Username = manager.Username,
                 FullName = manager.FullName,
-                Role = manager.Role.ToString(),  // ✅ Enum to string
+                Role = manager.Role.ToString(), 
                 IsBlocked = manager.IsBlocked
             };
             return Ok(response);
@@ -60,15 +60,14 @@ namespace WebApplication1.Controllers
             {
                 _logger.LogInformation("Создание нового менеджера: {Username}", createDto.Username);
 
-                // ✅ Исправлено: парсим роль из строки в enum
                 var role = Enum.Parse<UserRole>(createDto.Role);
 
                 var manager = new Manager
                 {
                     Username = createDto.Username,
-                    PasswordHash = createDto.Password, // Репозиторий сам захеширует
+                    PasswordHash = createDto.Password,
                     FullName = createDto.FullName,
-                    Role = role, // ✅ Используем распаршенный enum
+                    Role = role, 
                     IsBlocked = false
                 };
 
@@ -79,7 +78,7 @@ namespace WebApplication1.Controllers
                     Id = manager.Id,
                     Username = manager.Username,
                     FullName = manager.FullName,
-                    Role = manager.Role.ToString(),  // ✅ Enum to string
+                    Role = manager.Role.ToString(),  
                     IsBlocked = manager.IsBlocked
                 };
                 return CreatedAtAction(nameof(GetById), new { id = manager.Id }, response);
@@ -90,7 +89,6 @@ namespace WebApplication1.Controllers
             }
             catch (ArgumentException ex)
             {
-                // ✅ ИСПРАВЛЕНО: используем переменную ex в сообщении
                 return BadRequest($"Неверная роль: {createDto.Role}. Ошибка: {ex.Message}");
             }
         }
@@ -121,7 +119,7 @@ namespace WebApplication1.Controllers
                     Id = manager.Id,
                     Username = manager.Username,
                     FullName = manager.FullName,
-                    Role = manager.Role.ToString(),  // ✅ Enum to string
+                    Role = manager.Role.ToString(),  
                     IsBlocked = manager.IsBlocked
                 };
 

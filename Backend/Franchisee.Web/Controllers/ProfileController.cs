@@ -33,14 +33,13 @@ namespace WebApplication1.Controllers
 
         // Получить данные текущего пользователя
         [HttpGet]
-        public async Task<ActionResult<ManagerResponseDto>> GetMyProfile()  // ✅ Добавил async Task<>
+        public async Task<ActionResult<ManagerResponseDto>> GetMyProfile() 
         {
             try
             {
                 var userId = GetCurrentUserId();
                 _logger.LogInformation("Получение профиля пользователя ID: {UserId}", userId);
 
-                // ✅ ИСПРАВЛЕНО: используем async версию
                 var manager = await _managerRepository.GetByIdAsync(userId);
                 if (manager == null) return NotFound("Пользователь не найден");
 
@@ -49,7 +48,7 @@ namespace WebApplication1.Controllers
                     Id = manager.Id,
                     Username = manager.Username,
                     FullName = manager.FullName,
-                    Role = manager.Role.ToString(),  // ✅ ИСПРАВЛЕНО: enum -> string
+                    Role = manager.Role.ToString(),  
                     IsBlocked = manager.IsBlocked
                 };
 
@@ -71,11 +70,9 @@ namespace WebApplication1.Controllers
                 var userId = GetCurrentUserId();
                 _logger.LogInformation("Смена пароля для пользователя ID: {UserId}", userId);
 
-                // ✅ ИСПРАВЛЕНО: используем async версию
                 var manager = await _managerRepository.GetByIdAsync(userId);
                 if (manager == null) return NotFound("Пользователь не найден");
 
-                // ✅ Исправлено: проверка на null
                 if (manager.PasswordHash == null || !_managerRepository.VerifyPassword(changePasswordDto.CurrentPassword, manager.PasswordHash))
                 {
                     return BadRequest("Текущий пароль неверен");
@@ -95,20 +92,18 @@ namespace WebApplication1.Controllers
 
         // Обновить профиль (имя)
         [HttpPut("update-profile")]
-        public async Task<ActionResult<ManagerResponseDto>> UpdateProfile([FromBody] UpdateProfileDto updateProfileDto)  // ✅ async Task<>
+        public async Task<ActionResult<ManagerResponseDto>> UpdateProfile([FromBody] UpdateProfileDto updateProfileDto) 
         {
             try
             {
                 var userId = GetCurrentUserId();
                 _logger.LogInformation("Обновление профиля для пользователя ID: {UserId}", userId);
 
-                // ✅ ИСПРАВЛЕНО: используем async версию
                 var manager = await _managerRepository.GetByIdAsync(userId);
                 if (manager == null) return NotFound("Пользователь не найден");
 
                 _managerRepository.UpdateProfile(userId, updateProfileDto.FullName);
 
-                // ✅ ИСПРАВЛЕНО: используем async версию
                 manager = await _managerRepository.GetByIdAsync(userId);
                 if (manager == null) return NotFound("Пользователь не найден после обновления");
 
@@ -117,7 +112,7 @@ namespace WebApplication1.Controllers
                     Id = manager.Id,
                     Username = manager.Username,
                     FullName = manager.FullName,
-                    Role = manager.Role.ToString(),  // ✅ ИСПРАВЛЕНО: enum -> string
+                    Role = manager.Role.ToString(),  
                     IsBlocked = manager.IsBlocked
                 };
 

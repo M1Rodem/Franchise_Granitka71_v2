@@ -5,7 +5,7 @@ namespace WebApplication1.Models
     public class TempUpload
     {
         [Key] public int Id { get; set; }
-        [Required] public string FilePath { get; set; } = string.Empty;  // Temp path
+        [Required] public string FilePath { get; set; } = string.Empty;
         [Required] public string ContentType { get; set; } = string.Empty;
         [Required] public string Checksum { get; set; } = string.Empty;
         public int? Width { get; set; }

@@ -2,15 +2,14 @@
 
 namespace WebApplication1.Models
 {
-    public enum UserRole { Manager, Admin }  // Вместо string
-
+    public enum UserRole { Manager, Admin }
     public class Manager
     {
         [Key] public int Id { get; set; }
         [Required][StringLength(50)] public string Username { get; set; } = string.Empty;
         [Required] public string PasswordHash { get; set; } = string.Empty;
         [Required][StringLength(100)] public string FullName { get; set; } = string.Empty;
-        public UserRole Role { get; set; } = UserRole.Manager;  // Enum!
+        public UserRole Role { get; set; } = UserRole.Manager;
         public bool IsBlocked { get; set; } = false;
         public virtual List<Order> Orders { get; set; } = new();
     }

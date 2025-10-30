@@ -40,14 +40,6 @@
             </div>
             <form id="createOrderForm" class="card" style="padding: 1rem;">
                 <div class="form-group">
-                    <label>Номер заказа</label>
-                    <input id="orderNumber" readonly placeholder="Автоматически">
-                </div>
-                <div class="form-group">
-                    <label>Заказ принял</label>
-                    <input id="managerFullName" readonly placeholder="Автоматически">
-                </div>
-                <div class="form-group">
                     <label for="place">Участок *</label>
                     <input type="text" id="place" name="place" required placeholder="Укажите участок">
                 </div>
@@ -100,7 +92,9 @@
                 <!-- Таблица работ -->
                 <div class="form-group">
                     <label>Виды работ</label>
-                    <table id="workItemsTable">
+                    <button type="button" id="addWorkItemBtn" class="btn btn-primary">Добавить работу</button>
+                    
+                    <table id="workItemsTable" class="table">
                         <thead>
                             <tr>
                                 <th>Вид работы</th>
@@ -108,12 +102,13 @@
                                 <th>Кол-во</th>
                                 <th>Примечание</th>
                                 <th>Итого</th>
-                                <th>Действие</th>
+                                <th>Действия</th>
                             </tr>
                         </thead>
-                        <tbody></tbody>
+                        <tbody>
+                            <!-- Строки будут добавляться через JS -->
+                        </tbody>
                     </table>
-                    <button type="button" id="addWorkItemBtn" class="btn btn-outline" style="margin-top:0.5rem;">+ Добавить работу</button>
                 </div>
 
                 <div id="totalPrice" class="total-price" style="font-weight:bold; font-size:1.2em; margin:1rem 0; color:#007bff;">Итого: 0 ₽</div>

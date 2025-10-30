@@ -6,7 +6,8 @@ class ApiService {
     }
 
     // ОСНОВНОЙ МЕТОД ЗАПРОСА
-    async request(endpoint, options = {}) {
+    async request(endpoint, options = {}) 
+    {
         const url = `${API_BASE_URL}${endpoint}`;
         
         const config = {
@@ -24,8 +25,8 @@ class ApiService {
         try {
             const response = await fetch(url, config);
             
-            // Автоматический logout при 401
-            if (response.status === 401) {
+            // НЕ вызываем handleUnauthorized для эндпоинта логина
+            if (response.status === 401 && !endpoint.includes('/Auth/login')) {
                 this.handleUnauthorized();
                 throw new Error('Требуется авторизация');
             }
@@ -42,6 +43,7 @@ class ApiService {
             throw error;
         }
     }
+
 
     // ВСПОМОГАТЕЛЬНЫЕ МЕТОДЫ
     async parseResponse(response) {
@@ -80,24 +82,42 @@ class ApiService {
     }
 
     // АУТЕНТИФИКАЦИЯ
-    async login(credentials) {
-        const result = await this.request('/Auth/login', {
+async login(credentials) {
+    try {
+        const response = await fetch(`${API_BASE_URL}/Auth/login`, {
             method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
             body: JSON.stringify(credentials)
         });
+
+        const data = await response.json();
         
-        if (result.token) {
-            this.setToken(result.token);
+        if (!response.ok) {
+            // Создаем ошибку с статусом для правильной обработки
+            const error = new Error(data.message || `Ошибка ${response.status}`);
+            error.status = response.status;
+            error.data = data;
+            throw error;
+        }
+        
+        if (data.token) {
+            this.setToken(data.token);
             localStorage.setItem('userData', JSON.stringify({
-                id: result.id,
-                username: result.username,
-                fullName: result.fullName,
-                role: result.role
+                id: data.id,
+                username: data.username,
+                fullName: data.fullName,
+                role: data.role
             }));
         }
         
-        return result;
+        return data;
+    } catch (error) {
+        console.error('Login error:', error);
+        throw error;
     }
+}
 
     async logout() {
         try {
@@ -195,9 +215,9 @@ class ApiService {
     }
 
     async commitPhotos(orderId, tempIds) {
-        return this.request(`/Photos/move-temp-to-order/${orderId}`, {
-            method: 'POST',
-            body: JSON.stringify(tempIds)
+    return this.request(`/Photos/move-temp-to-order/${orderId}`, {
+        method: 'POST',
+        body: JSON.stringify(tempIds) // ДОЛЖЕН БЫТЬ МАССИВ ID
         });
     }
 

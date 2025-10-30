@@ -41,19 +41,6 @@ function setupEventListeners() {
     if (logoutBtn) {
         logoutBtn.addEventListener('click', () => apiService.logout());
     }
-
-    // Кнопки навигации (если в HTML onclick, но лучше addEventListener)
-    const createBtn = document.getElementById('createOrderBtn');
-    if (createBtn) createBtn.addEventListener('click', () => window.location.href = 'create-order.html');
-    
-    const ordersBtn = document.getElementById('ordersBtn');
-    if (ordersBtn) ordersBtn.addEventListener('click', () => window.location.href = 'orders.html');
-    
-    const profileBtn = document.getElementById('profileBtn');
-    if (profileBtn) profileBtn.addEventListener('click', () => window.location.href = 'profile.html');
-    
-    const archiveBtn = document.getElementById('archiveBtn');
-    if (archiveBtn) archiveBtn.addEventListener('click', () => window.location.href = 'archived-orders.html');
 }
 
 async function loadDashboardData() {

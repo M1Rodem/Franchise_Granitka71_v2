@@ -1,7 +1,7 @@
 import { showTempMessage, escapeHtml } from './utils.js';
 import { apiService } from './api.js';
 
-const API_BASE_URL = 'https://localhost:7137';  // Без /api для file paths
+let tempUploads = []; // Храним временные загрузки
 
 /**
  * Настройка drag & drop для области загрузки фото
@@ -22,23 +22,7 @@ export function setupDragAndDrop(uploadAreaId, uploadCallback) {
     uploadArea.addEventListener('drop', (e) => {
         e.preventDefault();
         uploadArea.classList.remove('dragover');
-        if (!uploadCallback || typeof uploadCallback !== 'function') {
-            console.error('uploadCallback is not a function for drag&drop:', uploadCallback);
-            showTempMessage('Ошибка: функция загрузки не определена', 'error');
-            return;
-        }
         handleFiles(e.dataTransfer.files, uploadCallback);
-    });
-    
-    // Клик по области загрузки
-    uploadArea.addEventListener('click', (e) => {
-        if (e.target.tagName === 'LABEL' || e.target.tagName === 'BUTTON' || e.target.closest('label, button')) {
-            return;
-        }
-        const photoInput = document.getElementById('photoInput');
-        if (photoInput) {
-            photoInput.click();
-        }
     });
 }
 
@@ -46,11 +30,6 @@ export function setupDragAndDrop(uploadAreaId, uploadCallback) {
  * Обработка выбора файлов через input
  */
 export function handlePhotoSelect(e, uploadCallback) {
-    if (!uploadCallback || typeof uploadCallback !== 'function') {
-        console.error('uploadCallback is not a function:', uploadCallback);
-        showTempMessage('Ошибка: функция загрузки не определена', 'error');
-        return;
-    }
     handleFiles(e.target.files, uploadCallback);
     e.target.value = '';
 }
@@ -58,7 +37,7 @@ export function handlePhotoSelect(e, uploadCallback) {
 /**
  * Валидация и обработка файлов
  */
-async function handleFiles(files, uploadCallback, onRemoveCallback = null) {
+async function handleFiles(files, uploadCallback) {
     for (let file of files) {
         if (!file.type.startsWith('image/')) {
             showTempMessage('Пропущен не изображение: ' + file.name, 'error');
@@ -70,68 +49,99 @@ async function handleFiles(files, uploadCallback, onRemoveCallback = null) {
             continue;
         }
         
-        await uploadCallback(file, onRemoveCallback);
+        await uploadCallback(file);
     }
 }
 
 /**
- * Создание превью фото с индикатором загрузки (для temp upload)
+ * Загрузка временного фото и создание превью
  */
-export function createPhotoPreview(file, photoId, onRemoveCallback, containerId = 'photoPreview') {
-    const container = document.getElementById(containerId);
-    if (!container) {
-        console.error('Container not found:', containerId);
-        return null;
+export async function uploadTempAndDisplay(file) {
+    try {
+        const photoData = await apiService.uploadTempPhoto(file);
+        
+        // Создаем превью после успешной загрузки
+        const container = document.getElementById('photoPreview');
+        if (!container) return null;
+        
+        const photoItem = document.createElement('div');
+        photoItem.className = 'photo-item';
+        photoItem.dataset.tempId = photoData.id;
+        
+        photoItem.innerHTML = `
+            <img src="/api/photos/temp-preview/${photoData.id}" 
+                 alt="${escapeHtml(file.name)}"
+                 style="cursor: pointer;"
+                 onclick="openPhotoPreview('/api/photos/temp-preview/${photoData.id}', '${escapeHtml(file.name)}')">
+            <button class="photo-remove" onclick="removeTempPhoto(${photoData.id})">✖</button>
+        `;
+        
+        container.appendChild(photoItem);
+        
+        // Сохраняем в массив
+        tempUploads.push(photoData.id);
+        
+        showTempMessage(`Фото "${file.name}" загружено`, 'success');
+        return photoData.id;
+    } catch (error) {
+        console.error('Upload error:', error);
+        showTempMessage('Ошибка загрузки: ' + error.message, 'error');
+        throw error;
     }
+}
+
+/**
+ * Создание превью с индикатором загрузки
+ */
+function createUploadingPreview(file, tempId) {
+    const container = document.getElementById('photoPreview');
+    if (!container) return null;
     
     const objectUrl = URL.createObjectURL(file);
     
     const photoItem = document.createElement('div');
     photoItem.className = 'photo-item uploading';
-    photoItem.id = photoId;
+    photoItem.dataset.tempId = tempId;
     
     photoItem.innerHTML = `
-        <img src="${objectUrl}" alt="Загрузка..." style="filter: brightness(0.7); cursor: pointer;" 
-             onclick="openPhotoPreview('${objectUrl}', '${escapeHtml(file.name)}')">
+        <img src="${objectUrl}" alt="Загрузка..." style="filter: brightness(0.7);">
         <div class="photo-progress">Загрузка...</div>
-        <button class="photo-remove" onclick="${onRemoveCallback}('${photoId}')">✖</button>
+        <button class="photo-remove" onclick="removeTempPhotoByElement(this)">✖</button>
     `;
     
     container.appendChild(photoItem);
-    return { photoItem, objectUrl };
+    return photoItem;
 }
 
 /**
- * Обновление превью после успешной загрузки (temp -> committed)
+ * Обновление превью после успешной загрузки
  */
-export function updatePhotoPreview(photoItem, photoData, fileName) {
+function updatePreviewWithServerData(photoItem, photoData, fileName) {
+    if (!photoItem) return;
+    
     photoItem.classList.remove('uploading');
     const img = photoItem.querySelector('img');
-    img.src = photoData.url;  // /api/photos/{id}/file
+    const progress = photoItem.querySelector('.photo-progress');
+    
+    img.src = `/api/photos/proxy/${photoData.id}`;
     img.style.filter = 'none';
-    img.onclick = () => openPhotoPreview(photoData.url, fileName);
-    photoItem.querySelector('.photo-progress').remove();
+    img.style.cursor = 'pointer';
+    img.onclick = () => openPhotoPreview(img.src, fileName);
+    
+    if (progress) progress.remove();
     photoItem.dataset.serverId = photoData.id;
 }
 
 /**
- * Открытие превью фото в модальном окне
+ * Открытие фото в модальном окне
  */
 export function openPhotoPreview(url, fileName) {
-    const existingModal = document.getElementById('photoModal');
-    if (existingModal) {
-        existingModal.remove();
-    }
-
     const modal = document.createElement('div');
-    modal.id = 'photoModal';
     modal.style.cssText = `
         position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background: rgba(0,0,0,0.8);
+        top: 0; left: 0;
+        width: 100%; height: 100%;
+        background: rgba(0,0,0,0.9);
         display: flex;
         justify-content: center;
         align-items: center;
@@ -139,84 +149,181 @@ export function openPhotoPreview(url, fileName) {
     `;
     
     modal.innerHTML = `
-        <div style="position: relative; max-width: 90%; max-height: 90%; background: white; padding: 20px; border-radius: 8px;">
-            <span class="close" style="position: absolute; top: 10px; right: 10px; font-size: 24px; cursor: pointer; z-index: 10001; color: #000;" onclick="this.parentElement.parentElement.remove()">&times;</span>
-            <img src="${url}" alt="${escapeHtml(fileName)}" style="max-width: 100%; max-height: 80vh; display: block;">
-            <div style="color: #333; text-align: center; margin-top: 10px;">${escapeHtml(fileName)}</div>
+        <div style="position: relative; max-width: 90vw; max-height: 90vh;">
+            <button onclick="this.closest('.modal-overlay').remove()" 
+                    style="position: absolute; top: -40px; right: 0; background: none; border: none; color: white; font-size: 24px; cursor: pointer;">
+                ✕
+            </button>
+            <img src="${url}" alt="${escapeHtml(fileName)}" 
+                 style="max-width: 100%; max-height: 90vh; display: block;">
+            <div style="color: white; text-align: center; margin-top: 10px;">
+                ${escapeHtml(fileName)}
+            </div>
         </div>
     `;
     
+    modal.className = 'modal-overlay';
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) modal.remove();
+    });
+    
     document.body.appendChild(modal);
-    
-    const closeModal = () => modal.remove();
-    modal.querySelector('.close').onclick = closeModal;
-    
-    const escapeHandler = (e) => { if (e.key === 'Escape') closeModal(); };
-    document.addEventListener('keydown', escapeHandler);
-    modal.addEventListener('click', (e) => { if (e.target === modal) closeModal(); });
 }
 
 /**
- * НОВОЕ: Рендер сетки фото (для п.6: view/edit mode)
- * mode: 'view' — только img + download; 'edit' — + remove
+ * Рендер сетки фото
  */
 export function renderPhotoGrid(photos, containerId, mode = 'view') {
     const container = document.getElementById(containerId);
     if (!container) return;
-    container.innerHTML = '';  // Clear
-
+    
+    container.innerHTML = '';
+    
     photos.forEach(photo => {
         const photoItem = document.createElement('div');
         photoItem.className = 'photo-item';
         photoItem.innerHTML = `
-            <img src="${photo.url}" alt="${escapeHtml(photo.originalFileName || 'Фото')}" 
-                 style="cursor: pointer;" onclick="openPhotoPreview('${photo.url}', '${escapeHtml(photo.originalFileName || 'Фото')}')">
-            ${mode === 'view' ? 
-                `<button class="photo-download" onclick="apiService.downloadPhoto(${photo.id})">📥 Скачать</button>` :
-                `<button class="photo-remove" onclick="removePhotoFromEdit(${photo.id})">✖ Удалить</button>`
+            <img src="/api/photos/proxy/${photo.id}" 
+                 alt="${escapeHtml(photo.originalFileName || 'Фото')}"
+                 style="cursor: pointer;" 
+                 onclick="openPhotoPreview('/api/photos/proxy/${photo.id}', '${escapeHtml(photo.originalFileName || 'Фото')}')">
+            ${mode === 'edit' ? 
+                `<button class="photo-remove" onclick="removeCommittedPhoto(${photo.id})">✖ Удалить</button>` :
+                `<button class="photo-download" onclick="downloadPhoto(${photo.id}, '${escapeHtml(photo.originalFileName || 'Фото')}')">📥 Скачать</button>`
             }
-            <div class="photo-info">${formatDateTime(photo.uploadedAt)} | ${formatSize(photo.size)}</div>
+            <div class="photo-info">
+                ${formatDate(photo.uploadedAt)} | ${formatFileSize(photo.size)}
+            </div>
         `;
         container.appendChild(photoItem);
     });
 }
 
-function formatSize(bytes) {
-    if (bytes < 1024) return bytes + ' B';
-    if (bytes < 1024*1024) return (bytes/1024).toFixed(1) + ' KB';
-    return (bytes/(1024*1024)).toFixed(1) + ' MB';
-}
-
-// Фикс upload: Temp upload + display (вызывай в create-order)
-export async function uploadTempAndDisplay(file, containerId = 'photoPreview', onRemoveCallback) {
-    const photoId = `temp_${Date.now()}_${Math.random().toString(36).substr(2,9)}`;
-    const { photoItem, objectUrl } = createPhotoPreview(file, photoId, onRemoveCallback, containerId);
-    
+/**
+ * Удаление временного фото
+ */
+export async function removeTempPhoto(tempId) {
     try {
-        const photoData = await apiService.uploadTempPhoto(file);
-        updatePhotoPreview(photoItem, photoData, file.name);
-        showTempMessage(`Фото "${file.name}" загружено временно`, 'success');
-        return photoData.id;  // Верни tempId для commit
+        // Находим в массиве временных загрузок
+        const tempIndex = tempUploads.findIndex(temp => temp.id === tempId);
+        if (tempIndex !== -1) {
+            const temp = tempUploads[tempIndex];
+            if (temp.previewItem) {
+                temp.previewItem.remove();
+            }
+            tempUploads.splice(tempIndex, 1);
+        }
+        
+        // Удаляем с сервера
+        await apiService.deleteTempPhoto(tempId);
+        showTempMessage('Временное фото удалено', 'success');
+        
     } catch (error) {
-        URL.revokeObjectURL(objectUrl);
-        photoItem.remove();
-        showTempMessage('Ошибка загрузки: ' + error.message, 'error');
-        throw error;
+        console.error('Remove temp photo error:', error);
+        showTempMessage('Ошибка удаления фото', 'error');
     }
 }
 
-// Удаление temp (если не committed)
-export async function removeTempPhoto(tempId) {
-    const item = document.getElementById(`temp_${tempId}`);
-    if (item) item.remove();
-    await apiService.deleteTempPhoto(tempId);
-    showTempMessage('Временное фото удалено', 'success');
+/**
+ * Удаление привязанного фото в режиме редактирования
+ */
+export async function removeCommittedPhoto(photoId) {
+    try {
+        await apiService.deletePhoto(photoId);
+        
+        // Удаляем из DOM
+        const photoElement = document.querySelector(`[data-server-id="${photoId}"]`);
+        if (photoElement) {
+            photoElement.remove();
+        }
+        
+        showTempMessage('Фото удалено', 'success');
+        
+    } catch (error) {
+        console.error('Remove committed photo error:', error);
+        showTempMessage('Ошибка удаления фото', 'error');
+    }
 }
 
-// Удаление в edit (п.6: только в edit mode)
-export async function removePhotoFromEdit(photoId) {
-    await apiService.deletePhoto(photoId);
-    const item = document.querySelector(`[data-server-id="${photoId}"]`);
-    if (item) item.remove();
-    showTempMessage('Фото удалено', 'success');
+/**
+ * Получение ID всех временных фото для коммита
+ */
+export function getTempPhotoIds() {
+    return tempUploads.map(temp => temp.id);
 }
+
+/**
+ * Очистка временных фото после коммита
+ */
+export function clearTempPhotos() {
+    tempUploads = [];
+    const previewContainer = document.getElementById('photoPreview');
+    if (previewContainer) {
+        previewContainer.innerHTML = '';
+    }
+}
+
+// Вспомогательные функции
+function formatDate(dateString) {
+    if (!dateString) return '—';
+    try {
+        return new Date(dateString).toLocaleDateString('ru-RU');
+    } catch {
+        return '—';
+    }
+}
+
+function formatFileSize(bytes) {
+    if (!bytes) return '0 B';
+    if (bytes < 1024) return bytes + ' B';
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+    return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+}
+
+// Глобальные функции для HTML
+window.removeTempPhotoByElement = function(button) {
+    const photoItem = button.closest('.photo-item');
+    const serverId = photoItem.dataset.serverId;
+    
+    if (serverId) {
+        removeCommittedPhoto(serverId);
+    } else {
+        const temp = tempUploads.find(t => t.previewItem === photoItem);
+        if (temp) removeTempPhoto(temp.id);
+    }
+};
+
+window.downloadPhoto = async function(photoId, fileName) {
+    try {
+        await apiService.downloadPhoto(photoId);
+    } catch (error) {
+        showTempMessage('Ошибка скачивания: ' + error.message, 'error');
+    }
+};
+
+window.openPhotoPreview = openPhotoPreview;
+
+// Добавьте в конец photo-utils.js
+window.removeTempPhoto = async function(tempId) {
+    try {
+        // Удаляем из DOM
+        const photoElement = document.querySelector(`[data-temp-id="${tempId}"]`);
+        if (photoElement) {
+            photoElement.remove();
+        }
+        
+        // Удаляем из массива
+        const index = tempUploads.indexOf(tempId);
+        if (index > -1) {
+            tempUploads.splice(index, 1);
+        }
+        
+        // Удаляем с сервера
+        await apiService.deleteTempPhoto(tempId);
+        showTempMessage('Фото удалено', 'success');
+        
+    } catch (error) {
+        console.error('Remove temp photo error:', error);
+        showTempMessage('Ошибка удаления фото', 'error');
+    }
+};

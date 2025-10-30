@@ -60,18 +60,22 @@ namespace WebApplication1.Controllers
             {
                 _logger.LogInformation("Создание нового менеджера: {Username}", createDto.Username);
 
-                var role = Enum.Parse<UserRole>(createDto.Role);
+                // Исправляем парсинг роли - добавляем игнорирование регистра
+                UserRole role;
+                if (!Enum.TryParse<UserRole>(createDto.Role, true, out role))
+                {
+                    return BadRequest($"Неверная роль: {createDto.Role}. Допустимые значения: Admin, Manager");
+                }
 
                 var manager = new Manager
                 {
                     Username = createDto.Username,
-                    PasswordHash = createDto.Password,
+                    PasswordHash = createDto.Password, // будет захешировано в репозитории
                     FullName = createDto.FullName,
-                    Role = role, 
+                    Role = role, // используем распаршенную роль
                     IsBlocked = false
                 };
 
-                manager.PasswordHash = _managerRepository.HashPassword(createDto.Password);
                 await _managerRepository.AddAsync(manager);
 
                 var response = new ManagerResponseDto
@@ -79,7 +83,7 @@ namespace WebApplication1.Controllers
                     Id = manager.Id,
                     Username = manager.Username,
                     FullName = manager.FullName,
-                    Role = manager.Role.ToString(),  
+                    Role = manager.Role.ToString(),
                     IsBlocked = manager.IsBlocked
                 };
                 return CreatedAtAction(nameof(GetById), new { id = manager.Id }, response);
@@ -87,10 +91,6 @@ namespace WebApplication1.Controllers
             catch (InvalidOperationException ex)
             {
                 return BadRequest(ex.Message);
-            }
-            catch (ArgumentException ex)
-            {
-                return BadRequest($"Неверная роль: {createDto.Role}. Ошибка: {ex.Message}");
             }
         }
 

@@ -157,33 +157,56 @@ function createArchivedOrderRow(order) {
     `;
 }
 
+// Сейчас в архиве:
 function calculateDaysLeft(deletedAt) {
     if (!deletedAt) return '—';
-    const deletionDate = new Date(deletedAt);
-    const today = new Date();
-    const diffTime = today - deletionDate;
-    const daysPassed = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-    const daysLeft = 7 - daysPassed;
-    return daysLeft > 0 ? `${daysLeft} дней` : 'Истёк';
+    try {
+        const deletionDate = new Date(deletedAt);
+        const today = new Date();
+        const diffTime = today.getTime() - deletionDate.getTime();
+        const daysPassed = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+        const daysLeft = 7 - daysPassed;
+        return daysLeft > 0 ? `${daysLeft} дней` : 'Истёк';
+    } catch {
+        return '—';
+    }
 }
 
 async function viewArchivedOrder(id) {
     try {
         const order = await apiService.getArchivedOrder(id);
-        const modal = ModalUtils.createModalBase();  // Assume ModalUtils has this
+        const modal = document.createElement('div');
+        modal.className = 'modal-overlay';
+        modal.style.cssText = `
+            position: fixed; top: 0; left: 0; 
+            width: 100%; height: 100%; 
+            background: rgba(0,0,0,0.5); 
+            display: flex; justify-content: center; 
+            align-items: center; z-index: 10000;
+        `;
+        
         modal.innerHTML = `
-            <div class="modal-content" style="width: 80%; max-height: 80%; overflow-y: auto;">
-                <h2>Архивный заказ ${escapeHtml(order.orderNumber)}</h2>
+            <div class="modal-content" style="background: white; padding: 2rem; border-radius: 8px; max-width: 800px; width: 90%; max-height: 80vh; overflow-y: auto;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                    <h2>Архивный заказ ${escapeHtml(order.orderNumber)}</h2>
+                    <button onclick="this.closest('.modal-overlay').remove()" style="background: none; border: none; font-size: 1.5rem; cursor: pointer;">✕</button>
+                </div>
                 <p><strong>Участок:</strong> ${escapeHtml(order.place)}</p>
                 <p><strong>ФИО усопшего:</strong> ${escapeHtml(order.deceasedFullName)}</p>
                 <p><strong>Клиент:</strong> ${escapeHtml(order.customerFullName)}</p>
                 <p><strong>Телефон:</strong> ${escapeHtml(order.phone)}</p>
                 <p><strong>Удалён:</strong> ${formatDate(order.deletedAt)}</p>
                 <div id="archivedPhotos"></div>
-                <button onclick="this.closest('.modal').remove()">Закрыть</button>
             </div>
         `;
+        
         document.body.appendChild(modal);
+        
+        // Закрытие по клику вне контента
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) modal.remove();
+        });
+        
         if (order.photos && order.photos.length > 0) {
             renderPhotoGrid(order.photos, 'archivedPhotos', 'view');
         } else {

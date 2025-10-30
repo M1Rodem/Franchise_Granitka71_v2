@@ -6,6 +6,7 @@ import { ModalUtils } from './modal-utils.js';
 let editingOrderId = null;
 let tempPhotos = [];
 let orderPhotos = [];
+let workItemsCount = 0;
 
 // Инициализация
 document.addEventListener('DOMContentLoaded', async () => {
@@ -17,7 +18,10 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     const userData = apiService.getCurrentUser();
     const userNameEl = document.getElementById('userName');
-    if (userNameEl) userNameEl.textContent = userData.fullName || 'Пользователь';
+    if (userNameEl) {
+        // Показываем ФИО, если есть, иначе username
+        userNameEl.textContent = userData.fullName || userData.username || 'Пользователь';
+    }
 
     // Показать админ-элементы (включая вкладку "Пользователи")
     if (userData.role === 'Admin') {
@@ -54,6 +58,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         addWorkBtn.addEventListener('click', addWorkItemRow);
         addWorkItemRow();  // Первая строка auto
     }
+
     const addPaymentBtn = document.getElementById('addPaymentBtn');
     if (addPaymentBtn) {
         addPaymentBtn.addEventListener('click', addPaymentRow);
@@ -108,9 +113,9 @@ async function loadOrderForEdit(id) {
         await loadPhotosForEdit(id);
         renderPhotoGrid(orderPhotos, 'photoPreview', 'edit');  // + remove
 
-        // Auto: Номер/Менеджер
-        setFormValue('orderNumber', order.orderNumber || 'Авто');
-        setFormValue('managerFullName', order.managerFullName || 'Авто');
+        // // Auto: Номер/Менеджер
+        // setFormValue('orderNumber', order.orderNumber || 'Авто');
+        // setFormValue('managerFullName', order.managerFullName || 'Авто');
     } catch (error) {
         showTempMessage('Ошибка загрузки: ' + error.message, 'error');
     }
@@ -219,16 +224,30 @@ function addWorkItemRow(data = {}) {
     const tableBody = document.querySelector('#workItemsTable tbody');
     if (!tableBody) return;
 
+    workItemsCount++;
     const row = tableBody.insertRow();
     row.innerHTML = `
         <td><input type="text" name="workDescription" value="${data.workDescription || ''}" placeholder="Вид работы" required></td>
-        <td><input type="number" name="price" value="${data.price || ''}" min="0" step="0.01" placeholder="Стоимость" required onchange="calculateTotalPrice()"></td>
-        <td><input type="number" name="quantity" value="${data.quantity || 1}" min="1" placeholder="Кол-во" required onchange="calculateTotalPrice()"></td>
+        <td><input type="number" name="price" value="${data.price || ''}" min="0" step="0.01" placeholder="Стоимость" required></td>
+        <td><input type="number" name="quantity" value="${data.quantity || 1}" min="1" placeholder="Кол-во" required></td>
         <td><input type="text" name="note" value="${data.note || ''}" placeholder="Примечание"></td>
         <td class="total-cell">${formatCurrency((data.price || 0) * (data.quantity || 1))}</td>
-        <td><button type="button" onclick="removeRow(this)">Удалить</button></td>
+        <td><button type="button" class="btn btn-danger btn-sm" onclick="removeRow(this)">Удалить</button></td>
     `;
-    calculateTotalPrice();
+    
+    // Добавляем обработчики для пересчета
+    const priceInput = row.querySelector('[name="price"]');
+    const quantityInput = row.querySelector('[name="quantity"]');
+    
+    const updateTotal = () => {
+        const price = parseFloat(priceInput.value) || 0;
+        const quantity = parseInt(quantityInput.value) || 1;
+        row.querySelector('.total-cell').textContent = formatCurrency(price * quantity);
+        calculateTotalPrice();
+    };
+    
+    priceInput.addEventListener('input', updateTotal);
+    quantityInput.addEventListener('input', updateTotal);
 }
 
 function renderWorkItemsTable(items) {
@@ -297,3 +316,16 @@ window.removeRow = removeRow;
 window.calculateTotalPrice = calculateTotalPrice;
 window.addWorkItemRow = addWorkItemRow;
 window.addPaymentRow = addPaymentRow;
+
+window.addEventListener('beforeunload', async () => {
+    if (tempUploads.length > 0 && !editingOrderId) {
+        // Удаляем все временные фото если не сохранили заказ
+        for (const tempId of tempUploads) {
+            try {
+                await apiService.deleteTempPhoto(tempId);
+            } catch (error) {
+                console.error('Error cleaning temp photo:', error);
+            }
+        }
+    }
+});

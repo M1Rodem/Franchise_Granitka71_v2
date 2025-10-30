@@ -37,9 +37,10 @@ namespace WebApplication1.Services.Repositories
             // Проверяем уникальность username
             if (await _context.Managers.AnyAsync(m => m.Username == manager.Username))
                 throw new InvalidOperationException("Пользователь с таким логином уже существует");
+
             // Хэшируем пароль перед сохранением
             manager.PasswordHash = HashPassword(manager.PasswordHash);
-            manager.Role = UserRole.Manager;
+
             _context.Managers.Add(manager);
             await _context.SaveChangesAsync();
         }

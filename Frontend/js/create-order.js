@@ -5,6 +5,7 @@ import { setupDragAndDrop, handlePhotoSelect, uploadTempAndDisplay, renderPhotoG
 let editingOrderId = null;
 let orderPhotos = [];  // Для edit mode
 let workItemsCount = 0;  // Счётчик строк работ (не используется явно, но оставим)
+let originalOrderData = null;
 
 // Инициализация страницы
 document.addEventListener('DOMContentLoaded', async () => {
@@ -73,10 +74,11 @@ function setupEventListeners() {
     }
 
     // Таблицы: Добавление строк
-    const addWorkBtn = document.getElementById('addWorkItemBtn');
+        const addWorkBtn = document.getElementById('addWorkItemBtn');
     if (addWorkBtn) {
         addWorkBtn.addEventListener('click', addWorkItemRow);
-        addWorkItemRow();
+        addWorkItemRow(); // Добавляем первую строку по умолчанию
+        setupWorkItemsTableEvents(); // Настраиваем глобальные обработчики
         calculateTotalPrice(); 
     }
 
@@ -114,7 +116,9 @@ async function checkEditMode() {
 async function loadOrderForEdit(id) {
     try {
         const order = await apiService.getOrder(id);
-        populateForm('createOrderForm', {
+        
+        // СОХРАНИТЬ ИСХОДНЫЕ ДАННЫЕ ДЛЯ СРАВНЕНИЯ
+        originalOrderData = {
             place: order.place,
             inspectionPlace: order.inspectionPlace,
             orderDate: order.orderDate ? new Date(order.orderDate).toISOString().slice(0, 10) : getTodayDate(),
@@ -126,23 +130,22 @@ async function loadOrderForEdit(id) {
             monumentType: order.monumentType,
             monumentSize: order.monumentSize,
             additionalInfo: order.additionalInfo,
-        });
-
-        // Таблицы
+            workItems: order.workItems || [],
+            payments: order.payments || [],
+            photoIds: order.photos ? order.photos.map(p => p.id) : [] // СОХРАНИТЬ ID ФОТО
+        };
+        
+        populateForm('createOrderForm', originalOrderData);
         renderWorkItemsTable(order.workItems || []);
         renderPaymentsTable(order.payments || []);
         calculateTotalPrice();
-
-        // Фото для edit (один раз, внутри try)
-        orderPhotos = order.photos || [];  // Глобал для хранения
-        renderPhotoGrid(orderPhotos, 'photoPreview', 'edit');
         
-        showTempMessage('Заказ загружен для редактирования', 'success');  // Опционально: UX
+        orderPhotos = order.photos || [];
+        await renderPhotoGrid(orderPhotos, 'photoPreview', 'edit');
+        
     } catch (error) {
         console.error('Load order error:', error);
         showTempMessage('Ошибка загрузки заказа: ' + error.message, 'error');
-        // Опционально: Редирект назад
-        // window.location.href = 'orders.html';
     }
 }
 
@@ -151,7 +154,6 @@ function collectFormData() {
     return {
         place: getFormValue('place'),
         inspectionPlace: getFormValue('inspectionPlace'),
-        orderDate: getFormValue('orderDate'),
         deceasedFullName: getFormValue('deceasedFullName'),
         customerFullName: getFormValue('customerFullName'),
         customerEmail: getFormValue('customerEmail'),
@@ -178,15 +180,9 @@ function validateForm(data) {
     if (!data.monumentType) return 'Тип памятника обязателен';
     if (!data.monumentSize) return 'Размер памятника обязателен';
 
-    // Work items - ИСПРАВЛЕННАЯ ПРОВЕРКА
-    const items = data.workItems || []; // Защита от undefined
-    if (!items || items.length === 0) return 'Добавьте хотя бы одну работу (описание + цена > 0)';
-    
-    for (const wi of items) {
-        if (!wi.workDescription || wi.workDescription.length === 0) return 'Описание работы обязательно';
-        if (wi.price <= 0) return 'Стоимость > 0';
-        if (wi.quantity < 1) return 'Количество ≥ 1';
-    }
+    // Используем отдельную функцию валидации работ
+    // const workItemsError = validateWorkItems(data.workItems);
+    // if (workItemsError) return workItemsError;
 
     return null;
 }
@@ -197,20 +193,27 @@ async function handleOrderCreation(orderData) {
         let result;
         if (editingOrderId) {
             result = await apiService.updateOrder(editingOrderId, orderData);
-            // Коммит temp фото если есть
             if (tempUploads.length > 0) {
                 await apiService.commitPhotos(editingOrderId, tempUploads);
             }
         } else {
-            result = await apiService.createOrder(orderData);  // Бэк закоммитит tempUploadIds автоматически
+            result = await apiService.createOrder(orderData);
         }
-        clearTempPhotos();  // Очистка temp после успеха
-        showTempMessage(editingOrderId ? 'Заказ обновлён' : 'Заказ создан', 'success');
-        // Редирект или обновление UI
-        if (!editingOrderId) {
-            clearForm('createOrderForm');
-            window.location.href = 'orders.html';  // Или dashboard
-        }
+        
+        clearTempPhotos();
+        
+        // Сообщение и редирект
+        const message = editingOrderId ? 'Заказ обновлён' : 'Заказ создан';
+        showTempMessage(message, 'success');
+        
+        setTimeout(() => {
+            if (editingOrderId) {
+                window.location.href = `view-order.html?id=${editingOrderId}`;
+            } else {
+                window.location.href = 'orders.html';
+            }
+        }, 1500);
+        
         return result;
     } catch (error) {
         console.error('Order creation error:', error);
@@ -218,6 +221,118 @@ async function handleOrderCreation(orderData) {
         throw error;
     }
 }
+
+function hasFormDataChanged(originalData, currentData) {
+    // 1. Проверяем основные поля формы
+    const fieldsToCompare = [
+        'place', 'inspectionPlace', 'deceasedFullName',
+        'customerFullName', 'customerEmail', 'phone', 'address',
+        'monumentType', 'monumentSize', 'additionalInfo'
+    ];
+    
+    for (const field of fieldsToCompare) {
+        const originalValue = String(originalData[field] || '');
+        const currentValue = String(currentData[field] || '');
+        
+        if (originalValue.trim() !== currentValue.trim()) {
+            console.log(`Изменено поле: ${field}`, originalValue, '->', currentValue);
+            return true;
+        }
+    }
+    
+    // 2. Проверяем WorkItems
+    const normalizeWorkItem = (item) => ({
+        workDescription: String(item.workDescription || '').trim(),
+        price: Number(item.price) || 0,
+        quantity: Number(item.quantity) || 1,
+        note: String(item.note || '').trim()
+    });
+    
+    const originalItems = (originalData.workItems || []).map(normalizeWorkItem);
+    const currentItems = (currentData.workItems || []).map(normalizeWorkItem);
+    
+    // Сравниваем количество и содержание
+    if (originalItems.length !== currentItems.length) {
+        console.log('Изменено количество WorkItems:', originalItems.length, '->', currentItems.length);
+        return true;
+    }
+    
+    for (let i = 0; i < originalItems.length; i++) {
+        const originalItem = originalItems[i];
+        const currentItem = currentItems[i];
+        
+        if (originalItem.workDescription !== currentItem.workDescription ||
+            originalItem.price !== currentItem.price ||
+            originalItem.quantity !== currentItem.quantity ||
+            originalItem.note !== currentItem.note) {
+            console.log('Изменен WorkItem:', originalItem, '->', currentItem);
+            return true;
+        }
+    }
+    
+    // 3. Проверяем Payments
+    const normalizePayment = (payment) => ({
+        paymentType: String(payment.paymentType || '').trim(),
+        amount: Number(payment.amount) || 0,
+        paymentDate: String(payment.paymentDate || '').trim(),
+        note: String(payment.note || '').trim()
+    });
+    
+    const originalPayments = (originalData.payments || []).map(normalizePayment);
+    const currentPayments = (currentData.payments || []).map(normalizePayment);
+    
+    if (originalPayments.length !== currentPayments.length) {
+        console.log('Изменено количество Payments:', originalPayments.length, '->', currentPayments.length);
+        return true;
+    }
+    
+    for (let i = 0; i < originalPayments.length; i++) {
+        const originalPayment = originalPayments[i];
+        const currentPayment = currentPayments[i];
+        
+        if (originalPayment.paymentType !== currentPayment.paymentType ||
+            originalPayment.amount !== currentPayment.amount ||
+            originalPayment.paymentDate !== currentPayment.paymentDate ||
+            originalPayment.note !== currentPayment.note) {
+            console.log('Изменен Payment:', originalPayment, '->', currentPayment);
+            return true;
+        }
+    }
+    
+    // 4. Проверяем изменения в фото (удаление существующих)
+    // Для этого нужно чтобы originalData содержал массив ID фото
+    const originalPhotoIds = originalData.photoIds || [];
+    const currentServerPhotoIds = currentData.photoIds || [];
+    
+    if (originalPhotoIds.length !== currentServerPhotoIds.length) {
+        console.log('Удалены фото:', originalPhotoIds.length, '->', currentServerPhotoIds.length);
+        return true;
+    }
+    
+    // Проверяем что все оригинальные фото остались
+    for (const photoId of originalPhotoIds) {
+        if (!currentServerPhotoIds.includes(photoId)) {
+            console.log('Удалено фото с ID:', photoId);
+            return true;
+        }
+    }
+    
+    // 5. Проверяем новые временные фото
+    if (currentData.tempUploadIds && currentData.tempUploadIds.length > 0) {
+        console.log('Добавлены новые фото:', currentData.tempUploadIds.length);
+        return true;
+    }
+    
+    // 6. Глобальный флаг для любых других изменений (например удаление фото через кнопку)
+    if (window.photoWasDeleted) {
+        console.log('Фото было удалено через кнопку');
+        return true;
+    }
+    
+    console.log('Изменений не обнаружено');
+    return false;
+}
+
 
 // Основная функция submit
 async function submitForm() {
@@ -228,10 +343,32 @@ async function submitForm() {
         return;
     }
 
+    // ПРОВЕРКА ИЗМЕНЕНИЙ ДЛЯ РЕДАКТИРОВАНИЯ
+    if (editingOrderId && originalOrderData) {
+        if (!hasFormDataChanged(originalOrderData, data)) {
+            // НЕТ ИЗМЕНЕНИЙ - редирект
+            showTempMessage('Нет изменений для сохранения', 'info');
+            setTimeout(() => {
+                window.location.href = `view-order.html?id=${editingOrderId}`;
+            }, 1500);
+            return;
+        } else {
+            // ЕСТЬ ИЗМЕНЕНИЯ - отправляем на сервер БЕЗ автоматического редиректа
+            try {
+                await handleOrderCreation(data);
+                // Редирект будет в handleOrderCreation после успешного сохранения
+            } catch (error) {
+                // Обработка ошибки
+            }
+            return;
+        }
+    }
+
+    // СОЗДАНИЕ НОВОГО ЗАКАЗА
     try {
         await handleOrderCreation(data);
     } catch (error) {
-        // Обработка уже в handleOrderCreation
+        // Обработка ошибки
     }
 }
 
@@ -244,22 +381,31 @@ function addWorkItemRow(data = {}) {
 
     const row = tableBody.insertRow();
     row.innerHTML = `
-        <td><input type="text" name="workDescription" value="${data.workDescription || ''}" placeholder="Описание работы"></td>
+        <td>
+            <input type="hidden" name="workItemId" value="${data.id || ''}">
+            <input type="text" name="workDescription" value="${data.workDescription || ''}" placeholder="Описание работы">
+        </td>
         <td><input type="number" name="price" value="${data.price || ''}" min="0" step="0.01" placeholder="Цена"></td>
         <td><input type="number" name="quantity" value="${data.quantity || 1}" min="1" placeholder="Кол-во"></td>
         <td><input type="text" name="note" value="${data.note || ''}" placeholder="Примечание"></td>
         <td><button type="button" class="btn btn-danger btn-sm remove-row">Удалить</button></td>
     `;
 
-    // Фикс: Update total на любом input (desc/price/quantity/note — для UX)
-    const inputs = row.querySelectorAll('input[name="workDescription"], input[name="price"], input[name="quantity"], input[name="note"]');
-    inputs.forEach(input => input.addEventListener('input', calculateTotalPrice));
+    // Добавляем обработчики на ВСЕ поля ввода в строке
+    const inputs = row.querySelectorAll('input');
+    inputs.forEach(input => {
+        input.addEventListener('input', calculateTotalPrice);
+        input.addEventListener('change', calculateTotalPrice);
+    });
 
-    // Удаление
+    // Удаление строки
     row.querySelector('.remove-row').addEventListener('click', () => {
         row.remove();
         calculateTotalPrice();
     });
+
+    // Сразу пересчитываем сумму после добавления строки
+    calculateTotalPrice();
 }
 
 // Рендер таблицы работ
@@ -268,7 +414,28 @@ function renderWorkItemsTable(items) {
     if (!tableBody) return;
     tableBody.innerHTML = '';
     (items || []).forEach(addWorkItemRow);
+    
+    // Добавляем глобальные обработчики на всю таблицу
+    setupWorkItemsTableEvents();
     calculateTotalPrice();
+}
+
+function setupWorkItemsTableEvents() {
+    const tableBody = document.querySelector('#workItemsTable tbody');
+    if (!tableBody) return;
+
+    // Обработчик для всех изменений в таблице (делегирование событий)
+    tableBody.addEventListener('input', (e) => {
+        if (e.target.matches('input[name="workDescription"], input[name="price"], input[name="quantity"], input[name="note"]')) {
+            calculateTotalPrice();
+        }
+    });
+
+    tableBody.addEventListener('change', (e) => {
+        if (e.target.matches('input[name="price"], input[name="quantity"]')) {
+            calculateTotalPrice();
+        }
+    });
 }
 
 // Сбор работ
@@ -276,21 +443,27 @@ function collectWorkItems() {
     const rows = document.querySelectorAll('#workItemsTable tbody tr');
     return Array.from(rows)
         .map(row => {
+            const idEl = row.querySelector('[name="workItemId"]');
             const descriptionEl = row.querySelector('[name="workDescription"]');
             const priceEl = row.querySelector('[name="price"]');
             const quantityEl = row.querySelector('[name="quantity"]');
             const noteEl = row.querySelector('[name="note"]');
             
+            const id = idEl ? parseInt(idEl.value) || 0 : 0;
             const workDescription = (descriptionEl ? descriptionEl.value : '').trim();
             const price = isNaN(parseFloat(priceEl ? priceEl.value : 0)) ? 0 : parseFloat(priceEl ? priceEl.value : 0);
             const quantity = parseInt(quantityEl ? quantityEl.value : '1') || 1;
             const note = (noteEl ? noteEl.value : '').trim();
             
-            return { workDescription, price, quantity, note };
-        })
-        .filter(wi => wi.workDescription.length > 0 && wi.price > 0);
+            return { 
+                id: id, // Добавляем ID
+                workDescription, 
+                price, 
+                quantity, 
+                note 
+            };
+        });
 }
-
 
 // ===== ТАБЛИЦЫ: PAYMENTS =====
 
@@ -301,14 +474,13 @@ function addPaymentRow(data = {}) {
 
     const row = tableBody.insertRow();
     row.innerHTML = `
-        <td><select name="paymentType">
-            <option ${data.paymentType === 'Аванс' ? 'selected' : ''}>Аванс</option>
-            <option ${data.paymentType === 'Доплата' ? 'selected' : ''}>Доплата</option>
-        </select></td>
-        <td><input type="number" name="amount" value="${data.amount || ''}" min="0" step="0.01" placeholder="Сумма" required></td>
-        <td><input type="date" name="paymentDate" value="${data.paymentDate ? new Date(data.paymentDate).toISOString().slice(0, 10) : ''}" required></td>
-        <td><input type="text" name="note" value="${data.note || ''}" placeholder="Примечание"></td>
-        <td><button type="button" class="btn btn-danger btn-sm remove-row">Удалить</button></td>
+        <td>
+            <input type="hidden" name="paymentId" value="${data.id || ''}">
+            <select name="paymentType">
+                <!-- options -->
+            </select>
+        </td>
+        <!-- остальные поля -->
     `;
 
     // Удаление строки
@@ -328,23 +500,27 @@ function renderPaymentsTable(payments) {
 // Сбор платежей
 function collectPayments() {
     const rows = document.querySelectorAll('#paymentsTable tbody tr');
-    return Array.from(rows).map(row => ({
-        paymentType: row.querySelector('[name="paymentType"]').value,
-        amount: parseFloat(row.querySelector('[name="amount"]').value) || 0,
-        paymentDate: row.querySelector('[name="paymentDate"]').value,
-        note: row.querySelector('[name="note"]').value.trim()
-    })).filter(p => p.amount > 0);  // Только с суммой > 0
+    return Array.from(rows).map(row => {
+        const idEl = row.querySelector('[name="paymentId"]');
+        return {
+            id: idEl ? parseInt(idEl.value) || 0 : 0,
+            paymentType: row.querySelector('[name="paymentType"]').value,
+            amount: parseFloat(row.querySelector('[name="amount"]').value) || 0,
+            paymentDate: row.querySelector('[name="paymentDate"]').value,
+            note: row.querySelector('[name="note"]').value.trim()
+        };
+    }).filter(p => p.amount > 0);
 }
 
 // Расчёт общей суммы
-function calculateTotalPrice(override = null) {
-    let total;
-    if (override !== null && !isNaN(override)) {
-        total = override;
-    } else {
-        const items = collectWorkItems() || []; // Защита от undefined
-        total = items.reduce((sum, wi) => sum + (wi.price * wi.quantity), 0);
-    }
+function calculateTotalPrice() {
+    const items = collectWorkItems() || [];
+    
+    // Рассчитываем сумму по ВСЕМ строкам, даже незаполненным
+    let total = items.reduce((sum, wi) => {
+        const itemTotal = (wi.price || 0) * (wi.quantity || 1);
+        return sum + (isNaN(itemTotal) ? 0 : itemTotal);
+    }, 0);
     
     if (isNaN(total)) {
         total = 0;
@@ -354,20 +530,44 @@ function calculateTotalPrice(override = null) {
     if (totalInput) {
         totalInput.value = total.toFixed(2);
     }
+    
+    // Обновляем отображение итоговой суммы если есть отдельный элемент
+    const totalDisplay = document.getElementById('totalPriceDisplay');
+    if (totalDisplay) {
+        totalDisplay.textContent = formatCurrency(total);
+    }
+    
     return total;
 }
 
-// Cleanup temp фото при выходе (если create mode и не сохранено)
-window.addEventListener('beforeunload', async () => {
-    if (tempUploads.length > 0 && !editingOrderId) {
-        for (const tempId of tempUploads) {
-            try {
-                await apiService.deleteTempPhoto(tempId);
-            } catch (error) {
-                console.error('Cleanup temp photo error:', error);
-            }
-        }
+function validateWorkItems(items) {
+    if (!items || items.length === 0) return 'Добавьте хотя бы одну работу';
+    
+    const validItems = items.filter(wi => 
+        wi.workDescription && wi.workDescription.length > 0 && wi.price > 0
+    );
+    
+    if (validItems.length === 0) return 'Добавьте хотя бы одну работу (описание + цена > 0)';
+    
+    for (const wi of validItems) {
+        if (!wi.workDescription || wi.workDescription.length === 0) return 'Описание работы обязательно';
+        if (wi.price <= 0) return 'Стоимость должна быть больше 0';
+        if (wi.quantity < 1) return 'Количество должно быть не менее 1';
     }
+    
+    return null;
+}
+
+// Cleanup temp фото при выходе (если create mode и не сохранено)
+window.addEventListener('beforeunload', () => {
+    document.querySelectorAll('.photo-img').forEach(img => {
+        if (img.src && img.src.startsWith('blob:')) {
+            URL.revokeObjectURL(img.src);
+        }
+            if (typeof cleanupPhotoBlobs === 'function') {
+            cleanupPhotoBlobs();
+        }
+    });
 });
 
 // Глобальные для legacy HTML (если нужно, иначе удали)

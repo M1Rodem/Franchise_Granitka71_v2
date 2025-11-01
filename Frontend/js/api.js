@@ -3,6 +3,22 @@ const API_BASE_URL = 'https://localhost:7137/api';  // Убедитесь, чт�
 class ApiService {
     constructor() {
         this.token = localStorage.getItem('token');
+        this.setupImageAuth();
+    }
+
+    async getPhotoFile(photoId) {
+        const response = await fetch(`${API_BASE_URL}/Photos/${photoId}/file`, {
+            headers: {
+                'Authorization': `Bearer ${this.token}`
+            }
+        });
+
+        if (!response.ok) {
+            throw new Error(`Photo load failed: ${response.status}`);
+        }
+
+        const blob = await response.blob();
+        return URL.createObjectURL(blob);
     }
 
     // ОСНОВНОЙ МЕТОД ЗАПРОСА
@@ -268,22 +284,7 @@ async login(credentials) {
         }
 
         const blob = await response.blob();
-        return URL.createObjectURL(blob);  // Фикс: возвращаем blob URL для img.src (локальный, с токеном)
-    }
-
-    async getPhotoProxy(photoId) {
-        const response = await fetch(`${API_BASE_URL}/Photos/proxy/${photoId}`, {
-            headers: {
-                'Authorization': `Bearer ${this.token}`
-            }
-        });
-
-        if (!response.ok) {
-            throw new Error(`Proxy failed: ${response.status}`);
-        }
-
-        const blob = await response.blob();
-        return URL.createObjectURL(blob);  // Локальный URL для img
+        return URL.createObjectURL(blob);
     }
 
     // ПОЛЬЗОВАТЕЛИ (админ)
@@ -338,6 +339,24 @@ async login(credentials) {
     isAdmin() {
         const user = this.getCurrentUser();
         return user && user.role === 'Admin';
+    }
+
+    setupImageAuth() {
+        const originalFetch = window.fetch;
+        window.fetch = (...args) => {
+            const url = args[0];
+            if (typeof url === 'string' && 
+                (url.includes('/api/Photos/') || url.includes('/Photos/'))) {
+                
+                const options = args[1] || {};
+                options.headers = {
+                    ...options.headers,
+                    'Authorization': `Bearer ${this.token}`
+                };
+                args[1] = options;
+            }
+            return originalFetch(...args);
+        };
     }
 }
 

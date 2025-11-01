@@ -1,4 +1,5 @@
-/* photos.css — улучшенный: добавлены стили для delegation, blob-превью, модалки; убраны дубли/ненужное */
+/* photos.css - УПРОЩЕННАЯ ВЕРСИЯ БЕЗ ОВЕРЛЕЯ */
+
 .photo-section {
     margin: 20px 0;
     padding: 15px;
@@ -7,191 +8,209 @@
     background: white;
 }
 
-#photoPreview {  /* Контейнер для превью (ID из JS) */
+#photoPreview, #orderPhotos {
     display: flex;
     flex-wrap: wrap;
-    gap: 10px;
+    gap: 15px;
     margin-top: 1rem;
 }
 
 .photo-item {
     position: relative;
     width: 150px;
-    height: 150px;  /* Фикс: Только для img, info ниже */
-    border: 1px solid #ddd;
-    border-radius: 4px;
+    border-radius: 8px;
     overflow: hidden;
-    box-sizing: border-box;  /* Фикс: Включает border в размер */
-    padding: 0;  /* Нет padding */
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    transition: transform 0.2s, box-shadow 0.2s;
+    cursor: pointer;
+}
+
+.photo-item:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+
+.photo-container {
+    position: relative;
+    width: 150px;
+    height: 120px;
+    overflow: hidden;
 }
 
 .photo-item img.photo-img {
-    width: 100% !important;  /* Фикс: Принудительно заполни */
+    width: 100% !important;
     height: 100% !important;
-    object-fit: cover;  /* Заполнит без искажений */
-    object-position: center;  /* Центр, если обрезка */
-    display: block;  /* Убери пробелы снизу */
+    object-fit: cover;
+    object-position: center;
+    display: block;
+    transition: transform 0.3s;
 }
 
-.photo-item img.photo-img:hover {
+.photo-item:hover img.photo-img {
     transform: scale(1.05);
 }
 
-.photo-item.uploading img {
-    filter: brightness(0.7);
-}
-
-.photo-progress {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    background: rgba(0,0,0,0.7);
-    color: white;
-    padding: 5px 10px;
-    border-radius: 4px;
-    font-size: 12px;
-    z-index: 2;
-}
-
-.photo-remove, .photo-download {  /* Общие для кнопок */
-    position: absolute;
-    top: 5px;
-    right: 5px;
-    border: none;
-    border-radius: 50%;
-    width: 24px;
-    height: 24px;
-    cursor: pointer;
-    font-size: 12px;
-    z-index: 3;
-    transition: background 0.2s;
-}
-
-.photo-remove {
-    background: #dc3545;
-    color: white;
-}
-
-.photo-remove:hover {
-    background: #c82333;
-}
-
-.photo-download {
-    right: 35px;  /* Сдвиг, если две кнопки */
-    background: #007bff;
-    color: white;
-}
-
-.photo-download:hover {
-    background: #0056b3;
+/* 🔥 УБИРАЕМ ОВЕРЛЕЙ С КНОПКАМИ */
+.photo-overlay {
+    display: none; /* Скрываем оверлей */
 }
 
 .photo-info {
-    width: 150px;
-    font-size: 0.8em;
+    padding: 8px 5px;
+    background: #f8f9fa;
+    border-top: 1px solid #eee;
+}
+
+.photo-name {
+    font-size: 11px;
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin-bottom: 3px;
+}
+
+.photo-meta {
+    font-size: 10px;
     color: #666;
-    text-align: center;
-    margin-top: 5px;
 }
 
-.photo-upload-area {
-    border: 2px dashed #ccc;
-    border-radius: 8px;
-    padding: 2rem;
-    text-align: center;
-    cursor: pointer;
-    transition: all 0.3s;
-    margin: 10px 0;
-}
-
-.photo-upload-area:hover,
-.photo-upload-area.dragover {
-    border-color: #007bff;
-    background-color: #f8f9fa;
-    color: #007bff;
-}
-
-.photo-caption {
-    font-size: 12px;
-    color: #666;
-    text-align: center;
-    margin-top: 5px;
-    word-break: break-word;
-    max-width: 150px;
-}
-
-.uploading .photo-remove {
-    display: none;
-}
-
-/* Модалка для превью (улучшенная для openPhotoPreview) */
-.modal {
-    display: none;
+/* МОДАЛКА ДЛЯ ПРОСМОТРА ФОТО */
+.photo-modal-overlay {
     position: fixed;
-    z-index: 1000;
-    left: 0;
     top: 0;
+    left: 0;
     width: 100%;
     height: 100%;
-    background-color: rgba(0,0,0,0.8);
-    animation: fadeIn 0.3s;
+    background: rgba(0,0,0,0.95);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 10000;
+    cursor: pointer;
 }
 
-.modal-content {
+.photo-modal-content {
     position: relative;
-    margin: 5% auto;
-    padding: 20px;
-    width: 90%;
-    max-width: 800px;
-    max-height: 90vh;
+    max-width: 90%;
+    max-height: 90%;
     text-align: center;
-    background: white;
-    border-radius: 8px;
-    overflow: auto;
 }
 
-.modal-content img {
-    width: auto;
-    height: auto;
+.photo-modal-close {
+    position: absolute;
+    top: -45px;
+    right: 0;
+    background: rgba(255,255,255,0.9);
+    border: none;
+    border-radius: 50%;
+    width: 35px;
+    height: 35px;
+    cursor: pointer;
+    font-size: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.2s;
+}
+
+.photo-modal-close:hover {
+    background: white;
+}
+
+.photo-modal-content img {
     max-width: 100%;
     max-height: 70vh;
     object-fit: contain;
+    border-radius: 8px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+    cursor: default;
 }
 
-.modal-content p {
-    margin-top: 10px;
-    font-size: 14px;
-    color: #333;
-}
-
-.close {
-    position: absolute;
-    top: -40px;
-    right: 0;
+.photo-modal-info {
     color: white;
-    font-size: 35px;
-    font-weight: bold;
+    text-align: center;
+    margin-top: 15px;
+    font-size: 14px;
+    font-weight: 500;
+}
+
+.photo-modal-actions {
+    text-align: center;
+    margin-top: 15px;
+}
+
+.photo-modal-download {
+    background: #007bff;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    padding: 10px 20px;
     cursor: pointer;
-    transition: color 0.2s;
+    font-size: 14px;
+    transition: background 0.2s;
 }
 
-.close:hover {
-    color: #ccc;
-}
-
-@keyframes fadeIn {
-    from { opacity: 0; }
-    to { opacity: 1; }
-}
-
-/* Для committed фото в edit (proxy src) */
-.photo-item[data-server-id] img {
-    /* Дополнительные стили если нужно */
+.photo-modal-download:hover {
+    background: #0056b3;
 }
 
 /* Responsive */
 @media (max-width: 768px) {
-    .photo-item { width: 120px; height: 120px; }
-    .modal-content { margin: 10% auto; width: 95%; }
+    .photo-item {
+        width: 130px;
+    }
+    
+    .photo-container {
+        width: 130px;
+        height: 110px;
+    }
+}
+
+.photo-remove-server {
+    position: absolute;
+    top: 5px;
+    right: 5px;
+    background: rgba(220, 53, 69, 0.9);
+    border: none;
+    border-radius: 50%;
+    width: 25px;
+    height: 25px;
+    color: white;
+    cursor: pointer;
+    font-size: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.photo-remove-server:hover {
+    background: #dc3545;
+}
+
+.photo-remove {
+    position: absolute;
+    top: 5px;
+    right: 5px;
+    background: rgba(220, 53, 69, 0.9);
+    border: none;
+    border-radius: 50%;
+    width: 25px;
+    height: 25px;
+    color: white;
+    cursor: pointer;
+    font-size: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10;
+}
+
+.photo-remove:hover {
+    background: #dc3545;
+}
+
+.photo-container {
+    position: relative;
+    display: inline-block;
 }

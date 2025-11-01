@@ -77,7 +77,6 @@ async function loadOrders() {
 
         if (response && Array.isArray(response.items)) {
             allOrders = response.items;
-            console.log(`Загружено ${allOrders.length} заказов`);
         } else {
             allOrders = [];
         }

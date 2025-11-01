@@ -1,10 +1,16 @@
 import { apiService } from './api.js';
 import { formatDate, formatCurrency, escapeHtml, showTempMessage, getPaymentStatus, getPaymentStatusText, getUserNameFromOrder } from './utils.js';
-import { renderPhotoGrid } from './photo-utils.js';
+import { renderPhotoGrid, attachPhotoEvents  } from './photo-utils.js';
 import { ModalUtils } from './modal-utils.js';
 
 document.addEventListener('DOMContentLoaded', async () => {
     await initializeViewOrderPage();
+});
+
+window.addEventListener('beforeunload', () => {
+    if (typeof cleanupPhotoBlobs === 'function') {
+        cleanupPhotoBlobs();
+    }
 });
 
 async function initializeViewOrderPage() {
@@ -58,7 +64,7 @@ async function loadOrderData() {
         ]);
 
         renderOrderDetails(order);
-        renderOrderPhotos(photos);  // П.6: view mode
+        renderOrderPhotos(photos);
         setupOrderActions(orderId, order);
         
     } catch (error) {
@@ -213,11 +219,20 @@ function renderPaymentsTable(payments) {
     `;
 }
 
-function renderOrderPhotos(photos) {
+async function renderOrderPhotos(photos) {
     const container = document.getElementById('orderPhotos');
     if (!container) return;
     
-    renderPhotoGrid(photos, 'orderPhotos', 'view');  // П.6: Только просмотр + download, без remove
+    
+    if (!photos || photos.length === 0) {
+        container.innerHTML = '<div class="no-photos">Нет фотографий</div>';
+        return;
+    }
+    
+    await renderPhotoGrid(photos, 'orderPhotos', 'view');
+    
+    attachPhotoEvents('orderPhotos');
+
 }
 
 async function deleteOrder(orderId, orderNumber) {

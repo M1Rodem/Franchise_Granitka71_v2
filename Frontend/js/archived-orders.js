@@ -69,8 +69,6 @@ async function loadArchivedOrders() {
             pageSize: pageSize
         });
 
-        console.log('Архивные заказы с бэка:', response); // ДЛЯ ДЕБАГА
-
         if (response && Array.isArray(response.items)) {
             allArchivedOrders = response.items;
             totalPages = Math.ceil(response.totalCount / pageSize);

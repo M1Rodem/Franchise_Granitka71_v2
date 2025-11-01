@@ -287,7 +287,7 @@ export function getStatusBadgeClass(status) {
 // ====== ПОЛУЧЕНИЕ ИМЕНИ МЕНЕДЖЕРА ИЗ ЗАКАЗА ======
 export function getUserNameFromOrder(order) {
     if (!order) return 'Неизвестно';
-    return order.manager?.fullName || order.manager?.username || 'Неизвестно';
+    return order.managerFullName || 'Неизвестно';
 }
 
 // ====== URL И ПАРАМЕТРЫ ======

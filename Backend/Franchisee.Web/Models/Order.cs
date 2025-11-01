@@ -19,7 +19,6 @@ namespace WebApplication1.Models
         [Required] public string CustomerFullName { get; set; } = string.Empty;
         public string? CustomerEmail { get; set; }
         [Required]
-        [RegularExpression(@"^\+7\(\d{3}\)\d{3}-\d{2}-\d{2}$", ErrorMessage = "Формат: +7(XXX)XXX-XX-XX")]
         [StringLength(20)]
         public string Phone { get; set; } = string.Empty;
         [Required] public string Address { get; set; } = string.Empty;

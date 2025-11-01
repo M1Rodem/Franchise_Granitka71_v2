@@ -74,17 +74,22 @@ function setupEventListeners() {
     }
 
     // Таблицы: Добавление строк
-        const addWorkBtn = document.getElementById('addWorkItemBtn');
+    const addWorkBtn = document.getElementById('addWorkItemBtn');
     if (addWorkBtn) {
         addWorkBtn.addEventListener('click', addWorkItemRow);
         addWorkItemRow(); // Добавляем первую строку по умолчанию
-        setupWorkItemsTableEvents(); // Настраиваем глобальные обработчики
+        setupWorkItemsTableEvents();
         calculateTotalPrice(); 
     }
 
+    // ПЛАТЕЖИ - исправленная инициализация
     const addPaymentBtn = document.getElementById('addPaymentBtn');
     if (addPaymentBtn) {
-        addPaymentBtn.addEventListener('click', addPaymentRow);
+        addPaymentBtn.addEventListener('click', () => addPaymentRow());
+        // Инициализируем таблицу платежей при загрузке
+        setTimeout(() => {
+            renderPaymentsTable([]);
+        }, 100);
     }
 
     // Submit формы
@@ -117,7 +122,6 @@ async function loadOrderForEdit(id) {
     try {
         const order = await apiService.getOrder(id);
         
-        // СОХРАНИТЬ ИСХОДНЫЕ ДАННЫЕ ДЛЯ СРАВНЕНИЯ
         originalOrderData = {
             place: order.place,
             inspectionPlace: order.inspectionPlace,
@@ -137,7 +141,7 @@ async function loadOrderForEdit(id) {
         
         populateForm('createOrderForm', originalOrderData);
         renderWorkItemsTable(order.workItems || []);
-        renderPaymentsTable(order.payments || []);
+        renderPaymentsTable(order.payments || []); // ЗАГРУЖАЕМ ПЛАТЕЖИ
         calculateTotalPrice();
         
         orderPhotos = order.photos || [];
@@ -151,21 +155,24 @@ async function loadOrderForEdit(id) {
 
 // Сбор данных формы
 function collectFormData() {
+    const orderDateValue = getFormValue('orderDate');
+    
     return {
         place: getFormValue('place'),
-        inspectionPlace: getFormValue('inspectionPlace'),
+        inspectionPlace: getFormValue('inspectionPlace') || '',
+        orderDate: orderDateValue ? new Date(orderDateValue).toISOString() : new Date().toISOString(),
         deceasedFullName: getFormValue('deceasedFullName'),
         customerFullName: getFormValue('customerFullName'),
-        customerEmail: getFormValue('customerEmail'),
+        customerEmail: getFormValue('customerEmail') || '',
         phone: getFormValue('phone'),
         address: getFormValue('address'),
         monumentType: getFormValue('monumentType'),
         monumentSize: getFormValue('monumentSize'),
-        additionalInfo: getFormValue('additionalInfo'),
+        additionalInfo: getFormValue('additionalInfo') || '',
         workItems: collectWorkItems(),
-        totalPrice: parseFloat(document.getElementById('totalPriceInput')?.value) || calculateTotalPrice(),
-        payments: collectPayments(),
-        tempUploadIds: getTempPhotoIds()  // Массив ID для коммита
+        payments: collectPayments(), // ВРЕМЕННО КОММЕНТИРУЕМ ДЛЯ ТЕСТА
+        totalPrice: calculateTotalPrice(),
+        tempUploadIds: getTempPhotoIds()
     };
 }
 
@@ -190,19 +197,26 @@ function validateForm(data) {
 // Обработка создания/обновления заказа
 async function handleOrderCreation(orderData) {
     try {
+        console.log('Отправка заказа:', editingOrderId ? 'UPDATE' : 'CREATE');
+        console.log('Данные заказа:', orderData);
+        
         let result;
         if (editingOrderId) {
             result = await apiService.updateOrder(editingOrderId, orderData);
-            if (tempUploads.length > 0) {
-                await apiService.commitPhotos(editingOrderId, tempUploads);
-            }
+            console.log('Заказ обновлен:', result);
         } else {
             result = await apiService.createOrder(orderData);
+            console.log('Заказ создан:', result);
+        }
+        
+        // Коммит фото только если есть временные фото
+        if (tempUploads.length > 0) {
+            console.log('Коммит фото:', tempUploads);
+            await apiService.commitPhotos(editingOrderId || result.id, tempUploads);
         }
         
         clearTempPhotos();
         
-        // Сообщение и редирект
         const message = editingOrderId ? 'Заказ обновлён' : 'Заказ создан';
         showTempMessage(message, 'success');
         
@@ -217,6 +231,7 @@ async function handleOrderCreation(orderData) {
         return result;
     } catch (error) {
         console.error('Order creation error:', error);
+        console.error('Error details:', error.data);
         showTempMessage('Ошибка сохранения: ' + error.message, 'error');
         throw error;
     }
@@ -253,7 +268,6 @@ function hasFormDataChanged(originalData, currentData) {
     
     // Сравниваем количество и содержание
     if (originalItems.length !== currentItems.length) {
-        console.log('Изменено количество WorkItems:', originalItems.length, '->', currentItems.length);
         return true;
     }
     
@@ -265,7 +279,6 @@ function hasFormDataChanged(originalData, currentData) {
             originalItem.price !== currentItem.price ||
             originalItem.quantity !== currentItem.quantity ||
             originalItem.note !== currentItem.note) {
-            console.log('Изменен WorkItem:', originalItem, '->', currentItem);
             return true;
         }
     }
@@ -472,15 +485,41 @@ function addPaymentRow(data = {}) {
     const tableBody = document.querySelector('#paymentsTable tbody');
     if (!tableBody) return;
 
+    const today = getTodayDate();
+    
+    // Преобразуем дату из ISO формата в yyyy-MM-dd для input[type="date"]
+    let paymentDateValue = data.paymentDate || today;
+    if (paymentDateValue && paymentDateValue.includes('T')) {
+        // Если дата в ISO формате, извлекаем часть yyyy-MM-dd
+        paymentDateValue = paymentDateValue.split('T')[0];
+    }
+    
     const row = tableBody.insertRow();
     row.innerHTML = `
         <td>
             <input type="hidden" name="paymentId" value="${data.id || ''}">
-            <select name="paymentType">
-                <!-- options -->
+            <select name="paymentType" class="form-control">
+                <option value="">Выберите тип</option>
+                <option value="Аванс" ${data.paymentType === 'Аванс' ? 'selected' : ''}>Аванс</option>
+                <option value="Доплата" ${data.paymentType === 'Доплата' ? 'selected' : ''}>Доплата</option>
+                <option value="Полная оплата" ${data.paymentType === 'Полная оплата' ? 'selected' : ''}>Полная оплата</option>
             </select>
         </td>
-        <!-- остальные поля -->
+        <td>
+            <input type="number" name="amount" value="${data.amount || ''}" min="0" step="0.01" 
+                   placeholder="0.00" class="form-control">
+        </td>
+        <td>
+            <input type="date" name="paymentDate" value="${paymentDateValue}" 
+                   class="form-control">
+        </td>
+        <td>
+            <input type="text" name="note" value="${data.note || ''}" 
+                   placeholder="Примечание" class="form-control">
+        </td>
+        <td>
+            <button type="button" class="btn btn-danger btn-sm remove-row">✕</button>
+        </td>
     `;
 
     // Удаление строки
@@ -493,23 +532,44 @@ function addPaymentRow(data = {}) {
 function renderPaymentsTable(payments) {
     const tableBody = document.querySelector('#paymentsTable tbody');
     if (!tableBody) return;
+    
     tableBody.innerHTML = '';
-    payments.forEach(addPaymentRow);
+    
+    if (payments && payments.length > 0) {
+        payments.forEach(payment => addPaymentRow(payment));
+    } else {
+        // Добавляем одну пустую строку по умолчанию
+        addPaymentRow();
+    }
 }
 
 // Сбор платежей
 function collectPayments() {
     const rows = document.querySelectorAll('#paymentsTable tbody tr');
-    return Array.from(rows).map(row => {
-        const idEl = row.querySelector('[name="paymentId"]');
-        return {
-            id: idEl ? parseInt(idEl.value) || 0 : 0,
-            paymentType: row.querySelector('[name="paymentType"]').value,
-            amount: parseFloat(row.querySelector('[name="amount"]').value) || 0,
-            paymentDate: row.querySelector('[name="paymentDate"]').value,
-            note: row.querySelector('[name="note"]').value.trim()
-        };
-    }).filter(p => p.amount > 0);
+    const payments = [];
+    
+    rows.forEach(row => {
+        const typeSelect = row.querySelector('[name="paymentType"]');
+        const amountInput = row.querySelector('[name="amount"]');
+        const dateInput = row.querySelector('[name="paymentDate"]');
+        const noteInput = row.querySelector('[name="note"]');
+        
+        const paymentType = typeSelect ? typeSelect.value : '';
+        const amount = amountInput ? parseFloat(amountInput.value) || 0 : 0;
+        const paymentDate = dateInput ? dateInput.value : getTodayDate();
+        const note = noteInput ? noteInput.value.trim() : '';
+        
+        if (paymentType && amount > 0) {
+            payments.push({
+                paymentType: paymentType,
+                amount: amount,
+                paymentDate: paymentDate, // оставляем как yyyy-MM-dd
+                note: note || ""
+            });
+        }
+    });
+    
+    return payments;
 }
 
 // Расчёт общей суммы

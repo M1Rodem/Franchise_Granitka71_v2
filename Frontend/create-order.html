@@ -116,20 +116,21 @@
                 
                 <!-- Таблица платежей -->
                 <div class="form-group">
-                    <label>Аванс/доплата</label>
-                    <table id="paymentsTable">
-                        <thead>
-                            <tr>
-                                <th>Тип</th>
-                                <th>Сумма</th>
-                                <th>Дата</th>
-                                <th>Примечание</th>
-                                <th>Действие</th>
-                            </tr>
-                        </thead>
-                        <tbody></tbody>
-                    </table>
-                    <button type="button" id="addPaymentBtn" class="btn btn-outline" style="margin-top:0.5rem;">+ Добавить доплату</button>
+                <table id="paymentsTable" class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Тип платежа</th>
+                            <th>Сумма</th>
+                            <th>Дата</th>
+                            <th>Примечание</th>
+                            <th>Действия</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- Строки будут добавляться динамически -->
+                    </tbody>
+                </table>
+                <button type="button" id="addPaymentBtn" class="btn btn-secondary">+ Добавить доплату</button>
                 </div>
 
                 <!-- Секция фотографий -->

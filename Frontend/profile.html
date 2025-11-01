@@ -34,36 +34,55 @@
     <main class="main-content">
         <div class="container">
             <div class="page-header">
-                <h1>Профиль</h1>
-                <a href="dashboard.html" class="btn btn-outline">← Назад</a>
+                <h1>Профиль пользователя</h1>
+                <a href="dashboard.html" class="btn btn-outline">← Назад в дашборд</a>
             </div>
 
-            <div id="profileInfo" class="card" style="padding: 1rem;">
-                <p><strong>Логин:</strong> <span id="username"></span> (readonly)</p>
-                <p><strong>ФИО:</strong> <input id="fullName" type="text"></p>
-                <p><strong>Роль:</strong> <span id="role"></span> (readonly)</p>
-                <button id="updateProfileBtn" class="btn btn-primary">Сохранить ФИО</button>
+            <!-- Информация профиля -->
+            <div class="card profile-section">
+                <h2>Основная информация</h2>
+                <div class="profile-info-grid">
+                    <div class="form-group">
+                        <label for="username">Логин</label>
+                        <input id="username" type="text" readonly class="readonly-field">
+                        <small>Логин нельзя изменить</small>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="fullName">ФИО</label>
+                        <input id="fullName" type="text" placeholder="Введите ваше полное имя">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="role">Роль</label>
+                        <input id="role" type="text" readonly class="readonly-field">
+                        <small>Роль назначается администратором</small>
+                    </div>
+                </div>
+                <button id="updateProfileBtn" class="btn btn-primary">Сохранить изменения</button>
             </div>
 
-            <div id="changePasswordSection" class="card" style="padding: 1rem; margin-top: 1rem;">
-                <h2>Сменить пароль</h2>
+            <!-- Смена пароля -->
+            <div class="card profile-section">
+                <h2>Смена пароля</h2>
                 <div class="form-group">
                     <label for="currentPassword">Текущий пароль</label>
-                    <input id="currentPassword" type="password" placeholder="Текущий пароль">
+                    <input id="currentPassword" type="password" placeholder="Введите текущий пароль">
                 </div>
                 <div class="form-group">
                     <label for="newPassword">Новый пароль</label>
-                    <input id="newPassword" type="password" placeholder="Новый пароль (мин. 6 символов)">
+                    <input id="newPassword" type="password" placeholder="Новый пароль (минимум 6 символов)">
                 </div>
                 <div class="form-group">
-                    <label for="confirmPassword">Подтвердить пароль</label>
-                    <input id="confirmPassword" type="password" placeholder="Подтвердить пароль">
+                    <label for="confirmPassword">Подтверждение пароля</label>
+                    <input id="confirmPassword" type="password" placeholder="Повторите новый пароль">
                 </div>
                 <button id="changePasswordBtn" class="btn btn-primary">Сменить пароль</button>
             </div>
 
-            <div id="profileError" class="error-message"></div>
-            <div id="profileSuccess" class="success-message"></div>
+            <!-- Сообщения -->
+            <div id="profileError" class="error-message" style="display: none;"></div>
+            <div id="profileSuccess" class="success-message" style="display: none;"></div>
         </div>
     </main>
 

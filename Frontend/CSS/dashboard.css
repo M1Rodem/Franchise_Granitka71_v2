@@ -146,3 +146,39 @@
     background: #fff3cd;
     color: #856404;
 }
+
+/* Стиль для кликабельного ФИО пользователя */
+.user-profile-link {
+    color: #007bff;
+    text-decoration: none;
+    font-weight: 500;
+    padding: 0.5rem 0.75rem;
+    border-radius: 6px;
+    transition: all 0.2s ease;
+    cursor: pointer;
+    border: 1px solid transparent;
+    display: inline-block;
+}
+
+.user-profile-link:hover {
+    background-color: #f8f9fa;
+    border-color: #007bff;
+    text-decoration: none;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(0,123,255,0.1);
+}
+
+.user-profile-link:active {
+    background-color: #e9ecef;
+    transform: translateY(0);
+}
+
+/* Стиль для текущего профиля (когда уже на странице профиля) */
+.user-profile-current {
+    font-weight: 600;
+    color: #495057;
+    padding: 0.5rem 0.75rem;
+    background-color: #e9ecef;
+    border-radius: 6px;
+    border: 1px solid #dee2e6;
+}

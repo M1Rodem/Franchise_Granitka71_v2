@@ -16,6 +16,8 @@ namespace WebApplication1.Models
         public string OrderNumber { get; set; } = string.Empty;
         public string Place { get; set; } = string.Empty;
         public DateTime OrderDate { get; set; }
+        public bool IsDeleted { get; set; }
+        public DateTime? DeletedAt { get; set; }
         public string InspectionPlace { get; set; } = string.Empty;
         public string DeceasedFullName { get; set; } = string.Empty;
         public string CustomerFullName { get; set; } = string.Empty;

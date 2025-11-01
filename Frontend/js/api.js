@@ -268,7 +268,22 @@ async login(credentials) {
         }
 
         const blob = await response.blob();
-        return URL.createObjectURL(blob);
+        return URL.createObjectURL(blob);  // Фикс: возвращаем blob URL для img.src (локальный, с токеном)
+    }
+
+    async getPhotoProxy(photoId) {
+        const response = await fetch(`${API_BASE_URL}/Photos/proxy/${photoId}`, {
+            headers: {
+                'Authorization': `Bearer ${this.token}`
+            }
+        });
+
+        if (!response.ok) {
+            throw new Error(`Proxy failed: ${response.status}`);
+        }
+
+        const blob = await response.blob();
+        return URL.createObjectURL(blob);  // Локальный URL для img
     }
 
     // ПОЛЬЗОВАТЕЛИ (админ)

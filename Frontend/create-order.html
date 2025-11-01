@@ -15,7 +15,7 @@
             <div class="header-content">
                 <h1>Granitka71</h1>
                 <div class="user-info">
-                    <span id="userName">Пользователь</span>
+                    <a href="profile.html" id="userName" class="user-profile-link">Пользователь</a>
                     <button id="logoutBtn" class="btn btn-outline">Выйти</button>
                 </div>
             </div>
@@ -101,18 +101,19 @@
                                 <th>Стоимость</th>
                                 <th>Кол-во</th>
                                 <th>Примечание</th>
-                                <th>Итого</th>
-                                <th>Действия</th>
                             </tr>
                         </thead>
                         <tbody>
-                            <!-- Строки будут добавляться через JS -->
+                            <!-- JS -->
                         </tbody>
                     </table>
                 </div>
 
-                <div id="totalPrice" class="total-price" style="font-weight:bold; font-size:1.2em; margin:1rem 0; color:#007bff;">Итого: 0 ₽</div>
-
+                <div class="form-group">
+                    <label>Итоговая сумма (можно редактировать)</label>
+                    <input type="number" id="totalPriceInput" name="totalPrice" value="0" step="0.01" min="0" placeholder="Авто-расчёт из работ" style="font-weight:bold; font-size:1.2em; width: 200px; color:#007bff;">
+                </div>
+                
                 <!-- Таблица платежей -->
                 <div class="form-group">
                     <label>Аванс/доплата</label>
@@ -140,7 +141,7 @@
                         <button type="button" class="btn btn-outline" onclick="document.getElementById('photoInput').click()">Выбрать файлы</button>
                         <small style="display:block;color:#666;margin-top:0.5rem;">Поддерживаются форматы: JPG, PNG, GIF. Максимальный размер: 10MB</small>
                     </div>
-                    <div id="photoPreview" class="photo-preview"></div>
+                    <div id="photoPreview" class="photo-preview"></div>  <!-- class="photo-preview" из CSS -->
                 </div>
 
                 <div class="form-group">

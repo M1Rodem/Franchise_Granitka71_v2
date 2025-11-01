@@ -5,6 +5,13 @@ export function formatDate(dateString) {
     try { return new Date(dateString).toLocaleDateString('ru-RU'); } catch { return '—'; }
 }
 
+export function formatFileSize(bytes) {
+    if (!bytes) return '0 B';
+    if (bytes < 1024) return bytes + ' B';
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+    return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+}
+
 export function formatDateTime(dateString) {
     if (!dateString) return '—';
     try { return new Date(dateString).toLocaleDateString('ru-RU'); } catch { return '—'; }
@@ -45,7 +52,13 @@ export function sanitizeInput(input) {
 // ====== РАБОТА С ФОРМАМИ ======
 export function getFormValue(elementId) {
     const element = document.getElementById(elementId);
-    return element ? element.value.trim() : '';
+    if (!element) return '';
+
+    const value = element.tagName === 'INPUT' || element.tagName === 'TEXTAREA' || element.tagName === 'SELECT' 
+        ? (element.value || '') 
+        : (element.textContent || element.innerText || '');
+    
+    return value.trim();
 }
 
 export function setFormValue(elementId, value) {

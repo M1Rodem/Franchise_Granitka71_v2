@@ -366,10 +366,13 @@ namespace WebApplication1.Controllers
                     UploadedAt = p.UploadedAt,
                     Width = p.Width ?? 0,
                     Height = p.Height ?? 0
-                }).ToList()
+                }).ToList(),
+                IsDeleted = order.IsDeleted,
+                DeletedAt = order.DeletedAt
             };
         }
 
+        // GET: api/Orders/archived - Получить архивные заказы
         // GET: api/Orders/archived - Получить архивные заказы
         [HttpGet("archived")]
         public async Task<ActionResult<PagedResult<OrderResponseDto>>> GetArchivedOrders([FromQuery] OrderFilterRequest filter)
@@ -379,6 +382,7 @@ namespace WebApplication1.Controllers
 
             try
             {
+                // ФИКС: Используем прямой запрос к БД с IgnoreQueryFilters
                 var query = _context.Orders
                     .IgnoreQueryFilters()
                     .Where(o => o.IsDeleted)
@@ -397,11 +401,6 @@ namespace WebApplication1.Controllers
                                              o.Phone.Contains(search) ||
                                              o.DeceasedFullName.ToLower().Contains(search));
                 }
-
-                if (filter.CreatedFrom.HasValue)
-                    query = query.Where(o => o.CreatedAt >= filter.CreatedFrom.Value);
-                if (filter.CreatedTo.HasValue)
-                    query = query.Where(o => o.CreatedAt <= filter.CreatedTo.Value);
 
                 var totalCount = await query.CountAsync();
                 var orders = await query
@@ -532,6 +531,8 @@ namespace WebApplication1.Controllers
                 return StatusCode(500, "Ошибка получения заказа");
             }
         }
+
         #endregion
     }
+    
 }

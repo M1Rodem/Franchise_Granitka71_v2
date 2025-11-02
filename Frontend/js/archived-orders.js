@@ -8,6 +8,7 @@ let totalPages = 1;
 const pageSize = 10;
 let allArchivedOrders = [];
 let filteredOrders = [];
+let totalCount = 0;
 
 document.addEventListener('DOMContentLoaded', function() {
     initializeArchivedOrdersPage();
@@ -69,18 +70,21 @@ async function loadArchivedOrders() {
             pageSize: pageSize
         });
 
+
         if (response && Array.isArray(response.items)) {
             allArchivedOrders = response.items;
-            totalPages = Math.ceil(response.totalCount / pageSize);
+            filteredOrders = allArchivedOrders;
+            totalCount = response.totalCount; 
         } else {
             allArchivedOrders = [];
-            totalPages = 1;
+            filteredOrders = [];
+            totalCount = 0;
         }
 
-        applyFilters();
+        renderArchivedOrdersTable();
         
     } catch (error) {
-        console.error('Ошибка загрузки архивных заказов:', error);
+        console.error('❌ Ошибка загрузки архивных заказов:', error);
         showTempMessage('Не удалось загрузить архивные заказы: ' + error.message, 'error');
     } finally {
         showLoadingState(false);
@@ -115,9 +119,8 @@ function renderArchivedOrdersTable() {
     const tbody = document.getElementById('archivedOrdersTableBody');
     if (!tbody) return;
 
-    const start = (currentPage - 1) * pageSize;
-    const end = start + pageSize;
-    const pageOrders = filteredOrders.slice(start, end);
+    // ФИКС: используем allArchivedOrders вместо filteredOrders
+    const pageOrders = allArchivedOrders; // Все заказы с текущей страницы
 
     if (pageOrders.length === 0) {
         tbody.innerHTML = `
@@ -283,36 +286,43 @@ async function permanentDeleteArchivedOrder(id) {
 }
 
 function updatePagination() {
-    const totalPagesCalc = Math.ceil(filteredOrders.length / pageSize);
+    const totalPages = Math.ceil(totalCount / pageSize); // ФИКС: используем totalCount
     const pageInfo = document.getElementById('pageInfo');
+
+    if (pageInfo) {
+        pageInfo.textContent = `Страница ${currentPage} из ${totalPages || 1}`;
+    }
+    
     const prevButton = document.getElementById('prevPage');
     const nextButton = document.getElementById('nextPage');
     
-    if (pageInfo) {
-        pageInfo.textContent = `Страница ${currentPage} из ${totalPagesCalc}`;
-    }
-    
     if (prevButton) {
         prevButton.disabled = currentPage === 1;
+        prevButton.style.opacity = currentPage === 1 ? '0.5' : '1';
+        prevButton.style.cursor = currentPage === 1 ? 'not-allowed' : 'pointer';
     }
     
     if (nextButton) {
-        nextButton.disabled = currentPage >= totalPagesCalc || totalPagesCalc === 0;
+        nextButton.disabled = currentPage >= totalPages;
+        nextButton.style.opacity = currentPage >= totalPages ? '0.5' : '1';
+        nextButton.style.cursor = currentPage >= totalPages ? 'not-allowed' : 'pointer';
     }
 }
 
 function prevPage() {
     if (currentPage > 1) {
         currentPage--;
-        renderArchivedOrdersTable();
+        loadArchivedOrders(); // ФИКС: загружаем данные для новой страницы
+    } else {
     }
 }
 
 function nextPage() {
-    const totalPagesCalc = Math.ceil(filteredOrders.length / pageSize);
-    if (currentPage < totalPagesCalc) {
+    const totalPages = Math.ceil(totalCount / pageSize);
+    if (currentPage < totalPages) {
         currentPage++;
-        renderArchivedOrdersTable();
+        loadArchivedOrders(); // ФИКС: загружаем данные для новой страницы
+    } else {
     }
 }
 

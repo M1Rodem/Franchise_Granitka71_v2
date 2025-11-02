@@ -6,6 +6,7 @@ let currentPage = 1;
 const pageSize = 10;
 let allOrders = [];
 let filteredOrders = [];
+let totalCount = 0;
 
 document.addEventListener('DOMContentLoaded', function() {
     initializeOrdersPage();
@@ -69,22 +70,27 @@ function setupOrdersEventListeners() {
 async function loadOrders() {
     try {
         showLoadingState(true);
-        
+
         const response = await apiService.getOrders({
             page: currentPage,
             pageSize: pageSize
         });
 
+
         if (response && Array.isArray(response.items)) {
             allOrders = response.items;
+            filteredOrders = allOrders;
+            totalCount = response.totalCount; 
         } else {
             allOrders = [];
+            filteredOrders = [];
+            totalCount = 0;
         }
         
-        applyFilters();
+        renderOrdersTable();
         
     } catch (error) {
-        console.error('Ошибка загрузки заказов:', error);
+        console.error('❌ Ошибка загрузки заказов:', error);
         showTempMessage('Не удалось загрузить заказы: ' + error.message, 'error');
     } finally {
         showLoadingState(false);
@@ -133,12 +139,6 @@ function matchesOrderStatus(order, statusFilter) {
     if (statusFilter === 'all') return true;
     
     const paymentStatus = getPaymentStatus(order);
-    console.log('Фильтр статуса:', { 
-        orderId: order.id, 
-        paymentStatus, 
-        statusFilter, 
-        matches: paymentStatus === statusFilter 
-    });
     
     return paymentStatus === statusFilter;
 }
@@ -161,12 +161,12 @@ function renderOrdersTable() {
     const tbody = document.getElementById('ordersTableBody');
     if (!tbody) return;
 
-    if (!Array.isArray(filteredOrders)) {
-        filteredOrders = [];
+    if (!Array.isArray(allOrders)) {
+        allOrders = [];
     }
     
-    const startIndex = (currentPage - 1) * pageSize;
-    const pageOrders = filteredOrders.slice(startIndex, startIndex + pageSize);
+    const pageOrders = allOrders; // Все заказы с текущей страницы
+
     
     if (pageOrders.length === 0) {
         tbody.innerHTML = `
@@ -263,36 +263,45 @@ async function deleteOrder(orderId) {
 }
 
 function updatePagination() {
-    const totalPages = Math.ceil(filteredOrders.length / pageSize);
+    const totalPages = Math.ceil(totalCount / pageSize);
     const pageInfo = document.getElementById('pageInfo');
+    
+
+
+    if (pageInfo) {
+        pageInfo.textContent = `Страница ${currentPage} из ${totalPages || 1}`;
+    }
+    
     const prevButton = document.getElementById('prevPage');
     const nextButton = document.getElementById('nextPage');
     
-    if (pageInfo) {
-        pageInfo.textContent = `Страница ${currentPage} из ${totalPages}`;
-    }
-    
     if (prevButton) {
         prevButton.disabled = currentPage === 1;
+        prevButton.style.opacity = currentPage === 1 ? '0.5' : '1';
+        prevButton.style.cursor = currentPage === 1 ? 'not-allowed' : 'pointer';
     }
     
     if (nextButton) {
-        nextButton.disabled = currentPage === totalPages || totalPages === 0;
+        nextButton.disabled = currentPage >= totalPages;
+        nextButton.style.opacity = currentPage >= totalPages ? '0.5' : '1';
+        nextButton.style.cursor = currentPage >= totalPages ? 'not-allowed' : 'pointer';
     }
 }
 
 function prevPage() {
     if (currentPage > 1) {
         currentPage--;
-        renderOrdersTable();
+        loadOrders();
+    } else {
     }
 }
 
 function nextPage() {
-    const totalPages = Math.ceil(filteredOrders.length / pageSize);
+    const totalPages = Math.ceil(totalCount / pageSize);
     if (currentPage < totalPages) {
         currentPage++;
-        renderOrdersTable();
+        loadOrders();
+    } else {
     }
 }
 

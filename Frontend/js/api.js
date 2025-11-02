@@ -166,7 +166,12 @@ async login(credentials) {
 
     // ЗАКАЗЫ
     async getOrders(filter = {}) {
-        const params = new URLSearchParams(filter);
+        const params = new URLSearchParams();
+        for (const [key, value] of Object.entries(filter)) {
+            if (value !== undefined && value !== null && value !== '') {
+                params.append(key, value);
+            }
+        }
         return this.request(`/Orders?${params.toString()}`);
     }
 
@@ -194,7 +199,12 @@ async login(credentials) {
 
     // АРХИВ ЗАКАЗОВ (исправленные методы с правильными эндпоинтами)
     async getArchivedOrders(filter = {}) {
-        const params = new URLSearchParams(filter);
+        const params = new URLSearchParams();
+        for (const [key, value] of Object.entries(filter)) {
+            if (value !== undefined && value !== null && value !== '') {
+                params.append(key, value);
+            }
+        }
         return this.request(`/Orders/archived?${params.toString()}`);
     }
 

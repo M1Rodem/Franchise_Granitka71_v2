@@ -7,6 +7,7 @@
     <link rel="stylesheet" href="css/style.css">
     <link rel="stylesheet" href="css/dashboard.css">
     <link rel="stylesheet" href="css/orders.css">
+    <link rel="stylesheet" href="CSS/modals.css">
 </head>
 <body>
     <header class="header">
@@ -38,33 +39,30 @@
                 <div></div>
             </div>
 
-            <div class="card" style="padding: 1rem; margin-bottom: 1rem;">
-                <h3 style="margin-bottom: 0.75rem;">Создать пользователя</h3>
-                <form id="createUserForm">
-                    <div class="form-group">
-                        <label for="newUsername">Логин *</label>
-                        <input type="text" id="newUsername" required placeholder="username">
-                    </div>
-                    <div class="form-group">
-                        <label for="newPassword">Пароль *</label>
-                        <input type="password" id="newPassword" required placeholder="минимум 6 символов" minlength="6">
-                    </div>
-                    <div class="form-group">
-                        <label for="newFullName">ФИО *</label>
-                        <input type="text" id="newFullName" required placeholder="ФИО">
-                    </div>
-                    <div class="form-group">
-                        <label for="newRole">Роль *</label>
-                        <select id="newRole" required>
-                            <option value="Manager">Manager</option>
-                            <option value="Admin">Admin</option>
-                        </select>
-                    </div>
-                    <button type="submit" class="btn btn-primary">Создать</button>
-                    <div id="userFormError" class="error-message"></div>
-                    <div id="userFormSuccess" class="success-message"></div>
-                </form>
-            </div>
+            <form id="createUserForm">
+                <div class="form-group">
+                    <label for="newUsername">Логин *</label>
+                    <input type="text" id="newUsername" required placeholder="username" autocomplete="username">
+                </div>
+                <div class="form-group">
+                    <label for="newPassword">Пароль *</label>
+                    <input type="password" id="newPassword" required placeholder="минимум 6 символов" minlength="6" autocomplete="new-password">
+                </div>
+                <div class="form-group">
+                    <label for="newFullName">ФИО *</label>
+                    <input type="text" id="newFullName" required placeholder="ФИО" autocomplete="name">
+                </div>
+                <div class="form-group">
+                    <label for="newRole">Роль *</label>
+                    <select id="newRole" required>
+                        <option value="Manager">Manager</option>
+                        <option value="Admin">Admin</option>
+                    </select>
+                </div>
+                <button type="submit" class="btn btn-primary">Создать</button>
+                <div id="userFormError" class="error-message"></div>
+                <div id="userFormSuccess" class="success-message"></div>
+            </form>
 
             <div class="orders-table-container">
                 <table class="orders-table">
@@ -81,6 +79,42 @@
                     <tbody id="usersTableBody">
                     </tbody>
                 </table>
+                <!-- Модальное окно редактирования пользователя -->
+                <div id="editUserModal" class="modal">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h3 id="editUserModalTitle" class="modal-title">Редактировать пользователя</h3>
+                            <button class="close">&times;</button>
+                        </div>
+                        
+                        <form id="editUserForm" class="modal-form">
+                            <div class="form-group">
+                                <label for="editUsername">Логин *</label>
+                                <input type="text" id="editUsername" required autocomplete="username">
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="editFullName">ФИО *</label>
+                                <input type="text" id="editFullName" required autocomplete="name">
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="editPassword">Новый пароль</label>
+                                <input type="password" id="editPassword" placeholder="Оставьте пустым, чтобы не менять" autocomplete="new-password" minlength="6">
+                                <small>Минимум 6 символов</small>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label>Текущая роль: <span id="currentRole" class="role-badge"></span></label>
+                            </div>
+                            
+                            <div class="modal-actions">
+                                <button type="button" class="btn btn-outline" id="cancelEditBtn">Отмена</button>
+                                <button type="submit" class="btn btn-primary">Сохранить</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
             </div>
         </div>
     </main>

@@ -2,6 +2,8 @@ import { apiService } from './api.js';
 import { showTempMessage, escapeHtml } from './utils.js';
 import { ModalUtils } from './modal-utils.js';
 
+let currentEditUserId = null;
+
 document.addEventListener('DOMContentLoaded', () => {
     const token = localStorage.getItem('token');
     const userData = apiService.getCurrentUser();
@@ -18,6 +20,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (logoutBtn) logoutBtn.addEventListener('click', () => apiService.logout());
 
     setupCreateForm();
+    setupEditModal();
     loadUsers();
 });
 
@@ -54,10 +57,10 @@ function renderUserRow(u) {
         <td><span class="status-badge role-${roleClass}">${u.role}</span></td>
         <td><span class="status-badge ${statusClass}">${status}</span></td>
         <td class="actions">
-            <button class="btn btn-outline btn-sm" onclick="openEdit(${u.id})">✏️</button>
-            <button class="btn btn-danger btn-sm" onclick="deleteUser(${u.id})">🗑️</button>
+            <button class="btn btn-outline btn-sm" onclick="openEditModal(${u.id})">✏️ Редактировать</button>
             <button class="btn ${toggleClass} btn-sm" onclick="toggleBlock(${u.id}, ${u.isBlocked})">${toggleText}</button>
             <button class="btn btn-primary btn-sm" onclick="changeRole(${u.id}, '${nextRole}')">Сделать ${nextRole}</button>
+            <button class="btn btn-danger btn-sm" onclick="deleteUser(${u.id})">🗑️ Удалить</button>
         </td>
     </tr>`;
 }
@@ -65,8 +68,6 @@ function renderUserRow(u) {
 function setupCreateForm() {
     const form = document.getElementById('createUserForm');
     if (!form) return;
-    const errorEl = document.getElementById('userFormError');
-    const successEl = document.getElementById('userFormSuccess');
 
     form.addEventListener('submit', async (e) => {
         e.preventDefault();
@@ -94,6 +95,98 @@ function setupCreateForm() {
     });
 }
 
+function setupEditModal() {
+    const modal = document.getElementById('editUserModal');
+    const closeBtn = modal.querySelector('.close');
+    const cancelBtn = document.getElementById('cancelEditBtn');
+    const form = document.getElementById('editUserForm');
+
+    // Закрытие модалки
+    closeBtn.addEventListener('click', () => hideEditModal());
+    cancelBtn.addEventListener('click', () => hideEditModal());
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) hideEditModal();
+    });
+
+    // Отправка формы
+    form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        await saveUserChanges();
+    });
+}
+
+async function openEditModal(userId) {
+    try {
+        // Получаем список всех пользователей и находим нужного
+        const users = await apiService.getUsers();
+        const user = users.find(u => u.id === userId);
+        
+        if (!user) {
+            showTempMessage('Пользователь не найден', 'error');
+            return;
+        }
+
+        currentEditUserId = userId;
+        
+        // Заполняем форму данными
+        document.getElementById('editUsername').value = user.username || '';
+        document.getElementById('editFullName').value = user.fullName || '';
+        document.getElementById('editPassword').value = '';
+        document.getElementById('currentRole').textContent = user.role;
+        document.getElementById('editUserModalTitle').textContent = `Редактировать: ${user.username}`;
+
+        // Показываем модалку
+        showEditModal();
+        
+    } catch (error) {
+        console.error('Ошибка загрузки данных пользователя:', error);
+        showTempMessage('Ошибка загрузки данных пользователя', 'error');
+    }
+}
+
+function showEditModal() {
+    const modal = document.getElementById('editUserModal');
+    modal.style.display = 'flex';
+}
+
+function hideEditModal() {
+    const modal = document.getElementById('editUserModal');
+    modal.style.display = 'none';
+    currentEditUserId = null;
+}
+
+async function saveUserChanges() {
+    if (!currentEditUserId) return;
+
+    const payload = {
+        username: document.getElementById('editUsername').value.trim(),
+        fullName: document.getElementById('editFullName').value.trim()
+    };
+
+    const newPassword = document.getElementById('editPassword').value.trim();
+    if (newPassword) {
+        if (newPassword.length < 6) {
+            showTempMessage('Пароль должен содержать минимум 6 символов', 'error');
+            return;
+        }
+        payload.password = newPassword;
+    }
+
+    if (!payload.username || !payload.fullName) {
+        showTempMessage('Заполните обязательные поля', 'error');
+        return;
+    }
+
+    try {
+        await apiService.updateUser(currentEditUserId, payload);
+        showTempMessage('Пользователь обновлён', 'success');
+        hideEditModal();
+        await loadUsers();
+    } catch (e) {
+        showTempMessage(e.message || 'Не удалось обновить пользователя', 'error');
+    }
+}
+
 function validateCreateUser(payload) {
     if (!payload.username || !payload.password || !payload.fullName) {
         return 'Заполните обязательные поля';
@@ -105,62 +198,6 @@ function validateCreateUser(payload) {
         return 'Неверная роль';
     }
     return null;
-}
-
-async function openEdit(id) {
-    try {
-        // Модалка для username/fullName
-        const newUsername = await ModalUtils.prompt({
-            title: 'Изменить логин',
-            message: 'Новый логин:',
-            inputType: 'text',
-            defaultValue: '',  // Загрузи из load, но для простоты prompt без current
-            required: true
-        });
-        if (newUsername === null) return;
-
-        const newFullName = await ModalUtils.prompt({
-            title: 'Изменить ФИО',
-            message: 'Новые ФИО:',
-            inputType: 'text',
-            required: true
-        });
-        if (newFullName === null) return;
-
-        const changePassword = await ModalUtils.confirm({
-            title: 'Изменить пароль?',
-            message: 'Ввести новый пароль?',
-            confirmText: 'Да'
-        });
-        let newPassword = '';
-        if (changePassword) {
-            newPassword = await ModalUtils.prompt({
-                title: 'Новый пароль',
-                message: 'Пароль (минимум 6 символов):',
-                inputType: 'password',
-                required: true
-            });
-            if (newPassword === null || newPassword.length < 6) return;
-        }
-
-        await updateUser(id, {
-            username: newUsername.trim(),
-            fullName: newFullName.trim(),
-            password: newPassword
-        });
-    } catch (e) {
-        showTempMessage(e.message || 'Ошибка редактирования', 'error');
-    }
-}
-
-async function updateUser(id, payload) {
-    try {
-        await apiService.updateUser(id, payload);
-        showTempMessage('Пользователь обновлён', 'success');
-        await loadUsers();
-    } catch (e) {
-        showTempMessage(e.message || 'Не удалось обновить пользователя', 'error');
-    }
 }
 
 async function deleteUser(id) {
@@ -184,10 +221,10 @@ async function deleteUser(id) {
 async function toggleBlock(id, isBlocked) {
     const action = isBlocked ? 'разблокировать' : 'заблокировать';
     const confirmed = await ModalUtils.confirm({
-        title: ` ${action} пользователя?`,
+        title: `${action} пользователя?`,
         message: `Пользователь будет ${action}.`,
         confirmText: action.charAt(0).toUpperCase() + action.slice(1),
-        danger: !isBlocked  // Danger для block
+        danger: !isBlocked
     });
     if (!confirmed) return;
 
@@ -222,7 +259,7 @@ async function changeRole(id, role) {
 }
 
 // Глобальные для onclick в HTML
-window.openEdit = openEdit;
+window.openEditModal = openEditModal;
 window.deleteUser = deleteUser;
 window.toggleBlock = toggleBlock;
 window.changeRole = changeRole;

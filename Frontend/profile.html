@@ -7,6 +7,7 @@
     <link rel="stylesheet" href="CSS/style.css">
     <link rel="stylesheet" href="CSS/dashboard.css">
     <link rel="stylesheet" href="CSS/orders.css">
+    <link rel="stylesheet" href="CSS/modals.css">
 </head>
 <body>
     <header class="header">
@@ -65,19 +66,23 @@
             <!-- Смена пароля -->
             <div class="card profile-section">
                 <h2>Смена пароля</h2>
-                <div class="form-group">
-                    <label for="currentPassword">Текущий пароль</label>
-                    <input id="currentPassword" type="password" placeholder="Введите текущий пароль">
-                </div>
-                <div class="form-group">
-                    <label for="newPassword">Новый пароль</label>
-                    <input id="newPassword" type="password" placeholder="Новый пароль (минимум 6 символов)">
-                </div>
-                <div class="form-group">
-                    <label for="confirmPassword">Подтверждение пароля</label>
-                    <input id="confirmPassword" type="password" placeholder="Повторите новый пароль">
-                </div>
-                <button id="changePasswordBtn" class="btn btn-primary">Сменить пароль</button>
+                <form id="changePasswordForm">
+                    <input type="text" name="username" autocomplete="username" style="display: none;">
+                    
+                    <div class="form-group">
+                        <label for="currentPassword">Текущий пароль</label>
+                        <input id="currentPassword" type="password" placeholder="Введите текущий пароль" autocomplete="current-password">
+                    </div>
+                    <div class="form-group">
+                        <label for="newPassword">Новый пароль</label>
+                        <input id="newPassword" type="password" placeholder="Новый пароль (минимум 6 символов)" autocomplete="new-password" minlength="6">
+                    </div>
+                    <div class="form-group">
+                        <label for="confirmPassword">Подтверждение пароля</label>
+                        <input id="confirmPassword" type="password" placeholder="Повторите новый пароль" autocomplete="new-password">
+                    </div>
+                    <button type="submit" class="btn btn-primary">Сменить пароль</button>
+                </form>
             </div>
 
             <!-- Сообщения -->

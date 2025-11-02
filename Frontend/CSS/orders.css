@@ -101,6 +101,40 @@
     margin-top: 2rem;
 }
 
+.btn:disabled {
+    cursor: not-allowed;
+    pointer-events: none;
+}
+
+.pagination button {
+    transition: opacity 0.2s ease;
+}
+
+/* Добавь в orders.css */
+.pagination-disabled {
+    opacity: 0.5 !important;
+    cursor: not-allowed !important;
+}
+
+.pagination button {
+    transition: all 0.2s ease;
+    border: 1px solid #007bff;
+    background: white;
+    color: #007bff;
+    padding: 0.5rem 1rem;
+    border-radius: 4px;
+}
+
+.pagination button:hover:not(.pagination-disabled) {
+    background: #007bff;
+    color: white;
+}
+
+.pagination button.pagination-disabled:hover {
+    background: white;
+    color: #007bff;
+}
+
 #pageInfo {
     font-weight: 500;
 }

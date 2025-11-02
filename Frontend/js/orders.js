@@ -133,6 +133,13 @@ function matchesOrderStatus(order, statusFilter) {
     if (statusFilter === 'all') return true;
     
     const paymentStatus = getPaymentStatus(order);
+    console.log('Фильтр статуса:', { 
+        orderId: order.id, 
+        paymentStatus, 
+        statusFilter, 
+        matches: paymentStatus === statusFilter 
+    });
+    
     return paymentStatus === statusFilter;
 }
 
@@ -181,9 +188,11 @@ function createOrderRow(order) {
     const customerFullName = order.customerFullName || 'Н/Д';
     const phone = order.phone || 'Н/Д';
     const createdAt = formatDate(order.createdAt);
-    const totalPrice = order.totalPrice || 0;
+    
+    // ИСПРАВЛЕНО: используем правильный расчет суммы
+    const totalPrice = calculateOrderTotalFromWorkItems(order);
     const paymentStatus = getPaymentStatus(order);
-    const managerName = getUserNameFromOrder(order);  // П.1: Менеджер
+    const managerName = getUserNameFromOrder(order);
     
     return `
         <tr>
@@ -197,14 +206,31 @@ function createOrderRow(order) {
                     ${getPaymentStatusText(order)}
                 </span>
             </td>
-            <td>${escapeHtml(managerName)}</td>  <!-- П.1: Колонка менеджера -->
+            <td>${escapeHtml(managerName)}</td>
             <td class="actions">
                 <button class="btn btn-primary btn-sm" onclick="viewOrder(${order.id})">👁️</button>
-                <button class="btn btn-warning btn-sm" onclick="window.location.href='create-order.html?edit=${order.id}'">✏️</button>  <!-- Edit -->
+                <button class="btn btn-warning btn-sm" onclick="window.location.href='create-order.html?edit=${order.id}'">✏️</button>
                 <button class="btn btn-danger btn-sm" onclick="deleteOrder(${order.id})">🗑️</button>
             </td>
         </tr>
     `;
+}
+
+
+function calculateOrderTotalFromWorkItems(order) {
+    if (!order) return 0;
+    
+    // ВСЕГДА считаем из workItems, игнорируем order.totalPrice
+    if (order.workItems && Array.isArray(order.workItems)) {
+        const total = order.workItems.reduce((sum, item) => {
+            const price = Number(item.price) || 0;
+            const quantity = Number(item.quantity) || 1;
+            return sum + (price * quantity);
+        }, 0);
+        return total;
+    }
+    
+    return order.totalPrice || 0;
 }
 
 async function deleteOrder(orderId) {

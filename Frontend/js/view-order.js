@@ -107,6 +107,9 @@ function renderOrderDetails(order) {
 function createOrderHTML(order) {
     const paymentStatus = getPaymentStatus(order);
     const statusText = getPaymentStatusText(order);
+    
+    // ВАЖНО: рассчитываем сумму из workItems, а не берем из базы
+    const calculatedTotal = calculateOrderTotalFromWorkItems(order);
 
     return `
         <header class="order-header refined-header">
@@ -123,7 +126,7 @@ function createOrderHTML(order) {
                 <div class="meta-line">
                     <span class="meta-icon">💰</span>
                     <strong class="meta-label">Общая сумма:</strong>
-                    <span class="meta-value bold-sum">${formatCurrency(order.totalPrice)}</span>
+                    <span class="meta-value bold-sum">${formatCurrency(calculatedTotal)}</span>
                 </div>
                 <!-- П.1: Менеджер -->
                 <div class="meta-line">
@@ -155,7 +158,19 @@ function createOrderHTML(order) {
     `;
 }
 
-// ... (остальные функции как createCustomerSection, renderWorksTable и т.д. — оставь как есть, если они в коде; если нет, добавь простые <p> с escapeHtml(order.field))
+// Добавляем функцию расчета суммы из workItems
+function calculateOrderTotalFromWorkItems(order) {
+    if (!order || !order.workItems || !Array.isArray(order.workItems)) {
+        return order?.totalPrice || 0;
+    }
+    
+    const total = order.workItems.reduce((sum, item) => {
+        const price = Number(item.price) || 0;
+        const quantity = Number(item.quantity) || 1;
+        return sum + (price * quantity);
+    }, 0);
+    return total;
+}
 
 function createCustomerSection(order) {
     return `

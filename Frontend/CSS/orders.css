@@ -352,3 +352,12 @@
 .archive-info {
     border-left: 4px solid #ffc107;
 }
+
+.status-overpaid {
+    background-color: #ffc107;
+    color: #212529;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: bold;
+}

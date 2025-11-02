@@ -30,9 +30,7 @@ async function handleLogin(e) {
         setLoadingState(submitButton, true);
         hideError();
 
-        console.log('Попытка входа для пользователя:', username);
         const result = await apiService.login({ username, password });
-        console.log('Успешный вход:', result);
         
         // Сохраняем данные пользователя (apiService.login уже setToken, но fullName для UI)
         localStorage.setItem('userData', JSON.stringify({
@@ -71,7 +69,6 @@ function checkExistingAuth() {
     const userData = localStorage.getItem('userData');
     
     if (token && userData && window.location.pathname.includes('login.html')) {
-        console.log('Пользователь уже авторизован, редирект на дашборд');
         window.location.href = 'dashboard.html';
     }
 }

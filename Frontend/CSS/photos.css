@@ -214,3 +214,30 @@
     position: relative;
     display: inline-block;
 }
+
+/* Стили для компактных фото в модальном окне */
+.compact-photo-item:hover {
+    border-color: #007bff;
+    transform: scale(1.05);
+}
+
+.compact-photo-item img {
+    transition: transform 0.2s ease;
+}
+
+.compact-photo-item:hover img {
+    transform: scale(1.1);
+}
+
+/* Адаптивность для модального окна */
+@media (max-width: 768px) {
+    .modal-content {
+        width: 98% !important;
+        padding: 1rem !important;
+    }
+    
+    .modal-content > div {
+        grid-template-columns: 1fr !important;
+        gap: 1rem !important;
+    }
+}

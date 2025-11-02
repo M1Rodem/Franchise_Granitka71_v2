@@ -97,77 +97,76 @@ async function loadOrders() {
     }
 }
 
-function applyFilters() {
-    const searchText = document.getElementById('searchInput').value.toLowerCase();
-    const statusFilter = document.getElementById('statusFilter').value;
-    const managerFilter = document.getElementById('managerFilter')?.value || 'all';
-    
-    if (!Array.isArray(allOrders)) {
-        allOrders = [];
+async function applyFilters() {
+    try {
+        showLoadingState(true);
+        
+        const searchText = document.getElementById('searchInput').value;
+        const statusFilter = document.getElementById('statusFilter').value;
+        
+        // Собираем параметры для сервера
+        const filterParams = {
+            page: currentPage,
+            pageSize: pageSize
+        };
+        
+        // Добавляем параметры фильтрации
+        if (searchText) {
+            filterParams.searchQuery = searchText;
+        }
+        
+        // ФИКС: Правильные значения PaymentStatus для бэкенда
+        if (statusFilter && statusFilter !== 'all') {
+            // Конвертируем frontend статусы в backend PaymentStatus enum
+            const statusMap = {
+                'not_paid': 1,    // PaymentStatus.NotPaid
+                'partial': 2,     // PaymentStatus.Partial  
+                'paid': 3,        // PaymentStatus.Paid
+                'overpaid': 4     // PaymentStatus.Overpaid
+            };
+            filterParams.paymentStatus = statusMap[statusFilter];
+        }
+        
+        // Загружаем данные с сервера с фильтрами
+        const response = await apiService.getOrders(filterParams);
+        
+        if (response && Array.isArray(response.items)) {
+            allOrders = response.items;
+            filteredOrders = allOrders;
+            totalCount = response.totalCount;
+        } else {
+            allOrders = [];
+            filteredOrders = [];
+            totalCount = 0;
+        }
+        
+        renderOrdersTable();
+        
+    } catch (error) {
+        console.error('❌ Ошибка фильтрации заказов:', error);
+        showTempMessage('Ошибка фильтрации: ' + error.message, 'error');
+    } finally {
+        showLoadingState(false);
     }
-    
-    filteredOrders = allOrders.filter(order => {
-        if (!order) return false;
-        
-        const matchesSearch = matchesOrderSearch(order, searchText);
-        const matchesStatus = matchesOrderStatus(order, statusFilter);
-        const matchesManager = matchesOrderManager(order, managerFilter);
-        
-        return matchesSearch && matchesStatus && matchesManager;
-    });
-    
-    currentPage = 1;
-    renderOrdersTable();
 }
 
-function matchesOrderSearch(order, searchText) {
-    if (!searchText) return true;
-    
-    const searchFields = [
-        order.orderNumber || '',
-        order.customerFullName || '',
-        order.phone || '',
-        order.deceasedFullName || ''
-    ];
-    
-    return searchFields.some(field => 
-        field.toString().toLowerCase().includes(searchText)
-    );
-}
-
-function matchesOrderStatus(order, statusFilter) {
-    if (statusFilter === 'all') return true;
-    
-    const paymentStatus = getPaymentStatus(order);
-    
-    return paymentStatus === statusFilter;
-}
-
-function matchesOrderManager(order, managerFilter) {
-    if (managerFilter === 'all') return true;
-    
-    const managerName = getUserNameFromOrder(order);
-    return managerName.toLowerCase().includes(managerFilter.toLowerCase());
-}
-
+// ЗАМЕНИТЕ функцию resetFilters
 function resetFilters() {
     document.getElementById('searchInput').value = '';
     document.getElementById('statusFilter').value = 'all';
-    document.getElementById('managerFilter').value = 'all';
-    applyFilters();
+    const managerFilter = document.getElementById('managerFilter');
+    if (managerFilter) managerFilter.value = 'all';
+    
+    currentPage = 1;
+    loadOrders(); // Загружаем заново без фильтров
 }
 
 function renderOrdersTable() {
     const tbody = document.getElementById('ordersTableBody');
     if (!tbody) return;
 
-    if (!Array.isArray(allOrders)) {
-        allOrders = [];
-    }
-    
-    const pageOrders = allOrders; // Все заказы с текущей страницы
+    const pageOrders = allOrders;
 
-    
     if (pageOrders.length === 0) {
         tbody.innerHTML = `
             <tr>

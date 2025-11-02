@@ -167,11 +167,22 @@ async login(credentials) {
     // ЗАКАЗЫ
     async getOrders(filter = {}) {
         const params = new URLSearchParams();
-        for (const [key, value] of Object.entries(filter)) {
-            if (value !== undefined && value !== null && value !== '') {
-                params.append(key, value);
-            }
+        
+        // Обязательные параметры пагинации
+        params.append('page', filter.page || 1);
+        params.append('pageSize', filter.pageSize || 10);
+        
+        // Дополнительные параметры фильтрации
+        if (filter.searchQuery) {
+            params.append('searchQuery', filter.searchQuery);
         }
+        if (filter.paymentStatus) {
+            params.append('paymentStatus', filter.paymentStatus); // ФИКС: paymentStatus вместо status
+        }
+        if (filter.managerId && filter.managerId !== 'all') {
+            params.append('managerId', filter.managerId);
+        }
+        
         return this.request(`/Orders?${params.toString()}`);
     }
 
@@ -200,11 +211,16 @@ async login(credentials) {
     // АРХИВ ЗАКАЗОВ (исправленные методы с правильными эндпоинтами)
     async getArchivedOrders(filter = {}) {
         const params = new URLSearchParams();
-        for (const [key, value] of Object.entries(filter)) {
-            if (value !== undefined && value !== null && value !== '') {
-                params.append(key, value);
-            }
+        
+        // Обязательные параметры пагинации
+        params.append('page', filter.page || 1);
+        params.append('pageSize', filter.pageSize || 10);
+        
+        // Дополнительные параметры фильтрации
+        if (filter.searchQuery) {
+            params.append('searchQuery', filter.searchQuery);
         }
+        
         return this.request(`/Orders/archived?${params.toString()}`);
     }
 

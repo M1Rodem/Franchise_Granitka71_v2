@@ -54,7 +54,7 @@ namespace WebApplication1.Services.Repositories
                                          o.CustomerFullName.ToLower().Contains(search) ||
                                          o.Phone.Contains(search) ||
                                          o.DeceasedFullName.ToLower().Contains(search) ||
-                                         o.MonumentType.ToString().ToLower().Contains(search));
+                                         o.MonumentType.ToLower().Contains(search));
             }
 
             // Фильтры по датам

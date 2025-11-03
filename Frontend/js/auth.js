@@ -12,53 +12,54 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 
-async function handleLogin(e) {
-    e.preventDefault();
+async function handleLogin(e) {  // e — событие submit (event), async — для await API
+    e.preventDefault();  // Шаг 1: Останавливаем стандартное поведение формы (не перезагружаем страницу)
     
+    // Шаг 2: Получаем данные из полей (trim() убирает пробелы)
     const username = document.getElementById('username').value.trim();
-    const password = document.getElementById('password').value;
-    const submitButton = loginForm.querySelector('button[type="submit"]');
+    const password = document.getElementById('password').value;  // Пароль без trim, чтобы не сломать
+    const submitButton = loginForm.querySelector('button[type="submit"]');  // Кнопка для loading
 
-    // Базовая валидация
+    // Шаг 3: Простая валидация (если поля пустые — ошибка, не отправляем)
     if (!username || !password) {
-        showTempMessage('Заполните все поля', 'error');
-        return;
+        showTempMessage('Заполните все поля', 'error');  // Toast-уведомление из utils.js
+        return;  // Выходим, не продолжаем
     }
 
-    try {
-        // Показываем индикатор загрузки
+    try {  // Шаг 4: Основная логика (try — "попробуй", если ошибка — catch)
+        // Показываем loading на кнопке (спиннер, disable)
         setLoadingState(submitButton, true);
-        hideError();
+        hideError();  // Скрываем старые ошибки (если были)
 
-        const result = await apiService.login({ username, password });
+        // Шаг 5: Отправляем на API (await — ждём ответа от бэка)
+        const result = await apiService.login({ username, password });  // api.js — твой сервис для POST /auth/login
         
-        // Сохраняем данные пользователя (apiService.login уже setToken, но fullName для UI)
-        localStorage.setItem('userData', JSON.stringify({
+        // Шаг 6: Если успех — сохраняем в localStorage (токен уже в apiService.setToken, но userData для UI)
+        localStorage.setItem('userData', JSON.stringify({  // JSON.stringify — чтобы сохранить объект как строку
             id: result.id,
             username: result.username,
-            fullName: result.fullName,
-            role: result.role
+            fullName: result.fullName,  // Для показа "Привет, Иван!" в header
+            role: result.role  // Для админ-меню (users.html)
         }));
         
-        // Редирект на дашборд
+        // Шаг 7: Редирект на дашборд (успех!)
         window.location.href = 'dashboard.html';
         
-    } catch (error) {
-        console.error('Ошибка входа:', error);
+    } catch (error) {  // Шаг 8: Если API вернул ошибку (401/403 или сеть)
         
-        // Специфичная обработка ошибок
-        let errorMessage = 'Ошибка входа';
-        if (error.status === 401) {
+        // Шаг 9: Умная обработка (какой статус — такая ошибка)
+        let errorMessage = 'Ошибка входа';  // Дефолт
+        if (error.status === 401) {  // Неправильный логин/пароль
             errorMessage = 'Неверный логин или пароль';
-        } else if (error.status === 403) {
+        } else if (error.status === 403) {  // Заблокирован
             errorMessage = 'Аккаунт заблокирован';
-        } else if (error.message) {
+        } else if (error.message) {  // Любая кастомная из API
             errorMessage = error.message;
         }
         
-        showTempMessage(errorMessage, 'error');
-    } finally {
-        // Снимаем индикатор загрузки
+        showTempMessage(errorMessage, 'error');  // Toast с ошибкой (красный)
+        
+    } finally {  // Шаг 10: Всегда выполняется (успех или ошибка) — снимаем loading
         setLoadingState(submitButton, false);
     }
 }
@@ -78,17 +79,16 @@ function setLoadingState(button, isLoading) {
     
     if (isLoading) {
         button.disabled = true;
-        button.textContent = 'Вход...';
-        button.style.opacity = '0.7';
+        button.classList.add('loading');  // CSS spinner!
+        button.textContent = 'Вход...';  // Text remains, spinner after
     } else {
         button.disabled = false;
+        button.classList.remove('loading');
         button.textContent = 'Войти';
-        button.style.opacity = '1';
     }
 }
 
 function hideError() {
-    // Теперь toast, но если legacy div — hide
     const errorMessage = document.getElementById('error-message');
     if (errorMessage) {
         errorMessage.style.display = 'none';
@@ -110,7 +110,6 @@ export function checkAuth() {
     try {
         return JSON.parse(userData);
     } catch (error) {
-        console.error('Ошибка парсинга userData:', error);
         window.location.href = 'login.html';
         return null;
     }

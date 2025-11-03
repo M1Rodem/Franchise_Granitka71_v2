@@ -55,7 +55,6 @@ class ApiService {
 
             return data;
         } catch (error) {
-            console.error(`API Error [${endpoint}]:`, error);
             throw error;
         }
     }
@@ -130,7 +129,6 @@ async login(credentials) {
         
         return data;
     } catch (error) {
-        console.error('Login error:', error);
         throw error;
     }
 }

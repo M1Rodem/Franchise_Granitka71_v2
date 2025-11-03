@@ -1,31 +1,83 @@
+/* Вариант 3 Доработка: Enhanced Green Dark — яркий emerald, природный */
 .login-container {
     min-height: 100vh;
     display: flex;
     align-items: center;
     justify-content: center;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg, #2c3e50 0%, #1e3a2f 100%);  /* Теплее end — как мох */
+    padding: var(--space-4);
 }
 
 .login-form {
-    background: white;
-    padding: 2rem;
-    border-radius: 8px;
-    box-shadow: 0 10px 25px rgba(0,0,0,0.1);
     width: 100%;
     max-width: 400px;
+    background: linear-gradient(145deg, #34495e 0%, #2c3e50 100%), 
+                linear-gradient(145deg, rgba(22, 163, 74, 0.1) 0%, rgba(22, 163, 74, 0.05) 100%);  /* Subtle green tint для природы */
+    padding: var(--space-6);
+    border-radius: var(--radius-xl);
+    box-shadow: var(--shadow-lg), 0 0 0 1px rgba(255, 255, 255, 0.05);
+    border: none;
+    color: white;
+    opacity: 0.98;
 }
 
 .logo {
     text-align: center;
-    margin-bottom: 2rem;
+    margin-bottom: var(--space-8);
 }
 
 .logo h1 {
-    color: #333;
-    margin-bottom: 0.5rem;
+    color: white;
+    margin-bottom: var(--space-2);
+    font-weight: 700;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 0 8px rgba(16, 185, 129, 0.2);  /* Green glow shadow для h1 */
 }
 
 .logo p {
-    color: #666;
-    font-size: 0.9rem;
+    color: #cbd5e1;
+    font-size: var(--text-sm);
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: var(--space-2);
+    font-weight: 500;
+    color: white;
+    font-size: var(--text-sm);
+}
+
+.form-group input {
+    width: 100%;
+    padding: var(--space-3);
+    border: 1px solid #4a5568;
+    border-radius: var(--radius);
+    font-size: var(--text-base);
+    transition: all 0.2s ease;
+    background: #4a5568;
+    color: white;
+    line-height: var(--line-height-loose);
+}
+
+.form-group input:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(22, 163, 74, 0.2);  /* Яркий green ring */
+}
+
+.btn-primary {
+    background: var(--primary);
+    color: white;
+    width: 100%;
+    margin-top: var(--space-3);
+}
+
+.btn-primary:hover {
+    background: var(--primary-dark);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(22, 163, 74, 0.4);  /* Сильный green glow */
+}
+
+@media (max-width: 480px) {
+    .login-form { padding: var(--space-4); margin: var(--space-4); }
+    .login-container { background: #2c3e50; }
 }

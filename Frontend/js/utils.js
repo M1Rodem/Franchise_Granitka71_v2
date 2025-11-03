@@ -94,34 +94,38 @@ export function populateForm(formId, data) {
 export function showTempMessage(message, type = 'success', duration = 3000) {
     const messageEl = document.createElement('div');
     messageEl.className = `temp-message temp-message-${type}`;
-    messageEl.style.cssText = `
-        position: fixed; top: 20px; right: 20px; padding: 1rem; border-radius: 4px;
-        color: white; z-index: 10000; transform: translateX(100%);
-        transition: transform 0.3s ease;
-        background: ${type === 'success' ? '#28a745' : type === 'error' ? '#dc3545' : type === 'warning' ? '#ffc107' : '#17a2b8'};
-    `;
+    messageEl.innerHTML = `<span>${escapeHtml(message)}</span>`;
     
-    const icon = type === 'success' ? '✅' : type === 'error' ? '❌' : type === 'warning' ? '⚠️' : 'ℹ️';
-    messageEl.innerHTML = `<div style="display: flex; align-items: center; gap: 0.5rem;">
-        <span style="font-size: 1.2em;">${icon}</span>
-        <span>${escapeHtml(message)}</span>
-    </div>`;
+    // Убрал background: transparent — теперь CSS работает
+    messageEl.style.cssText = `
+        position: fixed; top: 20px; right: 20px; z-index: 10001;
+        transform: translateX(100%); transition: transform 0.3s ease;
+        cursor: pointer; min-width: 300px;
+    `;
     
     document.body.appendChild(messageEl);
     
+    // Force class и debug
+    messageEl.classList.add('temp-message', `temp-message-${type}`);
+    setTimeout(() => {
+        console.log('Toast classes:', messageEl.className);
+        console.log('Toast bg:', window.getComputedStyle(messageEl).backgroundColor);  // Теперь rgb(239, 68, 68)
+    }, 100);
+    
     setTimeout(() => messageEl.style.transform = 'translateX(0)', 10);
     
-    setTimeout(() => {
+    const timer = setTimeout(() => {
         messageEl.style.transform = 'translateX(100%)';
         setTimeout(() => messageEl.remove(), 300);
     }, duration);
     
     messageEl.addEventListener('click', () => {
+        clearTimeout(timer);
         messageEl.style.transform = 'translateX(100%)';
         setTimeout(() => messageEl.remove(), 300);
     });
     
-    return { close: () => { messageEl.style.transform = 'translateX(100%)'; setTimeout(() => messageEl.remove(), 300); } };
+    return { close: () => { clearTimeout(timer); messageEl.style.transform = 'translateX(100%)'; setTimeout(() => messageEl.remove(), 300); } };
 }
 
 // ====== РАБОТА С ДАТАМИ ======

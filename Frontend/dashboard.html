@@ -11,10 +11,11 @@
     <header class="header">
         <div class="container">
             <div class="header-content">
+                <button class="burger-btn" aria-label="Открыть меню">☰</button>  <!-- Добавлено: burger в header -->
                 <h1>Granitka71</h1>
                 <div class="user-info">
-                    <a href="profile.html" id="userName" class="user-profile-link">Пользователь</a>
-                    <button id="logoutBtn" class="btn btn-outline">Выйти</button>
+                    <a href="profile.html" id="userName" class="user-profile-link" aria-label="Перейти в профиль">Пользователь</a>
+                    <button id="logoutBtn" class="btn btn-outline" aria-label="Выйти из аккаунта">Выйти</button>
                 </div>
             </div>
         </div>
@@ -22,7 +23,7 @@
 
     <nav class="sidebar">
         <div class="nav-menu">
-            <a href="dashboard.html" class="nav-item active">Дашборд</a>
+            <a href="dashboard.html" class="nav-item active" aria-current="page">Дашборд</a>
             <a href="orders.html" class="nav-item">Заказы</a>
             <a href="create-order.html" class="nav-item">Создать заказ</a>
             <a href="archived-orders.html" class="nav-item">Архив</a>
@@ -33,15 +34,15 @@
     <main class="main-content">
         <div class="container">
             <div class="dashboard-stats">
-                <div class="stat-card">
+                <div class="stat-card" data-type="total" role="img" aria-label="Всего заказов">
                     <h3>Всего заказов</h3>
                     <div class="stat-number" id="totalOrders">0</div>
                 </div>
-                <div class="stat-card">
+                <div class="stat-card" data-type="unpaid" role="img" aria-label="Неоплаченные заказы">
                     <h3>Неоплаченные</h3>
                     <div class="stat-number" id="unpaidOrders">0</div>
                 </div>
-                <div class="stat-card">
+                <div class="stat-card" data-type="today" role="img" aria-label="Заказы за сегодня">
                     <h3>За сегодня</h3>
                     <div class="stat-number" id="todayOrders">0</div>
                 </div>
@@ -49,6 +50,11 @@
             <div class="recent-orders">
                 <h2>Последние заказы</h2>
                 <div id="recentOrdersList" class="orders-list">
+                    <!-- JS populate as cards -->
+                </div>
+                <div id="noRecentOrders" class="no-data" style="display: none;">
+                    <p>Нет недавних заказов</p>
+                    <a href="create-order.html" class="cta" aria-label="Создать новый заказ">Создать первый</a>
                 </div>
             </div>
         </div>

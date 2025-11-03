@@ -56,13 +56,13 @@ namespace WebApplication1.Controllers
                 var tokenHandler = new JwtSecurityTokenHandler();
 
                 var claims = new List<Claim>
-        {
-            new Claim(ClaimTypes.Name, user.Id.ToString()),
-            new Claim(ClaimTypes.NameIdentifier, user.Username),
-            new Claim(ClaimTypes.Role, role),
-            new Claim("UserId", user.Id.ToString()),
-            new Claim("FullName", user.FullName ?? string.Empty)
-        };
+                {
+                    new Claim(ClaimTypes.Name, user.Id.ToString()),
+                    new Claim(ClaimTypes.NameIdentifier, user.Username),
+                    new Claim(ClaimTypes.Role, role),
+                    new Claim("UserId", user.Id.ToString()),
+                    new Claim("FullName", user.FullName ?? string.Empty)
+                };
 
                 var tokenDescriptor = new SecurityTokenDescriptor
                 {

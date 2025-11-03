@@ -137,9 +137,10 @@ namespace WebApplication1.Services.Repositories
             return status switch
             {
                 PaymentStatus.NotPaid => query.Where(o => !o.Payments.Any()),
-                PaymentStatus.Partial => query.Where(o => o.Payments.Sum(p => p.Amount) > 0 && o.Payments.Sum(p => p.Amount) < o.TotalPrice),
-                PaymentStatus.Paid => query.Where(o => o.Payments.Sum(p => p.Amount) == o.TotalPrice),
-                PaymentStatus.Overpaid => query.Where(o => o.Payments.Sum(p => p.Amount) > o.TotalPrice),
+                PaymentStatus.Partial => query.Where(o => o.Payments.Sum(p => p.Amount) > 0
+                                                      && o.Payments.Sum(p => p.Amount) < o.WorkItems.Sum(w => w.Price * w.Quantity)),
+                PaymentStatus.Paid => query.Where(o => o.Payments.Sum(p => p.Amount) == o.WorkItems.Sum(w => w.Price * w.Quantity)),
+                PaymentStatus.Overpaid => query.Where(o => o.Payments.Sum(p => p.Amount) > o.WorkItems.Sum(w => w.Price * w.Quantity)),
                 _ => query
             };
         }

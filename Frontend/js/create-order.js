@@ -88,10 +88,8 @@ function setupEventListeners() {
     const addPaymentBtn = document.getElementById('addPaymentBtn');
     if (addPaymentBtn) {
         addPaymentBtn.addEventListener('click', () => addAdditionalPayment());
-        // Инициализируем таблицу платежей при загрузке
-        setTimeout(() => {
-            initializePayments();
-        }, 100);
+        // Инициализируем таблицу платежей СРАЗУ
+        initializePayments();
     }
 
     // Submit формы
@@ -201,7 +199,6 @@ async function loadOrderForEdit(id) {
         orderPhotos = order.photos || [];
         await renderPhotoGrid(orderPhotos, 'photoPreview', 'edit');
         
-        
     } catch (error) {
         console.error('Load order error:', error);
         showTempMessage('Ошибка загрузки заказа: ' + error.message, 'error');
@@ -243,7 +240,7 @@ function collectFormData() {
 function validateForm(data) {
     // Проверка обязательных полей согласно CreateOrderRequest.cs
     if (!data.place || data.place.trim() === '') return 'Укажите участок';
-    if (!data.deceasedFullName || data.deceasedFullName.trim() === '') return 'ФИО усопшего обязательно';
+    if (!data.deceasedFullName || data.deceasedFullName.trim() === '') return 'ФИО и даты усопшего обязательно';
     if (!data.customerFullName || data.customerFullName.trim() === '') return 'ФИО заказчика обязательно';
     if (!data.address || data.address.trim() === '') return 'Адрес обязателен';
     if (!data.phone || data.phone.trim() === '') return 'Телефон обязателен';
@@ -601,7 +598,6 @@ function renderPaymentsTable(payments) {
         return;
     }
     
-    
     tableBody.innerHTML = '';
     
     if (payments && payments.length > 0) {
@@ -708,7 +704,6 @@ function calculateTotalPrice() {
 }
 
 function validateWorkItems(items) {
-    if (!items || items.length === 0) return 'Добавьте хотя бы одну работу';
     
     for (let i = 0; i < items.length; i++) {
         const wi = items[i];

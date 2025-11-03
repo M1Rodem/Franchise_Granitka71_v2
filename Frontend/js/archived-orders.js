@@ -714,9 +714,9 @@ function showLoadingState(loading) {
 
 function resetFilters() {
     document.getElementById('searchInput').value = '';
-    filteredOrders = allArchivedOrders;
+    
     currentPage = 1;
-    renderArchivedOrdersTable();
+    loadArchivedOrders(); // Сразу загружаем архивные заказы без фильтров
 }
 
 

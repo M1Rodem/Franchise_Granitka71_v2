@@ -71,11 +71,12 @@ async function loadOrders() {
     try {
         showLoadingState(true);
 
-        const response = await apiService.getOrders({
-            page: currentPage,
-            pageSize: pageSize
-        });
+        // СОБИРАЕМ ТЕКУЩИЕ ПАРАМЕТРЫ ФИЛЬТРА
+        const filterParams = getCurrentFilterParams();
+        filterParams.page = currentPage;
+        filterParams.pageSize = pageSize;
 
+        const response = await apiService.getOrders(filterParams);
 
         if (response && Array.isArray(response.items)) {
             allOrders = response.items;
@@ -97,50 +98,39 @@ async function loadOrders() {
     }
 }
 
+// ДОБАВИТЬ функцию получения текущих параметров фильтра
+function getCurrentFilterParams() {
+    const searchText = document.getElementById('searchInput').value;
+    const statusFilter = document.getElementById('statusFilter').value;
+    
+    const filterParams = {};
+    
+    if (searchText) {
+        filterParams.searchQuery = searchText;
+    }
+    
+    if (statusFilter && statusFilter !== 'all') {
+        const statusMap = {
+            'not_paid': 1,
+            'partial': 2,  
+            'paid': 3,
+            'overpaid': 4
+        };
+        filterParams.paymentStatus = statusMap[statusFilter];
+    }
+    
+    return filterParams;
+}
+
 async function applyFilters() {
     try {
         showLoadingState(true);
         
-        const searchText = document.getElementById('searchInput').value;
-        const statusFilter = document.getElementById('statusFilter').value;
+        // Сбрасываем на первую страницу при фильтрации
+        currentPage = 1;
         
-        // Собираем параметры для сервера
-        const filterParams = {
-            page: currentPage,
-            pageSize: pageSize
-        };
-        
-        // Добавляем параметры фильтрации
-        if (searchText) {
-            filterParams.searchQuery = searchText;
-        }
-        
-        // ФИКС: Правильные значения PaymentStatus для бэкенда
-        if (statusFilter && statusFilter !== 'all') {
-            // Конвертируем frontend статусы в backend PaymentStatus enum
-            const statusMap = {
-                'not_paid': 1,    // PaymentStatus.NotPaid
-                'partial': 2,     // PaymentStatus.Partial  
-                'paid': 3,        // PaymentStatus.Paid
-                'overpaid': 4     // PaymentStatus.Overpaid
-            };
-            filterParams.paymentStatus = statusMap[statusFilter];
-        }
-        
-        // Загружаем данные с сервера с фильтрами
-        const response = await apiService.getOrders(filterParams);
-        
-        if (response && Array.isArray(response.items)) {
-            allOrders = response.items;
-            filteredOrders = allOrders;
-            totalCount = response.totalCount;
-        } else {
-            allOrders = [];
-            filteredOrders = [];
-            totalCount = 0;
-        }
-        
-        renderOrdersTable();
+        // Используем ту же логику что и в getCurrentFilterParams()
+        await loadOrders();
         
     } catch (error) {
         console.error('❌ Ошибка фильтрации заказов:', error);
@@ -154,11 +144,9 @@ async function applyFilters() {
 function resetFilters() {
     document.getElementById('searchInput').value = '';
     document.getElementById('statusFilter').value = 'all';
-    const managerFilter = document.getElementById('managerFilter');
-    if (managerFilter) managerFilter.value = 'all';
     
     currentPage = 1;
-    loadOrders(); // Загружаем заново без фильтров
+    loadOrders(); // Сразу загружаем заказы без фильтров
 }
 
 function renderOrdersTable() {
@@ -290,8 +278,7 @@ function updatePagination() {
 function prevPage() {
     if (currentPage > 1) {
         currentPage--;
-        loadOrders();
-    } else {
+        loadOrders(); // Теперь loadOrders использует текущие фильтры
     }
 }
 
@@ -299,8 +286,7 @@ function nextPage() {
     const totalPages = Math.ceil(totalCount / pageSize);
     if (currentPage < totalPages) {
         currentPage++;
-        loadOrders();
-    } else {
+        loadOrders(); // Теперь loadOrders использует текущие фильтры
     }
 }
 

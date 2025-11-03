@@ -188,7 +188,7 @@ function createDeceasedSection(order) {
     return `
         <section class="refined-section">
             <h3>Усопший</h3>
-            <p><strong>ФИО:</strong> ${escapeHtml(order.deceasedFullName)}</p>
+            <p><strong>ФИО и Даты:</strong> ${escapeHtml(order.deceasedFullName)}</p>
             <p><strong>Место осмотра:</strong> ${escapeHtml(order.inspectionPlace || 'Не указано')}</p>
         </section>
     `;

@@ -332,7 +332,7 @@ namespace WebApplication1.Controllers
         private OrderResponseDto MapToResponseDto(Order order)
         {
             // Computed TotalPrice
-            var total = order.TotalPrice > 0 ? order.TotalPrice : order.WorkItems.Sum(w => w.Price * w.Quantity);
+            var total = order.WorkItems.Sum(w => w.Price * w.Quantity);
 
             return new OrderResponseDto
             {

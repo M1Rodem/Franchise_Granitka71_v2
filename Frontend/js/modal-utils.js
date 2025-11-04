@@ -1,5 +1,3 @@
-import { showTempMessage } from './utils.js';  // Для сообщений
-
 export class ModalUtils {
     // ====== КОНФИРМАЦИОННЫЕ ОКНА ======
     

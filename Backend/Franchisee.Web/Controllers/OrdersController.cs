@@ -272,7 +272,6 @@ namespace WebApplication1.Controllers
 
             try
             {
-                // Ищем заказ ИГНОРИРУЯ фильтр IsDeleted
                 var order = await _context.Orders
                     .IgnoreQueryFilters()
                     .FirstOrDefaultAsync(o => o.Id == id);
@@ -295,19 +294,20 @@ namespace WebApplication1.Controllers
                     return Forbid("Недостаточно прав для восстановления заказа");
                 }
 
-                // ВОССТАНАВЛЕНИЕ ЗАКАЗА
                 order.IsDeleted = false;
                 order.DeletedAt = null;
                 order.UpdatedAt = DateTime.UtcNow;
 
                 await _context.SaveChangesAsync();
 
-                _logger.LogInformation("Заказ {OrderId} успешно восстановлен пользователем {UserId}", id, userId);
+                _logger.LogInformation("Заказ {OrderId} успешно восстановлен пользователем {UserId} с оригинальным номером: {OrderNumber}",
+                    id, userId, order.OrderNumber);
 
                 return Ok(new
                 {
                     message = "Заказ восстановлен",
-                    orderId = id
+                    orderId = id,
+                    orderNumber = order.OrderNumber
                 });
             }
             catch (Exception ex)
@@ -372,7 +372,6 @@ namespace WebApplication1.Controllers
             };
         }
 
-        // GET: api/Orders/archived - Получить архивные заказы
         // GET: api/Orders/archived - Получить архивные заказы
         [HttpGet("archived")]
         public async Task<ActionResult<PagedResult<OrderResponseDto>>> GetArchivedOrders([FromQuery] OrderFilterRequest filter)

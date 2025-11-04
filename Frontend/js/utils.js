@@ -122,15 +122,17 @@ export function getPaymentStatus(order) {
     
     if (totalPaid === 0) return 'not_paid';
     if (totalPaid < totalPrice) return 'partial';
-    if (totalPaid >= totalPrice) return 'paid';
+    if (totalPaid === totalPrice) return 'paid';
+    if (totalPaid > totalPrice) return 'overpaid';
     return 'not_paid';
 }
 
 export function getPaymentStatusText(order) {
     const statusMap = {
         'not_paid': 'Не оплачено',
-        'partial': 'Частично оплачено',
-        'paid': 'Оплачено'
+        'partial': 'Частично оплачено', 
+        'paid': 'Оплачено',
+        'overpaid': 'Переплачено'
     };
     return statusMap[getPaymentStatus(order)] || 'Не оплачено';
 }
@@ -140,6 +142,7 @@ export function getStatusBadgeClass(status) {
         'not_paid': 'status-unpaid',
         'partial': 'status-partial',
         'paid': 'status-paid',
+        'overpaid': 'status-overpaid',
         'Новый': 'status-new'
     };
     return classMap[status] || 'status-default';

@@ -1,6 +1,4 @@
-﻿// 🔥 ЗАМЕНИТЕ ВЕСЬ OrderRepository.cs на этот код:
-
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using WebApplication1.Configuration;
 using WebApplication1.Models;
 
@@ -90,10 +88,10 @@ namespace WebApplication1.Services.Repositories
             // Пагинация
             var totalCount = await query.CountAsync();
             var orders = await query
-                .OrderByDescending(o => o.CreatedAt)
-                .Skip((filter.Page - 1) * filter.PageSize)
-                .Take(filter.PageSize)
-                .ToListAsync();
+              .OrderByDescending(o => o.UpdatedAt)
+              .Skip((filter.Page - 1) * filter.PageSize)
+              .Take(filter.PageSize)
+              .ToListAsync();
 
             return (orders, totalCount);
         }
@@ -130,8 +128,6 @@ namespace WebApplication1.Services.Repositories
                 await _context.SaveChangesAsync();
             }
         }
-
-        // Приват: фильтр по оплате
         private IQueryable<Order> ApplyPaymentStatusFilter(IQueryable<Order> query, PaymentStatus status)
         {
             return status switch
@@ -144,18 +140,19 @@ namespace WebApplication1.Services.Repositories
                 _ => query
             };
         }
-
         public async Task<string> GenerateOrderNumberAsync()
         {
             try
             {
-                var lastOrder = await _context.Orders
+                var maxId = await _context.Orders
                     .Where(o => !o.IsDeleted)
-                    .OrderByDescending(o => o.Id)
-                    .FirstOrDefaultAsync();
+                    .MaxAsync(o => (int?)o.Id) ?? 0;
 
-                var nextId = (lastOrder?.Id ?? 0) + 1;
-                var orderNumber = $"ORD-{nextId:00000}-{DateTime.UtcNow:yyyyMMdd}";
+                // Следующий ID
+                var nextId = maxId + 1;
+
+                // Формат только ORD-00001, ORD-00002 без даты
+                var orderNumber = $"ORD-{nextId:00000}";
 
                 return orderNumber;
             }
@@ -164,6 +161,17 @@ namespace WebApplication1.Services.Repositories
                 Console.WriteLine($"GenerateOrderNumberAsync error: {ex.Message}");
                 throw;
             }
+        }
+
+        public async Task<string> GetOriginalOrderNumberAsync(int orderId)
+        {
+            var originalOrder = await _context.Orders
+                .IgnoreQueryFilters()
+                .Where(o => o.Id == orderId)
+                .Select(o => o.OrderNumber)
+                .FirstOrDefaultAsync();
+
+            return originalOrder ?? await GenerateOrderNumberAsync();
         }
     }
 }

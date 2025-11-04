@@ -1,6 +1,6 @@
 const API_BASE_URL = 'https://localhost:7137/api'; // Замени на prod URL в .env
 
-import { mapStatusToEnum, showTempMessage } from './utils.js';
+import { showTempMessage } from './utils.js';
 
 class ApiService {
     constructor() {
@@ -136,14 +136,42 @@ class ApiService {
 
     // Orders (ФИКС: mapper для Status enum)
     async getOrders(filter) {
-        // Мапим string status в enum int, если есть (legacy)
-        if (filter.status) {
-            filter.Status = mapStatusToEnum(filter.status);
-            delete filter.status;
+        const params = new URLSearchParams();
+        
+        // Базовые параметры пагинации
+        params.append('Page', filter.page || 1);
+        params.append('PageSize', filter.pageSize || 20);
+        
+        // Поиск
+        if (filter.SearchQuery) {
+            params.append('SearchQuery', filter.SearchQuery);
         }
-        // Для today/unpaid — Status уже int от utils, ничего не трогаем
-
-        const params = new URLSearchParams(filter);
+        
+        // Статус оплаты
+        if (filter.PaymentStatus !== undefined && filter.PaymentStatus !== null) {
+            params.append('PaymentStatus', filter.PaymentStatus);
+        }
+        
+        // Статус заказа
+        if (filter.Status !== undefined && filter.Status !== null) {
+            params.append('Status', filter.Status);
+        }
+        
+        // Дата заказа
+        if (filter.OrderDateFrom) {
+            params.append('OrderDateFrom', filter.OrderDateFrom);
+        }
+        if (filter.OrderDateTo) {
+            params.append('OrderDateTo', filter.OrderDateTo);
+        }
+        
+        // ✅ ФИКС: Сортировка
+        if (filter.sortBy) {
+            params.append('sortBy', filter.sortBy);
+        }
+        if (filter.sortDesc !== undefined) {
+            params.append('sortDesc', filter.sortDesc);
+        }
         return this.request(`/Orders?${params}`);
     }
 
@@ -169,9 +197,7 @@ class ApiService {
         return this.request(`/Orders/${id}`, { method: 'DELETE' });
     }
 
-    // Убрали getOrderPhotos — используй order.photos из getOrder
-
-    // Archived (пример)
+    // Archived
     async getArchivedOrders(filter) {
         const params = new URLSearchParams(filter);
         return this.request(`/Orders/archived?${params.toString()}`);
@@ -179,6 +205,39 @@ class ApiService {
 
     async getArchivedOrder(id) {
         return this.request(`/Orders/archived/${id}`);
+    }
+
+    async restoreArchivedOrder(id) {
+        return this.request(`/Orders/${id}/restore`, {
+            method: 'POST'
+        });
+    }
+
+    async permanentDeleteArchivedOrder(id) {
+        return this.request(`/Orders/archived/${id}`, {
+            method: 'DELETE'
+        });
+    }
+
+    async getUnpaidOrdersStats() {
+        try {
+            // Запрашиваем ВСЕ заказы и фильтруем на клиенте
+            const response = await this.request('/Orders?page=1&pageSize=1000');
+            
+            if (response && Array.isArray(response.items)) {
+                // Фильтруем заказы где сумма платежей = 0
+                const unpaidOrders = response.items.filter(order => {
+                    const totalPaid = order.payments?.reduce((sum, p) => sum + (Number(p.amount) || 0), 0) || 0;
+                    return totalPaid === 0;
+                });
+                
+                return unpaidOrders.length;
+            }
+            return 0;
+        } catch (error) {
+            console.error('Error getting unpaid stats:', error);
+            return 0;
+        }
     }
 
     // Photos (без изменений)

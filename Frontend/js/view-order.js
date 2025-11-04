@@ -43,6 +43,21 @@ export class ViewOrderManager {
         if (this.deleteBtn) {
             this.deleteBtn.addEventListener('click', () => this.deleteOrder());
         }
+
+        const logoutBtn = document.getElementById('logoutBtn');
+        if (logoutBtn) {
+            logoutBtn.addEventListener('click', () => this.handleLogout());
+        }
+    }
+
+        handleLogout() {
+        localStorage.removeItem('token');
+        localStorage.removeItem('userData');
+        localStorage.removeItem('orderFilters');
+        localStorage.removeItem('lastOrderView');
+        
+        // Перенаправляем на страницу логина
+        window.location.href = 'login.html';
     }
 
     async initialize() {
@@ -142,7 +157,7 @@ export class ViewOrderManager {
         `;
     }
 
-    renderWorkItems(workItems) {
+     renderWorkItems(workItems) {
         if (!this.workItemsContainer) return;
 
         if (workItems.length === 0) {
@@ -155,7 +170,13 @@ export class ViewOrderManager {
         this.workItemsContainer.innerHTML = `
             <table class="orders-table">
                 <thead>
-                    <tr><th>Описание</th><th>Кол-во</th><th>Цена</th><th>Итого</th></tr>
+                    <tr>
+                        <th>Описание</th>
+                        <th>Кол-во</th>
+                        <th>Цена</th>
+                        <th>Итого</th>
+                        <th>Примечание</th> <!-- ДОБАВЛЕНА КОЛОНКА -->
+                    </tr>
                 </thead>
                 <tbody>
                     ${workItems.map(item => `
@@ -164,11 +185,15 @@ export class ViewOrderManager {
                             <td>${item.quantity || 1}</td>
                             <td>${formatCurrency(item.price || 0)}</td>
                             <td>${formatCurrency((item.price || 0) * (item.quantity || 1))}</td>
+                            <td>${escapeHtml(item.note || '—')}</td> <!-- ДОБАВЛЕНА ЯЧЕЙКА -->
                         </tr>
                     `).join('')}
                 </tbody>
                 <tfoot>
-                    <tr><td colspan="3"><strong>Итого:</strong></td><td><strong>${formatCurrency(total)}</strong></td></tr>
+                    <tr>
+                        <td colspan="4"><strong>Итого:</strong></td>
+                        <td><strong>${formatCurrency(total)}</strong></td>
+                    </tr>
                 </tfoot>
             </table>
         `;
@@ -187,7 +212,12 @@ export class ViewOrderManager {
         this.paymentsContainer.innerHTML = `
             <table class="orders-table">
                 <thead>
-                    <tr><th>Тип</th><th>Сумма</th><th>Дата</th><th>Примечание</th></tr>
+                    <tr>
+                        <th>Тип</th>
+                        <th>Сумма</th>
+                        <th>Дата</th>
+                        <th>Примечание</th> <!-- УЖЕ БЫЛА КОЛОНКА -->
+                    </tr>
                 </thead>
                 <tbody>
                     ${payments.map(p => `
@@ -195,12 +225,15 @@ export class ViewOrderManager {
                             <td>${formatPaymentType(p.paymentType || p.note || '')}</td>
                             <td>${formatCurrency(p.amount || 0)}</td>
                             <td>${formatDate(p.paymentDate || p.date)}</td>
-                            <td>${escapeHtml(p.note || '')}</td>
+                            <td>${escapeHtml(p.note || '—')}</td>
                         </tr>
                     `).join('')}
                 </tbody>
                 <tfoot>
-                    <tr><td colspan="3"><strong>Итого:</strong></td><td><strong>${formatCurrency(totalPaid)}</strong></td></tr>
+                    <tr>
+                        <td colspan="3"><strong>Итого:</strong></td>
+                        <td><strong>${formatCurrency(totalPaid)}</strong></td>
+                    </tr>
                 </tfoot>
             </table>
         `;

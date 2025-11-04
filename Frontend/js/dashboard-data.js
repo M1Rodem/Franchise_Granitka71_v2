@@ -1,5 +1,5 @@
 import { apiService } from './api.js';
-import { updateDashboardStats, showLoadingState } from './dashboard-ui.js';
+import { updateDashboardStats, showLoadingState } from './dashboard.js';
 import { mapStatusToEnum } from './utils.js';
 
 export async function loadDashboardData() {

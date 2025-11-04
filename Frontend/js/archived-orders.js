@@ -3,15 +3,13 @@ import { ModalUtils } from './modal-utils.js';
 import { 
     formatDate, 
     formatCurrency, 
-    getStatusBadgeClass, 
     getPaymentStatus, 
     getPaymentStatusText, 
     escapeHtml, 
     showTempMessage,
     getUserNameFromOrder,
-    formatFileSize  // ДОБАВИТЬ ЭТУ ФУНКЦИЮ
+    formatFileSize
 } from './utils.js';
-import { renderPhotoGrid, openPhotoPreview, attachPhotoEvents } from './photo-utils.js';
 
 let currentPage = 1;
 let totalPages = 1;

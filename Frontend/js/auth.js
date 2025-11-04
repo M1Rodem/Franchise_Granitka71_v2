@@ -1,27 +1,24 @@
 import { apiService } from './api.js';
 import { showTempMessage, handleApiError } from './utils.js';
 
-let submitDebounce = null; // Для анти-спама
+let submitDebounce = null;
 
 document.addEventListener('DOMContentLoaded', () => {
     const loginForm = document.getElementById('loginForm');
-    checkExistingAuth(); // Проверяем на старте
-
+    checkExistingAuth(); 
     if (loginForm) {
         loginForm.addEventListener('submit', handleSubmitDebounced);
     }
 });
 
 function handleSubmitDebounced(e) {
-    // Debounce: 500ms задержка на повторные submit
+    e.preventDefault();
     if (submitDebounce) return;
     submitDebounce = setTimeout(() => { submitDebounce = null; }, 500);
     handleLogin(e);
 }
 
 async function handleLogin(e) {
-    e.preventDefault();
-    
     const username = document.getElementById('username').value.trim();
     const password = document.getElementById('password').value;
     const submitButton = document.querySelector('#loginForm button[type="submit"]');
@@ -36,7 +33,6 @@ async function handleLogin(e) {
 
         const result = await apiService.login({ username, password });
         
-        // Сохраняем userData (токен уже в apiService)
         localStorage.setItem('userData', JSON.stringify({
             id: result.id,
             username: result.username,
@@ -44,10 +40,25 @@ async function handleLogin(e) {
             role: result.role
         }));
         
-        window.location.href = 'dashboard.html';
+        showTempMessage('Успешный вход!', 'success');
+        setTimeout(() => {
+            window.location.href = 'dashboard.html';
+        }, 1000);
         
     } catch (error) {
-        handleApiError(error); // Centralized handling
+        if (error.status === 401) {
+            const serverMessage = error.data?.message || error.message || '';
+            
+            if (serverMessage.toLowerCase().includes('заблокирован') || 
+                serverMessage.toLowerCase().includes('blocked') ||
+                serverMessage.toLowerCase().includes('аккаунт')) {
+                showTempMessage('Аккаунт заблокирован. Обратитесь к администратору.', 'error');
+            } else {
+                showTempMessage('Неверный логин или пароль', 'error');
+            }
+        } else {
+            handleApiError(error); 
+        }
     } finally {
         setLoadingState(submitButton, false);
     }
@@ -59,10 +70,9 @@ function checkExistingAuth() {
     
     if (token && userDataStr && window.location.pathname.includes('login.html')) {
         try {
-            JSON.parse(userDataStr); // Валидация
+            JSON.parse(userDataStr);
             window.location.href = 'dashboard.html';
         } catch {
-            // Invalid — clear и stay
             localStorage.removeItem('token');
             localStorage.removeItem('userData');
         }
@@ -85,7 +95,6 @@ function setLoadingState(button, isLoading) {
     }
 }
 
-// Экспорты для других модулей
 export function checkAuth() {
     const token = localStorage.getItem('token');
     const userDataStr = localStorage.getItem('userData');
@@ -115,6 +124,5 @@ export function handleLogout() {
     window.location.href = 'login.html';
 }
 
-// Legacy globals (удалить в v2)
 window.checkAuth = checkAuth;
 window.handleLogout = handleLogout;

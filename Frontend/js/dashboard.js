@@ -1,26 +1,28 @@
 import { PageManager } from './page-manager.js';
 import { apiService } from './api.js';
-import { formatDate, escapeHtml, showTempMessage, handleApiError, getPaymentStatus, getPaymentStatusText, getUserNameFromOrder, mapStatusToEnum, getStatusBadgeClass } from './utils.js';
+import { formatDate, escapeHtml, getPaymentStatus, getPaymentStatusText, getUserNameFromOrder, getStatusBadgeClass } from './utils.js';
 
 document.addEventListener('DOMContentLoaded', () => {
     PageManager.initialize('dashboard', loadDashboardData);
-});
+})
 
 async function loadDashboardData() {
     try {
         showLoadingState(true);
 
-        const [totalResponse, todayResponse, unpaidResponse, recentResponse] = await Promise.all([
+        const today = new Date().toISOString().split('T')[0];
+        
+        const [totalResponse, todayResponse, unpaidCount, recentResponse] = await Promise.all([
             apiService.getOrders({ page: 1, pageSize: 1 }),
-            apiService.getOrders({ OrderDateFrom: new Date().toISOString().split('T')[0], page: 1, pageSize: 100 }),
-            apiService.getOrders({ Status: mapStatusToEnum('not_paid'), page: 1, pageSize: 100 }),
-            apiService.getOrders({ page: 1, pageSize: 5, sortBy: 'OrderDate', sortDesc: true })
+            apiService.getOrders({ OrderDateFrom: today, OrderDateTo: today, page: 1, pageSize: 1 }),
+            apiService.getUnpaidOrdersStats(),
+            apiService.getOrders({ page: 1, pageSize: 5, sortBy: 'UpdatedAt', sortDesc: true }) 
         ]);
-
+        
         const stats = {
             total: totalResponse?.totalCount || 0,
             today: todayResponse?.totalCount || 0,
-            unpaid: unpaidResponse?.totalCount || 0,
+            unpaid: unpaidCount || 0,
             recent: recentResponse?.items || []
         };
 

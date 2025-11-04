@@ -1,5 +1,6 @@
 import { apiService } from './api.js';
 import { initLayout, handleApiError } from './utils.js';
+import { SidebarManager } from './sidebar-manager.js';
 
 export class PageManager {
     static async initialize(pageType, initCallback = null) {
@@ -13,6 +14,9 @@ export class PageManager {
 
             // Инициализация layout (навигация, пользователь, logout)
             initLayout(userData, pageType);
+
+            // Инициализация sidebar
+            SidebarManager.init();
 
             // Вызов кастомной инициализации страницы
             if (initCallback) {

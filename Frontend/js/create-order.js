@@ -1,17 +1,11 @@
 // create-order.js
 import { PageManager } from './page-manager.js';
 import { apiService } from './api.js';
-import { 
-    formatCurrency, getTodayDate, isValidEmail, isValidPhone, 
-    populateForm, clearForm, getFormValue, showTempMessage, 
-    escapeHtml, handleApiError 
-} from './utils.js';
-import { 
-    setupDragAndDrop, handlePhotoSelect, uploadTempAndDisplay, 
+import { formatCurrency, getTodayDate, isValidEmail, isValidPhone, 
+    populateForm,  getFormValue, showTempMessage, } from './utils.js';
+import { setupDragAndDrop, handlePhotoSelect, uploadTempAndDisplay, 
     renderPhotoGrid, tempUploads, clearTempPhotos, attachPhotoEvents, 
-    getTempPhotoIds, loadAndCleanupTemp 
-} from './photo-utils.js';
-import { ModalUtils } from './modal-utils.js';
+    getTempPhotoIds, loadAndCleanupTemp } from './photo-utils.js';
 
 export class CreateOrderManager {
     constructor(pageManager) {
@@ -65,7 +59,11 @@ export class CreateOrderManager {
         // Logout
         const logoutBtn = document.getElementById('logoutBtn');
         if (logoutBtn) {
-            logoutBtn.addEventListener('click', () => apiService.logout());
+            logoutBtn.addEventListener('click', () => {
+                localStorage.removeItem('token');
+                localStorage.removeItem('userData');
+                window.location.href = 'login.html';
+            });
         }
 
         // Фото: Input и Drag&Drop

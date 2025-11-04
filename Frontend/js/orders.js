@@ -1,7 +1,6 @@
 import { PageManager } from './page-manager.js';
 import { apiService } from './api.js';
-import { 
-    formatDate, formatCurrency, escapeHtml, showTempMessage, handleApiError, 
+import { formatDate, formatCurrency, escapeHtml, showTempMessage, handleApiError, 
     getUrlParam, updateUrlParam, mapStatusToEnum, getPaymentStatus, 
     getPaymentStatusText, getUserNameFromOrder, getStatusBadgeClass, debounce } from './utils.js';
 
@@ -12,6 +11,16 @@ let totalCount = 0;
 
 document.addEventListener('DOMContentLoaded', () => {
     PageManager.initialize('orders', initializeOrdersPage);
+
+    const logoutBtn = document.getElementById('logoutBtn');
+    if (logoutBtn) {
+        logoutBtn.addEventListener('click', function() {
+            localStorage.removeItem('token');
+            localStorage.removeItem('userData');
+            localStorage.removeItem('orderFilters');
+            window.location.href = 'login.html';
+        });
+    }
 });
 
 async function initializeOrdersPage() {
@@ -24,10 +33,12 @@ function setupOrdersEventListeners() {
     // Filters
     document.getElementById('applyFilters').addEventListener('click', applyFilters);
     document.getElementById('resetFilters').addEventListener('click', resetFilters);
+    
     const searchInput = document.getElementById('searchInput');
     if (searchInput) {
         searchInput.addEventListener('input', debounce(handleSearchInput, 300));
     }
+    
     const statusFilter = document.getElementById('statusFilter');
     if (statusFilter) {
         statusFilter.addEventListener('change', applyFilters);
@@ -44,8 +55,9 @@ function handleSearchInput() {
 
 function loadFiltersFromUrl() {
     const search = getUrlParam('search') || '';
-    const statusStr = getUrlParam('Status'); // From URL, but map back to string for select
+    const statusStr = getUrlParam('Status');
     const status = statusStr ? Object.keys(mapStatusToEnum).find(key => mapStatusToEnum[key] == statusStr) || 'all' : 'all';
+    
     document.getElementById('searchInput').value = search;
     document.getElementById('statusFilter').value = status;
 }
@@ -54,45 +66,38 @@ async function applyFilters() {
     const search = document.getElementById('searchInput').value.trim();
     let status = document.getElementById('statusFilter').value;
 
+    // ✅ ФИКС: Добавляем сортировку по UpdatedAt DESC
+    const filterParams = {
+        page: 1,
+        pageSize: pageSize,
+        sortBy: 'UpdatedAt', // ✅ Сортируем по дате обновления
+        sortDesc: true       // ✅ Сначала новые
+    };
+
+    if (search) {
+        filterParams.SearchQuery = search;
+    }
+
+    if (status !== 'all') {
+        filterParams.PaymentStatus = mapStatusToEnum(status);
+    }
+
     // Persist to URL
     updateUrlParam('search', search || null);
     if (status !== 'all') {
-        const statusEnum = mapStatusToEnum(status);
-        updateUrlParam('Status', statusEnum); // int to URL
+        updateUrlParam('Status', filterParams.PaymentStatus);
     } else {
         updateUrlParam('Status', null);
     }
-    updateUrlParam('page', 1); // Reset page
-    currentPage = 1;
-
-    await loadOrders();
-}
-
-async function resetFilters() {
-    document.getElementById('searchInput').value = '';
-    document.getElementById('statusFilter').value = 'all';
-    updateUrlParam('search', null);
-    updateUrlParam('Status', null);
     updateUrlParam('page', 1);
     currentPage = 1;
-    await loadOrders();
+
+    await loadOrdersWithFilters(filterParams);
 }
 
-async function loadOrders() {
+async function loadOrdersWithFilters(filterParams) {
     try {
         showLoadingState(true);
-
-        const filterParams = {
-            search: getUrlParam('search') || '',
-            page: currentPage,
-            pageSize
-        };
-
-        // Status from URL (int)
-        const statusEnum = getUrlParam('Status');
-        if (statusEnum && statusEnum !== '0') {
-            filterParams.Status = parseInt(statusEnum);
-        }
 
         const response = await apiService.getOrders(filterParams);
 
@@ -106,13 +111,53 @@ async function loadOrders() {
 
         renderOrders(allOrders);
         updatePagination();
-
         showLoadingState(false);
     } catch (error) {
         handleApiError(error);
         showLoadingState(false);
     }
 }
+
+async function resetFilters() {
+    document.getElementById('searchInput').value = '';
+    document.getElementById('statusFilter').value = 'all';
+    updateUrlParam('search', null);
+    updateUrlParam('Status', null);
+    updateUrlParam('page', 1);
+    currentPage = 1;
+    
+    // ✅ ФИКС: Сбрасываем с сортировкой по UpdatedAt
+    await loadOrdersWithFilters({
+        page: 1,
+        pageSize: pageSize,
+        sortBy: 'UpdatedAt',
+        sortDesc: true
+    });
+}
+
+async function loadOrders() {
+    // ✅ ФИКС: Всегда сортируем по UpdatedAt DESC
+    const filterParams = {
+        page: currentPage,
+        pageSize: pageSize,
+        sortBy: 'UpdatedAt',
+        sortDesc: true
+    };
+
+    const search = getUrlParam('search');
+    const statusEnum = getUrlParam('Status');
+
+    if (search) {
+        filterParams.SearchQuery = search;
+    }
+
+    if (statusEnum && statusEnum !== '0') {
+        filterParams.PaymentStatus = parseInt(statusEnum);
+    }
+
+    await loadOrdersWithFilters(filterParams);
+}
+
 
 function renderOrders(orders) {
     const tbody = document.getElementById('ordersTableBody');
@@ -154,7 +199,7 @@ async function deleteOrder(orderId) {
         return;
     }
 
-    const confirmed = confirm(`Удалить заказ №${order.orderNumber || 'N/A'}? Переместится в архив.`); // Simple confirm; modal later
+    const confirmed = confirm(`Удалить заказ №${order.orderNumber || 'N/A'}? Переместится в архив.`);
     if (confirmed) {
         try {
             await apiService.deleteOrder(orderId);

@@ -4,6 +4,26 @@ import { formatDate, escapeHtml, getPaymentStatus, getPaymentStatusText, getUser
 
 document.addEventListener('DOMContentLoaded', () => {
     PageManager.initialize('dashboard', loadDashboardData);
+    
+    // ФИКС: Прямой обработчик для кнопки выхода
+    const logoutBtn = document.getElementById('logoutBtn');
+    if (logoutBtn) {
+        logoutBtn.addEventListener('click', () => {
+            console.log('Logout button clicked'); // для отладки
+            localStorage.removeItem('token');
+            localStorage.removeItem('userData');
+            localStorage.removeItem('orderFilters');
+            localStorage.removeItem('lastOrderView');
+            window.location.href = 'login.html';
+        });
+    }
+    
+    // Инициализация пользовательского интерфейса
+    const userData = JSON.parse(localStorage.getItem('userData') || '{}');
+    const userNameElement = document.getElementById('userName');
+    if (userNameElement && userData.fullName) {
+        userNameElement.textContent = userData.fullName;
+    }
 })
 
 async function loadDashboardData() {

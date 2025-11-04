@@ -1,18 +1,8 @@
+// utils.js — Centralized helpers for formatting, DOM, forms, API errors, nav, etc.
+// All functions are pure/exported for modular use. No globals except where legacy.
+
 // ====== ФОРМАТИРОВАНИЕ ======
-
 export function formatDate(dateString) {
-    if (!dateString) return '—';
-    try { return new Date(dateString).toLocaleDateString('ru-RU'); } catch { return '—'; }
-}
-
-export function formatFileSize(bytes) {
-    if (!bytes) return '0 B';
-    if (bytes < 1024) return bytes + ' B';
-    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
-    return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
-}
-
-export function formatDateTime(dateString) {
     if (!dateString) return '—';
     try { return new Date(dateString).toLocaleDateString('ru-RU'); } catch { return '—'; }
 }
@@ -26,14 +16,12 @@ export function formatPhone(phone) {
 }
 
 export function normalizePhone(phone) {
-    if (!phone) return '';
-    return String(phone).trim().replace(/\D/g, '');
+    return phone ? String(phone).trim().replace(/\D/g, '') : '';
 }
 
 export function formatCurrency(amount) {
-    if (amount === null || amount === undefined || isNaN(amount)) return '0 ₽';
-    const formatted = Math.abs(Number(amount)).toLocaleString('ru-RU');
-    return `${formatted} ₽`;
+    if (amount == null || isNaN(amount)) return '0 ₽';
+    return `${Math.abs(Number(amount)).toLocaleString('ru-RU')} ₽`;
 }
 
 // ====== БЕЗОПАСНОСТЬ HTML ======
@@ -45,20 +33,14 @@ export function escapeHtml(text) {
 }
 
 export function sanitizeInput(input) {
-    if (!input) return '';
-    return String(input).trim().replace(/[<>]/g, '');
+    return input ? String(input).trim().replace(/[<>]/g, '') : '';
 }
 
 // ====== РАБОТА С ФОРМАМИ ======
 export function getFormValue(elementId) {
     const element = document.getElementById(elementId);
     if (!element) return '';
-
-    const value = element.tagName === 'INPUT' || element.tagName === 'TEXTAREA' || element.tagName === 'SELECT' 
-        ? (element.value || '') 
-        : (element.textContent || element.innerText || '');
-    
-    return value.trim();
+    return (element.value || element.textContent || '').trim();
 }
 
 export function setFormValue(elementId, value) {
@@ -67,9 +49,7 @@ export function setFormValue(elementId, value) {
 }
 
 export function valueOrNull(id) {
-    const el = document.getElementById(id);
-    if (!el) return null;
-    const v = el.value.trim();
+    const v = getFormValue(id);
     return v === '' ? null : v;
 }
 
@@ -81,156 +61,44 @@ export function clearForm(formId) {
 export function populateForm(formId, data) {
     const form = document.getElementById(formId);
     if (!form || !data) return;
-    for (const [key, value] of Object.entries(data)) {
+    Object.entries(data).forEach(([key, value]) => {
         const input = form.querySelector(`[name="${key}"]`) || document.getElementById(key);
         if (input) {
             if (input.type === 'checkbox') input.checked = !!value;
             else input.value = value || '';
         }
-    }
+    });
 }
 
-// ====== ВРЕМЕННЫЕ СООБЩЕНИЯ ======
+// ====== ВРЕМЕННЫЕ СООБЩЕНИЯ (TOASTS) ======
 export function showTempMessage(message, type = 'success', duration = 3000) {
     const messageEl = document.createElement('div');
     messageEl.className = `temp-message temp-message-${type}`;
-    messageEl.innerHTML = `<span>${escapeHtml(message)}</span>`;
+    messageEl.setAttribute('role', 'alert');
+    messageEl.innerHTML = `<span>${escapeHtml(message)}</span><button class="close" aria-label="Закрыть">&times;</button>`;
     
-    // Убрал background: transparent — теперь CSS работает
-    messageEl.style.cssText = `
-        position: fixed; top: 20px; right: 20px; z-index: 10001;
-        transform: translateX(100%); transition: transform 0.3s ease;
-        cursor: pointer; min-width: 300px;
-    `;
-    
-    document.body.appendChild(messageEl);
-    
-    // Force class и debug
-    messageEl.classList.add('temp-message', `temp-message-${type}`);
-    setTimeout(() => {
-        console.log('Toast classes:', messageEl.className);
-        console.log('Toast bg:', window.getComputedStyle(messageEl).backgroundColor);  // Теперь rgb(239, 68, 68)
-    }, 100);
-    
-    setTimeout(() => messageEl.style.transform = 'translateX(0)', 10);
-    
-    const timer = setTimeout(() => {
-        messageEl.style.transform = 'translateX(100%)';
-        setTimeout(() => messageEl.remove(), 300);
-    }, duration);
-    
-    messageEl.addEventListener('click', () => {
-        clearTimeout(timer);
-        messageEl.style.transform = 'translateX(100%)';
-        setTimeout(() => messageEl.remove(), 300);
+    messageEl.addEventListener('click', (e) => {
+        if (e.target.classList.contains('close')) messageEl.remove();
     });
     
-    return { close: () => { clearTimeout(timer); messageEl.style.transform = 'translateX(100%)'; setTimeout(() => messageEl.remove(), 300); } };
-}
-
-// ====== РАБОТА С ДАТАМИ ======
-
-export function getTodayDate() {
-    return new Date().toISOString().split('T')[0];
-}
-
-export function isToday(dateString) {
-    if (!dateString) return false;
-    const today = new Date().toDateString();
-    const compareDate = new Date(dateString).toDateString();
-    return today === compareDate;
-}
-
-export function getDaysDifference(dateString) {
-    if (!dateString) return 0;
-    const date = new Date(dateString);
-    const today = new Date();
-    const diffTime = today - date;
-    return Math.floor(diffTime / (1000 * 60 * 60 * 24));
-}
-
-// ====== ОПТИМИЗАЦИЯ ======
-
-export function debounce(func, wait) {
-    let timeout;
-    return function executedFunction(...args) {
-        const later = () => {
-            clearTimeout(timeout);
-            func(...args);
-        };
-        clearTimeout(timeout);
-        timeout = setTimeout(later, wait);
-    };
-}
-
-export function throttle(func, limit) {
-    let inThrottle;
-    return function(...args) {
-        if (!inThrottle) {
-            func.apply(this, args);
-            inThrottle = true;
-            setTimeout(() => inThrottle = false, limit);
-        }
-    };
-}
-
-// ====== ВАЛИДАЦИЯ ======
-
-export function isValidEmail(email) {
-    if (!email) return false;
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    return emailRegex.test(email);
-}
-
-export function isValidPhone(phone) {
-    if (!phone) return false;
-    const digits = phone.replace(/\D/g, '');
-    return digits.length === 10 || digits.length === 11;
-}
-
-export function isNumeric(value) {
-    if (!value) return false;
-    return !isNaN(parseFloat(value)) && isFinite(value);
-}
-
-// ====== РАБОТА С МАССИВАМИ И ОБЪЕКТАМИ ======
-
-export function deepClone(obj) {
-    if (obj === null || typeof obj !== 'object') return obj;
-    if (obj instanceof Date) return new Date(obj);
-    if (obj instanceof Array) return obj.map(item => deepClone(item));
+    document.body.appendChild(messageEl);
+    requestAnimationFrame(() => messageEl.classList.add('show')); // Smooth enter
     
-    const cloned = {};
-    for (const key in obj) {
-        if (obj.hasOwnProperty(key)) {
-            cloned[key] = deepClone(obj[key]);
-        }
-    }
-    return cloned;
+    setTimeout(() => {
+        messageEl.classList.remove('show');
+        setTimeout(() => messageEl.remove(), 300); // Exit anim
+    }, duration);
 }
 
-export function arrayToObject(array, keyField) {
-    if (!Array.isArray(array)) return {};
-    return array.reduce((obj, item) => {
-        obj[item[keyField]] = item;
-        return obj;
-    }, {});
-}
-
-// ====== РАБОТА С DOM ======
-
+// ====== DOM UTILS ======
 export function showElement(elementId) {
     const element = document.getElementById(elementId);
-    if (element) {
-        element.style.display = 'block';
-    }
+    if (element) element.style.display = 'block';
 }
 
 export function hideElement(elementId) {
     const element = document.getElementById(elementId);
-    if (element) {
-        element.style.display = 'none';
-    }
+    if (element) element.style.display = 'none';
 }
 
 export function toggleElement(elementId) {
@@ -242,46 +110,29 @@ export function toggleElement(elementId) {
 
 export function setElementText(elementId, text) {
     const element = document.getElementById(elementId);
-    if (element) {
-        element.textContent = text;
-    }
+    if (element) element.textContent = text;
 }
 
-export function setElementHTML(elementId, html) {
-    const element = document.getElementById(elementId);
-    if (element) {
-        element.innerHTML = html;
-    }
-}
-
-// ====== СТАТУСЫ И ЦВЕТА ======
-
+// ====== СТАТУСЫ ЗАКАЗОВ ======
 export function getPaymentStatus(order) {
-    if (!order || !order.payments) return 'not_paid';
-    
+    if (!order?.payments) return 'not_paid';
     const payments = Array.isArray(order.payments) ? order.payments : [];
-    const totalPaid = payments.reduce((sum, payment) => sum + (Number(payment.amount) || 0), 0);
-    
-    const totalPrice = order.workItems?.reduce((sum, item) => {
-        return sum + (Number(item.price) || 0) * (Number(item.quantity) || 1);
-    }, 0) || 0;
+    const totalPaid = payments.reduce((sum, p) => sum + Number(p.amount || 0), 0);
+    const totalPrice = (order.workItems || []).reduce((sum, i) => sum + (Number(i.price || 0) * Number(i.quantity || 1)), 0);
     
     if (totalPaid === 0) return 'not_paid';
     if (totalPaid < totalPrice) return 'partial';
-    if (totalPaid === totalPrice) return 'paid';
-    if (totalPaid > totalPrice) return 'overpaid';
+    if (totalPaid >= totalPrice) return 'paid';
     return 'not_paid';
 }
 
 export function getPaymentStatusText(order) {
-    const status = getPaymentStatus(order);
     const statusMap = {
         'not_paid': 'Не оплачено',
-        'partial': 'Частично оплачено', 
-        'paid': 'Оплачено',
-        'overpaid': 'Переплачено'
+        'partial': 'Частично оплачено',
+        'paid': 'Оплачено'
     };
-    return statusMap[status] || 'Не оплачено';
+    return statusMap[getPaymentStatus(order)] || 'Не оплачено';
 }
 
 export function getStatusBadgeClass(status) {
@@ -289,7 +140,6 @@ export function getStatusBadgeClass(status) {
         'not_paid': 'status-unpaid',
         'partial': 'status-partial',
         'paid': 'status-paid',
-        'overpaid': 'status-overpaid', 
         'Новый': 'status-new'
     };
     return classMap[status] || 'status-default';
@@ -297,35 +147,33 @@ export function getStatusBadgeClass(status) {
 
 // ====== ПОЛУЧЕНИЕ ИМЕНИ МЕНЕДЖЕРА ИЗ ЗАКАЗА ======
 export function getUserNameFromOrder(order) {
-    if (!order) return 'Неизвестно';
-    return order.managerFullName || 'Неизвестно';
+    return order?.managerFullName || 'Неизвестно';
+}
+
+export function isAdmin() {
+    const user = JSON.parse(localStorage.getItem('userData') || 'null');
+    return user?.role === 'Admin';
 }
 
 // ====== URL И ПАРАМЕТРЫ ======
-
 export function getUrlParam(param) {
-    const urlParams = new URLSearchParams(window.location.search);
-    return urlParams.get(param);
+    return new URLSearchParams(window.location.search).get(param);
 }
 
 export function updateUrlParam(param, value) {
     const url = new URL(window.location);
-    if (value) {
-        url.searchParams.set(param, value);
-    } else {
-        url.searchParams.delete(param);
-    }
+    if (value) url.searchParams.set(param, value);
+    else url.searchParams.delete(param);
     window.history.pushState({}, '', url);
 }
 
 // ====== ЛОКАЛЬНОЕ ХРАНИЛИЩЕ ======
-
 export function saveToStorage(key, data) {
     try {
         localStorage.setItem(key, JSON.stringify(data));
         return true;
     } catch (error) {
-        console.error('Error saving to localStorage:', error);
+        console.error('Storage save error:', error);
         return false;
     }
 }
@@ -335,7 +183,7 @@ export function loadFromStorage(key) {
         const data = localStorage.getItem(key);
         return data ? JSON.parse(data) : null;
     } catch (error) {
-        console.error('Error loading from localStorage:', error);
+        console.error('Storage load error:', error);
         return null;
     }
 }
@@ -345,20 +193,20 @@ export function removeFromStorage(key) {
         localStorage.removeItem(key);
         return true;
     } catch (error) {
-        console.error('Error removing from localStorage:', error);
+        console.error('Storage remove error:', error);
         return false;
     }
 }
 
 // ====== ОБРАБОТКА ОШИБОК ======
-
 export function handleApiError(error) {
     console.error('API Error:', error);
     
     let message = 'Произошла ошибка';
     if (error.status === 401) {
         message = 'Требуется авторизация';
-        handleLogout();
+        // handleLogout из auth.js (fallback)
+        if (typeof window.handleLogout === 'function') window.handleLogout();
     } else if (error.status === 403) {
         message = 'Доступ запрещен';
     } else if (error.message) {
@@ -367,4 +215,176 @@ export function handleApiError(error) {
     
     showTempMessage(message, 'error');
     return message;
+}
+
+// ====== МАППЕР ДЛЯ ENUM БЭКА ======
+export function mapStatusToEnum(status) {
+    // Строка → int по PaymentStatus enum
+    const map = {
+        'all': 0,      // All
+        'not_paid': 1, // NotPaid
+        'partial': 2,  // Partial
+        'paid': 3,     // Paid
+        'overpaid': 4  // Overpaid
+    };
+    return map[status] ?? null; // null = skip param (all)
+}
+
+// ====== ЛAYOUT & NAVIGATION ======
+export function initLayout(userData, pageType = 'default') {
+    // User UI
+    const userNameElement = document.getElementById('userName');
+    if (userNameElement) {
+        userNameElement.textContent = userData.fullName || userData.username || 'Пользователь';
+    }
+
+    // Admin toggle
+    if (userData.role === 'Admin') {
+        document.querySelectorAll('.admin-only').forEach(el => el.style.display = 'block');
+    }
+
+    // Logout
+    const logoutBtn = document.getElementById('logoutBtn');
+    if (logoutBtn) {
+        logoutBtn.addEventListener('click', () => {
+            if (typeof window.handleLogout === 'function') window.handleLogout();
+        });
+    }
+
+    // Nav toggle
+    const burger = document.getElementById('burgerBtn') || document.querySelector('.burger-btn');
+    if (burger) {
+        burger.addEventListener('click', () => toggleNav());
+    }
+
+    // Nav links: close mobile, set active
+    document.querySelectorAll('.nav-item').forEach(item => {
+        item.addEventListener('click', (e) => {
+            if (window.innerWidth <= 768) toggleNav(false); // Close
+            document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
+            item.classList.add('active');
+        });
+        if (item.dataset.page === pageType) item.classList.add('active');
+    });
+
+    // Resize handler
+    let resizeTimeout;
+    window.addEventListener('resize', () => {
+        clearTimeout(resizeTimeout);
+        resizeTimeout = setTimeout(() => {
+            if (window.innerWidth > 768) toggleNav(false);
+        }, 250);
+    });
+}
+
+export function toggleNav(open = null) {
+    const sidebar = document.getElementById('sidebar') || document.querySelector('.sidebar');
+    const main = document.getElementById('mainContent') || document.querySelector('.main-content');
+    const burger = document.getElementById('burgerBtn') || document.querySelector('.burger-btn');
+    const isOpen = sidebar?.classList.contains('open') || false;
+
+    if (open !== null) {
+        if (open && !isOpen) {
+            sidebar?.classList.add('open');
+            main?.classList.add('shifted');
+            burger?.setAttribute('aria-expanded', 'true');
+            createBackdrop();
+        } else if (!open && isOpen) {
+            sidebar?.classList.remove('open');
+            main?.classList.remove('shifted');
+            burger?.setAttribute('aria-expanded', 'false');
+            removeBackdrop();
+        }
+        return;
+    }
+
+    // Toggle
+    sidebar?.classList.toggle('open');
+    main?.classList.toggle('shifted');
+    burger?.setAttribute('aria-expanded', !isOpen);
+    if (sidebar?.classList.contains('open')) createBackdrop();
+    else removeBackdrop();
+}
+
+function createBackdrop() {
+    let backdrop = document.querySelector('.sidebar-backdrop');
+    if (!backdrop) {
+        backdrop = document.createElement('div');
+        backdrop.className = 'sidebar-backdrop';
+        backdrop.style.cssText = 'position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1001;';
+        backdrop.addEventListener('click', () => toggleNav(false));
+        document.body.appendChild(backdrop);
+    }
+}
+
+function removeBackdrop() {
+    const backdrop = document.querySelector('.sidebar-backdrop');
+    if (backdrop) backdrop.remove();
+}
+
+// ====== УТИЛИТЫ ======
+export function isToday(dateString) {
+    if (!dateString) return false;
+    const today = new Date().toDateString();
+    const orderDate = new Date(dateString).toDateString();
+    return today === orderDate;
+}
+
+export function debounce(func, delay) {
+    let timeoutId;
+    return (...args) => {
+        clearTimeout(timeoutId);
+        timeoutId = setTimeout(() => func.apply(this, args), delay);
+    };
+}
+
+// ====== ДАТЫ ======
+export function getTodayDate() {
+    return new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+}
+
+// ====== ВАЛИДАЦИЯ ======
+export function isValidEmail(email) {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+}
+
+export function isValidPhone(phone) {
+    return /^\+?[\d\s\-\(\)]{10,}$/.test(phone);
+}
+
+export function getOrderStatusText(status) {
+    const map = {
+        0: 'Новый',
+        1: 'В работе',
+        2: 'Завершен',
+        3: 'Отменен'  // Расширьте по enum OrderStatus из бэка (из OrdersController: OrderStatus.Новый = 0, etc.)
+    };
+    return map[status] || 'Неизвестно';
+}
+
+export function getOrderStatusBadge(status) {
+    const map = {
+        0: 'bg-info',
+        1: 'bg-warning',
+        2: 'bg-success',
+        3: 'bg-danger'
+    };
+    return map[status] || 'bg-secondary';
+}
+
+export function formatPaymentType(typeOrNote) {
+    if (!typeOrNote) return '—';
+    const lower = String(typeOrNote).toLowerCase().trim();
+    if (lower.includes('аванс') || lower.includes('advance')) return 'Аванс';
+    if (lower.includes('доплата') || lower.includes('доплат') || lower.includes('additional')) return 'Доплата';
+    return escapeHtml(typeOrNote.slice(0, 20) + (typeOrNote.length > 20 ? '...' : ''));  // Fallback: укоротить note
+}
+
+// formatFileSize уже есть — убедись, что экспортирована
+export function formatFileSize(bytes) {
+    if (!bytes) return '0 B';
+    const units = ['B', 'KB', 'MB'];
+    let i = 0;
+    while (bytes >= 1024 && i < units.length - 1) { bytes /= 1024; i++; }
+    return `${bytes.toFixed(1)} ${units[i]}`;
 }

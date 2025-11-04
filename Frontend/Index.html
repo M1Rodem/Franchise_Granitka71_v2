@@ -4,12 +4,14 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Granitka71 - Управление заказами</title>
-    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="CSS/style.css">
+    <meta name="theme-color" content="#2e8b57">
 </head>
 <body>
-    <script>
-        // Проверяем авторизацию и редиректим
-        if (localStorage.getItem('token')) {
+    <script type="module">
+        import { checkAuth } from './js/auth.js';
+        const user = checkAuth();
+        if (user) {
             window.location.href = 'dashboard.html';
         } else {
             window.location.href = 'login.html';

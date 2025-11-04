@@ -1,76 +1,71 @@
 import { apiService } from './api.js';
-import { showTempMessage } from './utils.js';
+import { showTempMessage, handleApiError } from './utils.js';
 
-document.addEventListener('DOMContentLoaded', function() {
+let submitDebounce = null; // Для анти-спама
+
+document.addEventListener('DOMContentLoaded', () => {
     const loginForm = document.getElementById('loginForm');
-
-    // Проверяем существующую авторизацию
-    checkExistingAuth();
+    checkExistingAuth(); // Проверяем на старте
 
     if (loginForm) {
-        loginForm.addEventListener('submit', handleLogin);
+        loginForm.addEventListener('submit', handleSubmitDebounced);
     }
 });
 
-async function handleLogin(e) {  // e — событие submit (event), async — для await API
-    e.preventDefault();  // Шаг 1: Останавливаем стандартное поведение формы (не перезагружаем страницу)
-    
-    // Шаг 2: Получаем данные из полей (trim() убирает пробелы)
-    const username = document.getElementById('username').value.trim();
-    const password = document.getElementById('password').value;  // Пароль без trim, чтобы не сломать
-    const submitButton = loginForm.querySelector('button[type="submit"]');  // Кнопка для loading
+function handleSubmitDebounced(e) {
+    // Debounce: 500ms задержка на повторные submit
+    if (submitDebounce) return;
+    submitDebounce = setTimeout(() => { submitDebounce = null; }, 500);
+    handleLogin(e);
+}
 
-    // Шаг 3: Простая валидация (если поля пустые — ошибка, не отправляем)
+async function handleLogin(e) {
+    e.preventDefault();
+    
+    const username = document.getElementById('username').value.trim();
+    const password = document.getElementById('password').value;
+    const submitButton = document.querySelector('#loginForm button[type="submit"]');
+
     if (!username || !password) {
-        showTempMessage('Заполните все поля', 'error');  // Toast-уведомление из utils.js
-        return;  // Выходим, не продолжаем
+        showTempMessage('Заполните все поля', 'error');
+        return;
     }
 
-    try {  // Шаг 4: Основная логика (try — "попробуй", если ошибка — catch)
-        // Показываем loading на кнопке (спиннер, disable)
+    try {
         setLoadingState(submitButton, true);
-        hideError();  // Скрываем старые ошибки (если были)
 
-        // Шаг 5: Отправляем на API (await — ждём ответа от бэка)
-        const result = await apiService.login({ username, password });  // api.js — твой сервис для POST /auth/login
+        const result = await apiService.login({ username, password });
         
-        // Шаг 6: Если успех — сохраняем в localStorage (токен уже в apiService.setToken, но userData для UI)
-        localStorage.setItem('userData', JSON.stringify({  // JSON.stringify — чтобы сохранить объект как строку
+        // Сохраняем userData (токен уже в apiService)
+        localStorage.setItem('userData', JSON.stringify({
             id: result.id,
             username: result.username,
-            fullName: result.fullName,  // Для показа "Привет, Иван!" в header
-            role: result.role  // Для админ-меню (users.html)
+            fullName: result.fullName,
+            role: result.role
         }));
         
-        // Шаг 7: Редирект на дашборд (успех!)
         window.location.href = 'dashboard.html';
         
-    } catch (error) {  // Шаг 8: Если API вернул ошибку (401/403 или сеть)
-        
-        // Шаг 9: Умная обработка (какой статус — такая ошибка)
-        let errorMessage = 'Ошибка входа';  // Дефолт
-        if (error.status === 401) {  // Неправильный логин/пароль
-            errorMessage = 'Неверный логин или пароль';
-        } else if (error.status === 403) {  // Заблокирован
-            errorMessage = 'Аккаунт заблокирован';
-        } else if (error.message) {  // Любая кастомная из API
-            errorMessage = error.message;
-        }
-        
-        showTempMessage(errorMessage, 'error');  // Toast с ошибкой (красный)
-        
-    } finally {  // Шаг 10: Всегда выполняется (успех или ошибка) — снимаем loading
+    } catch (error) {
+        handleApiError(error); // Centralized handling
+    } finally {
         setLoadingState(submitButton, false);
     }
 }
 
 function checkExistingAuth() {
-    // Если пользователь уже авторизован и находится на странице логина - редирект
     const token = localStorage.getItem('token');
-    const userData = localStorage.getItem('userData');
+    const userDataStr = localStorage.getItem('userData');
     
-    if (token && userData && window.location.pathname.includes('login.html')) {
-        window.location.href = 'dashboard.html';
+    if (token && userDataStr && window.location.pathname.includes('login.html')) {
+        try {
+            JSON.parse(userDataStr); // Валидация
+            window.location.href = 'dashboard.html';
+        } catch {
+            // Invalid — clear и stay
+            localStorage.removeItem('token');
+            localStorage.removeItem('userData');
+        }
     }
 }
 
@@ -79,59 +74,47 @@ function setLoadingState(button, isLoading) {
     
     if (isLoading) {
         button.disabled = true;
-        button.classList.add('loading');  // CSS spinner!
-        button.textContent = 'Вход...';  // Text remains, spinner after
+        button.classList.add('loading');
+        button.textContent = 'Вход...';
+        button.setAttribute('aria-busy', 'true');
     } else {
         button.disabled = false;
         button.classList.remove('loading');
         button.textContent = 'Войти';
+        button.removeAttribute('aria-busy');
     }
 }
 
-function hideError() {
-    const errorMessage = document.getElementById('error-message');
-    if (errorMessage) {
-        errorMessage.style.display = 'none';
-        errorMessage.textContent = '';
-    }
-}
-
-// Глобальная функция для проверки авторизации на других страницах (экспорт для модулей)
+// Экспорты для других модулей
 export function checkAuth() {
     const token = localStorage.getItem('token');
-    const userData = localStorage.getItem('userData');
+    const userDataStr = localStorage.getItem('userData');
     
-    if (!token || !userData) {
-        // Если нет токена или данных пользователя - на логин
+    if (!token || !userDataStr) {
         window.location.href = 'login.html';
         return null;
     }
     
     try {
-        return JSON.parse(userData);
-    } catch (error) {
+        return JSON.parse(userDataStr);
+    } catch {
+        localStorage.removeItem('token');
+        localStorage.removeItem('userData');
         window.location.href = 'login.html';
         return null;
     }
 }
 
-// Функция для выхода (экспорт)
 export function handleLogout() {
-    // Очищаем все связанные данные
     localStorage.removeItem('token');
     localStorage.removeItem('userData');
     localStorage.removeItem('orderFilters');
     localStorage.removeItem('lastOrderView');
     
-    // Делаем запрос на сервер для выхода
-    apiService.logout().catch(error => {
-        console.warn('Ошибка при выходе:', error);
-    });
-    
-    // Редирект на страницу логина
+    apiService.logout().catch(console.warn);
     window.location.href = 'login.html';
 }
 
-// Глобальные для legacy (HTML onclick)
+// Legacy globals (удалить в v2)
 window.checkAuth = checkAuth;
 window.handleLogout = handleLogout;

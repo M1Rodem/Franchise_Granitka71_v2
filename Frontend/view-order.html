@@ -36,31 +36,57 @@
         <div class="container">
             <div class="page-header">
                 <h1>Просмотр заказа</h1>
-                <a href="orders.html" class="btn btn-outline">← Назад</a>
+                <a href="orders.html" class="btn btn-outline back-btn">← Назад</a>
             </div>
 
-            <div id="orderView" class="card" style="padding:1rem;">
-                Загрузка...
-            </div>
-            <div class="card photo-section" style="padding:1rem; margin-top:1rem;">
-                <h3>Фотографии</h3>
-                
-                <div id="orderPhotos" class="photo-preview">
-                    Загрузка фотографий...
+            <div id="loadingSpinner" class="loading-spinner" role="status" aria-live="polite">Загрузка...</div>
+
+            <div id="orderContainer" class="order-container" role="region" aria-label="Детали заказа">
+                <!-- Основные детали (рендерятся в #orderView) -->
+                <div id="orderView" class="order-view card" aria-labelledby="order-header">
+                    <!-- JS вставит сюда детали заказа -->
                 </div>
-            </div>
 
-            <div style="margin-top:1rem;">
-                <button id="editBtn" class="btn btn-primary">Редактировать</button>
-                <button id="deleteBtn" class="btn btn-danger">Удалить</button>
+                <!-- Работы (accordion для компактности и мобильности) -->
+                <details class="accordion-section" open>
+                    <summary class="accordion-summary">Работы по заказу</summary>
+                    <div id="workItemsContainer" class="section-content no-data" role="region" aria-label="Список работ">
+                        Нет работ
+                    </div>
+                </details>
+
+                <!-- Платежи -->
+                <details class="accordion-section" open>
+                    <summary class="accordion-summary">Платежи</summary>
+                    <div id="paymentsContainer" class="section-content no-data" role="region" aria-label="Список платежей">
+                        Нет платежей
+                    </div>
+                </details>
+
+                <!-- Фото (открыто по умолчанию) -->
+                <details class="accordion-section photo-accordion" open>
+                    <summary class="accordion-summary">Фотографии</summary>
+                    <div id="orderPhotos" class="photo-preview section-content" role="region" aria-label="Галерея фотографий">
+                        Нет фотографий
+                    </div>
+                </details>
+
+                <div class="action-buttons">
+                    <button id="editBtn" class="btn btn-primary" aria-label="Редактировать заказ">Редактировать</button>
+                    <button id="deleteBtn" class="btn btn-danger" aria-label="Удалить заказ">Удалить</button>
+                </div>
             </div>
         </div>
     </main>
-    <div id="photoModal" class="modal" style="display:none;">
+
+    <!-- Модальное окно для просмотра фото (CSS-классы для анимации и стилей) -->
+    <div id="photoModal" class="modal" role="dialog" aria-modal="true" aria-labelledby="modalCaption" tabindex="-1">
+        <div class="modal-overlay" aria-label="Закрыть модальное окно" data-close-modal></div>
         <div class="modal-content">
-            <span class="close">&times;</span>
-            <img id="modalImage" src="" alt="Фото заказа" style="max-width:100%; max-height:80vh;">
-            <div id="modalCaption"></div>
+            <button class="modal-close" aria-label="Закрыть" data-close-modal>&times;</button>
+            <img id="modalImage" src="" alt="" class="modal-image" loading="lazy">
+            <div id="modalCaption" class="modal-caption"></div>
+            <button id="modalDownload" class="btn btn-outline btn-download" aria-label="Скачать фото">Скачать</button>
         </div>
     </div>
 

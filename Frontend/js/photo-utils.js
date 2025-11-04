@@ -129,7 +129,7 @@ export async function uploadTempAndDisplay(file) {
 /**
  * Открытие фото в модальном окне
  */
-export function openPhotoPreview(imageSrc, fileName, photoId = null) {
+export function openPhotoPreview(imageSrc, fileName, photoId = null, orderNumber = null, photoIndex = null) {
     const modal = document.createElement('div');
     modal.className = 'photo-modal-overlay';
     modal.style.cssText = `
@@ -220,15 +220,14 @@ export function openPhotoPreview(imageSrc, fileName, photoId = null) {
     });
     document.addEventListener('keydown', handleKeydown);
     
+    // ИСПРАВЛЕННЫЙ ОБРАБОТЧИК СКАЧИВАНИЯ
     modal.querySelector('.photo-modal-download').addEventListener('click', async (e) => {
         e.stopPropagation();
         try {
-            // Если photoId передан - используем его, иначе пытаемся извлечь из URL
             let actualPhotoId = photoId;
             if (!actualPhotoId && imageSrc.includes('/')) {
-                // Пытаемся извлечь ID из URL (для обычных фото, не blob)
                 const urlParts = imageSrc.split('/');
-                actualPhotoId = urlParts[urlParts.length - 1];
+                actualPhotoId = parseInt(urlParts[urlParts.length - 1]);
             }
             
             if (!actualPhotoId) {
@@ -236,9 +235,11 @@ export function openPhotoPreview(imageSrc, fileName, photoId = null) {
                 return;
             }
             
-            await downloadPhoto(actualPhotoId, fileName);
+            // ПЕРЕДАЕМ ВСЕ ПАРАМЕТРЫ
+            await downloadPhoto(actualPhotoId, fileName, orderNumber, photoIndex);
         } catch (error) {
-            showTempMessage('Ошибка скачивания', 'error');
+            console.error('Download error in modal:', error);
+            showTempMessage('Ошибка скачивания: ' + error.message, 'error');
         }
     });
 }
@@ -246,23 +247,28 @@ export function openPhotoPreview(imageSrc, fileName, photoId = null) {
 /**
  * Рендер сетки фото
  */
-export async function renderPhotoGrid(photos, containerId, mode = 'view') {
+export async function renderPhotoGrid(photos, containerId, options = {}) {
     const container = document.getElementById(containerId);
     if (!container) return;
     container.innerHTML = '';
     
-    for (const photo of photos) {
+    // ДОБАВИТЬ эту строку:
+    const { mode = 'view', orderNumber } = options;
+    
+    for (let i = 0; i < photos.length; i++) {
+        const photo = photos[i];
         const photoItem = document.createElement('div');
         photoItem.className = 'photo-item';
         photoItem.dataset.photoId = photo.id;
+        photoItem.dataset.photoIndex = i + 1;
         
-        // ДЛЯ РЕЖИМА РЕДАКТИРОВАНИЯ - добавляем data-server-id
-        if (mode === 'edit') {
-            photoItem.dataset.serverId = photo.id;
+        // Сохраняем номер заказа если передан
+        if (orderNumber) {
+            photoItem.dataset.orderNumber = orderNumber;
         }
         
         try {
-            const imageUrl = await apiService.getPhotoFile(photo.id);
+            const imageUrl = await apiService.getPhotoUrl(photo.id);
             
             photoItem.innerHTML = `
                 <div class="photo-container">
@@ -396,9 +402,11 @@ export function clearTempPhotos() {
 /**
  * Event delegation для фото (убрал onclick, используй в create-order)
  */
-export function attachPhotoEvents(containerId) {
+export function attachPhotoEvents(containerId, options = {}) {
     const container = document.getElementById(containerId);
     if (!container) return;
+    
+    const { mode = 'view', orderNumber } = options;
     
     container.addEventListener('click', async (e) => {
         e.preventDefault();
@@ -430,20 +438,33 @@ export function attachPhotoEvents(containerId) {
         const imageUrl = imgElement?.src;
         const fileName = imgElement?.alt || 'Фото';
         const photoId = photoItem.dataset.photoId;
+        const photoIndex = photoItem.dataset.photoIndex;
         
         if (imageUrl) {
-            openPhotoPreview(imageUrl, fileName, photoId);
+            openPhotoPreview(imageUrl, fileName, photoId, orderNumber, photoIndex);
         }
     });
 }
 
-async function downloadPhoto(photoId, fileName) {
+async function downloadPhoto(photoId, fileName, orderNumber = null, photoIndex = null) {
     try {
-        await apiService.downloadPhoto(photoId, fileName);
-        showTempMessage(`Скачано: ${escapeHtml(fileName || 'Фото')}`, 'success');
+        
+        let finalFileName = fileName;
+        
+        // Формируем имя файла по шаблону Order_123_1.jpg
+        if (orderNumber && photoIndex) {
+            const extension = fileName ? fileName.split('.').pop() : 'jpg';
+            finalFileName = `Order_${orderNumber}_${photoIndex}.${extension}`;
+        }
+        
+        await apiService.downloadPhoto(photoId, finalFileName);
+        
+        showTempMessage(`Скачано: ${escapeHtml(finalFileName)}`, 'success');
     } catch (error) {
-        console.error('Download error:', error);
+        console.error('Download error details:', error);
+        console.error('Error stack:', error.stack);
         showTempMessage('Ошибка скачивания: ' + error.message, 'error');
+        throw error;
     }
 }
 

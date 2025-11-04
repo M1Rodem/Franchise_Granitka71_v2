@@ -6,60 +6,23 @@
 }
 
 :root {
-    /* Подпилка Enhanced Green Dark — малахитовый, синхронизировано */
-    --primary: #2e8b57;        /* Малахитовый green — основной */
-    --primary-dark: #1e5f3a;   /* Темнее для hover */
-    --primary-light: #4ade80;
-    --header-height: 70px; /* Light для rings (оставил как было) */
-    --secondary: #64748b;      /* Slate для secondary/text */
-    --accent: #8b5cf6;         /* Subtle violet для links/hovers */
-    --success: #2e8b57;        /* Малахит для success */
-    --warning: #f59e0b;        /* Amber для partial/warnings */
-    --error: #ef4444;          /* Rose для errors */
-    
-    /* Фоны: Синхронизировано с light-dark */
-    --background: #4a5568;     /* Светлее для fallback */
-    --surface: #5a6b7a;        /* Форма/карточки */
-    --surface-alt: #6b7280;    /* Inputs/hovers */
-    
-    /* Текст: Higher contrast */
-    --text-primary: white;
-    --text-secondary: #e2e8f0; /* Светло-серый secondary */
-    --text-muted: #94a3b8;
-    
-    /* Границы/тени: Subtle modern */
-    --border: #6b7280;         /* Тёмные границы */
-    --border-light: #f1f5f9;
-    --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.07), 0 2px 4px -1px rgba(0, 0, 0, 0.05);
-    --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.07), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
-    
-    /* Типографика: Bolder h1, looser lines */
-    --font-family: 'Inter', system-ui, -apple-system, sans-serif;
-    --text-xs: 0.8125rem;
-    --text-sm: 0.875rem;
-    --text-base: 1rem;
-    --text-lg: 1.125rem;
-    --text-xl: 1.25rem;
-    --text-2xl: 1.5rem;
-    --text-3xl: 1.875rem;
-    
-    /* Space: More breathing room */
-    --space-1: 0.25rem;
-    --space-2: 0.5rem;
-    --space-3: 0.75rem;
-    --space-4: 1rem;
-    --space-5: 1.25rem;
-    --space-6: 1.5rem;
-    --space-8: 2rem;
-    
-    /* Rounded: Consistent soft */
-    --radius-sm: 0.5rem;
-    --radius: 0.75rem;
-    --radius-lg: 1rem;
-    --radius-xl: 1.25rem;
-    
-    --line-height-loose: 1.75;  /* Even looser для форм/таблиц */
+    --primary: #2e8b57; --primary-dark: #1e5f3a; --primary-light: #4ade80;
+    --secondary: #64748b; --accent: #8b5cf6; --success: #2e8b57;
+    --warning: #f59e0b; --error: #ef4444;
+    --background: #4a5568; --surface: #5a6b7a; --surface-alt: #6b7280;
+    --text-primary: white; --text-secondary: #e2e8f0; --text-muted: #94a3b8;
+    --border: #6b7280; --shadow-sm: 0 1px 2px 0 rgba(0,0,0,0.05);
+    --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.07), 0 2px 4px -1px rgba(0,0,0,0.05);
+    --shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.07), 0 4px 6px -2px rgba(0,0,0,0.05);
+    --font-family: 'Inter', system-ui, sans-serif;
+    --text-xs: 0.8125rem; --text-sm: 0.875rem; --text-base: 1rem; --text-lg: 1.125rem;
+    --text-xl: 1.25rem; --text-2xl: 1.5rem;
+    --space-1: 0.25rem; --space-2: 0.5rem; --space-3: 0.75rem; --space-4: 1rem;
+    --space-5: 1.25rem; --space-6: 1.5rem; --space-8: 2rem;
+    --radius: 0.75rem; --radius-lg: 1rem; --radius-xl: 1.25rem;
+    --line-height-loose: 1.75;
+    /* Toasts */
+    --toast-success: #10b981; --toast-error: #ef4444; --toast-warning: #f59e0b;
 }
 
 body {
@@ -179,27 +142,21 @@ p {
 
 /* ===== BUTTONS: Icon support + loading ===== */
 .btn {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    padding: var(--space-3) var(--space-5);
-    border-radius: var(--radius-lg);
+    padding: var(--space-3) var(--space-4);
+    border: none;
+    border-radius: var(--radius);
     font-size: var(--text-base);
-    font-weight: 500;
-    text-decoration: none;
     cursor: pointer;
-    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-    border: 1px solid transparent;
-    min-height: 44px;
-    gap: var(--space-2);
-    position: relative;
+    transition: all 0.2s ease;
+    min-height: 44px; /* Touch-friendly */
 }
 
 .btn-primary {
     background: var(--primary);
     color: white;
-    box-shadow: var(--shadow-sm);
 }
+
+.btn-primary:hover { background: var(--primary-dark); transform: translateY(-1px); }
 
 .btn-primary:hover:not(:disabled) {
     background: var(--primary-dark);
@@ -232,12 +189,12 @@ p {
 }
 
 .btn.loading::after {
-    opacity: 1;
+    content: ''; display: inline-block; width: 1rem; height: 1rem;
+    border: 2px solid transparent; border-top: 2px solid white;
+    border-radius: 50%; animation: spin 1s linear infinite; margin-left: 0.5rem;
 }
 
-@keyframes spin {
-    to { transform: rotate(360deg); }
-}
+@keyframes spin { to { transform: rotate(360deg); } }
 
 .btn-outline {
     background: transparent;
@@ -353,6 +310,11 @@ p {
 }
 
 /* ===== CARDS: For stats/dashboard ===== */
+
+.card { background: var(--surface); border-radius: var(--radius-lg); padding: var(--space-6); box-shadow: var(--shadow-md); }
+
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); border: 0; }
+
 .card,
 .stat-card {
     background: var(--surface);
@@ -693,4 +655,22 @@ input[type="number"]::-webkit-inner-spin-button {
 input[type="number"] { 
     -moz-appearance: textfield; 
     appearance: none;
+}
+
+/* Новые для дашборда/orders (не трогаю dashboard.css) */
+.skeleton { background: var(--surface-alt); position: relative; overflow: hidden; }
+.skeleton::after { content: ''; position: absolute; top: 0; left: -100%; width: 100%; height: 100%; background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent); animation: shimmer 1.5s infinite; }
+@keyframes shimmer { 100% { left: 100%; } }
+.skeleton-text { background: var(--border); height: 1.5rem; border-radius: var(--radius-sm); width: 50%; }
+.skeleton-row { height: 2rem; margin: var(--space-2) 0; }
+
+.sidebar-backdrop { /* Inline fallback, но лучше в CSS */ }
+
+.status-badge { padding: var(--space-1) var(--space-2); border-radius: var(--radius-sm); font-size: var(--text-xs); font-weight: 500; }
+.status-unpaid { background: rgba(239,68,68,0.2); color: var(--error); }
+.status-partial { background: rgba(245,158,11,0.2); color: var(--warning); }
+.status-paid { background: rgba(16,185,129,0.2); color: var(--success); }
+
+@media (max-width: 768px) {
+    .orders-table { /* Responsive cards — если в orders.css нет, добавь */ }
 }

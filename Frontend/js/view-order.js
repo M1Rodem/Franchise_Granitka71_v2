@@ -1,293 +1,364 @@
+// view-order.js
+import { PageManager } from './page-manager.js';
 import { apiService } from './api.js';
-import { formatDate, formatCurrency, escapeHtml, showTempMessage, getPaymentStatus, getPaymentStatusText, getUserNameFromOrder } from './utils.js';
-import { renderPhotoGrid, attachPhotoEvents  } from './photo-utils.js';
+import { 
+    formatDate, formatCurrency, escapeHtml, showTempMessage, handleApiError,
+    getPaymentStatus, getPaymentStatusText, getUserNameFromOrder, getStatusBadgeClass, 
+    formatPaymentType, formatFileSize 
+} from './utils.js';
+import { renderPhotoGrid, attachPhotoEvents, cleanupPhotoBlobs, openPhotoPreview } from './photo-utils.js';
 import { ModalUtils } from './modal-utils.js';
 
-document.addEventListener('DOMContentLoaded', async () => {
-    await initializeViewOrderPage();
-});
-
-window.addEventListener('beforeunload', () => {
-    if (typeof cleanupPhotoBlobs === 'function') {
-        cleanupPhotoBlobs();
+export class ViewOrderManager {
+    constructor(pageManager) {
+        this.pageManager = pageManager;
+        this.orderId = null;
+        this.orderData = null;
+        
+        this.initElements();
+        this.bindEvents();
     }
-});
 
-async function initializeViewOrderPage() {
-    try {
-        const userData = apiService.getCurrentUser();
-        if (!userData) {
-            window.location.href = 'login.html';
+    initElements() {
+        // Основные контейнеры
+        this.orderContainer = document.getElementById('orderContainer');
+        this.loadingSpinner = document.getElementById('loadingSpinner');
+        
+        // Элементы для рендеринга
+        this.orderView = document.getElementById('orderView');
+        this.workItemsContainer = document.getElementById('workItemsContainer');
+        this.paymentsContainer = document.getElementById('paymentsContainer');
+        this.orderPhotos = document.getElementById('orderPhotos');
+        
+        // Кнопки действий
+        this.editBtn = document.getElementById('editBtn');
+        this.deleteBtn = document.getElementById('deleteBtn');
+    }
+
+    bindEvents() {
+        if (this.editBtn) {
+            this.editBtn.addEventListener('click', () => this.editOrder());
+        }
+        
+        if (this.deleteBtn) {
+            this.deleteBtn.addEventListener('click', () => this.deleteOrder());
+        }
+    }
+
+    async initialize() {
+        this.orderId = this.getOrderIdFromURL();
+        
+        if (!this.orderId) {
+            showTempMessage('Некорректный ID заказа', 'error');
+            setTimeout(() => window.location.href = 'orders.html', 2000);
             return;
         }
 
-        setupViewOrderUI(userData);
-        await loadOrderData();
-        
-    } catch (error) {
-        console.error('View order page initialization error:', error);
-        showTempMessage('Ошибка инициализации', 'error');
-    }
-}
-
-function setupViewOrderUI(userData) {
-    const userNameEl = document.getElementById('userName');
-    if (userNameEl) {
-        userNameEl.textContent = userData.fullName || 'Пользователь';
+        await this.loadOrderData();
+        this.setupModalEvents();
     }
 
-    if (userData.role === 'Admin') {
-        document.querySelectorAll('.admin-only').forEach(el => {
-            el.style.display = 'block';
-        });
+    getOrderIdFromURL() {
+        const params = new URLSearchParams(window.location.search);
+        const id = parseInt(params.get('id'), 10);
+        return isNaN(id) ? null : id;
     }
 
-    const logoutBtn = document.getElementById('logoutBtn');
-    if (logoutBtn) {
-        logoutBtn.addEventListener('click', () => apiService.logout());
-    }
-}
+    async loadOrderData() {
+        try {
+            this.showLoadingState(true);
 
-async function loadOrderData() {
-    const orderId = getOrderIdFromURL();
-    if (!orderId) {
-        showTempMessage('Некорректный ID заказа', 'error');
-        return;
-    }
+            const order = await apiService.getOrder(this.orderId);
 
-    try {
-        showLoadingState(true);
-        
-        const [order, photos] = await Promise.all([
-            apiService.getOrder(orderId),
-            apiService.getOrderPhotos(orderId)
-        ]);
+            if (!order) {
+                throw new Error('Заказ не найден');
+            }
 
-        renderOrderDetails(order);
-        renderOrderPhotos(photos);
-        setupOrderActions(orderId, order);
-        
-    } catch (error) {
-        console.error('Error loading order data:', error);
-        showTempMessage('Ошибка загрузки: ' + error.message, 'error');
-    } finally {
-        showLoadingState(false);
-    }
-}
+            this.orderData = order;
+            this.renderOrderDetails(order);
+            this.renderWorkItems(order.workItems || []);
+            this.renderPayments(order.payments || []);
+            await this.renderOrderPhotos(order.photos || []);
 
-function getOrderIdFromURL() {
-    const params = new URLSearchParams(window.location.search);
-    const id = parseInt(params.get('id'), 10);
-    return isNaN(id) ? null : id;
-}
+            if (order.isDeleted) {
+                this.renderArchiveBadge(order);
+            }
 
-function setupOrderActions(orderId, order) {
-    const editBtn = document.getElementById('editBtn');
-    if (editBtn) {
-        editBtn.addEventListener('click', () => {
-            window.location.href = `create-order.html?edit=${orderId}`;  // П.8: в create с edit mode
-        });
+            this.showLoadingState(false);
+        } catch (error) {
+            console.error('Load order error:', error);
+            handleApiError(error);
+            this.showLoadingState(false);
+        }
     }
 
-    const deleteBtn = document.getElementById('deleteBtn');
-    if (deleteBtn) {
-        deleteBtn.addEventListener('click', async () => {
-            await deleteOrder(orderId, order.orderNumber);
-        });
-    }
-}
+    renderOrderDetails(order) {
+        if (!this.orderView) return;
 
-function renderOrderDetails(order) {
-    const view = document.getElementById('orderView');
-    if (!view) return;
+        const paymentStatus = getPaymentStatus(order);
+        const statusText = getPaymentStatusText(order);
+        const statusClass = getStatusBadgeClass(paymentStatus);
+        const totalPrice = order.totalPrice || 0;
 
-    view.innerHTML = createOrderHTML(order);
-}
-
-function createOrderHTML(order) {
-    const paymentStatus = getPaymentStatus(order);
-    const statusText = getPaymentStatusText(order);
-    
-    // ВАЖНО: рассчитываем сумму из workItems, а не берем из базы
-    const calculatedTotal = calculateOrderTotalFromWorkItems(order);
-
-    return `
-        <header class="order-header refined-header">
-            <h1 class="refined-h1">Заказ №${escapeHtml(order.orderNumber)}</h1>
-            <div class="refined-meta">
-                <div class="meta-line">
-                    <span class="meta-icon">📅</span>
-                    <strong class="meta-label">Дата создания:</strong>
-                    <span class="meta-value">${formatDate(order.createdAt)}</span>
+        this.orderView.innerHTML = `
+            <header class="order-header">
+                <h2 class="order-title">Заказ №${escapeHtml(order.orderNumber || 'N/A')}</h2>
+                <div class="status-badges">
+                    <span class="status-badge ${statusClass}">${statusText}</span>
                 </div>
-                <div class="meta-line">
-                    <span class="status-badge refined-badge ${paymentStatus}">${escapeHtml(statusText)}</span>
+            </header>
+            <div class="order-details-grid">
+                <div class="order-section">
+                    <h3>Клиент</h3>
+                    <p><strong>ФИО:</strong> ${escapeHtml(order.customerFullName || '')}</p>
+                    <p><strong>Email:</strong> ${escapeHtml(order.customerEmail || '')}</p>
+                    <p><strong>Телефон:</strong> ${escapeHtml(order.phone || '')}</p>
+                    <p><strong>Адрес:</strong> ${escapeHtml(order.address || '')}</p>
                 </div>
-                <div class="meta-line">
-                    <span class="meta-icon">💰</span>
-                    <strong class="meta-label">Общая сумма:</strong>
-                    <span class="meta-value bold-sum">${formatCurrency(calculatedTotal)}</span>
+                <div class="order-section">
+                    <h3>Покойный</h3>
+                    <p><strong>ФИО:</strong> ${escapeHtml(order.deceasedFullName || '')}</p>
                 </div>
-                <!-- П.1: Менеджер -->
-                <div class="meta-line">
-                    <span class="meta-icon">👤</span>
-                    <strong class="meta-label">Заказ принял:</strong>
-                    <span class="meta-value">${getUserNameFromOrder(order)}</span>
+                <div class="order-section">
+                    <h3>Место установки</h3>
+                    <p><strong>Участок:</strong> ${escapeHtml(order.place || '')}</p>
+                    <p><strong>Место осмотра:</strong> ${escapeHtml(order.inspectionPlace || '')}</p>
+                    <p><strong>Дата заказа:</strong> ${formatDate(order.orderDate)}</p>
+                </div>
+                <div class="order-section">
+                    <h3>Монумент</h3>
+                    <p><strong>Тип:</strong> ${escapeHtml(order.monumentType || '')}</p>
+                    <p><strong>Размер:</strong> ${escapeHtml(order.monumentSize || '')}</p>
+                    <p><strong>Дополнительно:</strong> ${escapeHtml(order.additionalInfo || '—')}</p>
+                </div>
+                <div class="order-section">
+                    <h3>Метаданные</h3>
+                    <p><strong>Менеджер:</strong> ${escapeHtml(getUserNameFromOrder(order))}</p>
+                    <p><strong>Создана:</strong> ${formatDate(order.createdAt)}</p>
+                    <p><strong>Обновлена:</strong> ${formatDate(order.updatedAt)}</p>
+                    <p><strong>Сумма:</strong> ${formatCurrency(totalPrice)}</p>
                 </div>
             </div>
-        </header>
-
-        <div class="refined-sections">
-            ${createCustomerSection(order)}
-            ${createDeceasedSection(order)}
-            ${createMonumentSection(order)}
-            ${createManagerSection(order)}
-        </div>
-
-        <div class="refined-tables">
-            <section class="refined-table-section">
-                <h2 class="refined-h2">Виды работ</h2>
-                ${renderWorksTable(order.workItems)}
-            </section>
-
-            <section class="refined-table-section">
-                <h2 class="refined-h2">Платежи</h2>
-                ${renderPaymentsTable(order.payments)}
-            </section>
-        </div>
-    `;
-}
-
-// Добавляем функцию расчета суммы из workItems
-function calculateOrderTotalFromWorkItems(order) {
-    if (!order || !order.workItems || !Array.isArray(order.workItems)) {
-        return order?.totalPrice || 0;
+        `;
     }
-    
-    const total = order.workItems.reduce((sum, item) => {
-        const price = Number(item.price) || 0;
-        const quantity = Number(item.quantity) || 1;
-        return sum + (price * quantity);
-    }, 0);
-    return total;
-}
 
-function createCustomerSection(order) {
-    return `
-        <section class="refined-section">
-            <h3>Заказчик</h3>
-            <p><strong>ФИО:</strong> ${escapeHtml(order.customerFullName)}</p>
-            <p><strong>Телефон:</strong> ${escapeHtml(order.phone)}</p>
-            <p><strong>Email:</strong> ${escapeHtml(order.customerEmail || 'Не указан')}</p>
-            <p><strong>Адрес:</strong> ${escapeHtml(order.address)}</p>
-        </section>
-    `;
-}
+    renderWorkItems(workItems) {
+        if (!this.workItemsContainer) return;
 
-function createDeceasedSection(order) {
-    return `
-        <section class="refined-section">
-            <h3>Усопший</h3>
-            <p><strong>ФИО и Даты:</strong> ${escapeHtml(order.deceasedFullName)}</p>
-            <p><strong>Место осмотра:</strong> ${escapeHtml(order.inspectionPlace || 'Не указано')}</p>
-        </section>
-    `;
-}
+        if (workItems.length === 0) {
+            this.workItemsContainer.innerHTML = '<p class="no-data">Нет работ</p>';
+            return;
+        }
 
-function createMonumentSection(order) {
-    return `
-        <section class="refined-section">
-            <h3>Памятник</h3>
-            <p><strong>Тип:</strong> ${escapeHtml(order.monumentType)}</p>
-            <p><strong>Размер:</strong> ${escapeHtml(order.monumentSize)}</p>
-            <p><strong>Доп. info:</strong> ${escapeHtml(order.additionalInfo || 'Нет')}</p>
-        </section>
-    `;
-}
+        const total = workItems.reduce((sum, item) => sum + (Number(item.price || 0) * Number(item.quantity || 1)), 0);
 
-function createManagerSection(order) {
-    return `
-        <section class="refined-section">
-            <h3>Участок</h3>
-            <p><strong>Участок:</strong> ${escapeHtml(order.place)}</p>
-        </section>
-    `;
-}
-
-function renderWorksTable(workItems) {
-    if (!workItems || workItems.length === 0) return '<p>Нет работ</p>';
-    return `
-        <table class="refined-table">
-            <thead><tr><th>Вид работы</th><th>Стоимость</th><th>Кол-во</th><th>Примечание</th><th>Итого</th></tr></thead>
-            <tbody>${workItems.map(wi => `<tr><td>${escapeHtml(wi.workDescription)}</td><td>${formatCurrency(wi.price)}</td><td>${wi.quantity}</td><td>${escapeHtml(wi.note || '')}</td><td>${formatCurrency(wi.price * wi.quantity)}</td></tr>`).join('')}</tbody>
-        </table>
-    `;
-}
-
-function renderPaymentsTable(payments) {
-    if (!payments || payments.length === 0) return '<p>Нет платежей</p>';
-    return `
-        <table class="refined-table">
-            <thead><tr><th>Тип</th><th>Сумма</th><th>Дата</th><th>Примечание</th></tr></thead>
-            <tbody>${payments.map(p => `<tr><td>${escapeHtml(p.paymentType)}</td><td>${formatCurrency(p.amount)}</td><td>${formatDate(p.paymentDate)}</td><td>${escapeHtml(p.note || '')}</td></tr>`).join('')}</tbody>
-        </table>
-    `;
-}
-
-async function renderOrderPhotos(photos) {
-    const container = document.getElementById('orderPhotos');
-    if (!container) return;
-    
-    
-    if (!photos || photos.length === 0) {
-        container.innerHTML = '<div class="no-photos">Нет фотографий</div>';
-        return;
+        this.workItemsContainer.innerHTML = `
+            <table class="orders-table">
+                <thead>
+                    <tr><th>Описание</th><th>Кол-во</th><th>Цена</th><th>Итого</th></tr>
+                </thead>
+                <tbody>
+                    ${workItems.map(item => `
+                        <tr>
+                            <td>${escapeHtml(item.workDescription || item.name || '')}</td>
+                            <td>${item.quantity || 1}</td>
+                            <td>${formatCurrency(item.price || 0)}</td>
+                            <td>${formatCurrency((item.price || 0) * (item.quantity || 1))}</td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+                <tfoot>
+                    <tr><td colspan="3"><strong>Итого:</strong></td><td><strong>${formatCurrency(total)}</strong></td></tr>
+                </tfoot>
+            </table>
+        `;
     }
-    
-    await renderPhotoGrid(photos, 'orderPhotos', 'view');
-    
-    attachPhotoEvents('orderPhotos');
 
-}
+    renderPayments(payments) {
+        if (!this.paymentsContainer) return;
 
-async function deleteOrder(orderId, orderNumber) {
-    try {
+        if (payments.length === 0) {
+            this.paymentsContainer.innerHTML = '<p class="no-data">Нет платежей</p>';
+            return;
+        }
+
+        const totalPaid = payments.reduce((sum, p) => sum + Number(p.amount || 0), 0);
+
+        this.paymentsContainer.innerHTML = `
+            <table class="orders-table">
+                <thead>
+                    <tr><th>Тип</th><th>Сумма</th><th>Дата</th><th>Примечание</th></tr>
+                </thead>
+                <tbody>
+                    ${payments.map(p => `
+                        <tr>
+                            <td>${formatPaymentType(p.paymentType || p.note || '')}</td>
+                            <td>${formatCurrency(p.amount || 0)}</td>
+                            <td>${formatDate(p.paymentDate || p.date)}</td>
+                            <td>${escapeHtml(p.note || '')}</td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+                <tfoot>
+                    <tr><td colspan="3"><strong>Итого:</strong></td><td><strong>${formatCurrency(totalPaid)}</strong></td></tr>
+                </tfoot>
+            </table>
+        `;
+    }
+
+    async renderOrderPhotos(photos) {
+        if (!this.orderPhotos) return;
+
+        if (photos.length === 0) {
+            this.orderPhotos.innerHTML = '<div class="no-photos">Нет фотографий</div>';
+            return;
+        }
+
+        try {
+            if (typeof renderPhotoGrid === 'function') {
+                await renderPhotoGrid(photos, 'orderPhotos', { 
+                    mode: 'view',
+                    orderNumber: this.orderData.orderNumber
+                });
+                
+                if (typeof attachPhotoEvents === 'function') {
+                    attachPhotoEvents('orderPhotos', { 
+                        mode: 'view',
+                        orderNumber: this.orderData.orderNumber
+                    });
+                }
+            } else {
+                // Fallback render
+                this.renderPhotosFallback(photos);
+            }
+        } catch (error) {
+            console.error('Error rendering photos:', error);
+            this.renderPhotosFallback(photos);
+        }
+    }
+
+    renderPhotosFallback(photos) {
+        this.orderPhotos.innerHTML = photos.map((photo, index) => `
+            <div class="photo-item" 
+                 data-photo-id="${photo.id}" 
+                 data-photo-index="${index + 1}" 
+                 data-order-number="${this.orderData.orderNumber}">
+                <img src="${photo.url || photo.previewUrl || ''}" 
+                     alt="${escapeHtml(photo.originalFileName || 'Фото')}" 
+                     class="photo-img">
+                <div class="photo-info">
+                    ${formatFileSize(photo.size)} | ${formatDate(photo.uploadedAt)}
+                </div>
+            </div>
+        `).join('');
+        
+        // Fallback обработчик
+        this.orderPhotos.addEventListener('click', (e) => {
+            const item = e.target.closest('.photo-item');
+            if (item) {
+                const orderNumber = item.dataset.orderNumber;
+                const photoIndex = item.dataset.photoIndex;
+                openPhotoPreview(
+                    e.target.src, 
+                    e.target.alt, 
+                    item.dataset.photoId, 
+                    orderNumber, 
+                    photoIndex
+                );
+            }
+        });
+    }
+
+    renderArchiveBadge(order) {
+        const header = document.querySelector('#orderView .order-header');
+        if (header) {
+            header.innerHTML += `
+                <span class="status-badge bg-warning">
+                    Архивный (удален ${formatDate(order.deletedAt)})
+                </span>
+            `;
+        }
+    }
+
+    setupModalEvents() {
+        const modal = document.getElementById('photoModal');
+        if (!modal) return;
+
+        const closeBtn = modal.querySelector('.modal-close');
+        const downloadBtn = document.getElementById('modalDownload');
+        const overlay = modal.querySelector('.modal-overlay');
+
+        const closeModal = () => {
+            modal.classList.remove('show');
+            document.body.style.overflow = '';
+        };
+
+        closeBtn?.addEventListener('click', closeModal);
+        overlay?.addEventListener('click', closeModal);
+        
+        downloadBtn?.addEventListener('click', () => {
+            const photoId = modal.dataset.photoId;
+            const fileName = modal.dataset.fileName;
+            if (photoId && fileName) {
+                apiService.downloadPhoto(photoId, fileName).catch(handleApiError);
+            }
+        });
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && modal.classList.contains('show')) {
+                closeModal();
+            }
+        });
+    }
+
+    editOrder() {
+        window.location.href = `create-order.html?edit=${this.orderId}`;
+    }
+
+    async deleteOrder() {
+        if (!this.orderData) return;
+
         const confirmed = await ModalUtils.confirm({
             title: 'Удаление заказа',
-            message: `Вы уверены, что хотите удалить заказ №${orderNumber}? Заказ будет перемещен в архив.`,
+            message: `Вы уверены? Заказ №${this.orderData.orderNumber} будет перемещен в архив.`,
             confirmText: 'Удалить',
             danger: true
         });
-        
+
         if (confirmed) {
-            await apiService.deleteOrder(orderId);
-            showTempMessage(`Заказ №${orderNumber} перемещен в архив`, 'success');
-            setTimeout(() => {
-                window.location.href = 'orders.html';
-            }, 1500);
+            try {
+                await apiService.deleteOrder(this.orderId);
+                showTempMessage(`Заказ №${this.orderData.orderNumber} перемещен в архив`, 'success');
+                setTimeout(() => window.location.href = 'orders.html', 1500);
+            } catch (error) {
+                handleApiError(error);
+            }
         }
-    } catch (error) {
-        console.error('Delete order error:', error);
-        showTempMessage('Ошибка удаления: ' + error.message, 'error');
+    }
+
+    showLoadingState(loading) {
+        if (loading) {
+            if (this.orderContainer) this.orderContainer.style.display = 'none';
+            if (this.loadingSpinner) this.loadingSpinner.style.display = 'block';
+        } else {
+            if (this.orderContainer) this.orderContainer.style.display = 'block';
+            if (this.loadingSpinner) this.loadingSpinner.style.display = 'none';
+        }
+    }
+
+    // Cleanup при уничтожении
+    destroy() {
+        cleanupPhotoBlobs();
     }
 }
 
-function showLoadingState(loading) {
-    const orderView = document.getElementById('orderView');
-    const orderPhotos = document.getElementById('orderPhotos');
-    
-    if (loading) {
-        if (orderView) orderView.innerHTML = '<div class="loading">Загрузка заказа...</div>';
-        if (orderPhotos) orderPhotos.innerHTML = '<div class="loading">Загрузка фотографий...</div>';
-    }
-}
-
-// Глобальные для HTML onclick (если нужно, но теперь через photo-utils)
-window.openPhotoViewer = (photoId, fileName) => { /* Если legacy */ };
-window.downloadPhoto = async (photoId, fileName) => {
-    try {
-        await apiService.downloadPhoto(photoId);  // П.7: Авто-скачивание
-    } catch (error) {
-        showTempMessage('Ошибка скачивания: ' + error.message, 'error');
-    }
-};
+// Инициализация через PageManager
+document.addEventListener('DOMContentLoaded', () => {
+    PageManager.initialize('orders', async () => {
+        const viewOrderManager = new ViewOrderManager(PageManager);
+        await viewOrderManager.initialize();
+        
+        // Сохраняем ссылку для возможного доступа извне
+        window.viewOrderManager = viewOrderManager;
+    });
+});

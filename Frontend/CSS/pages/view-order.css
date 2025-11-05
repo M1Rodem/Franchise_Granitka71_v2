@@ -1,0 +1,253 @@
+.order-container {
+    animation: fadeIn 0.5s ease-out;
+}
+
+.order-view.card {
+    background: var(--surface);
+    border: 1px solid var(--border-light);
+    box-shadow: var(--shadow-sm);
+    margin-bottom: var(--space-6);
+}
+
+/* Заголовок заказа */
+.order-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: var(--space-6);
+    padding-bottom: var(--space-4);
+    border-bottom: 1px solid var(--border-light);
+    flex-wrap: wrap;
+    gap: var(--space-4);
+}
+
+.order-title {
+    margin: 0;
+    color: var(--text-primary);
+    font-weight: 700;
+    font-size: var(--text-2xl);
+}
+
+.status-badges {
+    display: flex;
+    gap: var(--space-3);
+    flex-wrap: wrap;
+}
+
+.status-badge {
+    padding: var(--space-2) var(--space-4);
+    border-radius: 9999px;
+    font-size: var(--text-sm);
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.bg-warning {
+    background: var(--warning);
+    color: white;
+}
+
+/* Сетка деталей заказа */
+.order-details-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: var(--space-6);
+}
+
+.order-section {
+    background: var(--surface-alt);
+    padding: var(--space-5);
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--border-light);
+}
+
+.order-section h3 {
+    margin: 0 0 var(--space-4) 0;
+    color: var(--text-primary);
+    font-size: var(--text-lg);
+    font-weight: 600;
+    border-bottom: 2px solid var(--primary);
+    padding-bottom: var(--space-2);
+}
+
+.order-section p {
+    margin: var(--space-2) 0;
+    color: var(--text-secondary);
+    line-height: var(--line-height-loose);
+}
+
+.order-section strong {
+    color: var(--text-primary);
+    font-weight: 600;
+}
+
+/* Аккордеоны */
+.accordion-section {
+    background: var(--surface);
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-lg);
+    margin-bottom: var(--space-4);
+    box-shadow: var(--shadow-sm);
+    overflow: hidden;
+}
+
+.accordion-summary {
+    padding: var(--space-5);
+    background: var(--surface-alt);
+    cursor: pointer;
+    font-weight: 600;
+    color: var(--text-primary);
+    font-size: var(--text-lg);
+    border: none;
+    outline: none;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    transition: all var(--transition-fast);
+}
+
+.accordion-summary:hover {
+    background: rgba(46, 139, 87, 0.1);
+}
+
+.accordion-summary::after {
+    content: '▼';
+    font-size: var(--text-sm);
+    transition: transform var(--transition-fast);
+}
+
+.accordion-section[open] .accordion-summary::after {
+    transform: rotate(180deg);
+}
+
+.section-content {
+    padding: var(--space-5);
+    background: var(--surface);
+}
+
+/* Таблицы внутри аккордеонов */
+.accordion-section .orders-table {
+    background: transparent;
+    box-shadow: none;
+}
+
+.accordion-section .orders-table th {
+    background: var(--surface-alt);
+}
+
+.accordion-section .orders-table tfoot {
+    background: var(--surface-alt);
+    font-weight: 600;
+}
+
+.accordion-section .orders-table tfoot td {
+    border-top: 2px solid var(--border-light);
+}
+
+/* Галерея фотографий */
+.photo-accordion .section-content {
+    padding: 0;
+}
+
+.photo-preview {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: var(--space-4);
+    padding: var(--space-5) !important;
+}
+
+.no-photos {
+    text-align: center;
+    color: var(--text-muted);
+    font-style: italic;
+    padding: var(--space-8);
+}
+
+/* Кнопки действий */
+.action-buttons {
+    display: flex;
+    gap: var(--space-4);
+    justify-content: flex-end;
+    margin-top: var(--space-6);
+    padding-top: var(--space-5);
+    border-top: 1px solid var(--border-light);
+}
+
+/* Состояние загрузки */
+.loading-spinner {
+    text-align: center;
+    padding: var(--space-8);
+    color: var(--text-muted);
+    font-style: italic;
+    background: var(--surface);
+    border-radius: var(--radius-lg);
+    border: 1px dashed var(--border);
+}
+
+/* Адаптивность */
+@media (max-width: 768px) {
+    .order-header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    
+    .order-details-grid {
+        grid-template-columns: 1fr;
+        gap: var(--space-4);
+    }
+    
+    .order-section {
+        padding: var(--space-4);
+    }
+    
+    .action-buttons {
+        flex-direction: column;
+    }
+    
+    .action-buttons .btn {
+        width: 100%;
+        justify-content: center;
+    }
+    
+    .photo-preview {
+        grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+        gap: var(--space-3);
+        padding: var(--space-4) !important;
+    }
+    
+    .accordion-summary {
+        padding: var(--space-4);
+        font-size: var(--text-base);
+    }
+    
+    .section-content {
+        padding: var(--space-4);
+    }
+}
+
+@media (max-width: 480px) {
+    .order-title {
+        font-size: var(--text-xl);
+    }
+    
+    .status-badges {
+        width: 100%;
+        justify-content: flex-start;
+    }
+    
+    .photo-preview {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+/* Анимации */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}

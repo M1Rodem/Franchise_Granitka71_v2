@@ -72,21 +72,32 @@ export function populateForm(formId, data) {
 
 // ====== ВРЕМЕННЫЕ СООБЩЕНИЯ (TOASTS) ======
 export function showTempMessage(message, type = 'success', duration = 3000) {
+    // Удаляем старое
+    document.querySelectorAll('.temp-message').forEach(el => el.remove());
+
     const messageEl = document.createElement('div');
     messageEl.className = `temp-message temp-message-${type}`;
     messageEl.setAttribute('role', 'alert');
-    messageEl.innerHTML = `<span>${escapeHtml(message)}</span><button class="close" aria-label="Закрыть">&times;</button>`;
+    messageEl.innerHTML = `<span>${escapeHtml(message)}</span><button class="close" aria-label="Закрыть">×</button>`;
     
-    messageEl.addEventListener('click', (e) => {
-        if (e.target.classList.contains('close')) messageEl.remove();
+    // Закрытие
+    messageEl.querySelector('.close').addEventListener('click', () => {
+        messageEl.classList.add('hiding');
+        setTimeout(() => messageEl.remove(), 350);
     });
-    
+
     document.body.appendChild(messageEl);
-    requestAnimationFrame(() => messageEl.classList.add('show')); // Smooth enter
-    
+
+    // Вход
+    requestAnimationFrame(() => {
+        messageEl.classList.add('show');
+    });
+
+    // Авто-исчезновение
     setTimeout(() => {
         messageEl.classList.remove('show');
-        setTimeout(() => messageEl.remove(), 300); // Exit anim
+        messageEl.classList.add('hiding');
+        setTimeout(() => messageEl.remove(), 350);
     }, duration);
 }
 

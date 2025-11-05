@@ -1,0 +1,211 @@
+/* ===== SIDEBAR COMPONENT ===== */
+.sidebar {
+    position: fixed;
+    top: var(--header-height);
+    left: 0;
+    bottom: 0;
+    width: var(--sidebar-width);
+    background: var(--glass-background);
+    backdrop-filter: var(--backdrop-blur);
+    -webkit-backdrop-filter: var(--backdrop-blur);
+    box-shadow: var(--glass-shadow);
+    border-right: 1px solid var(--glass-border);
+    z-index: var(--z-fixed);
+    padding: 0;
+    overflow-y: auto;
+    transform: translateX(0);
+    animation: sidebarSlideIn 0.5s var(--ease-out-back);
+}
+
+@keyframes sidebarSlideIn {
+    from {
+        transform: translateX(-100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+.sidebar .nav-menu {
+    padding: var(--space-6);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+}
+
+.nav-item {
+    display: block;
+    padding: var(--space-4) var(--space-5);
+    color: var(--text-secondary);
+    text-decoration: none;
+    border-radius: var(--radius-lg);
+    font-weight: 500;
+    transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    position: relative;
+    opacity: 0;
+    animation: navItemFadeIn 0.6s var(--ease-out-back) forwards;
+    transform-origin: left;
+}
+
+@keyframes navItemFadeIn {
+    from {
+        opacity: 0;
+        transform: translateX(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+/* Анимация появления пунктов меню с задержкой */
+.nav-item:nth-child(1) { animation-delay: 0.1s; }
+.nav-item:nth-child(2) { animation-delay: 0.15s; }
+.nav-item:nth-child(3) { animation-delay: 0.2s; }
+.nav-item:nth-child(4) { animation-delay: 0.25s; }
+.nav-item:nth-child(5) { animation-delay: 0.3s; }
+
+/* Улучшенная анимация наведения для nav-item */
+.nav-item::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, 
+        transparent, 
+        rgba(59, 130, 246, 0.1), 
+        transparent);
+    transition: left 0.6s ease;
+    z-index: -1;
+}
+
+.nav-item:hover {
+    background: rgba(59, 130, 246, 0.12);
+    color: var(--text-primary);
+    transform: translateX(6px) scale(1.02);
+    border: 1px solid rgba(59, 130, 246, 0.2);
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.15);
+    z-index: 1; /* Предотвращает сдвиг соседних элементов */
+}
+
+.nav-item:hover::before {
+    left: 100%;
+}
+
+.nav-item.active {
+    background: rgba(59, 130, 246, 0.18);
+    color: var(--text-primary);
+    border: 1px solid var(--accent);
+    transform: translateX(4px);
+    z-index: 1;
+}
+
+.nav-item.active::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 4px;
+    height: 70%;
+    background: var(--accent);
+    border-radius: 0 var(--radius) var(--radius) 0;
+    animation: activePulse 2s ease-in-out infinite;
+}
+
+@keyframes activePulse {
+    0%, 100% {
+        box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.3);
+    }
+    50% {
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0);
+    }
+}
+
+/* Admin-only menu items */
+.nav-item.admin-only {
+    display: none;
+}
+
+.user-is-admin .nav-item.admin-only {
+    display: block;
+}
+
+/* Mobile sidebar styles */
+@media (max-width: 768px) {
+    .sidebar {
+        transform: translateX(-100%);
+        width: var(--sidebar-width-mobile);
+        z-index: var(--z-modal);
+        background: var(--glass-background);
+        backdrop-filter: var(--backdrop-blur);
+        -webkit-backdrop-filter: var(--backdrop-blur);
+        animation: none;
+    }
+
+    .sidebar.open {
+        transform: translateX(0);
+        animation: mobileSidebarSlideIn 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    }
+
+    @keyframes mobileSidebarSlideIn {
+        from {
+            transform: translateX(-100%);
+        }
+        to {
+            transform: translateX(0);
+        }
+    }
+
+    /* Backdrop for mobile */
+    .sidebar-backdrop {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.6);
+        z-index: calc(var(--z-modal) - 1);
+        backdrop-filter: blur(8px);
+        animation: backdropFadeIn 0.3s ease;
+    }
+
+    @keyframes backdropFadeIn {
+        from {
+            opacity: 0;
+        }
+        to {
+            opacity: 1;
+        }
+    }
+
+    .sidebar-backdrop.active {
+        display: block;
+    }
+}
+
+/* Scrollbar styling */
+.sidebar::-webkit-scrollbar {
+    width: 6px;
+}
+
+.sidebar::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: var(--radius);
+}
+
+.sidebar::-webkit-scrollbar-thumb {
+    background: var(--accent);
+    border-radius: var(--radius);
+    transition: background 0.4s ease;
+}
+
+.sidebar::-webkit-scrollbar-thumb:hover {
+    background: var(--accent-hover);
+    transform: scale(1.1);
+}

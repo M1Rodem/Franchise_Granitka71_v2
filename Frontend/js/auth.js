@@ -39,12 +39,7 @@ async function handleLogin(e) {
             fullName: result.fullName,
             role: result.role
         }));
-        
-        showTempMessage('Успешный вход!', 'success');
-        setTimeout(() => {
-            window.location.href = 'dashboard.html';
-        }, 1000);
-        
+        window.location.href = 'dashboard.html';        
     } catch (error) {
         if (error.status === 401) {
             const serverMessage = error.data?.message || error.message || '';

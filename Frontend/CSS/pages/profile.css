@@ -1,0 +1,108 @@
+/* ===== PROFILE PAGE SPECIFIC STYLES ===== */
+
+/* Profile sections */
+.profile-section {
+    margin-bottom: var(--space-8);
+    animation: fadeIn 0.6s ease-out;
+}
+
+.profile-section h2 {
+    color: var(--text-primary);
+    margin-bottom: var(--space-6);
+    padding-bottom: var(--space-4);
+    border-bottom: 1px solid var(--border-light);
+    font-weight: 600;
+}
+
+/* Profile info grid */
+.profile-info-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: var(--space-6);
+    margin-bottom: var(--space-6);
+}
+
+/* Readonly field styling */
+.readonly-field {
+    background: var(--surface-alt) !important;
+    color: var(--text-muted) !important;
+    cursor: not-allowed;
+    border-color: var(--border) !important;
+}
+
+.readonly-field:focus {
+    box-shadow: none !important;
+    border-color: var(--border) !important;
+}
+
+/* Password form specific */
+#changePasswordForm {
+    max-width: 500px;
+}
+
+/* Profile actions */
+.profile-actions {
+    display: flex;
+    gap: var(--space-4);
+    margin-top: var(--space-6);
+}
+
+/* Success/error messages in profile */
+#profileError,
+#profileSuccess {
+    margin-top: var(--space-6);
+    animation: slideInUp 0.3s ease-out;
+}
+
+/* Page header specific for profile */
+.profile-page .page-header {
+    background: linear-gradient(135deg, var(--surface) 0%, rgba(46, 139, 87, 0.1) 100%);
+    border-left: 4px solid var(--primary);
+}
+
+/* Mobile profile styles */
+@media (max-width: 768px) {
+    .profile-info-grid {
+        grid-template-columns: 1fr;
+        gap: var(--space-4);
+    }
+    
+    .profile-section {
+        margin-bottom: var(--space-6);
+    }
+    
+    .profile-actions {
+        flex-direction: column;
+    }
+    
+    .profile-actions .btn {
+        width: 100%;
+    }
+    
+    #changePasswordForm {
+        max-width: none;
+    }
+}
+
+/* Tablet profile styles */
+@media (max-width: 1024px) {
+    .profile-info-grid {
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    }
+}
+
+/* Animation for profile sections */
+@keyframes slideInUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.profile-section {
+    animation: slideInUp 0.4s ease-out;
+}

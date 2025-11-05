@@ -1,0 +1,59 @@
+/* ===== MAIN CONTENT LAYOUT ===== */
+.main-content {
+    margin-left: var(--sidebar-width);
+    margin-top: var(--header-height);
+    min-height: calc(100vh - var(--header-height));
+    padding: calc(var(--space-8) + var(--space-2)) var(--space-6) var(--space-8) var(--space-6);
+    background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+    transition: margin-left var(--transition-normal) ease;
+    position: relative;
+}
+
+.main-content .container {
+    padding: 0;
+    max-width: 100%;
+}
+
+/* Shifted state for mobile when sidebar is open */
+.main-content.shifted {
+    margin-left: var(--sidebar-width);
+}
+
+/* Mobile styles */
+@media (max-width: 768px) {
+    .main-content {
+        margin-left: 0;
+        padding: var(--space-6) var(--space-4);
+        background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+    }
+
+    .main-content.shifted {
+        margin-left: 0;
+        transform: translateX(var(--sidebar-width-mobile));
+    }
+}
+
+/* Container utilities */
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+    width: 100%;
+}
+
+.container-fluid {
+    width: 100%;
+    padding: 0 var(--space-4);
+}
+
+/* Responsive container padding */
+@media (max-width: 1024px) {
+    .main-content {
+        padding: var(--space-6) var(--space-4);
+    }
+}
+
+@media (max-width: 640px) {
+    .main-content {
+        padding: var(--space-4) var(--space-3);
+    }
+}

@@ -4,41 +4,64 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Новый заказ - Granitka71</title>
-    <link rel="stylesheet" href="CSS/style.css">
-    <link rel="stylesheet" href="CSS/dashboard.css">
-    <link rel="stylesheet" href="CSS/orders.css">
-    <link rel="stylesheet" href="CSS/photos.css">
+    
+    <!-- Base Styles -->
+    <link rel="stylesheet" href="CSS/base/reset.css">
+    <link rel="stylesheet" href="CSS/base/variables.css">
+    <link rel="stylesheet" href="CSS/base/utilities.css">
+    <link rel="stylesheet" href="CSS/base/typography.css">
+    
+    <!-- Layout -->
+    <link rel="stylesheet" href="CSS/layout/header.css">
+    <link rel="stylesheet" href="CSS/layout/sidebar.css">
+    <link rel="stylesheet" href="CSS/layout/main-content.css">
+    
+    <!-- Components -->
+    <link rel="stylesheet" href="CSS/components/buttons.css">
+    <link rel="stylesheet" href="CSS/components/forms.css">
+    <link rel="stylesheet" href="CSS/components/tables.css">
+    <link rel="stylesheet" href="CSS/components/cards.css">
+    <link rel="stylesheet" href="CSS/components/modals.css">
+    <link rel="stylesheet" href="CSS/components/toasts.css">
+    <link rel="stylesheet" href="CSS/components/loading.css">
+    
+    <!-- Pages -->
+    <link rel="stylesheet" href="CSS/pages/create-order.css">
 </head>
 <body>
-    <header class="header">
+    <header class="header" role="banner">
         <div class="container">
             <div class="header-content">
+                <button id="burgerBtn" class="burger-btn" aria-label="Открыть меню" aria-expanded="false">
+                    ☰
+                </button>
                 <h1>Granitka71</h1>
                 <div class="user-info">
-                    <a href="profile.html" id="userName" class="user-profile-link">Пользователь</a>
-                    <button id="logoutBtn" class="btn btn-outline">Выйти</button>
+                    <a href="profile.html" id="userName" class="user-profile-link" aria-label="Перейти в профиль">Пользователь</a>
+                    <button id="logoutBtn" class="btn btn-outline" aria-label="Выйти из аккаунта">Выйти</button>
                 </div>
             </div>
         </div>
     </header>
 
-    <nav class="sidebar">
+    <nav class="sidebar" id="sidebar" role="navigation" aria-label="Основное меню">
         <div class="nav-menu">
-            <a href="dashboard.html" class="nav-item">Дашборд</a>
-            <a href="orders.html" class="nav-item">Заказы</a>
-            <a href="create-order.html" class="nav-item active">Создать заказ</a>
-            <a href="archived-orders.html" class="nav-item">Архив</a>
-            <a href="users.html" class="nav-item admin-only" style="display: none;">Пользователи</a>
+            <a href="dashboard.html" class="nav-item" data-page="dashboard">Дашборд</a>
+            <a href="orders.html" class="nav-item" data-page="orders">Заказы</a>
+            <a href="create-order.html" class="nav-item active" data-page="create" aria-current="page">Создать заказ</a>
+            <a href="archived-orders.html" class="nav-item" data-page="archived">Архив</a>
+            <a href="users.html" class="nav-item admin-only" data-page="users" style="display: none;">Пользователи</a>
         </div>
     </nav>
 
-    <main class="main-content">
+    <main class="main-content" id="mainContent" role="main">
         <div class="container">
             <div class="page-header">
                 <h1 id="pageTitle">Создать новый заказ</h1>
                 <a href="orders.html" class="btn btn-outline">← Назад к списку</a>
             </div>
-            <form id="createOrderForm" class="card" style="padding: 1rem;">
+            
+            <form id="createOrderForm" class="card">
                 <div class="form-group">
                     <label for="place">Участок *</label>
                     <input type="text" id="place" name="place" required placeholder="Укажите участок">
@@ -101,6 +124,7 @@
                                 <th>Стоимость</th>
                                 <th>Кол-во</th>
                                 <th>Примечание</th>
+                                <th>Действия</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -111,26 +135,27 @@
 
                 <div class="form-group">
                     <label>Итоговая сумма (можно редактировать)</label>
-                    <input type="number" id="totalPriceInput" name="totalPrice" value="0" step="0.01" min="0" placeholder="Авто-расчёт из работ" style="font-weight:bold; font-size:1.2em; width: 200px; color:#007bff;">
+                    <input type="number" id="totalPriceInput" name="totalPrice" value="0" step="0.01" min="0" placeholder="Авто-расчёт из работ" class="total-price-input">
                 </div>
                 
                 <!-- Таблица платежей -->
                 <div class="form-group">
-                <table id="paymentsTable" class="data-table">
-                    <thead>
-                        <tr>
-                            <th>Тип платежа</th>
-                            <th>Сумма</th>
-                            <th>Дата</th>
-                            <th>Примечание</th>
-                            <th>Действия</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <!-- Строки будут добавляться динамически -->
-                    </tbody>
-                </table>
-                <button type="button" id="addPaymentBtn" class="btn btn-secondary">+ Добавить доплату</button>
+                    <label>Платежи</label>
+                    <table id="paymentsTable" class="table">
+                        <thead>
+                            <tr>
+                                <th>Тип платежа</th>
+                                <th>Сумма</th>
+                                <th>Дата</th>
+                                <th>Примечание</th>
+                                <th>Действия</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- Строки будут добавляться динамически -->
+                        </tbody>
+                    </table>
+                    <button type="button" id="addPaymentBtn" class="btn btn-secondary">+ Добавить доплату</button>
                 </div>
 
                 <!-- Секция фотографий -->
@@ -140,9 +165,9 @@
                         <p>📷 Перетащите фото сюда или кликните для выбора</p>
                         <input type="file" id="photoInput" accept="image/*" multiple style="display: none;">
                         <button type="button" class="btn btn-outline" onclick="document.getElementById('photoInput').click()">Выбрать файлы</button>
-                        <small style="display:block;color:#666;margin-top:0.5rem;">Поддерживаются форматы: JPG, PNG, GIF. Максимальный размер: 10MB</small>
+                        <small>Поддерживаются форматы: JPG, PNG, GIF. Максимальный размер: 10MB</small>
                     </div>
-                    <div id="photoPreview" class="photo-preview"></div>  <!-- class="photo-preview" из CSS -->
+                    <div id="photoPreview" class="photo-preview"></div>
                 </div>
 
                 <div class="form-group">
@@ -150,16 +175,20 @@
                     <textarea id="additionalInfo" name="additionalInfo" rows="4" placeholder="Комментарий к заказу"></textarea>
                 </div>
 
-                <div class="form-actions" style="margin-top: 1rem;">
+                <div class="form-actions">
                     <button type="submit" class="btn btn-primary" id="submitBtn">Создать заказ</button>
                 </div>
-
-                <div id="formError" class="error-message"></div>
-                <div id="formSuccess" class="success-message"></div>
             </form>
         </div>
     </main>
 
+    <script type="module">
+        import { SidebarManager } from './js/sidebar-manager.js';
+        
+        document.addEventListener('DOMContentLoaded', () => {
+            SidebarManager.init();
+        });
+    </script>
     <script type="module" src="js/create-order.js"></script>
 </body>
 </html>

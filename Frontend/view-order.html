@@ -4,39 +4,63 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Просмотр заказа - Granitka71</title>
-    <link rel="stylesheet" href="CSS/style.css">
-    <link rel="stylesheet" href="CSS/dashboard.css">
-    <link rel="stylesheet" href="CSS/orders.css">
-    <link rel="stylesheet" href="CSS/photos.css">
+    
+    <!-- Base Styles -->
+    <link rel="stylesheet" href="CSS/base/reset.css">
+    <link rel="stylesheet" href="CSS/base/variables.css">
+    <link rel="stylesheet" href="CSS/base/utilities.css">
+    <link rel="stylesheet" href="CSS/base/typography.css">
+    
+    <!-- Layout -->
+    <link rel="stylesheet" href="CSS/layout/header.css">
+    <link rel="stylesheet" href="CSS/layout/sidebar.css">
+    <link rel="stylesheet" href="CSS/layout/main-content.css">
+    
+    <!-- Components -->
+    <link rel="stylesheet" href="CSS/components/buttons.css">
+    <link rel="stylesheet" href="CSS/components/forms.css">
+    <link rel="stylesheet" href="CSS/components/tables.css">
+    <link rel="stylesheet" href="CSS/components/cards.css">
+    <link rel="stylesheet" href="CSS/components/modals.css">
+    <link rel="stylesheet" href="CSS/components/toasts.css">
+    <link rel="stylesheet" href="CSS/components/loading.css">
+    
+    <!-- Pages -->
+    <link rel="stylesheet" href="CSS/pages/view-order.css">
 </head>
 <body>
-    <header class="header">
+    <header class="header" role="banner">
         <div class="container">
             <div class="header-content">
+                <button id="burgerBtn" class="burger-btn" aria-label="Открыть меню" aria-expanded="false">
+                    ☰
+                </button>
                 <h1>Granitka71</h1>
                 <div class="user-info">
-                    <a href="profile.html" id="userName" class="user-profile-link">Пользователь</a>
-                    <button id="logoutBtn" class="btn btn-outline">Выйти</button>
+                    <a href="profile.html" id="userName" class="user-profile-link" aria-label="Перейти в профиль">Пользователь</a>
+                    <button id="logoutBtn" class="btn btn-outline" aria-label="Выйти из аккаунта">Выйти</button>
                 </div>
             </div>
         </div>
     </header>
 
-    <nav class="sidebar">
+    <nav class="sidebar" id="sidebar" role="navigation" aria-label="Основное меню">
         <div class="nav-menu">
-            <a href="dashboard.html" class="nav-item">Дашборд</a>
-            <a href="orders.html" class="nav-item active">Заказы</a>
-            <a href="create-order.html" class="nav-item">Создать заказ</a>
-            <a href="archived-orders.html" class="nav-item">Архив</a>
-            <a href="users.html" class="nav-item admin-only" style="display: none;">Пользователи</a>
+            <a href="dashboard.html" class="nav-item" data-page="dashboard">Дашборд</a>
+            <a href="orders.html" class="nav-item active" data-page="orders" aria-current="page">Заказы</a>
+            <a href="create-order.html" class="nav-item" data-page="create">Создать заказ</a>
+            <a href="archived-orders.html" class="nav-item" data-page="archived">Архив</a>
+            <a href="users.html" class="nav-item admin-only" data-page="users" style="display: none;">Пользователи</a>
         </div>
     </nav>
 
-    <main class="main-content">
+    <main class="main-content" id="mainContent" role="main">
         <div class="container">
             <div class="page-header">
                 <h1>Просмотр заказа</h1>
-                <a href="orders.html" class="btn btn-outline back-btn">← Назад</a>
+                <div class="page-header-actions">
+                    <a href="orders.html" class="btn btn-outline back-btn">← Назад</a>
+                </div>
             </div>
 
             <div id="loadingSpinner" class="loading-spinner" role="status" aria-live="polite">Загрузка...</div>
@@ -79,7 +103,7 @@
         </div>
     </main>
 
-    <!-- Модальное окно для просмотра фото (CSS-классы для анимации и стилей) -->
+    <!-- Модальное окно для просмотра фото -->
     <div id="photoModal" class="modal" role="dialog" aria-modal="true" aria-labelledby="modalCaption" tabindex="-1">
         <div class="modal-overlay" aria-label="Закрыть модальное окно" data-close-modal></div>
         <div class="modal-content">
@@ -90,6 +114,15 @@
         </div>
     </div>
 
+    <script type="module">
+        import { SidebarManager } from './js/sidebar-manager.js';
+        import { PageManager } from './js/page-manager.js';
+        
+        document.addEventListener('DOMContentLoaded', () => {
+            SidebarManager.init();
+            PageManager.initialize('orders');
+        });
+    </script>
     <script type="module" src="js/view-order.js"></script>
 </body>
 </html>

@@ -4,45 +4,68 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Архив заказов - Granitka71</title>
-    <link rel="stylesheet" href="CSS/style.css">
-    <link rel="stylesheet" href="CSS/dashboard.css">
-    <link rel="stylesheet" href="CSS/orders.css">
+    
+    <!-- Base Styles -->
+    <link rel="stylesheet" href="CSS/base/reset.css">
+    <link rel="stylesheet" href="CSS/base/variables.css">
+    <link rel="stylesheet" href="CSS/base/utilities.css">
+    <link rel="stylesheet" href="CSS/base/typography.css">
+    
+    <!-- Layout -->
+    <link rel="stylesheet" href="CSS/layout/header.css">
+    <link rel="stylesheet" href="CSS/layout/sidebar.css">
+    <link rel="stylesheet" href="CSS/layout/main-content.css">
+    
+    <!-- Components -->
+    <link rel="stylesheet" href="CSS/components/buttons.css">
+    <link rel="stylesheet" href="CSS/components/forms.css">
+    <link rel="stylesheet" href="CSS/components/tables.css">
+    <link rel="stylesheet" href="CSS/components/cards.css">
+    <link rel="stylesheet" href="CSS/components/modals.css">
+    <link rel="stylesheet" href="CSS/components/toasts.css">
+    <link rel="stylesheet" href="CSS/components/loading.css">
+    
+    <!-- Pages -->
+    <link rel="stylesheet" href="CSS/pages/archived-orders.css">
 </head>
 <body>
-    <header class="header">
+    <header class="header" role="banner">
         <div class="container">
             <div class="header-content">
+                <button id="burgerBtn" class="burger-btn" aria-label="Открыть меню" aria-expanded="false">
+                    ☰
+                </button>
                 <h1>Granitka71</h1>
                 <div class="user-info">
-                    <a href="profile.html" id="userName" class="user-profile-link">Пользователь</a>
-                    <button id="logoutBtn" class="btn btn-outline">Выйти</button>
+                    <a href="profile.html" id="userName" class="user-profile-link" aria-label="Перейти в профиль">Пользователь</a>
+                    <button id="logoutBtn" class="btn btn-outline" aria-label="Выйти из аккаунта">Выйти</button>
                 </div>
             </div>
         </div>
     </header>
 
-    <nav class="sidebar">
+    <nav class="sidebar" id="sidebar" role="navigation" aria-label="Основное меню">
         <div class="nav-menu">
-            <a href="dashboard.html" class="nav-item">Дашборд</a>
-            <a href="orders.html" class="nav-item">Заказы</a>
-            <a href="create-order.html" class="nav-item">Создать заказ</a>
-            <a href="archived-orders.html" class="nav-item active">Архив</a>
-            <a href="users.html" class="nav-item admin-only" style="display: none;">Пользователи</a>
+            <a href="dashboard.html" class="nav-item" data-page="dashboard">Дашборд</a>
+            <a href="orders.html" class="nav-item" data-page="orders">Заказы</a>
+            <a href="create-order.html" class="nav-item" data-page="create">Создать заказ</a>
+            <a href="archived-orders.html" class="nav-item active" data-page="archived" aria-current="page">Архив</a>
+            <a href="users.html" class="nav-item admin-only" data-page="users" style="display: none;">Пользователи</a>
         </div>
     </nav>
 
-    <main class="main-content">
+    <main class="main-content" id="mainContent" role="main">
         <div class="container">
             <div class="page-header">
                 <h1>Архив заказов</h1>
-                <div>
+                <div class="page-header-actions">
                     <a href="orders.html" class="btn btn-outline">← Назад к заказам</a>
                 </div>
             </div>
 
-            <div class="archive-info card" style="padding: 1rem; margin-bottom: 1rem; background: #fff3cd; border-color: #ffeaa7;">
-                <h3 style="margin-top: 0; color: #856404;">Информация об архиве</h3>
-                <p style="margin: 0.5rem 0; color: #856404;">
+            <div class="archive-info card">
+                <h3>Информация об архиве</h3>
+                <p>
                     Заказы хранятся в архиве 7 дней, после чего автоматически удаляются.
                     Вы можете восстановить заказ или удалить его окончательно.
                 </p>
@@ -78,14 +101,22 @@
 
             <!-- Пагинация -->
             <div class="pagination">
-                <button id="prevPage">← Назад</button>
+                <button id="prevPage" class="btn btn-outline" disabled>← Назад</button>
                 <span id="pageInfo">Страница 1 из 1</span>
-                <button id="nextPage">Вперед →</button>
+                <button id="nextPage" class="btn btn-outline" disabled>Вперед →</button>
             </div>
         </div>
     </main>
 
-    <!-- Теперь просто src — JS сам init'ится -->
+    <script type="module">
+        import { SidebarManager } from './js/sidebar-manager.js';
+        import { PageManager } from './js/page-manager.js';
+        
+        document.addEventListener('DOMContentLoaded', () => {
+            SidebarManager.init();
+            PageManager.initialize('archived');
+        });
+    </script>
     <script type="module" src="js/archived-orders.js"></script>
 </body>
 </html>

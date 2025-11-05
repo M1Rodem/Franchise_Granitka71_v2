@@ -4,13 +4,34 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Панель управления - Granitka71</title>
-    <link rel="stylesheet" href="CSS/style.css">
-    <link rel="stylesheet" href="CSS/dashboard.css">
+    
+    <!-- Base Styles -->
+    <link rel="stylesheet" href="CSS/base/reset.css">
+    <link rel="stylesheet" href="CSS/base/variables.css">
+    <link rel="stylesheet" href="CSS/base/utilities.css">
+    
+    <!-- Layout -->
+    <link rel="stylesheet" href="CSS/layout/header.css">
+    <link rel="stylesheet" href="CSS/layout/sidebar.css">
+    <link rel="stylesheet" href="CSS/layout/main-content.css">
+    
+    <!-- Components -->
+    <link rel="stylesheet" href="CSS/components/buttons.css">
+    <link rel="stylesheet" href="CSS/components/forms.css">
+    <link rel="stylesheet" href="CSS/components/tables.css">
+    <link rel="stylesheet" href="CSS/components/cards.css">
+    <link rel="stylesheet" href="CSS/components/modals.css">
+    
+    <!-- Pages -->
+    <link rel="stylesheet" href="CSS/pages/dashboard.css">
 </head>
 <body>
     <header class="header" role="banner">
         <div class="container">
             <div class="header-content">
+                <button id="burgerBtn" class="burger-btn d-md-none" aria-label="Открыть меню" aria-expanded="false">
+                    ☰
+                </button>
                 <h1>Granitka71</h1>
                 <div class="user-info">
                     <a href="profile.html" id="userName" class="user-profile-link" aria-label="Перейти в профиль">Пользователь</a>
@@ -59,6 +80,16 @@
             </section>
         </div>
     </main>
+
+    <!-- ДОБАВИЛ ИНИЦИАЛИЗАЦИЮ SIDEBAR MANAGER -->
+    <script type="module">
+        import { SidebarManager } from './js/sidebar-manager.js';
+        
+        // Инициализируем sidebar после загрузки DOM
+        document.addEventListener('DOMContentLoaded', () => {
+            SidebarManager.init();
+        });
+    </script>
 
     <script type="module" src="js/dashboard.js"></script>
 </body>

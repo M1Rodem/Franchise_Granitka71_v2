@@ -1,0 +1,130 @@
+/* ===== TYPOGRAPHY ===== */
+h1, h2, h3, h4, h5, h6 {
+    font-weight: 600;
+    line-height: 1.3;
+    margin-bottom: var(--space-4);
+    color: var(--text-primary);
+}
+
+h1 {
+    font-size: var(--text-3xl);
+    font-weight: 800;
+}
+
+h2 {
+    font-size: var(--text-2xl);
+    font-weight: 600;
+}
+
+h3 {
+    font-size: var(--text-xl);
+    font-weight: 600;
+}
+
+h4 {
+    font-size: var(--text-lg);
+    font-weight: 500;
+}
+
+p {
+    margin-bottom: var(--space-4);
+    color: var(--text-secondary);
+}
+
+.text-muted {
+    color: var(--text-muted) !important;
+    font-size: var(--text-sm);
+}
+
+/* Text utilities */
+.text-left {
+    text-align: left;
+}
+
+.text-center {
+    text-align: center;
+}
+
+.text-right {
+    text-align: right;
+}
+
+.text-justify {
+    text-align: justify;
+}
+
+/* Font weights */
+.font-light {
+    font-weight: 300;
+}
+
+.font-normal {
+    font-weight: 400;
+}
+
+.font-medium {
+    font-weight: 500;
+}
+
+.font-semibold {
+    font-weight: 600;
+}
+
+.font-bold {
+    font-weight: 700;
+}
+
+.font-extrabold {
+    font-weight: 800;
+}
+
+/* Text transforms */
+.uppercase {
+    text-transform: uppercase;
+}
+
+.lowercase {
+    text-transform: lowercase;
+}
+
+.capitalize {
+    text-transform: capitalize;
+}
+
+.normal-case {
+    text-transform: none;
+}
+
+/* Message styles (success/error) */
+.error-message,
+.success-message {
+    padding: var(--space-3) var(--space-4);
+    border-radius: var(--radius);
+    margin-top: var(--space-2);
+    font-size: var(--text-sm);
+    border-left: 4px solid;
+    animation: slideInUp 0.3s ease-out;
+}
+
+.error-message {
+    background: rgba(239, 68, 68, 0.1);
+    color: var(--error);
+    border-left-color: var(--error);
+}
+
+.success-message {
+    background: rgba(16, 185, 129, 0.1);
+    color: var(--success);
+    border-left-color: var(--success);
+}
+
+@keyframes slideInUp {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}

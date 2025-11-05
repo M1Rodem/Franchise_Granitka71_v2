@@ -1,0 +1,147 @@
+/* ===== TOASTS COMPONENT ===== */
+.temp-message {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    padding: var(--space-5);
+    border-radius: var(--radius-lg);
+    color: var(--text-primary) !important;
+    z-index: var(--z-toast) !important;
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    min-width: 300px;
+    font-size: var(--text-base);
+    line-height: 1.4;
+    font-weight: 600;
+    cursor: pointer;
+    opacity: 0;
+    transform: translateY(-20px);
+    transition: opacity 0.35s ease, transform 0.35s ease;
+    pointer-events: none;
+    
+    /* Стеклянный эффект по умолчанию */
+    background: var(--glass-background);
+    backdrop-filter: var(--backdrop-blur);
+    -webkit-backdrop-filter: var(--backdrop-blur);
+    border: 1px solid var(--glass-border);
+    box-shadow: var(--glass-shadow);
+}
+
+.temp-message.temp-message-success {
+    background: rgba(16, 185, 129, 0.15) !important;
+    border: 1px solid rgba(16, 185, 129, 0.3) !important;
+    backdrop-filter: var(--backdrop-blur);
+    -webkit-backdrop-filter: var(--backdrop-blur);
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2) !important;
+}
+
+.temp-message.temp-message-error {
+    background: var(--error-background) !important;
+    border: 1px solid var(--error-border) !important;
+    backdrop-filter: var(--backdrop-blur);
+    -webkit-backdrop-filter: var(--backdrop-blur);
+    box-shadow: 0 6px 20px rgba(239, 68, 68, 0.15) !important;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2) !important;
+}
+
+.temp-message.temp-message-warning {
+    background: rgba(245, 158, 11, 0.15) !important;
+    border: 1px solid rgba(245, 158, 11, 0.3) !important;
+    backdrop-filter: var(--backdrop-blur);
+    -webkit-backdrop-filter: var(--backdrop-blur);
+    color: var(--text-primary) !important;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2) !important;
+}
+
+.temp-message.temp-message-info {
+    background: rgba(30, 41, 59, 0.15) !important;
+    border: 1px solid rgba(30, 41, 59, 0.3) !important;
+    backdrop-filter: var(--backdrop-blur);
+    -webkit-backdrop-filter: var(--backdrop-blur);
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2) !important;
+}
+
+.temp-message.show {
+    opacity: 1;
+    transform: translateY(0);
+    pointer-events: auto;
+}
+
+.temp-message::before {
+    content: '';
+    font-size: 1.4em;
+    margin-right: var(--space-2);
+    line-height: 1;
+    text-shadow: inherit !important;
+    flex-shrink: 0;
+}
+
+/* Toast animations */
+@keyframes toastPop {
+    from {
+        opacity: 0;
+        transform: translateX(100%) scale(0.95);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0) scale(1);
+    }
+}
+
+@keyframes toastHide {
+    to {
+        opacity: 0;
+        transform: translateX(100%) scale(0.95);
+    }
+}
+
+.temp-message.hiding {
+    opacity: 0;
+    transform: translateY(-20px);
+    transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+/* Mobile toast styles */
+@media (max-width: 768px) {
+    .temp-message {
+        top: 16px;
+        left: 50%;
+        right: auto;
+        min-width: auto;
+        width: 90%;
+        max-width: 400px;
+        transform: translateX(-50%) translateY(-30px);
+        opacity: 0;
+        padding: var(--space-4);
+        font-size: var(--text-sm);
+        border-radius: var(--radius-xl);
+    }
+
+    .temp-message.show {
+        transform: translateX(-50%) translateY(0);
+        opacity: 1;
+    }
+
+    .temp-message.hiding {
+        transform: translateX(-50%) translateY(-30px);
+        opacity: 0;
+    }
+
+    .temp-message .close {
+        position: absolute;
+        top: 10px;
+        right: 12px;
+        font-size: 1.4rem;
+        background: none;
+        border: none;
+        color: rgba(255,255,255,0.8);
+        cursor: pointer;
+        padding: 0;
+        width: 24px;
+        height: 24px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+}

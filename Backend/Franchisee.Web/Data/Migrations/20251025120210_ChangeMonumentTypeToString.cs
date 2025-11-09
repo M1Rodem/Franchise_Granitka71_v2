@@ -2,7 +2,7 @@
 
 #nullable disable
 
-namespace WebApplication1.Data.Migrations
+namespace Franchisee.Web.Data.Migrations
 {
     /// <inheritdoc />
     public partial class ChangeMonumentTypeToString : Migration

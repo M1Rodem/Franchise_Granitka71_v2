@@ -1,7 +1,7 @@
 ﻿using Microsoft.EntityFrameworkCore;
-using WebApplication1.Models;
+using Franchisee.Web.Models;
 
-namespace WebApplication1.Configuration
+namespace Franchisee.Web.Configuration
 {
     public class ApplicationDbContext : DbContext
     {

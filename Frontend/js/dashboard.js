@@ -30,18 +30,24 @@ async function loadDashboardData() {
     try {
         showLoadingState(true);
 
+        // Получаем ВСЕ заказы и фильтруем на клиенте
+        const allOrdersResponse = await apiService.getOrders({ page: 1, pageSize: 1000 });
         const today = new Date().toISOString().split('T')[0];
         
-        const [totalResponse, todayResponse, unpaidCount, recentResponse] = await Promise.all([
-            apiService.getOrders({ page: 1, pageSize: 1 }),
-            apiService.getOrders({ OrderDateFrom: today, OrderDateTo: today, page: 1, pageSize: 1 }),
+        // Фильтруем заказы за сегодня на клиенте (учитываем UTC)
+        const todayOrders = allOrdersResponse.items.filter(order => {
+            const orderDate = new Date(order.orderDate).toISOString().split('T')[0];
+            return orderDate === today;
+        });
+
+        const [unpaidCount, recentResponse] = await Promise.all([
             apiService.getUnpaidOrdersStats(),
-            apiService.getOrders({ page: 1, pageSize: 5, sortBy: 'UpdatedAt', sortDesc: true }) 
+            apiService.getOrders({ page: 1, pageSize: 5, sortBy: 'OrderDate', sortDesc: true }) 
         ]);
         
         const stats = {
-            total: totalResponse?.totalCount || 0,
-            today: todayResponse?.totalCount || 0,
+            total: allOrdersResponse.totalCount || 0,
+            today: todayOrders.length,
             unpaid: unpaidCount || 0,
             recent: recentResponse?.items || []
         };
@@ -79,7 +85,7 @@ function showRecentOrders(orders) {
     noData.style.display = 'none';
     ordersList.innerHTML = recentOrders.map(order => {
         const status = getPaymentStatus(order);
-        const statusClass = getStatusBadgeClass(status);
+        const statusClass = getStatusBadgeClass(status); // Теперь использует единый класс
         const statusText = getPaymentStatusText(order);
         const managerName = getUserNameFromOrder(order);
         return `

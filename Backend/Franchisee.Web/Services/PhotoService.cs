@@ -3,10 +3,10 @@ using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.Formats.Jpeg;
 using SixLabors.ImageSharp.Processing;
 using System.Security.Cryptography;
-using WebApplication1.Configuration;
-using WebApplication1.Models;
+using Franchisee.Web.Configuration;
+using Franchisee.Web.Models;
 
-namespace WebApplication1.Services
+namespace Franchisee.Web.Services
 {
     public class PhotoService : IPhotoService
     {

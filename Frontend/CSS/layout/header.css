@@ -38,6 +38,7 @@
     width: 100%;
     display: flex;
     align-items: center;
+    justify-content: space-between;
     gap: var(--space-4);
 }
 
@@ -64,6 +65,7 @@
     align-items: center;
     justify-content: center;
     z-index: var(--z-fixed);
+    flex-shrink: 0;
 }
 
 .burger-btn:hover {
@@ -85,6 +87,7 @@
     color: var(--text-primary);
     margin: 0;
     animation: textGlow 3s ease-in-out infinite alternate;
+    white-space: nowrap;
 }
 
 @keyframes textGlow {
@@ -98,11 +101,11 @@
 
 /* User info: Right side */
 .user-info {
-    margin-left: auto;
     display: flex;
     align-items: center;
-    gap: var(--space-3);
+    gap: var(--space-4);
     animation: fadeInRight 0.6s var(--ease-out-back) 0.2s both;
+    flex-shrink: 0;
 }
 
 @keyframes fadeInRight {
@@ -121,10 +124,16 @@
     text-decoration: none;
     font-weight: 500;
     transition: all var(--transition-normal) var(--ease-out-back);
-    padding: var(--space-2) var(--space-3);
+    padding: var(--space-3) var(--space-4);
     border-radius: var(--radius);
     position: relative;
     overflow: hidden;
+    font-size: var(--text-base);
+    white-space: nowrap;
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    background: transparent;
 }
 
 .user-profile-link::before {
@@ -148,15 +157,22 @@
     left: 100%;
 }
 
-/* Logout button in header */
+/* Logout button in header - FIXED hover effect */
 .header .btn-outline {
     background: transparent;
     color: var(--text-secondary);
     border: 1px solid var(--glass-border);
-    padding: var(--space-2) var(--space-4);
+    padding: var(--space-3) var(--space-5);
     transition: all var(--transition-normal) var(--ease-out-back);
     position: relative;
     overflow: hidden;
+    font-size: var(--text-base);
+    font-weight: 500;
+    min-height: 44px;
+    white-space: nowrap;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .header .btn-outline::before {
@@ -166,18 +182,41 @@
     left: -100%;
     width: 100%;
     height: 100%;
-    background: linear-gradient(90deg, transparent, rgba(255, 0, 0, 0.2), transparent);
+    background: linear-gradient(90deg, transparent, rgba(239, 68, 68, 0.2), transparent);
     transition: left var(--transition-slow);
 }
 
 .header .btn-outline:hover {
-    color: var(--text-primary);
-    background: rgba(148, 18, 18, 0.15);
+    color: var(--error);
+    background: rgba(239, 68, 68, 0.1);
+    border-color: var(--error);
     transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.2);
 }
 
 .header .btn-outline:hover::before {
     left: 100%;
+}
+
+/* Tablet styles */
+@media (max-width: 1024px) {
+    .header .container {
+        padding: 0 var(--space-4);
+    }
+    
+    .header h1 {
+        font-size: var(--text-xl);
+    }
+    
+    .user-profile-link {
+        padding: var(--space-2) var(--space-3);
+        font-size: var(--text-sm);
+    }
+    
+    .header .btn-outline {
+        padding: var(--space-2) var(--space-4);
+        font-size: var(--text-sm);
+    }
 }
 
 /* Mobile styles */
@@ -187,26 +226,175 @@
     }
 
     .header h1 {
-        display: none;
+        font-size: var(--text-lg);
+        display: block;
     }
 
     .header-content {
+        gap: var(--space-3);
         justify-content: space-between;
     }
 
     .user-info {
-        margin-left: 0;
+        gap: var(--space-3);
+        align-items: center;
+    }
+
+    .user-profile-link {
+        padding: var(--space-2) var(--space-3);
+        font-size: var(--text-sm);
+        min-height: 40px;
+        max-width: 120px;
+        overflow: hidden;
+        text-overflow: ellipsis;
     }
 
     .header .btn-outline {
         padding: var(--space-2) var(--space-3);
         font-size: var(--text-sm);
+        min-height: 40px;
+        min-width: 70px;
     }
 }
 
-/* Tablet styles */
-@media (max-width: 1024px) {
+/* Стили для маленьких экранов (430px и меньше) */
+@media (max-width: 430px) {
     .header .container {
-        padding: 0 var(--space-4);
+        padding: 0 var(--space-3);
+    }
+
+    .header h1 {
+        font-size: var(--text-base);
+        display: block;
+    }
+
+    .burger-btn {
+        width: 40px;
+        height: 40px;
+        padding: var(--space-2);
+        font-size: var(--text-lg);
+        flex-shrink: 0;
+    }
+
+    .user-info {
+        gap: var(--space-2);
+        align-items: center;
+    }
+
+    .user-profile-link {
+        font-size: var(--text-xs);
+        padding: var(--space-2);
+        min-height: 36px;
+        max-width: 90px;
+    }
+
+    .header .btn-outline {
+        font-size: var(--text-xs);
+        padding: var(--space-2);
+        min-height: 36px;
+        min-width: 60px;
+    }
+}
+
+/* Очень узкие экраны (360px и меньше) */
+@media (max-width: 360px) {
+    .header .container {
+        padding: 0 var(--space-2);
+    }
+
+    .header h1 {
+        font-size: var(--text-sm);
+        display: none;
+    }
+
+    .burger-btn {
+        width: 36px;
+        height: 36px;
+        font-size: var(--text-base);
+        margin-right: var(--space-1);
+    }
+
+    .user-info {
+        gap: var(--space-1);
+        align-items: center;
+    }
+
+    .user-profile-link {
+        font-size: var(--text-xs);
+        padding: var(--space-1) var(--space-2);
+        min-height: 32px;
+        max-width: 70px;
+    }
+
+    .header .btn-outline {
+        font-size: var(--text-xs);
+        padding: var(--space-1) var(--space-2);
+        min-height: 32px;
+        min-width: 50px;
+    }
+}
+
+/* Landscape ориентация на мобильных */
+@media (max-width: 768px) and (orientation: landscape) {
+    .header {
+        height: 50px;
+    }
+
+    .header-content {
+        padding: 0;
+    }
+
+    .user-profile-link {
+        max-width: 100px;
+    }
+    
+    .header .btn-outline {
+        min-width: 60px;
+    }
+}
+
+/* Улучшенные стили для промежуточных экранов */
+@media (max-width: 640px) {
+    .header h1 {
+        font-size: var(--text-base);
+    }
+    
+    .user-profile-link {
+        max-width: 100px;
+        font-size: var(--text-xs);
+    }
+    
+    .header .btn-outline {
+        font-size: var(--text-xs);
+    }
+}
+
+/* Стили для средних планшетов */
+@media (min-width: 769px) and (max-width: 1024px) {
+    .header h1 {
+        font-size: var(--text-xl);
+    }
+    
+    .user-profile-link,
+    .header .btn-outline {
+        font-size: var(--text-sm);
+    }
+}
+
+/* Выравнивание элементов по вертикали */
+@media (max-width: 768px) {
+    .header-content {
+        align-items: center;
+    }
+    
+    .user-info {
+        align-items: center;
+    }
+    
+    .user-profile-link,
+    .header .btn-outline {
+        display: flex;
+        align-items: center;
+        justify-content: center;
     }
 }

@@ -44,6 +44,16 @@ function setupOrdersEventListeners() {
         statusFilter.addEventListener('change', applyFilters);
     }
 
+    // Date filters
+    const dateFrom = document.getElementById('dateFrom');
+    const dateTo = document.getElementById('dateTo');
+    if (dateFrom) {
+        dateFrom.addEventListener('change', applyFilters);
+    }
+    if (dateTo) {
+        dateTo.addEventListener('change', applyFilters);
+    }
+
     // Pagination
     document.getElementById('prevPage').addEventListener('click', prevPage);
     document.getElementById('nextPage').addEventListener('click', nextPage);
@@ -57,21 +67,26 @@ function loadFiltersFromUrl() {
     const search = getUrlParam('search') || '';
     const statusStr = getUrlParam('Status');
     const status = statusStr ? Object.keys(mapStatusToEnum).find(key => mapStatusToEnum[key] == statusStr) || 'all' : 'all';
+    const dateFrom = getUrlParam('dateFrom') || '';
+    const dateTo = getUrlParam('dateTo') || '';
     
     document.getElementById('searchInput').value = search;
     document.getElementById('statusFilter').value = status;
+    document.getElementById('dateFrom').value = dateFrom;
+    document.getElementById('dateTo').value = dateTo;
 }
 
 async function applyFilters() {
     const search = document.getElementById('searchInput').value.trim();
     let status = document.getElementById('statusFilter').value;
+    const dateFrom = document.getElementById('dateFrom').value;
+    const dateTo = document.getElementById('dateTo').value;
 
-    // ✅ ФИКС: Добавляем сортировку по UpdatedAt DESC
     const filterParams = {
         page: 1,
         pageSize: pageSize,
-        sortBy: 'UpdatedAt', // ✅ Сортируем по дате обновления
-        sortDesc: true       // ✅ Сначала новые
+        sortBy: 'UpdatedAt',
+        sortDesc: true
     };
 
     if (search) {
@@ -82,6 +97,15 @@ async function applyFilters() {
         filterParams.PaymentStatus = mapStatusToEnum(status);
     }
 
+    // ИЗМЕНИТЬ: используем OrderDateFrom/OrderDateTo вместо CreatedFrom/CreatedTo
+    if (dateFrom) {
+        filterParams.OrderDateFrom = dateFrom + 'T00:00:00.000Z';
+    }
+
+    if (dateTo) {
+        filterParams.OrderDateTo = dateTo + 'T23:59:59.999Z';
+    }
+
     // Persist to URL
     updateUrlParam('search', search || null);
     if (status !== 'all') {
@@ -89,6 +113,8 @@ async function applyFilters() {
     } else {
         updateUrlParam('Status', null);
     }
+    updateUrlParam('dateFrom', dateFrom || null);
+    updateUrlParam('dateTo', dateTo || null);
     updateUrlParam('page', 1);
     currentPage = 1;
 
@@ -121,12 +147,16 @@ async function loadOrdersWithFilters(filterParams) {
 async function resetFilters() {
     document.getElementById('searchInput').value = '';
     document.getElementById('statusFilter').value = 'all';
+    document.getElementById('dateFrom').value = '';
+    document.getElementById('dateTo').value = '';
+    
     updateUrlParam('search', null);
     updateUrlParam('Status', null);
+    updateUrlParam('dateFrom', null);
+    updateUrlParam('dateTo', null);
     updateUrlParam('page', 1);
     currentPage = 1;
     
-    // ✅ ФИКС: Сбрасываем с сортировкой по UpdatedAt
     await loadOrdersWithFilters({
         page: 1,
         pageSize: pageSize,
@@ -136,7 +166,6 @@ async function resetFilters() {
 }
 
 async function loadOrders() {
-    // ✅ ФИКС: Всегда сортируем по UpdatedAt DESC
     const filterParams = {
         page: currentPage,
         pageSize: pageSize,
@@ -146,6 +175,8 @@ async function loadOrders() {
 
     const search = getUrlParam('search');
     const statusEnum = getUrlParam('Status');
+    const dateFrom = getUrlParam('dateFrom');
+    const dateTo = getUrlParam('dateTo');
 
     if (search) {
         filterParams.SearchQuery = search;
@@ -155,9 +186,17 @@ async function loadOrders() {
         filterParams.PaymentStatus = parseInt(statusEnum);
     }
 
+    // ИЗМЕНИТЬ: используем OrderDateFrom/OrderDateTo
+    if (dateFrom) {
+        filterParams.OrderDateFrom = dateFrom + 'T00:00:00.000Z';
+    }
+
+    if (dateTo) {
+        filterParams.OrderDateTo = dateTo + 'T23:59:59.999Z';
+    }
+
     await loadOrdersWithFilters(filterParams);
 }
-
 
 function renderOrders(orders) {
     const tbody = document.getElementById('ordersTableBody');
@@ -176,16 +215,20 @@ function renderOrders(orders) {
         const totalPrice = order.workItems?.reduce((sum, i) => sum + (Number(i.price || 0) * Number(i.quantity || 1)), 0) || 0;
         return `
             <tr data-order-id="${order.id}">
-                <td>${escapeHtml(order.orderNumber || 'N/A')}</td>
-                <td>${escapeHtml(order.customerFullName || '')}</td>
-                <td>${escapeHtml(order.phone || 'N/A')}</td>
-                <td>${formatDate(order.orderDate)}</td>
-                <td>${formatCurrency(totalPrice)}</td>
-                <td><span class="status-badge ${statusClass}">${statusText}</span></td>
-                <td>${escapeHtml(managerName)}</td>
-                <td>
-                    <button class="btn btn-small" onclick="viewOrder(${order.id})">Просмотр</button>
-                    <button class="btn btn-small danger" onclick="deleteOrder(${order.id})">Удалить</button>
+                <td data-label="№ Заказа">${escapeHtml(order.orderNumber || 'N/A')}</td>
+                <td data-label="Клиент">${escapeHtml(order.customerFullName || '')}</td>
+                <td data-label="Телефон">${escapeHtml(order.phone || 'N/A')}</td>
+                <td data-label="Дата">${formatDate(order.orderDate)}</td>
+                <td data-label="Сумма" class="amount-cell">${formatCurrency(totalPrice)}</td>
+                <td data-label="Статус оплаты" class="status-cell">
+                    <span class="status-badge ${statusClass}">${statusText}</span>
+                </td>
+                <td data-label="Менеджер">${escapeHtml(managerName)}</td>
+                <td data-label="Действия">
+                    <div class="actions">
+                        <button class="btn btn-small btn-view" onclick="viewOrder(${order.id})">Просмотр</button>
+                        <button class="btn btn-small btn-delete" onclick="deleteOrder(${order.id})">Удалить</button>
+                    </div>
                 </td>
             </tr>
         `;

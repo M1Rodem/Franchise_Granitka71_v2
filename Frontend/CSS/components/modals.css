@@ -1,101 +1,42 @@
 /* ===== MODALS COMPONENT ===== */
-.modal {
-    display: none;
+.modal-overlay {
     position: fixed;
     top: 0;
     left: 0;
     width: 100%;
     height: 100%;
-    background: rgba(0, 0, 0, 0.4);
-    z-index: var(--z-modal-backdrop);
+    background: rgba(0, 0, 0, 0.7);
+    backdrop-filter: blur(8px);
+    display: none;
+    justify-content: center; 
     align-items: center;
-    justify-content: center;
-    padding: var(--space-4);
-    backdrop-filter: blur(4px);
+    z-index: var(--z-modal-backdrop);
+    animation: fadeIn 0.3s ease;
 }
 
-.modal.show {
-    display: flex;
+.modal-overlay.active {
+    display: flex; /* Показываем только когда active */
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
 }
 
 .modal-content {
-    background: var(--surface);
-    border-radius: var(--radius-xl);
-    box-shadow: var(--shadow-lg);
-    max-width: 500px;
-    width: 100%;
-    max-height: 90vh;
-    overflow-y: auto;
-    animation: modalFade 0.3s ease-out;
-    opacity: 0.95;
+    background: var(--glass-background) !important;
+    backdrop-filter: var(--backdrop-blur) !important;
+    border: 1px solid var(--glass-border) !important;
+    box-shadow: var(--glass-shadow) !important;
+    border-radius: var(--radius-xl) !important;
+    animation: modalSlideIn 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    color: var(--text-primary) !important;
 }
 
-.modal-header {
-    padding: var(--space-6);
-    border-bottom: 1px solid var(--border-light);
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-}
-
-.modal-body {
-    padding: var(--space-6);
-}
-
-.modal-footer {
-    padding: var(--space-6);
-    border-top: 1px solid var(--border-light);
-    display: flex;
-    gap: var(--space-3);
-    justify-content: flex-end;
-}
-
-.modal-title {
-    font-size: var(--text-xl);
-    font-weight: 600;
-    color: var(--text-primary);
-    margin: 0;
-}
-
-.close {
-    background: none;
-    border: none;
-    font-size: var(--text-2xl);
-    color: var(--text-muted);
-    cursor: pointer;
-    padding: var(--space-2);
-    width: 40px;
-    height: 40px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: var(--radius);
-    transition: all var(--transition-fast);
-}
-
-.close:hover {
-    background: var(--surface-alt);
-    color: var(--text-primary);
-}
-
-/* Modal sizes */
-.modal-sm .modal-content {
-    max-width: 400px;
-}
-
-.modal-lg .modal-content {
-    max-width: 800px;
-}
-
-.modal-xl .modal-content {
-    max-width: 1140px;
-}
-
-/* Modal animations */
-@keyframes modalFade {
+@keyframes modalSlideIn {
     from {
         opacity: 0;
-        transform: scale(0.95) translateY(-10px);
+        transform: scale(0.9) translateY(-20px);
     }
     to {
         opacity: 1;
@@ -103,28 +44,801 @@
     }
 }
 
-/* Mobile modal styles */
-@media (max-width: 768px) {
-    .modal {
-        padding: var(--space-2);
+.modal-close {
+    background: none;
+    border: none;
+    font-size: var(--text-2xl);
+    color: var(--text-muted);
+    cursor: pointer;
+    padding: var(--space-2);
+    border-radius: var(--radius);
+    transition: all 0.3s ease;
+    line-height: 1;
+    position: absolute;
+    top: var(--space-4);
+    right: var(--space-4);
+    z-index: 10;
+}
+
+.modal-close:hover {
+    background: rgba(239, 68, 68, 0.2);
+    color: var(--error);
+}
+
+/* Стили для модального окна архивного заказа */
+.archived-order-modal-wrapper .modal-content {
+    max-width: 900px !important;
+    width: 95% !important;
+    max-height: 90vh !important;
+    overflow: hidden !important;
+    padding: 0 !important;
+}
+
+.archived-order-modal {
+    max-height: 80vh;
+    overflow-y: auto;
+    color: var(--text-primary);
+}
+
+.archived-order-modal .modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    padding: var(--space-6);
+    background: rgba(30, 41, 59, 0.8);
+    border-bottom: 1px solid var(--glass-border);
+    backdrop-filter: blur(20px);
+    position: sticky;
+    top: 0;
+    z-index: 1;
+}
+
+.archived-order-modal .header-content h2 {
+    margin: 0;
+    color: var(--text-primary);
+    font-size: var(--text-2xl);
+    font-weight: 700;
+    line-height: 1.2;
+}
+
+.archived-order-modal .order-meta {
+    display: flex;
+    gap: var(--space-4);
+    margin-top: var(--space-3);
+    flex-wrap: wrap;
+    align-items: center;
+}
+
+.archived-order-modal .deleted-date {
+    color: var(--text-muted);
+    font-size: var(--text-sm);
+    background: rgba(255, 255, 255, 0.1);
+    padding: var(--space-2) var(--space-3);
+    border-radius: var(--radius);
+}
+
+.archived-order-modal .modal-close {
+    background: none;
+    border: none;
+    font-size: var(--text-2xl);
+    color: var(--text-muted);
+    cursor: pointer;
+    padding: var(--space-2);
+    border-radius: var(--radius);
+    transition: all 0.3s ease;
+    line-height: 1;
+}
+
+.archived-order-modal .modal-close:hover {
+    background: rgba(239, 68, 68, 0.2);
+    color: var(--error);
+}
+
+.archived-order-modal .modal-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-6);
+    padding: var(--space-6);
+}
+
+.archived-order-modal .info-section h3,
+.archived-order-modal .table-section h3 {
+    color: var(--text-primary);
+    margin-bottom: var(--space-4);
+    font-size: var(--text-lg);
+    font-weight: 600;
+    border-bottom: 2px solid var(--accent);
+    padding-bottom: var(--space-2);
+    display: inline-block;
+}
+
+.archived-order-modal .info-card {
+    background: rgba(30, 41, 59, 0.6);
+    backdrop-filter: blur(15px);
+    padding: var(--space-5);
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--glass-border);
+    margin-bottom: var(--space-4);
+    transition: all 0.3s ease;
+}
+
+.archived-order-modal .info-card:hover {
+    background: rgba(30, 41, 59, 0.8);
+    transform: translateY(-2px);
+}
+
+.archived-order-modal .info-card p {
+    margin: var(--space-3) 0;
+    color: var(--text-secondary);
+    line-height: var(--line-height-loose);
+}
+
+.archived-order-modal .info-card strong {
+    color: var(--text-primary);
+    font-weight: 600;
+}
+
+.archived-order-modal .finance-section {
+    padding: 0 var(--space-6) var(--space-6);
+}
+
+.archived-order-modal .finance-cards {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-4);
+}
+
+.archived-order-modal .finance-card {
+    padding: var(--space-6);
+    border-radius: var(--radius-lg);
+    text-align: center;
+    backdrop-filter: blur(15px);
+    border: 1px solid var(--glass-border);
+    transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+.archived-order-modal .finance-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+}
+
+.archived-order-modal .finance-card.total-price {
+    background: rgba(59, 130, 246, 0.2);
+    border-color: rgba(59, 130, 246, 0.4);
+}
+
+.archived-order-modal .finance-card.payment-status {
+    background: rgba(16, 185, 129, 0.2);
+    border-color: rgba(16, 185, 129, 0.4);
+}
+
+.archived-order-modal .finance-card h4 {
+    margin: 0 0 var(--space-3) 0;
+    color: var(--text-primary);
+    font-size: var(--text-base);
+    font-weight: 600;
+}
+
+.archived-order-modal .finance-card p {
+    margin: 0;
+    font-weight: 700;
+    font-size: var(--text-2xl);
+}
+
+.archived-order-modal .finance-card.total-price p {
+    color: var(--accent);
+}
+
+.archived-order-modal .finance-card.payment-status p {
+    color: var(--success);
+}
+
+/* Компактные таблицы */
+.compact-table {
+    background: rgba(30, 41, 59, 0.6);
+    backdrop-filter: blur(15px);
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--glass-border);
+    overflow: hidden;
+    transition: all 0.3s ease;
+}
+
+.compact-table:hover {
+    background: rgba(30, 41, 59, 0.8);
+}
+
+.compact-table .table-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: var(--space-4);
+    border-bottom: 1px solid var(--glass-border);
+    transition: background-color 0.3s ease;
+}
+
+.compact-table .table-row:last-child {
+    border-bottom: none;
+}
+
+.compact-table .table-row:hover {
+    background: rgba(59, 130, 246, 0.15);
+}
+
+.compact-table .work-description,
+.compact-table .payment-type {
+    flex: 1;
+    color: var(--text-primary);
+    font-weight: 500;
+}
+
+.compact-table .work-price,
+.compact-table .payment-amount {
+    font-weight: 600;
+    color: var(--accent);
+    margin: 0 var(--space-4);
+    min-width: 120px;
+    text-align: right;
+}
+
+.compact-table .payment-date {
+    color: var(--text-muted);
+    font-size: var(--text-sm);
+    min-width: 100px;
+    text-align: right;
+}
+
+.archived-order-modal .photos-section {
+    padding: 0 var(--space-6) var(--space-6);
+}
+
+.archived-order-modal .photos-container {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: var(--space-4);
+    max-height: 300px;
+    overflow-y: auto;
+    padding: var(--space-4);
+    background: rgba(30, 41, 59, 0.6);
+    backdrop-filter: blur(15px);
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--glass-border);
+}
+
+.photo-item {
+    background: rgba(30, 41, 59, 0.8);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius);
+    padding: var(--space-3);
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-align: center;
+}
+
+.photo-item:hover {
+    background: rgba(59, 130, 246, 0.2);
+    transform: translateY(-2px);
+    border-color: var(--accent);
+}
+
+.photo-info {
+    color: var(--text-secondary);
+}
+
+.photo-icon {
+    font-size: var(--text-2xl);
+    margin-bottom: var(--space-2);
+}
+
+.photo-name {
+    font-weight: 600;
+    color: var(--text-primary);
+    font-size: var(--text-sm);
+    margin-bottom: var(--space-1);
+    word-break: break-word;
+}
+
+.photo-size,
+.photo-date {
+    font-size: var(--text-xs);
+    color: var(--text-muted);
+}
+
+.more-photos {
+    background: rgba(59, 130, 246, 0.3);
+    border: 1px solid var(--accent);
+    border-radius: var(--radius);
+    padding: var(--space-4);
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-align: center;
+    color: var(--text-primary);
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: var(--text-lg);
+}
+
+.more-photos:hover {
+    background: var(--accent);
+    transform: scale(1.05);
+}
+
+.archived-order-modal .no-photos,
+.archived-order-modal .no-data {
+    text-align: center;
+    color: var(--text-muted);
+    padding: var(--space-8);
+    font-style: italic;
+    background: rgba(30, 41, 59, 0.3);
+    border-radius: var(--radius);
+    border: 1px dashed var(--glass-border);
+}
+
+/* СТАТУС-БЕЙДЖИ С ПРАВИЛЬНЫМИ ЦВЕТАМИ */
+.status-badge {
+    padding: var(--space-2) var(--space-4);
+    border-radius: var(--radius);
+    font-size: var(--text-sm);
+    font-weight: 600;
+    display: inline-flex !important; /* ИСПРАВЛЕНИЕ: принудительно показываем */
+    align-items: center;
+    gap: var(--space-2);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    border: 1px solid transparent;
+    transition: all 0.3s ease;
+    visibility: visible !important;
+    opacity: 1 !important;
+}
+
+.status-badge::before {
+    content: '';
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    display: inline-block;
+}
+
+.status-badge:hover {
+    transform: scale(1.05);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+/* Не оплачено - красный */
+.status-not_paid {
+    background: rgba(239, 68, 68, 0.2) !important;
+    color: var(--error) !important;
+    border-color: rgba(239, 68, 68, 0.4) !important;
+}
+
+.status-not_paid::before {
+    background: var(--error) !important;
+}
+
+/* Частично оплачено - желтый */
+.status-partial {
+    background: rgba(245, 158, 11, 0.2) !important;
+    color: var(--warning) !important;
+    border-color: rgba(245, 158, 11, 0.4) !important;
+}
+
+.status-partial::before {
+    background: var(--warning) !important;
+}
+
+/* Оплачено - зеленый */
+.status-paid {
+    background: rgba(16, 185, 129, 0.2) !important;
+    color: var(--success) !important;
+    border-color: rgba(16, 185, 129, 0.4) !important;
+}
+
+.status-paid::before {
+    background: var(--success) !important;
+}
+
+/* Переплачено - фиолетовый */
+.status-overpaid {
+    background: rgba(139, 92, 246, 0.2) !important;
+    color: #8b5cf6 !important;
+    border-color: rgba(139, 92, 246, 0.4) !important;
+}
+
+.status-overpaid::before {
+    background: #8b5cf6 !important;
+}
+
+/* Стили для конфирм-модалок */
+.modal-content h3 {
+    color: var(--text-primary) !important;
+    margin-bottom: 1rem !important;
+    font-size: 1.25rem !important;
+}
+
+.modal-content p {
+    color: var(--text-secondary) !important;
+    margin-bottom: 1.5rem !important;
+    line-height: 1.5 !important;
+}
+
+/* ===== ENHANCED PHOTO MODAL STYLES ===== */
+.photo-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.85);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 10000;
+    animation: modalFadeIn 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+.photo-modal-content {
+    background: var(--glass-background);
+    backdrop-filter: var(--backdrop-blur);
+    -webkit-backdrop-filter: var(--backdrop-blur);
+    border: 1px solid var(--glass-border);
+    box-shadow: var(--glass-shadow);
+    border-radius: var(--radius-xl);
+    max-width: 95vw;
+    max-height: 95vh;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    animation: photoModalSlideIn 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+    overflow: hidden;
+}
+
+.photo-modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: var(--space-5) var(--space-6);
+    background: rgba(30, 41, 59, 0.8);
+    border-bottom: 1px solid var(--glass-border);
+    backdrop-filter: blur(20px);
+    flex-shrink: 0;
+}
+
+.photo-modal-title {
+    margin: 0;
+    color: var(--text-primary);
+    font-size: var(--text-lg);
+    font-weight: 600;
+    flex: 1;
+}
+
+.photo-modal-close {
+    background: rgba(239, 68, 68, 0.15);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    color: var(--error);
+    width: 40px;
+    height: 40px;
+    border-radius: var(--radius-lg);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    font-size: var(--text-lg);
+    line-height: 1;
+    margin-left: var(--space-4);
+}
+
+.photo-modal-close:hover {
+    background: var(--error);
+    color: white;
+    transform: scale(1.1);
+    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+}
+
+.photo-modal-body {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: var(--space-6);
+    background: rgba(30, 41, 59, 0.3);
+    min-height: 300px;
+    position: relative;
+    overflow: hidden;
+}
+
+.photo-modal-image {
+    max-width: 100%;
+    max-height: 70vh;
+    object-fit: contain;
+    border-radius: var(--radius-lg);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+    transition: all 0.3s ease;
+}
+
+.photo-modal-image:hover {
+    transform: scale(1.02);
+}
+
+.photo-modal-footer {
+    padding: var(--space-5) var(--space-6);
+    background: rgba(30, 41, 59, 0.8);
+    border-top: 1px solid var(--glass-border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-shrink: 0;
+    gap: var(--space-4);
+}
+
+.photo-modal-info {
+    flex: 1;
+    color: var(--text-secondary);
+    font-size: var(--text-sm);
+    line-height: var(--line-height-loose);
+}
+
+.photo-modal-actions {
+    display: flex;
+    gap: var(--space-3);
+    align-items: center;
+}
+
+.photo-modal-download {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    padding: var(--space-3) var(--space-5);
+    background: rgba(59, 130, 246, 0.15);
+    color: var(--accent);
+    border: 1px solid rgba(59, 130, 246, 0.3);
+    border-radius: var(--radius-lg);
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    font-size: var(--text-sm);
+}
+
+.photo-modal-download:hover {
+    background: var(--accent);
+    color: white;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
+}
+
+.photo-modal-nav {
+    display: flex;
+    gap: var(--space-2);
+}
+
+.photo-modal-prev,
+.photo-modal-next {
+    background: rgba(100, 116, 139, 0.15);
+    border: 1px solid var(--glass-border);
+    color: var(--text-secondary);
+    width: 40px;
+    height: 40px;
+    border-radius: var(--radius-lg);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    font-size: var(--text-lg);
+}
+
+.photo-modal-prev:hover,
+.photo-modal-next:hover {
+    background: var(--accent);
+    color: white;
+    border-color: var(--accent);
+    transform: translateY(-1px);
+}
+
+.photo-modal-prev:disabled,
+.photo-modal-next:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.photo-modal-prev:disabled:hover,
+.photo-modal-next:disabled:hover {
+    background: rgba(100, 116, 139, 0.15);
+    color: var(--text-secondary);
+    border-color: var(--glass-border);
+}
+
+/* Анимации */
+@keyframes modalFadeIn {
+    from {
+        opacity: 0;
     }
-    
-    .modal-content {
-        max-width: none;
+    to {
+        opacity: 1;
+    }
+}
+
+@keyframes photoModalSlideIn {
+    from {
+        opacity: 0;
+        transform: scale(0.8) translateY(-20px);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+    }
+}
+
+/* Loading state */
+.photo-modal-loading {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-muted);
+    font-size: var(--text-lg);
+}
+
+.photo-modal-loading::after {
+    content: '';
+    width: 30px;
+    height: 30px;
+    border: 2px solid transparent;
+    border-top: 2px solid var(--accent);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin-left: var(--space-3);
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* Адаптивность */
+@media (max-width: 768px) {
+    .photo-modal-content {
+        max-width: 98vw;
+        max-height: 98vh;
         margin: var(--space-2);
     }
     
-    .modal-header,
-    .modal-body,
-    .modal-footer {
+    .photo-modal-header {
+        padding: var(--space-4) var(--space-5);
+    }
+    
+    .photo-modal-body {
+        padding: var(--space-4);
+        min-height: 200px;
+    }
+    
+    .photo-modal-footer {
+        padding: var(--space-4) var(--space-5);
+        flex-direction: column;
+        gap: var(--space-3);
+        align-items: stretch;
+    }
+    
+    .photo-modal-info {
+        text-align: center;
+        order: 1;
+    }
+    
+    .photo-modal-actions {
+        order: 2;
+        justify-content: center;
+    }
+    
+    .photo-modal-nav {
+        order: 3;
+        justify-content: center;
+    }
+    
+    .photo-modal-download {
+        width: 100%;
+        justify-content: center;
+    }
+}
+
+@media (max-width: 480px) {
+    .photo-modal-header {
+        padding: var(--space-3) var(--space-4);
+    }
+    
+    .photo-modal-title {
+        font-size: var(--text-base);
+    }
+    
+    .photo-modal-body {
+        padding: var(--space-3);
+        min-height: 150px;
+    }
+    
+    .photo-modal-footer {
+        padding: var(--space-3) var(--space-4);
+    }
+    
+    .photo-modal-info {
+        font-size: var(--text-xs);
+    }
+}
+
+/* Улучшенные стили для основного модального окна */
+.glass-modal {
+    background: var(--glass-background) !important;
+    backdrop-filter: var(--backdrop-blur) !important;
+    -webkit-backdrop-filter: var(--backdrop-blur) !important;
+    border: 1px solid var(--glass-border) !important;
+    box-shadow: var(--glass-shadow) !important;
+    border-radius: var(--radius-xl) !important;
+    color: var(--text-primary) !important;
+}
+
+/* Адаптивность для архивных модалок */
+@media (max-width: 768px) {
+    .archived-order-modal .modal-grid {
+        grid-template-columns: 1fr;
+        gap: var(--space-4);
         padding: var(--space-4);
     }
     
-    .modal-footer {
-        flex-direction: column;
+    .archived-order-modal .finance-cards {
+        grid-template-columns: 1fr;
     }
     
-    .modal-footer .btn {
-        width: 100%;
+    .archived-order-modal .modal-header {
+        flex-direction: column;
+        gap: var(--space-3);
+        align-items: stretch;
+        padding: var(--space-4);
+    }
+    
+    .archived-order-modal .header-content h2 {
+        font-size: var(--text-xl);
+    }
+    
+    .archived-order-modal .order-meta {
+        justify-content: center;
+    }
+    
+    .archived-order-modal .photos-container {
+        grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+        gap: var(--space-3);
+        padding: var(--space-3);
+    }
+    
+    .compact-table .table-row {
+        flex-direction: column;
+        align-items: stretch;
+        gap: var(--space-2);
+        text-align: center;
+    }
+    
+    .compact-table .work-price,
+    .compact-table .payment-amount,
+    .compact-table .payment-date {
+        margin: 0;
+        text-align: center;
+        min-width: auto;
+    }
+}
+
+@media (max-width: 480px) {
+    .archived-order-modal-wrapper .modal-content {
+        width: 98% !important;
+        margin: var(--space-2);
+    }
+    
+    .archived-order-modal .info-card,
+    .archived-order-modal .finance-card {
+        padding: var(--space-4);
+    }
+    
+    .archived-order-modal .photos-container {
+        grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
     }
 }

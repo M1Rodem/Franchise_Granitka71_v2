@@ -1,10 +1,12 @@
-﻿namespace WebApplication1.Models
+﻿namespace Franchisee.Web.Models
 {
     public class OrderFilterRequest
     {
         public string? SearchQuery { get; set; }
         public DateTime? CreatedFrom { get; set; }
         public DateTime? CreatedTo { get; set; }
+        public DateTime? OrderDateFrom { get; set; } 
+        public DateTime? OrderDateTo { get; set; }   
         public PaymentStatus? PaymentStatus { get; set; }
         public OrderStatus? Status { get; set; }
         public decimal? MinPrice { get; set; }

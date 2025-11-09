@@ -1,6 +1,6 @@
-﻿using WebApplication1.Models;
+﻿using Franchisee.Web.Models;
 
-namespace WebApplication1.Services
+namespace Franchisee.Web.Services
 {
     public interface IPhotoService
     {

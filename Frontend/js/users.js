@@ -57,10 +57,10 @@ function renderUserRow(u) {
         <td><span class="status-badge role-${roleClass}">${u.role}</span></td>
         <td><span class="status-badge ${statusClass}">${status}</span></td>
         <td class="actions">
-            <button class="btn btn-outline btn-sm" onclick="openEditModal(${u.id})">✏️ Редактировать</button>
+            <button class="btn btn-outline btn-sm" onclick="openEditModal(${u.id})">Редактировать</button>
             <button class="btn ${toggleClass} btn-sm" onclick="toggleBlock(${u.id}, ${u.isBlocked})">${toggleText}</button>
             <button class="btn btn-primary btn-sm" onclick="changeRole(${u.id}, '${nextRole}')">Сделать ${nextRole}</button>
-            <button class="btn btn-danger btn-sm" onclick="deleteUser(${u.id})">🗑️ Удалить</button>
+            <button class="btn btn-danger btn-sm" onclick="deleteUser(${u.id})">Удалить</button>
         </td>
     </tr>`;
 }
@@ -97,22 +97,37 @@ function setupCreateForm() {
 
 function setupEditModal() {
     const modal = document.getElementById('editUserModal');
-    const closeBtn = modal.querySelector('.close');
+    if (!modal) {
+        console.warn('Edit modal not found');
+        return;
+    }
+
+    const closeBtn = modal.querySelector('[data-close-modal]');
+    const modalClose = modal.querySelector('.modal-close');
     const cancelBtn = document.getElementById('cancelEditBtn');
     const form = document.getElementById('editUserForm');
+    const modalOverlay = modal.querySelector('.modal-overlay');
 
     // Закрытие модалки
-    closeBtn.addEventListener('click', () => hideEditModal());
-    cancelBtn.addEventListener('click', () => hideEditModal());
+    if (closeBtn) closeBtn.addEventListener('click', () => hideEditModal());
+    if (modalClose) modalClose.addEventListener('click', () => hideEditModal());
+    if (cancelBtn) cancelBtn.addEventListener('click', () => hideEditModal());
+    if (modalOverlay) {
+        modalOverlay.addEventListener('click', () => hideEditModal());
+    }
+
+    // Закрытие по клику на оверлей
     modal.addEventListener('click', (e) => {
         if (e.target === modal) hideEditModal();
     });
 
     // Отправка формы
-    form.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        await saveUserChanges();
-    });
+    if (form) {
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            await saveUserChanges();
+        });
+    }
 }
 
 async function openEditModal(userId) {

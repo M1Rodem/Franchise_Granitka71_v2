@@ -60,6 +60,8 @@
                 <h1>Просмотр заказа</h1>
                 <div class="page-header-actions">
                     <a href="orders.html" class="btn btn-outline back-btn">← Назад</a>
+                    <button id="printBtn" class="btn btn-primary print-btn">Печать</button>
+                    <button id="excelBtn" class="btn btn-success">Excel</button>
                 </div>
             </div>
 
@@ -102,17 +104,6 @@
             </div>
         </div>
     </main>
-
-    <!-- Модальное окно для просмотра фото -->
-    <div id="photoModal" class="modal" role="dialog" aria-modal="true" aria-labelledby="modalCaption" tabindex="-1">
-        <div class="modal-overlay" aria-label="Закрыть модальное окно" data-close-modal></div>
-        <div class="modal-content">
-            <button class="modal-close" aria-label="Закрыть" data-close-modal>&times;</button>
-            <img id="modalImage" src="" alt="" class="modal-image" loading="lazy">
-            <div id="modalCaption" class="modal-caption"></div>
-            <button id="modalDownload" class="btn btn-outline btn-download" aria-label="Скачать фото">Скачать</button>
-        </div>
-    </div>
 
     <script type="module">
         import { SidebarManager } from './js/sidebar-manager.js';

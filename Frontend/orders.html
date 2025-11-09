@@ -64,12 +64,24 @@
             <div class="filters">
                 <input type="text" id="searchInput" class="search-input" placeholder="Поиск по номеру, ФИО, телефону...">
                 
-                <select id="statusFilter" class="filter-select">
+                <select id="statusFilter" class="statusFilter">
                     <option value="all">Все статусы</option>
                     <option value="not_paid">Не оплачен</option>
                     <option value="partial">Частично оплачен</option>
                     <option value="paid">Оплачен</option>
+                    <option value="overpaid">Переплачен</option>
                 </select>
+                
+                <div class="date-range">
+                    <div class="date-group">
+                        <label for="dateFrom">От:</label>
+                        <input type="date" id="dateFrom" class="date-field">
+                    </div>
+                    <div class="date-group">
+                        <label for="dateTo">До:</label>
+                        <input type="date" id="dateTo" class="date-field">
+                    </div>
+                </div>
                 
                 <button id="applyFilters" class="btn btn-primary">Применить</button>
                 <button id="resetFilters" class="btn btn-outline">Сбросить</button>

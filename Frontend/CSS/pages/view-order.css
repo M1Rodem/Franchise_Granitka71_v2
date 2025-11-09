@@ -1,12 +1,63 @@
+/* ===== VIEW ORDER PAGE SPECIFIC STYLES ===== */
+
+/* Page header - единый стиль с orders */
+.page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: var(--space-8);
+    padding: var(--space-8);
+    background: var(--glass-background);
+    backdrop-filter: var(--backdrop-blur);
+    -webkit-backdrop-filter: var(--backdrop-blur);
+    border-radius: var(--radius-xl);
+    box-shadow: var(--glass-shadow);
+    border: 1px solid var(--glass-border);
+    animation: slideInDown 0.6s var(--ease-out-back);
+}
+
+.page-header h1 {
+    margin: 0;
+    color: var(--text-primary);
+    font-weight: 700;
+    font-size: var(--text-3xl);
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+.page-header-actions {
+    display: flex;
+    gap: var(--space-4);
+    align-items: center;
+    animation: fadeInRight 0.6s var(--ease-out-back) 0.2s both;
+}
+
+/* Order container */
 .order-container {
     animation: fadeIn 0.5s ease-out;
 }
 
+/* Order view card with glass effect */
 .order-view.card {
-    background: var(--surface);
-    border: 1px solid var(--border-light);
-    box-shadow: var(--shadow-sm);
+    background: var(--glass-background);
+    backdrop-filter: var(--backdrop-blur);
+    -webkit-backdrop-filter: var(--backdrop-blur);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius-xl);
+    box-shadow: var(--glass-shadow);
     margin-bottom: var(--space-6);
+    padding: var(--space-8);
+    animation: slideInUp 0.6s var(--ease-out-back) 0.1s both;
+}
+
+@keyframes slideInUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }
 
 /* Заголовок заказа */
@@ -16,7 +67,7 @@
     align-items: flex-start;
     margin-bottom: var(--space-6);
     padding-bottom: var(--space-4);
-    border-bottom: 1px solid var(--border-light);
+    border-bottom: 1px solid var(--glass-border);
     flex-wrap: wrap;
     gap: var(--space-4);
 }
@@ -40,6 +91,8 @@
     font-size: var(--text-sm);
     font-weight: 600;
     text-transform: uppercase;
+    background: var(--accent);
+    color: white;
 }
 
 .bg-warning {
@@ -47,7 +100,7 @@
     color: white;
 }
 
-/* Сетка деталей заказа */
+/* Сетка деталей заказа с glass effect */
 .order-details-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
@@ -55,10 +108,20 @@
 }
 
 .order-section {
-    background: var(--surface-alt);
-    padding: var(--space-5);
+    background: var(--glass-background);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    padding: var(--space-6);
     border-radius: var(--radius-lg);
-    border: 1px solid var(--border-light);
+    border: 1px solid var(--glass-border);
+    box-shadow: var(--glass-shadow);
+    transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+.order-section:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+    border-color: var(--accent);
 }
 
 .order-section h3 {
@@ -66,7 +129,7 @@
     color: var(--text-primary);
     font-size: var(--text-lg);
     font-weight: 600;
-    border-bottom: 2px solid var(--primary);
+    border-bottom: 2px solid var(--accent);
     padding-bottom: var(--space-2);
 }
 
@@ -81,19 +144,22 @@
     font-weight: 600;
 }
 
-/* Аккордеоны */
+/* Аккордеоны с glass effect */
 .accordion-section {
-    background: var(--surface);
-    border: 1px solid var(--border-light);
+    background: var(--glass-background);
+    backdrop-filter: var(--backdrop-blur);
+    -webkit-backdrop-filter: var(--backdrop-blur);
+    border: 1px solid var(--glass-border);
     border-radius: var(--radius-lg);
     margin-bottom: var(--space-4);
-    box-shadow: var(--shadow-sm);
+    box-shadow: var(--glass-shadow);
     overflow: hidden;
+    animation: slideInUp 0.6s var(--ease-out-back) 0.2s both;
 }
 
 .accordion-summary {
-    padding: var(--space-5);
-    background: var(--surface-alt);
+    padding: var(--space-6);
+    background: rgba(30, 41, 59, 0.4);
     cursor: pointer;
     font-weight: 600;
     color: var(--text-primary);
@@ -103,17 +169,36 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    transition: all var(--transition-fast);
+    transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    position: relative;
+    overflow: hidden;
+}
+
+.accordion-summary::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(59, 130, 246, 0.1), transparent);
+    transition: left 0.6s ease;
 }
 
 .accordion-summary:hover {
-    background: rgba(46, 139, 87, 0.1);
+    background: rgba(59, 130, 246, 0.1);
+    transform: translateX(4px);
+}
+
+.accordion-summary:hover::before {
+    left: 100%;
 }
 
 .accordion-summary::after {
     content: '▼';
     font-size: var(--text-sm);
-    transition: transform var(--transition-fast);
+    transition: transform 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    color: var(--accent);
 }
 
 .accordion-section[open] .accordion-summary::after {
@@ -121,27 +206,55 @@
 }
 
 .section-content {
-    padding: var(--space-5);
-    background: var(--surface);
+    padding: var(--space-6);
+    background: rgba(30, 41, 59, 0.2);
 }
 
 /* Таблицы внутри аккордеонов */
 .accordion-section .orders-table {
     background: transparent;
     box-shadow: none;
+    border: 1px solid var(--glass-border);
 }
 
 .accordion-section .orders-table th {
-    background: var(--surface-alt);
+    background: rgba(30, 41, 59, 0.4);
+    border-bottom: 1px solid var(--glass-border);
 }
 
 .accordion-section .orders-table tfoot {
-    background: var(--surface-alt);
+    background: rgba(30, 41, 59, 0.4);
     font-weight: 600;
 }
 
 .accordion-section .orders-table tfoot td {
-    border-top: 2px solid var(--border-light);
+    border-top: 2px solid var(--glass-border);
+}
+
+/* Специфичные стили для таблиц работ и платежей в аккордеонах */
+.accordion-section .work-items-table,
+.accordion-section .payments-table {
+    background: transparent;
+    box-shadow: none;
+    border: 1px solid var(--glass-border);
+    margin-bottom: 0;
+}
+
+.accordion-section .work-items-table th,
+.accordion-section .payments-table th {
+    background: rgba(30, 41, 59, 0.4);
+    border-bottom: 1px solid var(--glass-border);
+}
+
+.accordion-section .work-items-table tfoot,
+.accordion-section .payments-table tfoot {
+    background: rgba(30, 41, 59, 0.4);
+    font-weight: 600;
+}
+
+.accordion-section .work-items-table tfoot td,
+.accordion-section .payments-table tfoot td {
+    border-top: 2px solid var(--glass-border);
 }
 
 /* Галерея фотографий */
@@ -153,7 +266,29 @@
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
     gap: var(--space-4);
-    padding: var(--space-5) !important;
+    padding: var(--space-6) !important;
+}
+
+.photo-item {
+    position: relative;
+    border-radius: var(--radius);
+    overflow: hidden;
+    border: 1px solid var(--glass-border);
+    transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    cursor: pointer;
+}
+
+.photo-item:hover {
+    transform: translateY(-4px) scale(1.02);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+    border-color: var(--accent);
+}
+
+.photo-item img {
+    width: 100%;
+    height: 120px;
+    object-fit: cover;
+    display: block;
 }
 
 .no-photos {
@@ -161,6 +296,7 @@
     color: var(--text-muted);
     font-style: italic;
     padding: var(--space-8);
+    grid-column: 1 / -1;
 }
 
 /* Кнопки действий */
@@ -170,7 +306,8 @@
     justify-content: flex-end;
     margin-top: var(--space-6);
     padding-top: var(--space-5);
-    border-top: 1px solid var(--border-light);
+    border-top: 1px solid var(--glass-border);
+    animation: fadeIn 0.6s var(--ease-out-back) 0.4s both;
 }
 
 /* Состояние загрузки */
@@ -179,64 +316,147 @@
     padding: var(--space-8);
     color: var(--text-muted);
     font-style: italic;
-    background: var(--surface);
+    background: var(--glass-background);
+    backdrop-filter: var(--backdrop-blur);
     border-radius: var(--radius-lg);
-    border: 1px dashed var(--border);
+    border: 1px dashed var(--glass-border);
 }
 
-/* Адаптивность */
+.no-data {
+    text-align: center;
+    color: var(--text-muted);
+    font-style: italic;
+    padding: var(--space-8);
+    background: rgba(30, 41, 59, 0.2);
+    border-radius: var(--radius);
+    border: 1px dashed var(--glass-border);
+}
+
+/* Мобильные стили для таблиц внутри аккордеонов */
+/* Мобильные стили для кнопок действий в заголовке */
 @media (max-width: 768px) {
-    .order-header {
+    .page-header {
         flex-direction: column;
-        align-items: flex-start;
-    }
-    
-    .order-details-grid {
-        grid-template-columns: 1fr;
         gap: var(--space-4);
+        align-items: flex-start;
+        padding: var(--space-6);
     }
     
-    .order-section {
+    .page-header-actions {
+        width: 100%;
+        justify-content: space-between;
+        gap: var(--space-3);
+        flex-wrap: wrap;
+    }
+    
+    .page-header-actions .btn {
+        flex: 1;
+        min-width: 120px;
+        font-size: var(--text-sm);
+        padding: var(--space-3) var(--space-3);
+        text-align: center;
+    }
+    
+    .back-btn {
+        order: -1;
+        width: 100%;
+        margin-bottom: var(--space-4);
+    }
+}
+
+/* Стили для очень маленьких экранов (430px и меньше) */
+@media (max-width: 430px) {
+    .page-header {
         padding: var(--space-4);
     }
     
+    .page-header h1 {
+        font-size: var(--text-2xl);
+    }
+    
+    .page-header-actions {
+        flex-direction: column;
+        gap: var(--space-2);
+    }
+    
+    .page-header-actions .btn {
+        width: 100%;
+        min-width: auto;
+        font-size: var(--text-sm);
+        padding: var(--space-3) var(--space-2);
+    }
+    
+    /* Специфично для кнопок печати и excel */
+    .print-btn, .excel-btn {
+        font-size: var(--text-xs);
+        padding: var(--space-2) var(--space-3);
+    }
+    
+    /* Делаем кнопки компактнее */
+    .btn-icon {
+        font-size: var(--text-base);
+        margin-right: var(--space-1);
+    }
+}
+
+/* Еще более компактные стили для очень узких экранов */
+@media (max-width: 360px) {
+    .page-header-actions {
+        gap: var(--space-1);
+    }
+    
+    .page-header-actions .btn {
+        padding: var(--space-2) var(--space-1);
+        font-size: var(--text-xs);
+    }
+    
+    .print-btn, .excel-btn {
+        min-height: 36px;
+    }
+    
+    /* Скрываем текст, оставляем только иконки на очень маленьких экранах */
+    .print-btn span:not(.btn-icon),
+    .excel-btn span:not(.btn-icon) {
+        display: none;
+    }
+    
+    .print-btn, .excel-btn {
+        min-width: 44px;
+        justify-content: center;
+    }
+}
+
+/* Альтернативное решение - горизонтальный скролл для кнопок */
+@media (max-width: 430px) {
+    .page-header-actions.scrollable {
+        display: flex;
+        overflow-x: auto;
+        gap: var(--space-2);
+        padding-bottom: var(--space-2);
+        scrollbar-width: none; /* Firefox */
+        -ms-overflow-style: none; /* IE and Edge */
+    }
+    
+    .page-header-actions.scrollable::-webkit-scrollbar {
+        display: none; /* Chrome, Safari and Opera */
+    }
+    
+    .page-header-actions.scrollable .btn {
+        flex: 0 0 auto;
+        min-width: 100px;
+    }
+}
+
+/* Улучшенные стили для action-buttons внизу страницы */
+@media (max-width: 430px) {
     .action-buttons {
         flex-direction: column;
+        gap: var(--space-3);
     }
     
     .action-buttons .btn {
         width: 100%;
         justify-content: center;
-    }
-    
-    .photo-preview {
-        grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
-        gap: var(--space-3);
-        padding: var(--space-4) !important;
-    }
-    
-    .accordion-summary {
-        padding: var(--space-4);
-        font-size: var(--text-base);
-    }
-    
-    .section-content {
-        padding: var(--space-4);
-    }
-}
-
-@media (max-width: 480px) {
-    .order-title {
-        font-size: var(--text-xl);
-    }
-    
-    .status-badges {
-        width: 100%;
-        justify-content: flex-start;
-    }
-    
-    .photo-preview {
-        grid-template-columns: repeat(2, 1fr);
     }
 }
 
@@ -250,4 +470,104 @@
         opacity: 1;
         transform: translateY(0);
     }
+}
+
+@keyframes slideInDown {
+    from {
+        opacity: 0;
+        transform: translateY(-30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes fadeInRight {
+    from {
+        opacity: 0;
+        transform: translateX(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+/* Стили для кнопки печати */
+.print-btn {
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    border: 1px solid #10b981;
+    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.25);
+}
+
+.print-btn:hover:not(:disabled) {
+    background: linear-gradient(135deg, #059669 0%, #047857 100%);
+    transform: translateY(-2px) scale(1.02);
+    box-shadow: 0 8px 20px rgba(16, 185, 129, 0.4);
+    border-color: #059669;
+}
+
+.btn-icon {
+    font-size: var(--text-lg);
+}
+
+/* Анимация загрузки для печати */
+.print-loading {
+    position: relative;
+    pointer-events: none;
+}
+
+.print-loading::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 20px;
+    height: 20px;
+    margin: -10px 0 0 -10px;
+    border: 2px solid transparent;
+    border-top: 2px solid currentColor;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+.btn-success {
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    color: white !important;
+    border: 1px solid #10b981;
+    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.25);
+}
+
+.btn-success:hover:not(:disabled) {
+    background: linear-gradient(135deg, #059669 0%, #047857 100%);
+    color: white !important;
+    transform: translateY(-2px) scale(1.02);
+    box-shadow: 0 8px 20px rgba(16, 185, 129, 0.4);
+    border-color: #059669;
+}
+
+/* Стили для кнопки Печать - синяя с белым текстом */
+.btn-primary {
+    background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+    color: white !important;
+    border: 1px solid #3b82f6;
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.25);
+}
+
+.btn-primary:hover:not(:disabled) {
+    background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+    color: white !important;
+    transform: translateY(-2px) scale(1.02);
+    box-shadow: 0 8px 20px rgba(59, 130, 246, 0.4);
+    border-color: #2563eb;
+}
+
+.page-header-actions .btn-group {
+    display: flex;
+    gap: var(--space-2);
+}
+
+.page-header-actions .btn-group .btn {
+    border-radius: var(--radius);
 }

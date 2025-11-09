@@ -1,9 +1,9 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using WebApplication1.Models;
-using WebApplication1.Services.Repositories;
+using Franchisee.Web.Models;
+using Franchisee.Web.Services.Repositories;
 
-namespace WebApplication1.Controllers
+namespace Franchisee.Web.Controllers
 {
     [Authorize(Roles = "Admin")]
     [ApiController]

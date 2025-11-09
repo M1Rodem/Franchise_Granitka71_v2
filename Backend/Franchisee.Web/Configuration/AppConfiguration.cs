@@ -1,4 +1,8 @@
-﻿using Microsoft.AspNetCore.Authentication.JwtBearer;
+﻿using Franchisee.Web.Configuration;
+using Franchisee.Web.Models;
+using Franchisee.Web.Services;
+using Franchisee.Web.Services.Repositories;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.FileProviders;
@@ -7,28 +11,37 @@ using Microsoft.OpenApi.Models;
 using Serilog;
 using Swashbuckle.AspNetCore.SwaggerGen;
 using System.Text;
-using WebApplication1.Configuration;
-using WebApplication1.Services;
-using WebApplication1.Services.Repositories;
 
 
-namespace WebApplication1.Configuration
+namespace Franchisee.Web.Configuration
 {
     public static class AppConfiguration
     {
         public static void ConfigureServices(IServiceCollection services, IConfiguration configuration, IWebHostEnvironment env)
         {
+            services.Configure<AppSettings>(configuration.GetSection("AppSettings"));
+
             // ДОБАВЛЯЕМ CORS В САМОМ НАЧАЛЕ
             services.AddCors(options =>
             {
                 options.AddPolicy("AllowFrontend", policy =>
                 {
-                    policy.WithOrigins("http://localhost:3000", "http://127.0.0.1:3000", "http://localhost:5000","https://localhost:7137","https://localhost:7000")
-                          .AllowAnyHeader()
-                          .AllowAnyMethod()
-                          .AllowCredentials();
+                    policy.WithOrigins(
+                        "http://localhost:3000",
+                        "http://127.0.0.1:3000",
+                        "http://localhost:5000",
+                        "https://localhost:7137",
+                        "https://localhost:7000",
+                        "http://192.168.0.21:3000",
+                        "http://192.168.0.21:5000"
+                    )
+                    .AllowAnyHeader()
+                    .AllowAnyMethod()
+                    .AllowCredentials();
                 });
             });
+
+            services.AddScoped<IPrintService, PrintService>();
 
             // ДОБАВЛЯЕМ ПОДДЕРЖКУ ФАЙЛОВ
             services.Configure<IISServerOptions>(options =>
@@ -155,7 +168,7 @@ namespace WebApplication1.Configuration
                 app.UseSwaggerUI();
             }
 
-            app.UseHttpsRedirection();
+            //app.UseHttpsRedirection();
 
             // ДОБАВЛЯЕМ ПОДДЕРЖКУ СТАТИЧЕСКИХ ФАЙЛОВ ДО UseRouting()
             app.UseStaticFiles(); // Для wwwroot

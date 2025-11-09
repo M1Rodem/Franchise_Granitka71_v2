@@ -1,6 +1,6 @@
 ﻿using System.ComponentModel.DataAnnotations;
 
-namespace WebApplication1.Models
+namespace Franchisee.Web.Models
 {
     public class CreateOrderRequest
     {

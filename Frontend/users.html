@@ -56,9 +56,12 @@
 
     <main class="main-content" id="mainContent" role="main">
         <div class="container">
+            <!-- Добавляем заголовок как в архиве -->
             <div class="page-header">
-                <h1>Пользователи</h1>
-                <div class="page-header-actions"></div>
+                <h1>Управление пользователями</h1>
+                <div class="page-header-actions">
+                    <a href="dashboard.html" class="btn btn-outline">← Назад в дашборд</a>
+                </div>
             </div>
 
             <form id="createUserForm" class="card">
@@ -81,7 +84,7 @@
                         <option value="Admin">Admin</option>
                     </select>
                 </div>
-                <button type="submit" class="btn btn-primary">Создать</button>
+                <button type="submit" class="btn btn-primary">Создать пользователя</button>
             </form>
 
             <div class="orders-table-container">
@@ -97,48 +100,50 @@
                         </tr>
                     </thead>
                     <tbody id="usersTableBody">
+                        <!-- Данные загружаются через JavaScript -->
                     </tbody>
                 </table>
-                
-                <!-- Модальное окно редактирования пользователя -->
-                <div id="editUserModal" class="modal">
-                    <div class="modal-content">
-                        <div class="modal-header">
-                            <h3 id="editUserModalTitle" class="modal-title">Редактировать пользователя</h3>
-                            <button class="close">&times;</button>
-                        </div>
-                        
-                        <form id="editUserForm" class="modal-form">
-                            <div class="form-group">
-                                <label for="editUsername">Логин *</label>
-                                <input type="text" id="editUsername" required autocomplete="username">
-                            </div>
-                            
-                            <div class="form-group">
-                                <label for="editFullName">ФИО *</label>
-                                <input type="text" id="editFullName" required autocomplete="name">
-                            </div>
-                            
-                            <div class="form-group">
-                                <label for="editPassword">Новый пароль</label>
-                                <input type="password" id="editPassword" placeholder="Оставьте пустым, чтобы не менять" autocomplete="new-password" minlength="6">
-                                <small>Минимум 6 символов</small>
-                            </div>
-                            
-                            <div class="form-group">
-                                <label>Текущая роль: <span id="currentRole" class="role-badge"></span></label>
-                            </div>
-                            
-                            <div class="modal-actions">
-                                <button type="button" class="btn btn-outline" id="cancelEditBtn">Отмена</button>
-                                <button type="submit" class="btn btn-primary">Сохранить</button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
             </div>
         </div>
     </main>
+
+    <!-- Модальное окно редактирования пользователя - ВЫНЕСЕНО ОТДЕЛЬНО -->
+    <div id="editUserModal" class="modal" role="dialog" aria-modal="true" aria-labelledby="editUserModalTitle" tabindex="-1">
+        <div class="modal-overlay" aria-label="Закрыть модальное окно" data-close-modal></div>
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="editUserModalTitle" class="modal-title">Редактировать пользователя</h3>
+                <button class="modal-close" data-close-modal>&times;</button>
+            </div>
+            
+            <form id="editUserForm" class="modal-form">
+                <div class="form-group">
+                    <label for="editUsername">Логин *</label>
+                    <input type="text" id="editUsername" required autocomplete="username">
+                </div>
+                
+                <div class="form-group">
+                    <label for="editFullName">ФИО *</label>
+                    <input type="text" id="editFullName" required autocomplete="name">
+                </div>
+                
+                <div class="form-group">
+                    <label for="editPassword">Новый пароль</label>
+                    <input type="password" id="editPassword" placeholder="Оставьте пустым, чтобы не менять" autocomplete="new-password" minlength="6">
+                    <small>Минимум 6 символов</small>
+                </div>
+                
+                <div class="form-group">
+                    <label>Текущая роль: <span id="currentRole" class="role-badge"></span></label>
+                </div>
+                
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-outline" id="cancelEditBtn">Отмена</button>
+                    <button type="submit" class="btn btn-primary">Сохранить</button>
+                </div>
+            </form>
+        </div>
+    </div>
 
     <script type="module">
         import { SidebarManager } from './js/sidebar-manager.js';

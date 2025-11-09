@@ -6,11 +6,11 @@ using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.Processing;
 using System.ComponentModel.DataAnnotations;
 using System.IO;
-using WebApplication1.Configuration;
-using WebApplication1.Models;
-using WebApplication1.Services;
+using Franchisee.Web.Configuration;
+using Franchisee.Web.Models;
+using Franchisee.Web.Services;
 
-namespace WebApplication1.Controllers
+namespace Franchisee.Web.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]

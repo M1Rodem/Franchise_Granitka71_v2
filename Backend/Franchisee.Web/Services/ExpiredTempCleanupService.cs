@@ -2,9 +2,9 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
-using WebApplication1.Configuration;
+using Franchisee.Web.Configuration;
 
-namespace WebApplication1.Services
+namespace Franchisee.Web.Services
 {
     public class ExpiredTempCleanupService : BackgroundService
     {

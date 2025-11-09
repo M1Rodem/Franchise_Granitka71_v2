@@ -5,11 +5,11 @@ using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
-using WebApplication1.Configuration;
+using Franchisee.Web.Configuration;
 
 #nullable disable
 
-namespace WebApplication1.Data.Migrations
+namespace Franchisee.Web.Data.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
     [Migration("20251029082714_SeedAdminUser")]
@@ -25,7 +25,7 @@ namespace WebApplication1.Data.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
-            modelBuilder.Entity("WebApplication1.Models.Manager", b =>
+            modelBuilder.Entity("Franchisee.Web.Models.Manager", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -61,7 +61,7 @@ namespace WebApplication1.Data.Migrations
                     b.ToTable("Managers");
                 });
 
-            modelBuilder.Entity("WebApplication1.Models.Order", b =>
+            modelBuilder.Entity("Franchisee.Web.Models.Order", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -149,7 +149,7 @@ namespace WebApplication1.Data.Migrations
                     b.ToTable("Orders");
                 });
 
-            modelBuilder.Entity("WebApplication1.Models.OrderPayment", b =>
+            modelBuilder.Entity("Franchisee.Web.Models.OrderPayment", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -182,7 +182,7 @@ namespace WebApplication1.Data.Migrations
                     b.ToTable("OrderPayments");
                 });
 
-            modelBuilder.Entity("WebApplication1.Models.OrderPhoto", b =>
+            modelBuilder.Entity("Franchisee.Web.Models.OrderPhoto", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -233,7 +233,7 @@ namespace WebApplication1.Data.Migrations
                     b.ToTable("OrderPhotos");
                 });
 
-            modelBuilder.Entity("WebApplication1.Models.OrderWorkItem", b =>
+            modelBuilder.Entity("Franchisee.Web.Models.OrderWorkItem", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -266,7 +266,7 @@ namespace WebApplication1.Data.Migrations
                     b.ToTable("OrderWorkItems");
                 });
 
-            modelBuilder.Entity("WebApplication1.Models.TempUpload", b =>
+            modelBuilder.Entity("Franchisee.Web.Models.TempUpload", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -313,9 +313,9 @@ namespace WebApplication1.Data.Migrations
                     b.ToTable("TempUploads");
                 });
 
-            modelBuilder.Entity("WebApplication1.Models.Order", b =>
+            modelBuilder.Entity("Franchisee.Web.Models.Order", b =>
                 {
-                    b.HasOne("WebApplication1.Models.Manager", "Manager")
+                    b.HasOne("Franchisee.Web.Models.Manager", "Manager")
                         .WithMany("Orders")
                         .HasForeignKey("ManagerId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -324,9 +324,9 @@ namespace WebApplication1.Data.Migrations
                     b.Navigation("Manager");
                 });
 
-            modelBuilder.Entity("WebApplication1.Models.OrderPayment", b =>
+            modelBuilder.Entity("Franchisee.Web.Models.OrderPayment", b =>
                 {
-                    b.HasOne("WebApplication1.Models.Order", "Order")
+                    b.HasOne("Franchisee.Web.Models.Order", "Order")
                         .WithMany("Payments")
                         .HasForeignKey("OrderId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -335,15 +335,15 @@ namespace WebApplication1.Data.Migrations
                     b.Navigation("Order");
                 });
 
-            modelBuilder.Entity("WebApplication1.Models.OrderPhoto", b =>
+            modelBuilder.Entity("Franchisee.Web.Models.OrderPhoto", b =>
                 {
-                    b.HasOne("WebApplication1.Models.Order", "Order")
+                    b.HasOne("Franchisee.Web.Models.Order", "Order")
                         .WithMany("Photos")
                         .HasForeignKey("OrderId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("WebApplication1.Models.Manager", "Uploader")
+                    b.HasOne("Franchisee.Web.Models.Manager", "Uploader")
                         .WithMany()
                         .HasForeignKey("UploaderId")
                         .OnDelete(DeleteBehavior.Restrict);
@@ -353,9 +353,9 @@ namespace WebApplication1.Data.Migrations
                     b.Navigation("Uploader");
                 });
 
-            modelBuilder.Entity("WebApplication1.Models.OrderWorkItem", b =>
+            modelBuilder.Entity("Franchisee.Web.Models.OrderWorkItem", b =>
                 {
-                    b.HasOne("WebApplication1.Models.Order", "Order")
+                    b.HasOne("Franchisee.Web.Models.Order", "Order")
                         .WithMany("WorkItems")
                         .HasForeignKey("OrderId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -364,12 +364,12 @@ namespace WebApplication1.Data.Migrations
                     b.Navigation("Order");
                 });
 
-            modelBuilder.Entity("WebApplication1.Models.Manager", b =>
+            modelBuilder.Entity("Franchisee.Web.Models.Manager", b =>
                 {
                     b.Navigation("Orders");
                 });
 
-            modelBuilder.Entity("WebApplication1.Models.Order", b =>
+            modelBuilder.Entity("Franchisee.Web.Models.Order", b =>
                 {
                     b.Navigation("Payments");
 

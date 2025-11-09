@@ -1,7 +1,7 @@
 ﻿using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
-namespace WebApplication1.Models
+namespace Franchisee.Web.Models
 {
     public enum MonumentType { Надгробный, Гранитный, Мраморный, Бронзовый }
     public enum OrderStatus { Новый, ВРаботе, Оплата, Готов, Доставлен }

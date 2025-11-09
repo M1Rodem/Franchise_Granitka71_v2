@@ -1,8 +1,9 @@
 ﻿using Microsoft.EntityFrameworkCore;
-using WebApplication1.Configuration;
-using WebApplication1.Models;
+using Franchisee.Web.Configuration;
+using Franchisee.Web.Models;
+using Franchisee.Web.Services.Repositories;
 
-namespace WebApplication1.Services.Repositories
+namespace Franchisee.Web.Services
 {
     public class OrderRepository : IOrderRepository
     {
@@ -55,11 +56,17 @@ namespace WebApplication1.Services.Repositories
                                          o.MonumentType.ToLower().Contains(search));
             }
 
-            // Фильтры по датам
+            // Фильтры по дате создания
+            if (filter.OrderDateFrom.HasValue)
+                query = query.Where(o => o.OrderDate >= filter.OrderDateFrom.Value.ToUniversalTime());
+            if (filter.OrderDateTo.HasValue)
+                query = query.Where(o => o.OrderDate <= filter.OrderDateTo.Value.ToUniversalTime());
+
+            // Также исправьте фильтры по дате создания:
             if (filter.CreatedFrom.HasValue)
-                query = query.Where(o => o.CreatedAt >= filter.CreatedFrom.Value);
+                query = query.Where(o => o.CreatedAt >= filter.CreatedFrom.Value.ToUniversalTime());
             if (filter.CreatedTo.HasValue)
-                query = query.Where(o => o.CreatedAt <= filter.CreatedTo.Value);
+                query = query.Where(o => o.CreatedAt <= filter.CreatedTo.Value.ToUniversalTime());
 
             // По цене
             if (filter.MinPrice.HasValue)
@@ -132,10 +139,11 @@ namespace WebApplication1.Services.Repositories
         {
             return status switch
             {
-                PaymentStatus.NotPaid => query.Where(o => !o.Payments.Any()),
+                PaymentStatus.NotPaid => query.Where(o => o.Payments.Sum(p => p.Amount) == 0),
                 PaymentStatus.Partial => query.Where(o => o.Payments.Sum(p => p.Amount) > 0
-                                                      && o.Payments.Sum(p => p.Amount) < o.WorkItems.Sum(w => w.Price * w.Quantity)),
-                PaymentStatus.Paid => query.Where(o => o.Payments.Sum(p => p.Amount) == o.WorkItems.Sum(w => w.Price * w.Quantity)),
+                                                       && o.Payments.Sum(p => p.Amount) < o.WorkItems.Sum(w => w.Price * w.Quantity)),
+                PaymentStatus.Paid => query.Where(o => o.Payments.Sum(p => p.Amount) >= o.WorkItems.Sum(w => w.Price * w.Quantity)
+                                                    && o.WorkItems.Sum(w => w.Price * w.Quantity) > 0),
                 PaymentStatus.Overpaid => query.Where(o => o.Payments.Sum(p => p.Amount) > o.WorkItems.Sum(w => w.Price * w.Quantity)),
                 _ => query
             };
@@ -144,8 +152,9 @@ namespace WebApplication1.Services.Repositories
         {
             try
             {
+                // ИСПРАВЛЕНИЕ: Ищем ВСЕ заказы (включая архивные) чтобы избежать дублирования номеров
                 var maxId = await _context.Orders
-                    .Where(o => !o.IsDeleted)
+                    .IgnoreQueryFilters() // ВАЖНО: игнорируем фильтр мягкого удаления
                     .MaxAsync(o => (int?)o.Id) ?? 0;
 
                 // Следующий ID

@@ -3,10 +3,10 @@ using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
-using WebApplication1.Models;
-using WebApplication1.Services.Repositories;
+using Franchisee.Web.Models;
+using Franchisee.Web.Services.Repositories;
 
-namespace WebApplication1.Controllers
+namespace Franchisee.Web.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
@@ -71,8 +71,8 @@ namespace WebApplication1.Controllers
                     SigningCredentials = new SigningCredentials(
                         new SymmetricSecurityKey(keyBytes),
                         SecurityAlgorithms.HmacSha256Signature),
-                    Issuer = _config["Jwt:Issuer"] ?? "WebApplication1",
-                    Audience = _config["Jwt:Audience"] ?? "WebApplication1Users"
+                    Issuer = _config["Jwt:Issuer"] ?? "Franchisee.Web",
+                    Audience = _config["Jwt:Audience"] ?? "Franchisee.WebUsers"
                 };
 
                 var token = tokenHandler.CreateToken(tokenDescriptor);

@@ -1,11 +1,8 @@
 // create-order.js
 import { PageManager } from './page-manager.js';
 import { apiService } from './api.js';
-import { formatCurrency, getTodayDate, isValidEmail, isValidPhone, 
-    populateForm,  getFormValue, showTempMessage, } from './utils.js';
-import { setupDragAndDrop, handlePhotoSelect, uploadTempAndDisplay, 
-    renderPhotoGrid, tempUploads, clearTempPhotos, attachPhotoEvents, 
-    getTempPhotoIds, loadAndCleanupTemp } from './photo-utils.js';
+import { formatCurrency, getTodayDate, isValidEmail, isValidPhone, populateForm,  getFormValue, showTempMessage, } from './utils.js';
+import { setupDragAndDrop, handlePhotoSelect, uploadTempAndDisplay, renderPhotoGrid, tempUploads, clearTempPhotos, attachPhotoEvents, getTempPhotoIds, loadAndCleanupTemp } from './photo-utils.js';
 
 export class CreateOrderManager {
     constructor(pageManager) {
@@ -526,7 +523,7 @@ export class CreateOrderManager {
             </td>
             <td>
                 ${isAdditionalPayment ? 
-                    '<button type="button" class="btn btn-danger btn-sm remove-row">✕</button>' : 
+                    '<button type="button" class="btn btn-danger btn-sm remove-row">Удалить</button>' : 
                     '<span class="text-muted">Основной</span>'
                 }
             </td>

@@ -1,4 +1,4 @@
-const API_BASE_URL = 'https://localhost:7137/api'; // Замени на prod URL в .env
+const API_BASE_URL = 'http://192.168.0.21:5000/api';
 
 import { showTempMessage } from './utils.js';
 
@@ -221,13 +221,13 @@ class ApiService {
 
     async getUnpaidOrdersStats() {
         try {
-            // Запрашиваем ВСЕ заказы и фильтруем на клиенте
             const response = await this.request('/Orders?page=1&pageSize=1000');
             
             if (response && Array.isArray(response.items)) {
-                // Фильтруем заказы где сумма платежей = 0
                 const unpaidOrders = response.items.filter(order => {
                     const totalPaid = order.payments?.reduce((sum, p) => sum + (Number(p.amount) || 0), 0) || 0;
+                    const orderTotal = Number(order.totalAmount) || 0;
+                    // Неоплаченные - где сумма платежей равна 0
                     return totalPaid === 0;
                 });
                 
@@ -392,6 +392,38 @@ class ApiService {
             }
             return originalFetch(...args);
         };
+    }
+
+    async downloadOrderExcel(orderId) {
+        const response = await fetch(`${API_BASE_URL}/Print/order/${orderId}/download`, {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${this.token}`,
+                'Accept': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+            }
+        });
+
+        if (!response.ok) {
+            throw new Error(`Download failed: ${response.status}`);
+        }
+
+        return response;
+    }
+
+    async getOrderHtmlPrint(orderId) {
+        const response = await fetch(`${API_BASE_URL}/Print/order/${orderId}/html-print`, {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${this.token}`,
+                'Accept': 'text/html'
+            }
+        });
+
+        if (!response.ok) {
+            throw new Error(`HTML print failed: ${response.status}`);
+        }
+
+        return response.text(); // Возвращаем HTML как текст
     }
 }
 

@@ -11,7 +11,10 @@ app.get('*', (req, res) => {
     res.sendFile(path.join(__dirname, 'index.html'));
 });
 
-app.listen(PORT, () => {
-    console.log(`🚀 Frontend server running at: http://localhost:${PORT}`);
+// Запускаем сервер на всех интерфейсах
+app.listen(PORT, '0.0.0.0', () => {
+    console.log(`🚀 Frontend server running at:`);
+    console.log(`📍 Local: http://localhost:${PORT}`);
+    console.log(`📱 Network: http://192.168.0.21:${PORT}`);
     console.log(`📁 Serving files from: ${__dirname}`);
 });

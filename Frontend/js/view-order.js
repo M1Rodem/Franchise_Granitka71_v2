@@ -8,6 +8,7 @@ import {
 } from './utils.js';
 import { renderPhotoGrid, attachPhotoEvents, cleanupPhotoBlobs, openPhotoPreview } from './photo-utils.js';
 import { ModalUtils } from './modal-utils.js';
+import { downloadOrderExcel, printOrder, getCurrentOrderId } from './print-utils.js';
 
 export class ViewOrderManager {
     constructor(pageManager) {
@@ -33,6 +34,8 @@ export class ViewOrderManager {
         // Кнопки действий
         this.editBtn = document.getElementById('editBtn');
         this.deleteBtn = document.getElementById('deleteBtn');
+        this.excelBtn = document.getElementById('excelBtn');
+        this.printBtn = document.getElementById('printBtn');
     }
 
     bindEvents() {
@@ -44,13 +47,21 @@ export class ViewOrderManager {
             this.deleteBtn.addEventListener('click', () => this.deleteOrder());
         }
 
+        if (this.excelBtn) {
+            this.excelBtn.addEventListener('click', () => this.downloadExcel());
+        }
+
+        if (this.printBtn) {
+            this.printBtn.addEventListener('click', () => this.printOrder());
+        }
+
         const logoutBtn = document.getElementById('logoutBtn');
         if (logoutBtn) {
             logoutBtn.addEventListener('click', () => this.handleLogout());
         }
     }
 
-        handleLogout() {
+    handleLogout() {
         localStorage.removeItem('token');
         localStorage.removeItem('userData');
         localStorage.removeItem('orderFilters');
@@ -70,7 +81,6 @@ export class ViewOrderManager {
         }
 
         await this.loadOrderData();
-        this.setupModalEvents();
     }
 
     getOrderIdFromURL() {
@@ -157,16 +167,15 @@ export class ViewOrderManager {
         `;
     }
 
-     renderWorkItems(workItems) {
+    renderWorkItems(workItems) {
         if (!this.workItemsContainer) return;
 
         if (workItems.length === 0) {
             this.workItemsContainer.innerHTML = '<p class="no-data">Нет работ</p>';
             return;
         }
-
+        
         const total = workItems.reduce((sum, item) => sum + (Number(item.price || 0) * Number(item.quantity || 1)), 0);
-
         this.workItemsContainer.innerHTML = `
             <table class="orders-table">
                 <thead>
@@ -175,27 +184,33 @@ export class ViewOrderManager {
                         <th>Кол-во</th>
                         <th>Цена</th>
                         <th>Итого</th>
-                        <th>Примечание</th> <!-- ДОБАВЛЕНА КОЛОНКА -->
+                        <th>Примечание</th>
                     </tr>
                 </thead>
                 <tbody>
                     ${workItems.map(item => `
                         <tr>
-                            <td>${escapeHtml(item.workDescription || item.name || '')}</td>
-                            <td>${item.quantity || 1}</td>
-                            <td>${formatCurrency(item.price || 0)}</td>
-                            <td>${formatCurrency((item.price || 0) * (item.quantity || 1))}</td>
-                            <td>${escapeHtml(item.note || '—')}</td> <!-- ДОБАВЛЕНА ЯЧЕЙКА -->
+                            <td data-label="Описание">${escapeHtml(item.workDescription || item.name || '')}</td>
+                            <td data-label="Кол-во">${item.quantity || 1}</td>
+                            <td data-label="Цена">${formatCurrency(item.price || 0)}</td>
+                            <td data-label="Итого">${formatCurrency((item.price || 0) * (item.quantity || 1))}</td>
+                            <td data-label="Примечание">${escapeHtml(item.note || '—')}</td>
                         </tr>
                     `).join('')}
                 </tbody>
                 <tfoot>
                     <tr>
-                        <td colspan="4"><strong>Итого:</strong></td>
-                        <td><strong>${formatCurrency(total)}</strong></td>
+                        <td colspan="3"><strong>Итого по работам:</strong></td>
+                        <td colspan="2"><strong>${formatCurrency(total)}</strong></td>
                     </tr>
                 </tfoot>
             </table>
+            <div class="table-total-mobile">
+                <div class="total-card">
+                    <div class="total-label">Итого по работам</div>
+                    <div class="total-amount">${formatCurrency(total)}</div>
+                </div>
+            </div>
         `;
     }
 
@@ -216,16 +231,16 @@ export class ViewOrderManager {
                         <th>Тип</th>
                         <th>Сумма</th>
                         <th>Дата</th>
-                        <th>Примечание</th> <!-- УЖЕ БЫЛА КОЛОНКА -->
+                        <th>Примечание</th>
                     </tr>
                 </thead>
                 <tbody>
                     ${payments.map(p => `
                         <tr>
-                            <td>${formatPaymentType(p.paymentType || p.note || '')}</td>
-                            <td>${formatCurrency(p.amount || 0)}</td>
-                            <td>${formatDate(p.paymentDate || p.date)}</td>
-                            <td>${escapeHtml(p.note || '—')}</td>
+                            <td data-label="Тип">${formatPaymentType(p.paymentType || '')}</td>
+                            <td data-label="Сумма">${formatCurrency(p.amount || 0)}</td>
+                            <td data-label="Дата">${formatDate(p.paymentDate || p.date)}</td>
+                            <td data-label="Примечание">${escapeHtml(p.note || '—')}</td>
                         </tr>
                     `).join('')}
                 </tbody>
@@ -236,6 +251,12 @@ export class ViewOrderManager {
                     </tr>
                 </tfoot>
             </table>
+            <div class="table-total-mobile">
+                <div class="total-card">
+                    <div class="total-label">Итого по платежам</div>
+                    <div class="total-amount">${formatCurrency(totalPaid)}</div>
+                </div>
+            </div>
         `;
     }
 
@@ -313,37 +334,6 @@ export class ViewOrderManager {
         }
     }
 
-    setupModalEvents() {
-        const modal = document.getElementById('photoModal');
-        if (!modal) return;
-
-        const closeBtn = modal.querySelector('.modal-close');
-        const downloadBtn = document.getElementById('modalDownload');
-        const overlay = modal.querySelector('.modal-overlay');
-
-        const closeModal = () => {
-            modal.classList.remove('show');
-            document.body.style.overflow = '';
-        };
-
-        closeBtn?.addEventListener('click', closeModal);
-        overlay?.addEventListener('click', closeModal);
-        
-        downloadBtn?.addEventListener('click', () => {
-            const photoId = modal.dataset.photoId;
-            const fileName = modal.dataset.fileName;
-            if (photoId && fileName) {
-                apiService.downloadPhoto(photoId, fileName).catch(handleApiError);
-            }
-        });
-
-        document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape' && modal.classList.contains('show')) {
-                closeModal();
-            }
-        });
-    }
-
     editOrder() {
         window.location.href = `create-order.html?edit=${this.orderId}`;
     }
@@ -369,6 +359,36 @@ export class ViewOrderManager {
         }
     }
 
+    async downloadExcel() {
+        if (!this.orderId) {
+            showTempMessage('ID заказа не найден', 'error');
+            return;
+        }
+
+        try {
+            const { downloadOrderExcel } = await import('./print-utils.js');
+            await downloadOrderExcel(this.orderId);
+        } catch (error) {
+            console.error('Excel download error:', error);
+            showTempMessage('Ошибка при скачивании Excel', 'error');
+        }
+    }
+
+    async printOrder() {
+        if (!this.orderId) {
+            showTempMessage('ID заказа не найден', 'error');
+            return;
+        }
+
+        try {
+            const { printOrder } = await import('./print-utils.js');
+            await printOrder(this.orderId);
+        } catch (error) {
+            console.error('Print error:', error);
+            showTempMessage('Ошибка при печати заказа', 'error');
+        }
+    }
+    
     showLoadingState(loading) {
         if (loading) {
             if (this.orderContainer) this.orderContainer.style.display = 'none';

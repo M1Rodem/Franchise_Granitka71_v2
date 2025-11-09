@@ -127,78 +127,34 @@ export async function uploadTempAndDisplay(file) {
 }
 
 /**
- * Открытие фото в модальном окне
+ * Открытие фото в улучшенном модальном окне
  */
 export function openPhotoPreview(imageSrc, fileName, photoId = null, orderNumber = null, photoIndex = null) {
     const modal = document.createElement('div');
     modal.className = 'photo-modal-overlay';
-    modal.style.cssText = `
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background: rgba(0,0,0,0.95);
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        z-index: 10000;
-        cursor: pointer;
-    `;
     
     modal.innerHTML = `
-        <div class="photo-modal-content" style="
-            max-width: 90%;
-            max-height: 90%;
-            position: relative;
-            cursor: default;
-        ">
-            <button class="photo-modal-close" style="
-                position: absolute;
-                top: -40px;
-                right: 0;
-                background: rgba(255,255,255,0.9);
-                border: none;
-                border-radius: 50%;
-                width: 35px;
-                height: 35px;
-                cursor: pointer;
-                font-size: 18px;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-            ">✖</button>
+        <div class="photo-modal-content">
+            <div class="photo-modal-header">
+                <h3 class="photo-modal-title">${escapeHtml(fileName)}</h3>
+                <button class="photo-modal-close" title="Закрыть (Esc)">✕</button>
+            </div>
             
-            <img src="${imageSrc}" 
-                 alt="${escapeHtml(fileName)}"
-                 style="
-                    max-width: 100%;
-                    max-height: 70vh;
-                    display: block;
-                    border-radius: 8px;
-                 "
-                 onclick="event.stopPropagation()">
-                 
-            <div class="photo-modal-info" style="
-                color: white;
-                text-align: center;
-                margin-top: 15px;
-                font-size: 14px;
-            ">${escapeHtml(fileName)}</div>
+            <div class="photo-modal-body">
+                <img src="${imageSrc}" 
+                     alt="${escapeHtml(fileName)}"
+                     class="photo-modal-image"
+                     onclick="event.stopPropagation()">
+            </div>
             
-            <div class="photo-modal-actions" style="
-                text-align: center;
-                margin-top: 15px;
-            ">
-                <button class="photo-modal-download" style="
-                    background: #007bff;
-                    color: white;
-                    border: none;
-                    border-radius: 6px;
-                    padding: 10px 20px;
-                    cursor: pointer;
-                    font-size: 14px;
-                ">📥 Скачать</button>
+            <div class="photo-modal-footer">
+                <div class="photo-modal-info">
+                    ${escapeHtml(fileName)}
+                </div>
+                
+                <div class="photo-modal-actions">
+                    <button class="photo-modal-download" title="Скачать фото">Скачать</button>
+                </div>
             </div>
         </div>
     `;
@@ -220,7 +176,7 @@ export function openPhotoPreview(imageSrc, fileName, photoId = null, orderNumber
     });
     document.addEventListener('keydown', handleKeydown);
     
-    // ИСПРАВЛЕННЫЙ ОБРАБОТЧИК СКАЧИВАНИЯ
+    // ИСПРАВЛЕННЫЙ ОБРАБОТЧИК СКАЧИВАНИЯ - передаем все параметры
     modal.querySelector('.photo-modal-download').addEventListener('click', async (e) => {
         e.stopPropagation();
         try {
@@ -235,7 +191,7 @@ export function openPhotoPreview(imageSrc, fileName, photoId = null, orderNumber
                 return;
             }
             
-            // ПЕРЕДАЕМ ВСЕ ПАРАМЕТРЫ
+            // ПЕРЕДАЕМ ВСЕ ПАРАМЕТРЫ как в старом коде
             await downloadPhoto(actualPhotoId, fileName, orderNumber, photoIndex);
         } catch (error) {
             console.error('Download error in modal:', error);
@@ -288,7 +244,7 @@ export async function renderPhotoGrid(photos, containerId, options = {}) {
             console.error('Error loading photo:', error);
             photoItem.innerHTML = `
                 <div class="photo-container" style="background: #f8f9fa; display: flex; align-items: center; justify-content: center; color: #666;">
-                    <div>❌ Ошибка загрузки</div>
+                    <div>Ошибка загрузки</div>
                 </div>
                 <div class="photo-info">
                     <div class="photo-name">${escapeHtml(photo.originalFileName || 'Фото')}</div>

@@ -331,7 +331,7 @@
     color: var(--success);
     border: 1px solid rgba(16, 185, 129, 0.3);
 }
-.status-unpaid { 
+.status-not_paid { 
     background: rgba(239, 68, 68, 0.15); 
     color: var(--error);
     border: 1px solid rgba(239, 68, 68, 0.3);
@@ -340,6 +340,11 @@
     background: rgba(245, 158, 11, 0.15); 
     color: var(--warning);
     border: 1px solid rgba(245, 158, 11, 0.3);
+}
+.status-overpaid { 
+    background: rgba(139, 92, 246, 0.15); 
+    color: #8b5cf6;
+    border: 1px solid rgba(139, 92, 246, 0.3);
 }
 .status-new { 
     background: rgba(59, 130, 246, 0.15); 

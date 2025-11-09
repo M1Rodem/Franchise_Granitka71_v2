@@ -1,7 +1,7 @@
 ﻿using Serilog;
-using WebApplication1.Configuration;
-using WebApplication1.Models;
-using WebApplication1.Services;
+using Franchisee.Web.Configuration;
+using Franchisee.Web.Models;
+using Franchisee.Web.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 

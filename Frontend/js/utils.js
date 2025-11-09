@@ -150,13 +150,13 @@ export function getPaymentStatusText(order) {
 
 export function getStatusBadgeClass(status) {
     const classMap = {
-        'not_paid': 'status-unpaid',
-        'partial': 'status-partial',
+        'not_paid': 'status-not_paid',
+        'partial': 'status-partial', 
         'paid': 'status-paid',
         'overpaid': 'status-overpaid',
         'Новый': 'status-new'
     };
-    return classMap[status] || 'status-default';
+    return classMap[status] || 'status-not_paid';
 }
 
 // ====== ПОЛУЧЕНИЕ ИМЕНИ МЕНЕДЖЕРА ИЗ ЗАКАЗА ======
@@ -233,15 +233,14 @@ export function handleApiError(error) {
 
 // ====== МАППЕР ДЛЯ ENUM БЭКА ======
 export function mapStatusToEnum(status) {
-    // Строка → int по PaymentStatus enum
     const map = {
         'all': 0,      // All
         'not_paid': 1, // NotPaid
-        'partial': 2,  // Partial
+        'partial': 2,  // Partial  
         'paid': 3,     // Paid
         'overpaid': 4  // Overpaid
     };
-    return map[status] ?? null; // null = skip param (all)
+    return map[status] ?? null;
 }
 
 // ====== ЛAYOUT & NAVIGATION ======

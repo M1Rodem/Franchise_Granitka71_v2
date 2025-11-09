@@ -56,7 +56,7 @@
 /* Filters */
 .filters {
     display: grid;
-    grid-template-columns: 1fr auto auto auto;
+    grid-template-columns: minmax(12rem, 1fr) minmax(10rem, 1fr) minmax(12rem, 1fr) auto auto;
     gap: var(--space-4);
     margin-bottom: var(--space-8);
     padding: var(--space-6);
@@ -68,6 +68,7 @@
     border: 1px solid var(--glass-border);
     align-items: end;
     animation: fadeInUp 0.6s var(--ease-out-back) 0.3s both;
+    overflow: hidden;
 }
 
 @keyframes fadeInUp {
@@ -90,7 +91,13 @@
     background: var(--glass-background);
     backdrop-filter: blur(8px);
     color: var(--text-primary);
-    position: relative;
+    cursor: pointer;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.search-input::placeholder {
+    color: var(--text-muted);
 }
 
 .search-input:focus {
@@ -101,28 +108,112 @@
     transform: translateY(-1px);
 }
 
-.search-input::placeholder {
-    color: var(--text-muted);
-}
-
-.filter-select {
+/* Стили для фильтра по статусу */
+.statusFilter {
     padding: var(--space-3) var(--space-4);
     border: 1px solid var(--glass-border);
     border-radius: var(--radius);
+    font-size: var(--text-base);
+    transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    background: var(--glass-background) url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%2394a3b8' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m6 8 4 4 4-4'/%3e%3c/svg%3e") no-repeat right var(--space-3) center;
+    background-size: 1.5em 1.5em;
+    color: var(--text-primary);
+    cursor: pointer;
+    width: 100%;
+    backdrop-filter: blur(8px);
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    box-sizing: border-box;
+}
+
+.statusFilter:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+    background-color: rgba(30, 41, 59, 0.8);
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%23ffffff' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m6 8 4 4 4-4'/%3e%3c/svg%3e");
+    transform: translateY(-1px);
+}
+
+.statusFilter:hover {
+    border-color: var(--accent-hover);
+}
+
+.statusFilter option {
+    background: var(--surface);
+    color: var(--text-primary);
+    padding: var(--space-2);
+}
+
+/* Стили для фильтров по дате */
+.date-range {
+    display: flex;
+    gap: var(--space-3);
+    align-items: end;
+    grid-column: 3;
+    width: 100%;
+    flex-shrink: 1;
+}
+
+.date-group {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    flex: 1;
+    min-width: 0;
+}
+
+.date-group label {
+    font-size: var(--text-sm);
+    color: var(--text-muted);
+    font-weight: 500;
+    white-space: nowrap;
+    margin: 0;
+}
+
+.date-field {
+    padding: var(--space-3) calc(var(--space-4) - 0.125rem); /* Фикс: Компенсация +2px (0.125rem) от индикатора календаря для точной синхронизации ширины */
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius);
+    font-size: var(--text-base);
+    transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
     background: var(--glass-background);
     backdrop-filter: blur(8px);
     color: var(--text-primary);
     cursor: pointer;
-    font-size: var(--text-base);
-    transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    width: 100%;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    box-sizing: border-box;
 }
 
-.filter-select:focus {
+.date-field:focus {
     outline: none;
     border-color: var(--accent);
     box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
     background: rgba(30, 41, 59, 0.8);
     transform: translateY(-1px);
+}
+
+.date-field:hover {
+    border-color: var(--accent-hover);
+}
+
+.date-field::-webkit-calendar-picker-indicator {
+    cursor: pointer;
+    opacity: 0.6;
+    transition: opacity 0.3s ease;
+    width: 0;
+    height: 0;
+    margin: 0;
+    padding: 0;
+    visibility: hidden; /* Дополнительный фикс: Полностью скрыть индикатор без влияния на ширину */
+}
+
+.date-field::-webkit-calendar-picker-indicator:hover {
+    opacity: 1;
 }
 
 /* Pagination */
@@ -142,6 +233,15 @@
     animation: fadeIn 0.6s var(--ease-out-back) 0.5s both;
 }
 
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
 .pagination button {
     padding: var(--space-3) var(--space-6);
     border: 1px solid var(--glass-border);
@@ -154,6 +254,7 @@
     font-size: var(--text-sm);
     position: relative;
     overflow: hidden;
+    min-width: 120px;
 }
 
 .pagination button::before {
@@ -202,39 +303,6 @@
     font-size: var(--text-sm);
 }
 
-/* Responsive design */
-@media (max-width: 1024px) {
-    .filters {
-        grid-template-columns: 1fr 1fr;
-    }
-}
-
-@media (max-width: 640px) {
-    .filters {
-        grid-template-columns: 1fr;
-    }
-    
-    .page-header {
-        flex-direction: column;
-        gap: var(--space-4);
-        align-items: flex-start;
-    }
-    
-    .page-header-actions {
-        width: 100%;
-        justify-content: space-between;
-    }
-    
-    .pagination {
-        flex-direction: column;
-        gap: var(--space-3);
-    }
-    
-    .pagination button {
-        width: 100%;
-    }
-}
-
 /* Loading state for orders */
 .orders-loading .orders-table tbody tr {
     animation: none;
@@ -264,5 +332,236 @@
     }
     50% {
         opacity: 0.5;
+    }
+}
+
+/* Объединённые медиа-запросы для адаптивности (статус, дата, поиск, таблица) */
+@media (min-width: 1361px) {
+    .date-range {
+        grid-column: unset;
+        justify-content: space-between;
+    }
+
+    .date-group {
+        min-width: 140px;
+    }
+}
+
+@media (max-width: 1360px) and (min-width: 1025px) {
+    .filters {
+        grid-template-columns: minmax(8rem, 1fr) minmax(7rem, 1fr) minmax(7rem, 1fr) auto auto;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .date-range {
+        grid-column: 3;
+        justify-content: space-between;
+    }
+
+    .date-group {
+        min-width: 0;
+    }
+
+    .filters .btn {
+        min-width: 70px;
+        padding: var(--space-3) var(--space-3);
+        font-size: var(--text-sm);
+        white-space: nowrap;
+    }
+
+    .search-input {
+        font-size: var(--text-sm);
+    }
+
+    .statusFilter {
+        font-size: var(--text-sm);
+    }
+
+    .date-field {
+        font-size: var(--text-sm);
+        padding: var(--space-3) calc(var(--space-4) - 0.125rem); /* Фикс в медиа: Компенсация +2px для сжатого font-size */
+    }
+
+    .orders-table-container {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .orders-table {
+        min-width: max-content;
+    }
+
+    .orders-table th,
+    .orders-table td:last-child .actions {
+        white-space: nowrap;
+    }
+}
+
+@media (max-width: 1024px) {
+    .filters {
+        grid-template-columns: 1fr;
+        gap: var(--space-3);
+        padding: var(--space-4);
+    }
+
+    .date-range {
+        grid-column: 1;
+        flex-direction: column;
+        gap: var(--space-3);
+        width: 100%;
+    }
+
+    .date-group {
+        min-width: auto;
+        width: 100%;
+    }
+
+    .date-group label {
+        font-size: var(--text-xs);
+    }
+
+    .filters .btn {
+        width: 100%;
+        justify-content: center;
+        margin-top: var(--space-2);
+        min-width: auto;
+        padding: var(--space-3) var(--space-4);
+        font-size: var(--text-base);
+    }
+
+    .statusFilter {
+        width: 100%;
+    }
+}
+
+@media (max-width: 640px) {
+    .page-header {
+        flex-direction: column;
+        gap: var(--space-4);
+        align-items: flex-start;
+        padding: var(--space-6);
+    }
+
+    .page-header-actions {
+        width: 100%;
+        justify-content: center;
+    }
+
+    .page-header-actions .btn {
+        width: 100%;
+        text-align: center;
+        justify-content: center;
+        font-size: var(--text-sm);
+        padding: var(--space-3) var(--space-4);
+    }
+
+    .pagination {
+        flex-direction: column;
+        gap: var(--space-3);
+        padding: var(--space-4);
+    }
+
+    .pagination button {
+        width: 100%;
+        min-width: auto;
+    }
+
+    #pageInfo {
+        text-align: center;
+        padding: var(--space-2) 0;
+    }
+}
+
+@media (max-width: 430px) {
+    .page-header {
+        padding: var(--space-4);
+    }
+
+    .page-header h1 {
+        font-size: var(--text-2xl);
+    }
+
+    .page-header-actions .btn {
+        font-size: var(--text-sm);
+        padding: var(--space-3) var(--space-3);
+        min-height: 44px;
+    }
+
+    .pagination {
+        flex-direction: column;
+        gap: var(--space-3);
+        padding: var(--space-4);
+    }
+
+    .pagination .btn {
+        width: 100%;
+        min-width: auto;
+    }
+
+    #pageInfo {
+        text-align: center;
+        padding: var(--space-2) 0;
+    }
+
+    .filters.scrollable {
+        display: flex;
+        overflow-x: auto;
+        gap: var(--space-3);
+        padding-bottom: var(--space-3);
+        scrollbar-width: none;
+        -ms-overflow-style: none;
+    }
+
+    .filters.scrollable::-webkit-scrollbar {
+        display: none;
+    }
+
+    .filters.scrollable > * {
+        flex: 0 0 auto;
+        min-width: 200px;
+    }
+
+    .filters.scrollable .date-range {
+        flex-direction: row;
+    }
+
+    .filters.scrollable .btn {
+        min-width: 120px;
+    }
+}
+
+@media (max-width: 360px) {
+    .page-header {
+        padding: var(--space-3);
+    }
+
+    .page-header h1 {
+        font-size: var(--text-xl);
+    }
+
+    .page-header-actions .btn {
+        font-size: var(--text-xs);
+        padding: var(--space-3) var(--space-2);
+        min-height: 40px;
+    }
+
+    .filters {
+        padding: var(--space-3);
+    }
+
+    .search-input {
+        font-size: var(--text-sm);
+        padding: var(--space-3);
+    }
+
+    .statusFilter {
+        font-size: var(--text-sm);
+        padding: var(--space-3);
+    }
+
+    .date-field {
+        font-size: var(--text-sm);
+        padding: var(--space-3) calc(var(--space-4) - 0.125rem); /* Фикс в мобильке: Компенсация +2px */
     }
 }

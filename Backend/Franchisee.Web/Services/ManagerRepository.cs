@@ -1,9 +1,10 @@
-﻿using WebApplication1.Configuration;
-using WebApplication1.Models;
+﻿using Franchisee.Web.Configuration;
+using Franchisee.Web.Models;
 using BCrypt.Net;
 using Microsoft.EntityFrameworkCore;
+using Franchisee.Web.Services.Repositories;
 
-namespace WebApplication1.Services.Repositories
+namespace Franchisee.Web.Services
 {
     public class ManagerRepository : IManagerRepository
     {

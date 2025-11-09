@@ -1,6 +1,6 @@
-﻿using WebApplication1.Models;
+﻿using Franchisee.Web.Models;
 
-namespace WebApplication1.Services.Repositories
+namespace Franchisee.Web.Services.Repositories
 {
     public interface IManagerRepository
     {

@@ -1,6 +1,6 @@
-﻿using WebApplication1.Models;
+﻿using Franchisee.Web.Models;
 
-namespace WebApplication1.Models
+namespace Franchisee.Web.Models
 {
     public class PagedResult<T>
     {

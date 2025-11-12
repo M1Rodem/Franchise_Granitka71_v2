@@ -1,20 +1,27 @@
 const express = require('express');
 const path = require('path');
+const { createProxyMiddleware } = require('http-proxy-middleware');
 const app = express();
 const PORT = 3000;
 
-// Раздаем статические файлы
+// ПРАВИЛЬНЫЙ ПРОКСИ
+app.use('/api', createProxyMiddleware({
+    target: 'http://localhost:5000/api', // бэкенд с /api
+    changeOrigin: true,
+    pathRewrite: {
+        '^/api': '' // убираем /api из пути запроса
+    }
+}));
+
+// Статические файлы
 app.use(express.static(__dirname));
 
-// Все маршруты отправляем на index.html
+// SPA роутинг
 app.get('*', (req, res) => {
     res.sendFile(path.join(__dirname, 'index.html'));
 });
 
-// Запускаем сервер на всех интерфейсах
 app.listen(PORT, '0.0.0.0', () => {
-    console.log(`🚀 Frontend server running at:`);
-    console.log(`📍 Local: http://localhost:${PORT}`);
-    console.log(`📱 Network: http://192.168.0.21:${PORT}`);
-    console.log(`📁 Serving files from: ${__dirname}`);
+    console.log(` Frontend server running at: http://localhost:${PORT}`);
+    console.log(` API Proxy: /api → http://localhost:5000/api`);
 });

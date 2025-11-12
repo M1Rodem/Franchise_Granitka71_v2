@@ -33,6 +33,7 @@ namespace Franchisee.Web.Controllers
             _logger = logger;
             _photoService = photoService;
         }
+
         private int GetCurrentUserId()
         {
             var userIdStr = User.FindFirst("UserId")?.Value;
@@ -41,6 +42,25 @@ namespace Franchisee.Web.Controllers
                 throw new UnauthorizedAccessException("Неверный ID пользователя");
             }
             return userId;
+        }
+
+        private string? GetSafeFilePath(string filePath)
+        {
+            if (string.IsNullOrEmpty(filePath))
+                return null;
+
+            try
+            {
+                var fullPath = Path.GetFullPath(filePath);
+                var uploadsRoot = Path.GetFullPath(Path.Combine(_environment.WebRootPath, "uploads"));
+
+                return fullPath.StartsWith(uploadsRoot) ? fullPath : null;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Ошибка проверки пути к файлу");
+                return null;
+            }
         }
 
         // POST: api/Photos/upload-temp
@@ -115,17 +135,26 @@ namespace Franchisee.Web.Controllers
             try
             {
                 var photo = await _context.OrderPhotos.FindAsync(id);
-                if (photo == null || !System.IO.File.Exists(photo.FilePath))
+                if (photo == null)
                     return NotFound("Фото не найдено");
+
+                //   ПРОВЕРЯЕМ БЕЗОПАСНОСТЬ ПУТИ
+                var safePath = GetSafeFilePath(photo.FilePath);
+                if (string.IsNullOrEmpty(safePath))
+                    return BadRequest("Некорректный путь к файлу");
+
+                if (!System.IO.File.Exists(safePath))
+                    return NotFound("Файл не найден на диске");
 
                 // Все авторизованные пользователи видят все фото
                 if (User.Identity?.IsAuthenticated != true)
                     return Unauthorized("Требуется авторизация");
 
-                var fileBytes = await System.IO.File.ReadAllBytesAsync(photo.FilePath);
+                //   ИСПОЛЬЗУЕМ ПРОВЕРЕННЫЙ ПУТЬ
+                var fileBytes = await System.IO.File.ReadAllBytesAsync(safePath);
                 var fileName = photo.OriginalFileName ?? $"photo_{id}{Path.GetExtension(photo.FilePath)}";
 
-                return File(fileBytes, photo.ContentType, fileName);
+                return File(fileBytes, photo.ContentType ?? "image/jpeg", fileName);
             }
             catch (Exception ex)
             {
@@ -169,8 +198,16 @@ namespace Franchisee.Web.Controllers
         public async Task<IActionResult> GetPhotoFile(int id)
         {
             var photo = await _context.OrderPhotos.FindAsync(id);
-            if (photo == null || !System.IO.File.Exists(photo.FilePath))
+            if (photo == null)
                 return NotFound("Фото не найдено");
+
+            //   ПРОВЕРЯЕМ БЕЗОПАСНОСТЬ ПУТИ
+            var safePath = GetSafeFilePath(photo.FilePath);
+            if (string.IsNullOrEmpty(safePath))
+                return BadRequest("Некорректный путь к файлу");
+
+            if (!System.IO.File.Exists(safePath))
+                return NotFound("Файл не найден на диске");
 
             var order = await _context.Orders
                 .FirstOrDefaultAsync(o => o.Id == photo.OrderId && !o.IsDeleted);
@@ -182,7 +219,7 @@ namespace Franchisee.Web.Controllers
                 return Unauthorized("Требуется авторизация");
 
             var contentType = photo.ContentType ?? "image/jpeg";
-            return PhysicalFile(photo.FilePath, contentType, enableRangeProcessing: true);
+            return PhysicalFile(safePath, contentType, enableRangeProcessing: true);
         }
 
         // GET: api/Photos/proxy/{id} - специальный endpoint для фронтенда
@@ -192,8 +229,16 @@ namespace Franchisee.Web.Controllers
             try
             {
                 var photo = await _context.OrderPhotos.FindAsync(id);
-                if (photo == null || !System.IO.File.Exists(photo.FilePath))
+                if (photo == null)
                     return NotFound("Фото не найдено");
+
+                //   ПРОВЕРЯЕМ БЕЗОПАСНОСТЬ ПУТИ
+                var safePath = GetSafeFilePath(photo.FilePath);
+                if (string.IsNullOrEmpty(safePath))
+                    return BadRequest("Некорректный путь к файлу");
+
+                if (!System.IO.File.Exists(safePath))
+                    return NotFound("Файл не найден на диске");
 
                 if (User.Identity?.IsAuthenticated != true)
                     return Unauthorized("Требуется авторизация");
@@ -210,7 +255,7 @@ namespace Franchisee.Web.Controllers
                     return Unauthorized("Invalid user ID");
 
                 var contentType = photo.ContentType ?? "image/jpeg";
-                return PhysicalFile(photo.FilePath, contentType, enableRangeProcessing: true);
+                return PhysicalFile(safePath, contentType, enableRangeProcessing: true);
             }
             catch (Exception ex)
             {
@@ -233,8 +278,12 @@ namespace Franchisee.Web.Controllers
                 if (User.Identity?.IsAuthenticated != true)
                     return Unauthorized("Требуется авторизация");
 
-                if (System.IO.File.Exists(photo.FilePath))
-                    await Task.Run(() => System.IO.File.Delete(photo.FilePath));
+                //   ПРОВЕРЯЕМ БЕЗОПАСНОСТЬ ПУТИ ПЕРЕД УДАЛЕНИЕМ
+                var safePath = GetSafeFilePath(photo.FilePath);
+                if (!string.IsNullOrEmpty(safePath) && System.IO.File.Exists(safePath))
+                {
+                    await Task.Run(() => System.IO.File.Delete(safePath));
+                }
 
                 _context.OrderPhotos.Remove(photo);
                 await _context.SaveChangesAsync();
@@ -265,10 +314,15 @@ namespace Franchisee.Web.Controllers
 
             if (temp.UploaderId != userId) return Forbid("Access denied");
 
-            if (!System.IO.File.Exists(temp.FilePath)) return NotFound("File not found on disk");
+            //   ПРОВЕРЯЕМ БЕЗОПАСНОСТЬ ПУТИ
+            var safePath = GetSafeFilePath(temp.FilePath);
+            if (string.IsNullOrEmpty(safePath))
+                return BadRequest("Некорректный путь к файлу");
+
+            if (!System.IO.File.Exists(safePath)) return NotFound("File not found on disk");
 
             var contentType = temp.ContentType ?? "application/octet-stream";
-            return PhysicalFile(temp.FilePath, contentType, enableRangeProcessing: true);
+            return PhysicalFile(safePath, contentType, enableRangeProcessing: true);
         }
 
         // DELETE: api/Photos/temp/{fileName}
@@ -278,7 +332,7 @@ namespace Franchisee.Web.Controllers
             try
             {
                 var tempPhoto = await _context.TempUploads
-                    .IgnoreQueryFilters() 
+                    .IgnoreQueryFilters()
                     .FirstOrDefaultAsync(t => t.Id == tempId);
 
                 if (tempPhoto == null)
@@ -287,15 +341,16 @@ namespace Franchisee.Web.Controllers
                     return NoContent();
                 }
 
-                var tempPath = tempPhoto.FilePath;
-                if (!string.IsNullOrEmpty(tempPath) && System.IO.File.Exists(tempPath))
+                //   ПРОВЕРЯЕМ БЕЗОПАСНОСТЬ ПУТИ ПЕРЕД УДАЛЕНИЕМ
+                var safePath = GetSafeFilePath(tempPhoto.FilePath);
+                if (!string.IsNullOrEmpty(safePath) && System.IO.File.Exists(safePath))
                 {
-                    await Task.Run(() => System.IO.File.Delete(tempPath));
-                    _logger.LogInformation("Temp photo deleted: {FilePath}", tempPath);
+                    await Task.Run(() => System.IO.File.Delete(safePath));
+                    _logger.LogInformation("Temp photo deleted: {FilePath}", safePath);
                 }
                 else
                 {
-                    _logger.LogWarning("Temp file not found on disk: {FilePath}", tempPath);
+                    _logger.LogWarning("Temp file not found on disk: {FilePath}", tempPhoto.FilePath);
                 }
 
                 _context.TempUploads.Remove(tempPhoto);

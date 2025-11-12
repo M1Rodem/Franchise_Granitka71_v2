@@ -33,7 +33,7 @@ namespace Franchisee.Web.Controllers
 
         // Получить данные текущего пользователя
         [HttpGet]
-        public async Task<ActionResult<ManagerResponseDto>> GetMyProfile() 
+        public async Task<ActionResult<ManagerResponseDto>> GetMyProfile()
         {
             try
             {
@@ -48,7 +48,7 @@ namespace Franchisee.Web.Controllers
                     Id = manager.Id,
                     Username = manager.Username,
                     FullName = manager.FullName,
-                    Role = manager.Role.ToString(),  
+                    Role = manager.Role.ToString(),
                     IsBlocked = manager.IsBlocked
                 };
 
@@ -60,8 +60,7 @@ namespace Franchisee.Web.Controllers
             }
         }
 
-        // Сменить пароль
-        // В ProfileController.cs - исправить метод ChangePassword:
+        // Сменить пароль - ДОБАВЛЯЕМ ВАЛИДАЦИЮ НА 8 СИМВОЛОВ
         [HttpPost("change-password")]
         public async Task<ActionResult> ChangePassword([FromBody] ChangePasswordDto changePasswordDto)
         {
@@ -69,6 +68,12 @@ namespace Franchisee.Web.Controllers
             {
                 var userId = GetCurrentUserId();
                 _logger.LogInformation("Смена пароля для пользователя ID: {UserId}", userId);
+
+                // ВАЛИДАЦИЯ ПАРОЛЯ - 8 СИМВОЛОВ
+                if (string.IsNullOrEmpty(changePasswordDto.NewPassword) || changePasswordDto.NewPassword.Length < 8)
+                {
+                    return BadRequest("Пароль должен быть не менее 8 символов");
+                }
 
                 var manager = await _managerRepository.GetByIdAsync(userId);
                 if (manager == null) return NotFound("Пользователь не найден");
@@ -78,7 +83,8 @@ namespace Franchisee.Web.Controllers
                     return BadRequest("Текущий пароль неверен");
                 }
 
-                // Меняем на новый пароль
+                // ИСПОЛЬЗУЕМ ТАКОЙ ЖЕ МЕТОД КАК В USERS CONTROLLER
+                var hashedPassword = _managerRepository.HashPassword(changePasswordDto.NewPassword);
                 _managerRepository.ChangePassword(userId, changePasswordDto.NewPassword);
 
                 _logger.LogInformation("Пароль успешно изменен для пользователя ID: {UserId}", userId);
@@ -92,7 +98,7 @@ namespace Franchisee.Web.Controllers
 
         // Обновить профиль (имя)
         [HttpPut("update-profile")]
-        public async Task<ActionResult<ManagerResponseDto>> UpdateProfile([FromBody] UpdateProfileDto updateProfileDto) 
+        public async Task<ActionResult<ManagerResponseDto>> UpdateProfile([FromBody] UpdateProfileDto updateProfileDto)
         {
             try
             {
@@ -112,7 +118,7 @@ namespace Franchisee.Web.Controllers
                     Id = manager.Id,
                     Username = manager.Username,
                     FullName = manager.FullName,
-                    Role = manager.Role.ToString(),  
+                    Role = manager.Role.ToString(),
                     IsBlocked = manager.IsBlocked
                 };
 

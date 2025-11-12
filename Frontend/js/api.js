@@ -1,11 +1,17 @@
-const API_BASE_URL = 'http://192.168.0.21:5000/api';
+const API_BASE_URL = '/api';
 
 import { showTempMessage } from './utils.js';
+import { 
+    secureGetToken,
+    secureSetToken,
+    secureRemoveToken,
+    secureGetUserData 
+} from './utils.js';
 
 class ApiService {
     constructor() {
-        this.token = localStorage.getItem('token');
-        this.controller = new AbortController(); // Для timeout
+        this.token = secureGetToken();
+        this.controller = new AbortController();
         this.setupImageAuth();
     }
 
@@ -72,8 +78,7 @@ class ApiService {
 
     handleUnauthorized() {
         this.token = null;
-        localStorage.removeItem('token');
-        localStorage.removeItem('userData');
+        secureRemoveToken();
         if (typeof handleLogout === 'function') {
             handleLogout();
         } else {
@@ -373,13 +378,15 @@ class ApiService {
 
     // Utils
     setToken(token) {
-        this.token = token;
-        localStorage.setItem('token', token);
+        if (secureSetToken(token)) {
+            this.token = token;
+            return true;
+        }
+        return false;
     }
 
     getCurrentUser() {
-        const userData = localStorage.getItem('userData');
-        return userData ? JSON.parse(userData) : null;
+        return secureGetUserData();
     }
 
     setupImageAuth() {

@@ -34,7 +34,6 @@ namespace Franchisee.Web.Controllers
 
                 if (user == null || !_managerRepository.VerifyPassword(loginDto.Password, user.PasswordHash))
                 {
-                    _logger.LogWarning("Неудачная попытка входа для пользователя: {Username}", loginDto.Username);
                     return Unauthorized(new { message = "Неверный логин или пароль" });
                 }
 

@@ -1,6 +1,3 @@
-// utils.js — Centralized helpers for formatting, DOM, forms, API errors, nav, etc.
-// All functions are pure/exported for modular use. No globals except where legacy.
-
 // ====== ФОРМАТИРОВАНИЕ ======
 export function formatDate(dateString) {
     if (!dateString) return '—';
@@ -165,8 +162,22 @@ export function getUserNameFromOrder(order) {
 }
 
 export function isAdmin() {
-    const user = JSON.parse(localStorage.getItem('userData') || 'null');
+    const user = secureGetUserData();
     return user?.role === 'Admin';
+}
+
+
+// ====== Проверка и очистка устаревших токенов при загрузке приложения ======
+export function initTokenCleanup() {
+    // Проверяем токен при загрузке
+    const token = secureGetToken();
+    const userData = secureGetUserData();
+    
+    if ((!token || !userData) && !window.location.pathname.includes('login.html')) {
+        // Если нет валидного токена, но мы не на странице логина - редирект
+        secureRemoveToken();
+        window.location.href = 'login.html';
+    }
 }
 
 // ====== URL И ПАРАМЕТРЫ ======
@@ -210,6 +221,157 @@ export function removeFromStorage(key) {
         console.error('Storage remove error:', error);
         return false;
     }
+}
+
+export function secureSetToken(token) {
+    try {
+        if (!token || typeof token !== 'string') {
+            console.error('Invalid token provided');
+            return false;
+        }
+        
+        const secureToken = {
+            value: token,
+            timestamp: Date.now(),
+            signature: btoa(token.slice(-10) + Date.now()).slice(0, 20)
+        };
+        
+        localStorage.setItem('token', JSON.stringify(secureToken));
+        return true;
+    } catch (error) {
+        console.error('Token storage error:', error);
+        return false;
+    }
+}
+
+export function secureGetToken() {
+    try {
+        const stored = localStorage.getItem('token');
+        if (!stored) return null;
+        
+        const secureToken = JSON.parse(stored);
+        
+        if (!secureToken.value || !secureToken.timestamp || !secureToken.signature) {
+            console.warn('Invalid token structure');
+            secureRemoveToken();
+            return null;
+        }
+        
+        const expectedSignature = btoa(secureToken.value.slice(-10) + secureToken.timestamp).slice(0, 20);
+        if (secureToken.signature !== expectedSignature) {
+            console.warn('Token integrity check failed');
+            secureRemoveToken();
+            return null;
+        }
+        
+        const tokenAge = Date.now() - secureToken.timestamp;
+        if (tokenAge > 24 * 60 * 60 * 1000) { // 24 часа
+            console.warn('Token too old:', tokenAge);
+            secureRemoveToken();
+            return null;
+        }
+        
+        return secureToken.value;
+    } catch (error) {
+        console.error('Token retrieval error:', error);
+        secureRemoveToken();
+        return null;
+    }
+}
+
+export function secureRemoveToken() {
+    try {
+        localStorage.removeItem('token');
+        localStorage.removeItem('userData');
+        localStorage.removeItem('orderFilters');
+        localStorage.removeItem('lastOrderView');
+        return true;
+    } catch (error) {
+        console.error('Token removal error:', error);
+        return false;
+    }
+}
+
+export function secureSetUserData(userData) {
+    try {
+        if (!userData || typeof userData !== 'object') {
+            console.error('Invalid user data provided');
+            return false;
+        }
+        
+        const safeUserData = {
+            id: userData.id,
+            username: userData.username,
+            fullName: userData.fullName,
+            role: userData.role,
+            timestamp: Date.now()
+        };
+        
+        localStorage.setItem('userData', JSON.stringify(safeUserData));
+        return true;
+    } catch (error) {
+        console.error('User data storage error:', error);
+        return false;
+    }
+}
+
+export function secureGetUserData() {
+    try {
+        const stored = localStorage.getItem('userData');
+        if (!stored) return null;
+        
+        const userData = JSON.parse(stored);
+        
+        // Проверка свежести данных (макс 24 часа)
+        if (Date.now() - (userData.timestamp || 0) > 24 * 60 * 60 * 1000) {
+            console.warn('User data too old');
+            secureRemoveToken();
+            return null;
+        }
+        
+        return userData;
+    } catch (error) {
+        console.error('User data retrieval error:', error);
+        secureRemoveToken();
+        return null;
+    }
+}
+
+// ====== CSRF ЗАЩИТА ======
+let csrfToken = '';
+
+/**
+ * Установка CSRF токена
+ */
+export function setCsrfToken(token) {
+    if (token && typeof token === 'string') {
+        csrfToken = token;
+        return true;
+    }
+    return false;
+}
+
+/**
+ * Получение CSRF токена
+ */
+export function getCsrfToken() {
+    return csrfToken;
+}
+
+/**
+ * Проверка валидности CSRF токена
+ */
+export function isValidCsrfToken(token) {
+    if (!token || typeof token !== 'string') return false;
+    if (token.length < 10 || token.length > 100) return false; // Базовые проверки длины
+    return /^[a-zA-Z0-9_-]+$/.test(token); // Разрешаем только безопасные символы
+}
+
+/**
+ * Очистка CSRF токена
+ */
+export function clearCsrfToken() {
+    csrfToken = '';
 }
 
 // ====== ОБРАБОТКА ОШИБОК ======

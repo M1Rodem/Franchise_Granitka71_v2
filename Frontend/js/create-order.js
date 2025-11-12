@@ -244,8 +244,6 @@ export class CreateOrderManager {
         if (!data.customerFullName || data.customerFullName.trim() === '') return 'ФИО заказчика обязательно';
         if (!data.address || data.address.trim() === '') return 'Адрес обязателен';
         if (!data.phone || data.phone.trim() === '') return 'Телефон обязателен';
-        if (!data.monumentType || data.monumentType.trim() === '') return 'Тип памятника обязателен';
-        if (!data.monumentSize || data.monumentSize.trim() === '') return 'Размер памятника обязателен';
         
         if (data.customerEmail && !isValidEmail(data.customerEmail)) {
             return 'Неверный формат email';

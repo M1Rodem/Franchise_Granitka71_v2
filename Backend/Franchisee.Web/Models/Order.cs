@@ -18,13 +18,10 @@ namespace Franchisee.Web.Models
         [Required] public string DeceasedFullName { get; set; } = string.Empty;
         [Required] public string CustomerFullName { get; set; } = string.Empty;
         public string? CustomerEmail { get; set; }
-        [Required]
-        [StringLength(20)]
-        public string Phone { get; set; } = string.Empty;
-        [Required] public string Address { get; set; } = string.Empty;
-        [Required] public string MonumentType { get; set; } = string.Empty;
-        [Required]
-        [RegularExpression(@"^\d{1,3}x\d{1,3}x\d{1,3} см$", ErrorMessage = "Формат: ВxШxГ см (e.g., 100x50x20 см)")]
+        [Required][StringLength(20)] public string Phone { get; set; } = string.Empty;
+        public string Address { get; set; } = string.Empty;
+        public string MonumentType { get; set; } = string.Empty;
+        [Required][RegularExpression(@"^\d{1,3}x\d{1,3}x\d{1,3} см$", ErrorMessage = "Формат: ВxШxГ см (e.g., 100x50x20 см)")]
         public string MonumentSize { get; set; } = string.Empty; 
         public string AdditionalInfo { get; set; } = string.Empty;
         public OrderStatus Status { get; set; } = OrderStatus.Новый; 

@@ -7,6 +7,31 @@ let activeBlobUrls = [];
 
 const TEMP_STORAGE_KEY = 'tempPhotos_createOrder';
 
+/**
+ * Валидация URL для предотвращения XSS
+ */
+function sanitizeUrl(url) {
+    if (!url || typeof url !== 'string') return '';
+    
+    // Разрешаем только безопасные URL для изображений
+    if (url.startsWith('blob:') || 
+        url.startsWith('data:image/') ||
+        url.startsWith('/api/Photos/')) {
+        return url;
+    }
+    
+    // Блокируем потенциально опасные URL
+    if (url.includes('javascript:') || 
+        url.includes('vbscript:') ||
+        url.includes('data:text/html')) {
+        console.warn('Blocked potentially dangerous URL:', url);
+        return '';
+    }
+    
+    return url;
+}
+
+
 export function cleanupPhotoBlobs() {
     activeBlobUrls.forEach(url => {
         URL.revokeObjectURL(url);
@@ -98,9 +123,9 @@ export async function uploadTempAndDisplay(file) {
         
         photoItem.innerHTML = `
             <div class="photo-container">
-                <img src="${previewUrl}"
-                     alt="${escapeHtml(file.name)}"
-                     class="photo-img">
+                <img src="${sanitizeUrl(previewUrl)}"
+                    alt="${escapeHtml(file.name)}"
+                    class="photo-img">
                 <button class="photo-remove" title="Удалить фото">✖</button>
             </div>
             <div class="photo-info">
@@ -141,10 +166,10 @@ export function openPhotoPreview(imageSrc, fileName, photoId = null, orderNumber
             </div>
             
             <div class="photo-modal-body">
-                <img src="${imageSrc}" 
-                     alt="${escapeHtml(fileName)}"
-                     class="photo-modal-image"
-                     onclick="event.stopPropagation()">
+                <img src="${sanitizeUrl(imageSrc)}" 
+                    alt="${escapeHtml(fileName)}"
+                    class="photo-modal-image"
+                    onclick="event.stopPropagation()">
             </div>
             
             <div class="photo-modal-footer">
@@ -228,9 +253,9 @@ export async function renderPhotoGrid(photos, containerId, options = {}) {
             
             photoItem.innerHTML = `
                 <div class="photo-container">
-                    <img src="${imageUrl}"
-                         alt="${escapeHtml(photo.originalFileName || 'Фото')}"
-                         class="photo-img">
+                    <img src="${sanitizeUrl(imageUrl)}"
+                        alt="${escapeHtml(photo.originalFileName || 'Фото')}"
+                        class="photo-img">
                     ${mode === 'edit' ? '<button class="photo-remove-server" title="Удалить фото">✖</button>' : ''}
                 </div>
                 <div class="photo-info">

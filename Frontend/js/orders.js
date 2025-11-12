@@ -198,7 +198,7 @@ async function loadOrders() {
     await loadOrdersWithFilters(filterParams);
 }
 
-function renderOrders(orders) {
+function renderOrders(orders) {    
     const tbody = document.getElementById('ordersTableBody');
     if (!tbody) return;
 

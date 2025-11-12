@@ -67,10 +67,18 @@ namespace Franchisee.Web.Controllers
                     return BadRequest($"Неверная роль: {createDto.Role}. Допустимые значения: Admin, Manager");
                 }
 
+                if (string.IsNullOrEmpty(createDto.Password) || createDto.Password.Length < 8)
+                {
+                    return BadRequest("Пароль должен быть не менее 8 символов");
+                }
+
+                var hashedPassword = _managerRepository.HashPassword(createDto.Password);
+
                 var manager = new Manager
+
                 {
                     Username = createDto.Username,
-                    PasswordHash = createDto.Password, // будет захешировано в репозитории
+                    PasswordHash = hashedPassword,
                     FullName = createDto.FullName,
                     Role = role, // используем распаршенную роль
                     IsBlocked = false
@@ -101,13 +109,19 @@ namespace Franchisee.Web.Controllers
             {
                 _logger.LogInformation("Обновление менеджера с ID: {Id}", id);
 
+                if (!string.IsNullOrEmpty(updateDto.Password))
+                {
+                    if (updateDto.Password.Length < 8)
+                        return BadRequest("Пароль должен быть не менее 8 символов");
+                }
+                    
                 var manager = await _managerRepository.GetByIdAsync(id);
                 if (manager == null) return NotFound("Менеджер не найден");
 
                 manager.Username = updateDto.Username;
                 manager.FullName = updateDto.FullName;
 
-                // 🔐 ОБНОВЛЯЕМ ПАРОЛЬ С ХЕШИРОВАНИЕМ
+                // ОБНОВЛЯЕМ ПАРОЛЬ С ХЕШИРОВАНИЕМ
                 if (!string.IsNullOrEmpty(updateDto.Password))
                 {
                     manager.PasswordHash = _managerRepository.HashPassword(updateDto.Password);

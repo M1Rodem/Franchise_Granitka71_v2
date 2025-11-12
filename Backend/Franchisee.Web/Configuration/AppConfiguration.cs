@@ -17,6 +17,7 @@ namespace Franchisee.Web.Configuration
 {
     public static class AppConfiguration
     {
+
         public static void ConfigureServices(IServiceCollection services, IConfiguration configuration, IWebHostEnvironment env)
         {
             services.Configure<AppSettings>(configuration.GetSection("AppSettings"));
@@ -29,11 +30,7 @@ namespace Franchisee.Web.Configuration
                     policy.WithOrigins(
                         "http://localhost:3000",
                         "http://127.0.0.1:3000",
-                        "http://localhost:5000",
-                        "https://localhost:7137",
-                        "https://localhost:7000",
-                        "http://192.168.0.21:3000",
-                        "http://192.168.0.21:5000"
+                        "http://192.168.0.21:3000"
                     )
                     .AllowAnyHeader()
                     .AllowAnyMethod()

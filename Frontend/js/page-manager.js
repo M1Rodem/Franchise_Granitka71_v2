@@ -1,13 +1,21 @@
 import { apiService } from './api.js';
-import { initLayout, handleApiError } from './utils.js';
+import { 
+    secureGetUserData, 
+    secureGetToken,
+    secureRemoveToken,
+    handleApiError,
+    initLayout 
+} from './utils.js';
 import { SidebarManager } from './sidebar-manager.js';
 
 export class PageManager {
     static async initialize(pageType, initCallback = null) {
         try {
-            // Проверка авторизации
-            const userData = apiService.getCurrentUser();
-            if (!userData) {
+            // Проверка авторизации через безопасные функции
+            const userData = secureGetUserData();
+            const token = secureGetToken();
+            
+            if (!userData || !token) {
                 window.location.href = 'login.html';
                 return null;
             }

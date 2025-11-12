@@ -1,11 +1,22 @@
 import { apiService } from './api.js';
-import { showTempMessage, handleApiError } from './utils.js';
+import { 
+    showTempMessage, 
+    handleApiError,
+    secureSetToken,
+    secureGetToken,
+    secureRemoveToken,
+    secureSetUserData,
+    secureGetUserData,
+    initTokenCleanup
+} from './utils.js';
 
 let submitDebounce = null;
 
 document.addEventListener('DOMContentLoaded', () => {
     const loginForm = document.getElementById('loginForm');
     checkExistingAuth(); 
+    initTokenCleanup();
+    
     if (loginForm) {
         loginForm.addEventListener('submit', handleSubmitDebounced);
     }
@@ -33,14 +44,25 @@ async function handleLogin(e) {
 
         const result = await apiService.login({ username, password });
         
-        localStorage.setItem('userData', JSON.stringify({
+        // ЗАМЕНИТЬ: localStorage.setItem на безопасные функции
+        if (!secureSetToken(result.token)) {
+            throw new Error('Ошибка сохранения токена');
+        }
+        
+        if (!secureSetUserData({
             id: result.id,
             username: result.username,
             fullName: result.fullName,
             role: result.role
-        }));
+        })) {
+            throw new Error('Ошибка сохранения данных пользователя');
+        }
+        
         window.location.href = 'dashboard.html';        
     } catch (error) {
+        // При любой ошибке очищаем потенциально невалидные данные
+        secureRemoveToken();
+        
         if (error.status === 401) {
             const serverMessage = error.data?.message || error.message || '';
             
@@ -60,16 +82,14 @@ async function handleLogin(e) {
 }
 
 function checkExistingAuth() {
-    const token = localStorage.getItem('token');
-    const userDataStr = localStorage.getItem('userData');
+    const token = secureGetToken();
+    const userData = secureGetUserData();
     
-    if (token && userDataStr && window.location.pathname.includes('login.html')) {
+    if (token && userData && window.location.pathname.includes('login.html')) {
         try {
-            JSON.parse(userDataStr);
             window.location.href = 'dashboard.html';
         } catch {
-            localStorage.removeItem('token');
-            localStorage.removeItem('userData');
+            secureRemoveToken();
         }
     }
 }
@@ -91,28 +111,25 @@ function setLoadingState(button, isLoading) {
 }
 
 export function checkAuth() {
-    const token = localStorage.getItem('token');
-    const userDataStr = localStorage.getItem('userData');
+    const token = secureGetToken();
+    const userData = secureGetUserData();
     
-    if (!token || !userDataStr) {
+    if (!token || !userData) {
         window.location.href = 'login.html';
         return null;
     }
     
     try {
-        return JSON.parse(userDataStr);
+        return userData;
     } catch {
-        localStorage.removeItem('token');
-        localStorage.removeItem('userData');
+        secureRemoveToken();
         window.location.href = 'login.html';
         return null;
     }
 }
 
 export function handleLogout() {
-    localStorage.removeItem('token');
-    localStorage.removeItem('userData');
-    localStorage.removeItem('orderFilters');
+    secureRemoveToken();
     localStorage.removeItem('lastOrderView');
     
     apiService.logout().catch(console.warn);

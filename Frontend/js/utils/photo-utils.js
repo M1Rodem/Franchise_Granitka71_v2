@@ -1,6 +1,6 @@
-import { showTempMessage, escapeHtml, formatDate, formatFileSize } from './utils.js';
-import { apiService } from './api.js';
-import { ModalUtils } from './modal-utils.js';
+import { showTempMessage, escapeHtml, formatDate, formatFileSize } from '../utils/utils.js';
+import { apiService } from '../api/api.js';
+import { ModalUtils } from '../utils/modal-utils.js';
 
 export let tempUploads = []; // Храним временные загрузки
 let activeBlobUrls = [];

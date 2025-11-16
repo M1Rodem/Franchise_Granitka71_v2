@@ -6,27 +6,27 @@
     <title>Пользователи - Granitka71</title>
     
     <!-- Base Styles -->
-    <link rel="stylesheet" href="CSS/base/reset.css">
-    <link rel="stylesheet" href="CSS/base/variables.css">
-    <link rel="stylesheet" href="CSS/base/utilities.css">
-    <link rel="stylesheet" href="CSS/base/typography.css">
+    <link rel="stylesheet" href="./CSS/base/reset.css">
+    <link rel="stylesheet" href="./CSS/base/variables.css">
+    <link rel="stylesheet" href="./CSS/base/utilities.css">
+    <link rel="stylesheet" href="./CSS/base/typography.css">
     
     <!-- Layout -->
-    <link rel="stylesheet" href="CSS/layout/header.css">
-    <link rel="stylesheet" href="CSS/layout/sidebar.css">
-    <link rel="stylesheet" href="CSS/layout/main-content.css">
+    <link rel="stylesheet" href="./CSS/layout/header.css">
+    <link rel="stylesheet" href="./CSS/layout/sidebar.css">
+    <link rel="stylesheet" href="./CSS/layout/main-content.css">
     
     <!-- Components -->
-    <link rel="stylesheet" href="CSS/components/buttons.css">
-    <link rel="stylesheet" href="CSS/components/forms.css">
-    <link rel="stylesheet" href="CSS/components/tables.css">
-    <link rel="stylesheet" href="CSS/components/cards.css">
-    <link rel="stylesheet" href="CSS/components/modals.css">
-    <link rel="stylesheet" href="CSS/components/toasts.css">
-    <link rel="stylesheet" href="CSS/components/loading.css">
+    <link rel="stylesheet" href="./CSS/components/buttons.css">
+    <link rel="stylesheet" href="./CSS/components/forms.css">
+    <link rel="stylesheet" href="./CSS/components/tables.css">
+    <link rel="stylesheet" href="./CSS/components/cards.css">
+    <link rel="stylesheet" href="./CSS/components/modals.css">
+    <link rel="stylesheet" href="./CSS/components/toasts.css">
+    <link rel="stylesheet" href="./CSS/components/loading.css">
     
     <!-- Pages -->
-    <link rel="stylesheet" href="CSS/pages/users.css">
+    <link rel="stylesheet" href="./CSS/pages/users.css">
 </head>
 <body>
     <header class="header" role="banner">
@@ -56,7 +56,6 @@
 
     <main class="main-content" id="mainContent" role="main">
         <div class="container">
-            <!-- Добавляем заголовок как в архиве -->
             <div class="page-header">
                 <h1>Управление пользователями</h1>
                 <div class="page-header-actions">
@@ -107,7 +106,7 @@
         </div>
     </main>
 
-    <!-- Модальное окно редактирования пользователя - ВЫНЕСЕНО ОТДЕЛЬНО -->
+    <!-- Модальное окно редактирования пользователя -->
     <div id="editUserModal" class="modal" role="dialog" aria-modal="true" aria-labelledby="editUserModalTitle" tabindex="-1">
         <div class="modal-overlay" aria-label="Закрыть модальное окно" data-close-modal></div>
         <div class="modal-content">
@@ -146,14 +145,14 @@
     </div>
 
     <script type="module">
-        import { SidebarManager } from './js/sidebar-manager.js';
-        import { PageManager } from './js/page-manager.js';
+        import { SidebarManager } from './JS/core/sidebar-manager.js';
+        import { PageManager } from './JS/core/page-manager.js';
         
         document.addEventListener('DOMContentLoaded', () => {
             SidebarManager.init();
             PageManager.initialize('users');
         });
     </script>
-    <script type="module" src="js/users.js"></script>
+    <script type="module" src="./JS/pages/users.js"></script>
 </body>
 </html>

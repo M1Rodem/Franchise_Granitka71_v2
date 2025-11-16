@@ -1,6 +1,6 @@
-import { apiService } from './api.js';
-import { showTempMessage, escapeHtml } from './utils.js';
-import { ModalUtils } from './modal-utils.js';
+import { apiService } from '../api/api.js';
+import { showTempMessage, escapeHtml } from '../utils/utils.js';
+import { ModalUtils } from '../utils/modal-utils.js';
 
 let currentEditUserId = null;
 

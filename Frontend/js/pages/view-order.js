@@ -1,14 +1,14 @@
 // view-order.js
-import { PageManager } from './page-manager.js';
-import { apiService } from './api.js';
+import { PageManager } from '../core/page-manager.js';
+import { apiService } from '../api/api.js';
 import { 
     formatDate, formatCurrency, escapeHtml, showTempMessage, handleApiError,
     getPaymentStatus, getPaymentStatusText, getUserNameFromOrder, getStatusBadgeClass, 
     formatPaymentType, formatFileSize 
-} from './utils.js';
-import { renderPhotoGrid, attachPhotoEvents, cleanupPhotoBlobs, openPhotoPreview } from './photo-utils.js';
-import { ModalUtils } from './modal-utils.js';
-import { downloadOrderExcel, printOrder, getCurrentOrderId } from './print-utils.js';
+} from '../utils/utils.js';
+import { renderPhotoGrid, attachPhotoEvents, cleanupPhotoBlobs, openPhotoPreview } from '../utils/photo-utils.js';
+import { ModalUtils } from '../utils/modal-utils.js';
+import { downloadOrderExcel, printOrder, getCurrentOrderId } from '../utils/print-utils.js';
 
 export class ViewOrderManager {
     constructor(pageManager) {
@@ -366,7 +366,7 @@ export class ViewOrderManager {
         }
 
         try {
-            const { downloadOrderExcel } = await import('./print-utils.js');
+            const { downloadOrderExcel } = await import('../utils/photo-utils.js');
             await downloadOrderExcel(this.orderId);
         } catch (error) {
             console.error('Excel download error:', error);
@@ -381,7 +381,7 @@ export class ViewOrderManager {
         }
 
         try {
-            const { printOrder } = await import('./print-utils.js');
+            const { printOrder } = await import('../utils/photo-utils.js');
             await printOrder(this.orderId);
         } catch (error) {
             console.error('Print error:', error);

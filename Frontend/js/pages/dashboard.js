@@ -1,6 +1,6 @@
-import { PageManager } from './page-manager.js';
-import { apiService } from './api.js';
-import { formatDate, escapeHtml, getPaymentStatus, getPaymentStatusText, getUserNameFromOrder, getStatusBadgeClass } from './utils.js';
+import { PageManager } from '../core/page-manager.js';
+import { apiService } from '../api/api.js';
+import { formatDate, escapeHtml, getPaymentStatus, getPaymentStatusText, getUserNameFromOrder, getStatusBadgeClass } from '../utils/utils.js';
 
 document.addEventListener('DOMContentLoaded', () => {
     PageManager.initialize('dashboard', loadDashboardData);

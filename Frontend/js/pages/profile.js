@@ -1,6 +1,6 @@
-import { apiService } from './api.js';
-import { showTempMessage, getFormValue } from './utils.js';
-import { ModalUtils } from './modal-utils.js';
+import { apiService } from '../api/api.js';
+import { showTempMessage, getFormValue } from '../utils/utils.js';
+import { ModalUtils } from '../utils/modal-utils.js';
 
 document.addEventListener('DOMContentLoaded', async () => {
     await initializeProfilePage();

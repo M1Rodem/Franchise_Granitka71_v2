@@ -1,11 +1,11 @@
-import { apiService } from './api.js';
+import { apiService } from '../api/api.js';
 import { 
     secureGetUserData, 
     secureGetToken,
     secureRemoveToken,
     handleApiError,
     initLayout 
-} from './utils.js';
+} from '../utils/utils.js';
 import { SidebarManager } from './sidebar-manager.js';
 
 export class PageManager {

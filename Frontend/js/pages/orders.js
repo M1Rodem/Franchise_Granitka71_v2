@@ -1,8 +1,8 @@
-import { PageManager } from './page-manager.js';
-import { apiService } from './api.js';
+import { PageManager } from '../core/page-manager.js';
+import { apiService } from '../api/api.js';
 import { formatDate, formatCurrency, escapeHtml, showTempMessage, handleApiError, 
     getUrlParam, updateUrlParam, mapStatusToEnum, getPaymentStatus, 
-    getPaymentStatusText, getUserNameFromOrder, getStatusBadgeClass, debounce } from './utils.js';
+    getPaymentStatusText, getUserNameFromOrder, getStatusBadgeClass, debounce } from '../utils/utils.js';
 
 let currentPage = parseInt(getUrlParam('page')) || 1;
 const pageSize = 10;

@@ -1,8 +1,8 @@
 // create-order.js
-import { PageManager } from './page-manager.js';
-import { apiService } from './api.js';
-import { formatCurrency, getTodayDate, isValidEmail, isValidPhone, populateForm,  getFormValue, showTempMessage, } from './utils.js';
-import { setupDragAndDrop, handlePhotoSelect, uploadTempAndDisplay, renderPhotoGrid, tempUploads, clearTempPhotos, attachPhotoEvents, getTempPhotoIds, loadAndCleanupTemp } from './photo-utils.js';
+import { PageManager } from '../core/page-manager.js';
+import { apiService } from '../api/api.js';
+import { formatCurrency, getTodayDate, isValidEmail, isValidPhone, populateForm,  getFormValue, showTempMessage, } from '../utils/utils.js';
+import { setupDragAndDrop, handlePhotoSelect, uploadTempAndDisplay, renderPhotoGrid, tempUploads, clearTempPhotos, attachPhotoEvents, getTempPhotoIds, loadAndCleanupTemp } from '../utils/photo-utils.js';
 
 export class CreateOrderManager {
     constructor(pageManager) {

@@ -4,13 +4,13 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Granitka71 - Управление заказами</title>
-    <link rel="stylesheet" href="CSS/style.css">
+    <link rel="stylesheet" href="./CSS/base/variables.css">
     <meta name="theme-color" content="#2e8b57">
 </head>
 <body>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <script type="module">
-        import { checkAuth } from './js/auth.js';
+        import { checkAuth } from './JS/pages/auth.js';
         const user = checkAuth();
         if (user) {
             window.location.href = 'dashboard.html';

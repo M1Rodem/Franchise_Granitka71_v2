@@ -1,12 +1,14 @@
-const API_BASE_URL = '/api';
+// API_BASE_URL из Vite env (подставляется на build-time)
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || __API_BASE_URL__ || '/api';
 
-import { showTempMessage } from './utils.js';
+import CryptoJS from 'crypto-js'; // Vite bundl'ит как ES module
 import { 
     secureGetToken,
     secureSetToken,
     secureRemoveToken,
-    secureGetUserData 
-} from './utils.js';
+    secureGetUserData, 
+    showTempMessage 
+} from '../utils/utils.js';
 
 class ApiService {
     constructor() {
@@ -15,7 +17,7 @@ class ApiService {
         this.setupImageAuth();
     }
 
-    // Основной request с timeout (5s) — без изменений
+    // Основной request с timeout (5s)
     async request(endpoint, options = {}) {
         const url = `${API_BASE_URL}${endpoint}`;
         const controller = new AbortController();
@@ -53,7 +55,7 @@ class ApiService {
         }
     }
 
-    // Helpers (без изменений)
+    // Helpers
     async parseResponse(response) {
         const contentType = response.headers.get('content-type') || '';
         if (contentType.includes('application/json')) {
@@ -86,7 +88,7 @@ class ApiService {
         }
     }
 
-    // Auth (без изменений)
+    // Auth
     async login(credentials) {
         const response = await fetch(`${API_BASE_URL}/Auth/login`, {
             method: 'POST',
@@ -120,7 +122,7 @@ class ApiService {
         }
     }
 
-    // Profile (без изменений)
+    // Profile
     async getMyProfile() {
         return this.request('/Profile');
     }
@@ -139,7 +141,7 @@ class ApiService {
         });
     }
 
-    // Orders (ФИКС: mapper для Status enum)
+    // Orders (с mapper для Status enum)
     async getOrders(filter) {
         const params = new URLSearchParams();
         
@@ -170,7 +172,7 @@ class ApiService {
             params.append('OrderDateTo', filter.OrderDateTo);
         }
         
-        // ✅ ФИКС: Сортировка
+        // Сортировка
         if (filter.sortBy) {
             params.append('sortBy', filter.sortBy);
         }
@@ -245,7 +247,7 @@ class ApiService {
         }
     }
 
-    // Photos (без изменений)
+    // Photos
     async uploadTempPhoto(file) {
         const formData = new FormData();
         formData.append('file', file);
@@ -340,7 +342,7 @@ class ApiService {
         return this.request(`/Photos/temp/${tempId}`, { method: 'DELETE' });
     }
 
-    // Users (без изменений)
+    // Users
     async getUsers() { return this.request('/Users'); }
 
     async createUser(userData) {
@@ -393,7 +395,7 @@ class ApiService {
         const originalFetch = window.fetch;
         window.fetch = (...args) => {
             const [url, options = {}] = args;
-            if (typeof url === 'string' && url.includes('/api/Photos/')) {
+            if (typeof url === 'string' && url.includes(`${API_BASE_URL}Photos/`)) {
                 options.headers = { ...options.headers, 'Authorization': `Bearer ${this.token}` };
                 args[1] = options;
             }

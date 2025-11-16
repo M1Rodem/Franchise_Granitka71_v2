@@ -2,15 +2,26 @@
     "name": "granite-frontend",
     "version": "1.0.0",
     "description": "Frontend for Granitka71",
-    "main": "server.js",
+    "type": "module",
     "scripts": {
+        "dev": "vite",
+        "build": "vite build",
+        "preview": "vite preview",
         "start": "node server.js",
-        "dev": "node server.js"
+        "obfuscate": "node obfuscate.js"
     },
     "dependencies": {
         "cors": "^2.8.5",
+        "dotenv": "^16.4.5",
         "express": "^4.21.2",
+        "helmet": "^7.1.0",
         "http-proxy-middleware": "^3.0.5"
+    },
+    "devDependencies": {
+        "crypto-js": "^4.2.0",
+        "javascript-obfuscator": "^4.1.0",
+        "terser": "^5.31.6",
+        "vite": "^7.2.2"
     },
     "keywords": [],
     "author": "",

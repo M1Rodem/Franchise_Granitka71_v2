@@ -1,4 +1,4 @@
-import { apiService } from './api.js';
+import { apiService } from '../api/api.js';
 import { 
     showTempMessage, 
     handleApiError,
@@ -8,7 +8,7 @@ import {
     secureSetUserData,
     secureGetUserData,
     initTokenCleanup
-} from './utils.js';
+} from '../utils/utils.js';
 
 let submitDebounce = null;
 

@@ -1,4 +1,3 @@
-// Добавь импорты в начало файла
 import { 
     formatDate, 
     formatCurrency, 
@@ -7,7 +6,7 @@ import {
     escapeHtml,
     getUserNameFromOrder,
     formatFileSize
-} from './utils.js';
+} from '../utils/utils';
 
 export class ModalUtils {
     // ====== КОНФИРМАЦИОННЫЕ ОКНА ======

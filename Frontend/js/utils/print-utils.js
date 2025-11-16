@@ -1,6 +1,5 @@
-// print-utils.js - Frontend printing and Excel utilities
-import { showTempMessage } from './utils.js';
-import { apiService } from './api.js';
+import { showTempMessage } from '../utils/utils.js';
+import { apiService } from '../api/api.js';
 
 /**
  * Скачивание заказа в Excel

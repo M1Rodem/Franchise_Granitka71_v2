@@ -1,5 +1,5 @@
-import { apiService } from './api.js';
-import { ModalUtils } from './modal-utils.js';
+import { apiService } from '../api/api.js';
+import { ModalUtils } from '../utils/modal-utils.js';
 import { 
     formatDate, 
     formatCurrency, 
@@ -9,7 +9,7 @@ import {
     formatFileSize,
     getPaymentStatus,
     getPaymentStatusText
-} from './utils.js';
+} from '../utils/utils.js';
 
 let currentPage = 1;
 let totalPages = 1;

@@ -6,27 +6,27 @@
     <title>Просмотр заказа - Granitka71</title>
     
     <!-- Base Styles -->
-    <link rel="stylesheet" href="CSS/base/reset.css">
-    <link rel="stylesheet" href="CSS/base/variables.css">
-    <link rel="stylesheet" href="CSS/base/utilities.css">
-    <link rel="stylesheet" href="CSS/base/typography.css">
+    <link rel="stylesheet" href="./CSS/base/reset.css">
+    <link rel="stylesheet" href="./CSS/base/variables.css">
+    <link rel="stylesheet" href="./CSS/base/utilities.css">
+    <link rel="stylesheet" href="./CSS/base/typography.css">
     
     <!-- Layout -->
-    <link rel="stylesheet" href="CSS/layout/header.css">
-    <link rel="stylesheet" href="CSS/layout/sidebar.css">
-    <link rel="stylesheet" href="CSS/layout/main-content.css">
+    <link rel="stylesheet" href="./CSS/layout/header.css">
+    <link rel="stylesheet" href="./CSS/layout/sidebar.css">
+    <link rel="stylesheet" href="./CSS/layout/main-content.css">
     
     <!-- Components -->
-    <link rel="stylesheet" href="CSS/components/buttons.css">
-    <link rel="stylesheet" href="CSS/components/forms.css">
-    <link rel="stylesheet" href="CSS/components/tables.css">
-    <link rel="stylesheet" href="CSS/components/cards.css">
-    <link rel="stylesheet" href="CSS/components/modals.css">
-    <link rel="stylesheet" href="CSS/components/toasts.css">
-    <link rel="stylesheet" href="CSS/components/loading.css">
+    <link rel="stylesheet" href="./CSS/components/buttons.css">
+    <link rel="stylesheet" href="./CSS/components/forms.css">
+    <link rel="stylesheet" href="./CSS/components/tables.css">
+    <link rel="stylesheet" href="./CSS/components/cards.css">
+    <link rel="stylesheet" href="./CSS/components/modals.css">
+    <link rel="stylesheet" href="./CSS/components/toasts.css">
+    <link rel="stylesheet" href="./CSS/components/loading.css">
     
     <!-- Pages -->
-    <link rel="stylesheet" href="CSS/pages/view-order.css">
+    <link rel="stylesheet" href="./CSS/pages/view-order.css">
 </head>
 <body>
     <header class="header" role="banner">
@@ -106,14 +106,14 @@
     </main>
 
     <script type="module">
-        import { SidebarManager } from './js/sidebar-manager.js';
-        import { PageManager } from './js/page-manager.js';
+        import { SidebarManager } from './JS/core/sidebar-manager.js';
+        import { PageManager } from './JS/core/page-manager.js';
         
         document.addEventListener('DOMContentLoaded', () => {
             SidebarManager.init();
             PageManager.initialize('orders');
         });
     </script>
-    <script type="module" src="js/view-order.js"></script>
+    <script type="module" src="./JS/pages/view-order.js"></script>
 </body>
 </html>

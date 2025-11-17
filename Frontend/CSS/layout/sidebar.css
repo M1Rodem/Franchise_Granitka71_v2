@@ -15,6 +15,9 @@
     overflow-y: auto;
     transform: translateX(0);
     animation: sidebarSlideIn 0.5s var(--ease-out-back);
+    display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
 }
 
 @keyframes sidebarSlideIn {

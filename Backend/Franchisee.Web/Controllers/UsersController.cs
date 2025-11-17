@@ -53,6 +53,38 @@ namespace Franchisee.Web.Controllers
             return Ok(response);
         }
 
+        [HttpGet("paged")]
+        public async Task<ActionResult<PagedResponse<ManagerResponseDto>>> GetPaged(
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 10,
+        [FromQuery] string search = "")
+        {
+            _logger.LogInformation("Получение списка менеджеров с пагинацией: страница {Page}, размер {PageSize}, поиск: {Search}",
+                page, pageSize, search);
+
+            var (managers, totalCount) = await _managerRepository.GetPagedAsync(page, pageSize, search);
+
+            var response = managers.Select(m => new ManagerResponseDto
+            {
+                Id = m.Id,
+                Username = m.Username,
+                FullName = m.FullName,
+                Role = m.Role.ToString(),
+                IsBlocked = m.IsBlocked
+            });
+
+            var pagedResponse = new PagedResponse<ManagerResponseDto>
+            {
+                Items = response.ToList(),
+                TotalCount = totalCount,
+                Page = page,
+                PageSize = pageSize,
+                TotalPages = (int)Math.Ceiling(totalCount / (double)pageSize)
+            };
+
+            return Ok(pagedResponse);
+        }
+
         [HttpPost]
         public async Task<ActionResult<ManagerResponseDto>> Create([FromBody] CreateManagerDto createDto)
         {
@@ -202,5 +234,7 @@ namespace Franchisee.Web.Controllers
             await _managerRepository.DeleteAsync(id);
             return Ok("Менеджер удален");
         }
+
+
     }
 }

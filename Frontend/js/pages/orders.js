@@ -3,6 +3,7 @@ import { apiService } from '../api/api.js';
 import { formatDate, formatCurrency, escapeHtml, showTempMessage, handleApiError, 
     getUrlParam, updateUrlParam, mapStatusToEnum, getPaymentStatus, 
     getPaymentStatusText, getUserNameFromOrder, getStatusBadgeClass, debounce } from '../utils/utils.js';
+import { ModalUtils } from '../utils/modal-utils.js';
 
 let currentPage = parseInt(getUrlParam('page')) || 1;
 const pageSize = 10;
@@ -57,6 +58,9 @@ function setupOrdersEventListeners() {
     // Pagination
     document.getElementById('prevPage').addEventListener('click', prevPage);
     document.getElementById('nextPage').addEventListener('click', nextPage);
+
+    // Attach events to order rows (делегирование событий)
+    attachOrderEvents();
 }
 
 function handleSearchInput() {
@@ -97,7 +101,6 @@ async function applyFilters() {
         filterParams.PaymentStatus = mapStatusToEnum(status);
     }
 
-    // ИЗМЕНИТЬ: используем OrderDateFrom/OrderDateTo вместо CreatedFrom/CreatedTo
     if (dateFrom) {
         filterParams.OrderDateFrom = dateFrom + 'T00:00:00.000Z';
     }
@@ -186,7 +189,6 @@ async function loadOrders() {
         filterParams.PaymentStatus = parseInt(statusEnum);
     }
 
-    // ИЗМЕНИТЬ: используем OrderDateFrom/OrderDateTo
     if (dateFrom) {
         filterParams.OrderDateFrom = dateFrom + 'T00:00:00.000Z';
     }
@@ -207,6 +209,7 @@ function renderOrders(orders) {
         return;
     }
 
+    // Убраны inline обработчики onclick - используем делегирование событий
     tbody.innerHTML = orders.map(order => {
         const status = getPaymentStatus(order);
         const statusText = getPaymentStatusText(order);
@@ -226,13 +229,39 @@ function renderOrders(orders) {
                 <td data-label="Менеджер">${escapeHtml(managerName)}</td>
                 <td data-label="Действия">
                     <div class="actions">
-                        <button class="btn btn-small btn-view" onclick="viewOrder(${order.id})">Просмотр</button>
-                        <button class="btn btn-small btn-delete" onclick="deleteOrder(${order.id})">Удалить</button>
+                        <button class="btn btn-small btn-view" data-order-id="${order.id}">Просмотр</button>
+                        <button class="btn btn-small btn-delete" data-order-id="${order.id}">Удалить</button>
                     </div>
                 </td>
             </tr>
         `;
     }).join('');
+}
+
+function attachOrderEvents() {
+    const tbody = document.getElementById('ordersTableBody');
+    if (!tbody) return;
+
+    tbody.addEventListener('click', (e) => {
+        const target = e.target;
+        
+        if (target.classList.contains('btn-view')) {
+            const orderId = parseInt(target.dataset.orderId);
+            if (!isNaN(orderId)) {
+                viewOrder(orderId);
+            }
+        } else if (target.classList.contains('btn-delete')) {
+            const orderId = parseInt(target.dataset.orderId);
+            if (!isNaN(orderId)) {
+                deleteOrder(orderId);
+            }
+        }
+    });
+}
+
+// Функции должны быть доступны глобально для onclick (альтернативное решение)
+function viewOrder(orderId) {
+    window.location.href = `view-order.html?id=${orderId}`;
 }
 
 async function deleteOrder(orderId) {
@@ -242,15 +271,21 @@ async function deleteOrder(orderId) {
         return;
     }
 
-    const confirmed = confirm(`Удалить заказ №${order.orderNumber || 'N/A'}? Переместится в архив.`);
-    if (confirmed) {
-        try {
+    try {
+        const confirmed = await ModalUtils.confirm({
+            title: 'Переместить в архив?',
+            message: `Заказ №${order.orderNumber || 'N/A'} будет перемещен в архив. Вы сможете восстановить его в течение 7 дней.`,
+            confirmText: 'Да, в архив',
+            danger: true
+        });
+        
+        if (confirmed) {
             await apiService.deleteOrder(orderId);
             showTempMessage('Заказ перемещен в архив', 'success');
             await loadOrders();
-        } catch (error) {
-            handleApiError(error);
         }
+    } catch (error) {
+        handleApiError(error);
     }
 }
 
@@ -287,7 +322,3 @@ function showLoadingState(loading) {
         tbody.innerHTML = '<tr><td colspan="8" class="skeleton-row"></td></tr>'.repeat(5);
     }
 }
-
-// Globals
-window.viewOrder = (id) => window.location.href = `view-order.html?id=${id}`;
-window.deleteOrder = deleteOrder;

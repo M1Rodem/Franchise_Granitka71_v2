@@ -18,7 +18,6 @@
         "http-proxy-middleware": "^3.0.5"
     },
     "devDependencies": {
-        "crypto-js": "^4.2.0",
         "javascript-obfuscator": "^4.1.0",
         "terser": "^5.31.6",
         "vite": "^7.2.2"

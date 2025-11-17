@@ -1,40 +1,40 @@
-import { PageManager } from '../core/page-manager.js';
 import { apiService } from '../api/api.js';
 import { formatDate, escapeHtml, getPaymentStatus, getPaymentStatusText, getUserNameFromOrder, getStatusBadgeClass } from '../utils/utils.js';
+import { SidebarManager } from '../core/sidebar-manager.js';
 
-document.addEventListener('DOMContentLoaded', () => {
-    PageManager.initialize('dashboard', loadDashboardData);
-    
-    // ФИКС: Прямой обработчик для кнопки выхода
-    const logoutBtn = document.getElementById('logoutBtn');
-    if (logoutBtn) {
-        logoutBtn.addEventListener('click', () => {
-            console.log('Logout button clicked'); // для отладки
-            localStorage.removeItem('token');
-            localStorage.removeItem('userData');
-            localStorage.removeItem('orderFilters');
-            localStorage.removeItem('lastOrderView');
+document.addEventListener('DOMContentLoaded', async () => {
+    try {
+        // Проверка авторизации
+        const userData = JSON.parse(localStorage.getItem('userData') || '{}');
+        const token = localStorage.getItem('token');
+        
+        if (!userData || !token) {
             window.location.href = 'login.html';
-        });
+            return;
+        }
+
+        // Инициализация sidebar
+        SidebarManager.init();
+
+        // Настройка пользователя и logout
+        setupLogoutAndUser(userData);
+
+        // Загрузка данных dashboard
+        await loadDashboardData();
+        
+    } catch (error) {
+        // В случае ошибки редирект на логин
+        window.location.href = 'login.html';
     }
-    
-    // Инициализация пользовательского интерфейса
-    const userData = JSON.parse(localStorage.getItem('userData') || '{}');
-    const userNameElement = document.getElementById('userName');
-    if (userNameElement && userData.fullName) {
-        userNameElement.textContent = userData.fullName;
-    }
-})
+});
 
 async function loadDashboardData() {
     try {
         showLoadingState(true);
 
-        // Получаем ВСЕ заказы и фильтруем на клиенте
         const allOrdersResponse = await apiService.getOrders({ page: 1, pageSize: 1000 });
         const today = new Date().toISOString().split('T')[0];
         
-        // Фильтруем заказы за сегодня на клиенте (учитываем UTC)
         const todayOrders = allOrdersResponse.items.filter(order => {
             const orderDate = new Date(order.orderDate).toISOString().split('T')[0];
             return orderDate === today;
@@ -55,9 +55,47 @@ async function loadDashboardData() {
         updateDashboardStats(stats);
         showLoadingState(false);
     } catch (error) {
-        console.error('Dashboard data error:', error);
         showLoadingState(false);
         throw error;
+    }
+}
+
+function setupLogoutAndUser(userData) {
+    const logoutBtn = document.getElementById('logoutBtn');
+    if (logoutBtn) {
+        logoutBtn.addEventListener('click', () => {
+            localStorage.removeItem('token');
+            localStorage.removeItem('userData');
+            localStorage.removeItem('orderFilters');
+            localStorage.removeItem('lastOrderView');
+            window.location.href = 'login.html';
+        });
+    }
+    
+    const userNameElement = document.getElementById('userName');
+    if (userNameElement && userData.fullName) {
+        const fullName = userData.fullName;
+        userNameElement.textContent = fullName;
+        userNameElement.setAttribute('data-fullname', fullName);
+        userNameElement.setAttribute('aria-label', `Перейти к профилю: ${fullName}`);
+        
+        // УЛУЧШЕНО: Умное определение необходимости multiline
+        const updateUserNameLayout = () => {
+            const isMobile = window.innerWidth <= 768;
+            const threshold = isMobile ? 20 : 25; // Более консервативные пороги
+            
+            // Сбрасываем класс
+            userNameElement.classList.remove('multiline');
+            
+            // Добавляем multiline только если действительно необходимо
+            if (fullName.length > threshold) {
+                userNameElement.classList.add('multiline');
+            }
+        };
+        
+        // Вызываем при загрузке и при изменении размера окна
+        updateUserNameLayout();
+        window.addEventListener('resize', updateUserNameLayout);
     }
 }
 
@@ -85,7 +123,7 @@ function showRecentOrders(orders) {
     noData.style.display = 'none';
     ordersList.innerHTML = recentOrders.map(order => {
         const status = getPaymentStatus(order);
-        const statusClass = getStatusBadgeClass(status); // Теперь использует единый класс
+        const statusClass = getStatusBadgeClass(status);
         const statusText = getPaymentStatusText(order);
         const managerName = getUserNameFromOrder(order);
         return `
@@ -131,6 +169,3 @@ function showLoadingState(loading) {
 function viewOrder(orderId) {
     window.location.href = `view-order.html?id=${orderId}`;
 }
-
-// Legacy global
-window.viewOrder = viewOrder;

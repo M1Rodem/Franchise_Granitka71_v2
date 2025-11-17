@@ -85,7 +85,7 @@ namespace Franchisee.Web.Controllers
 
                 // ИСПОЛЬЗУЕМ ТАКОЙ ЖЕ МЕТОД КАК В USERS CONTROLLER
                 var hashedPassword = _managerRepository.HashPassword(changePasswordDto.NewPassword);
-                _managerRepository.ChangePassword(userId, changePasswordDto.NewPassword);
+                await _managerRepository.ChangePasswordAsync(userId, changePasswordDto.NewPassword);
 
                 _logger.LogInformation("Пароль успешно изменен для пользователя ID: {UserId}", userId);
                 return Ok("Пароль успешно изменен");

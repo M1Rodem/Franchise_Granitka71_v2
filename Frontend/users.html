@@ -59,33 +59,21 @@
             <div class="page-header">
                 <h1>Управление пользователями</h1>
                 <div class="page-header-actions">
+                    <button id="createUserBtn" class="btn btn-primary">+ Создать пользователя</button>
                     <a href="dashboard.html" class="btn btn-outline">← Назад в дашборд</a>
                 </div>
             </div>
 
-            <form id="createUserForm" class="card">
-                <div class="form-group">
-                    <label for="newUsername">Логин *</label>
-                    <input type="text" id="newUsername" required placeholder="username" autocomplete="username">
+            <!-- Фильтры и поиск -->
+            <div class="filters">
+                <div class="search-group">
+                    <input type="text" id="searchInput" class="search-input" 
+                           placeholder="Поиск по ID, логину, ФИО...">
                 </div>
-                <div class="form-group">
-                    <label for="newPassword">Пароль *</label>
-                    <input type="password" id="newPassword" required placeholder="минимум 8 символов" minlength="6" autocomplete="new-password">
-                </div>
-                <div class="form-group">
-                    <label for="newFullName">ФИО *</label>
-                    <input type="text" id="newFullName" required placeholder="ФИО" autocomplete="name">
-                </div>
-                <div class="form-group">
-                    <label for="newRole">Роль *</label>
-                    <select id="newRole" required>
-                        <option value="Manager">Manager</option>
-                        <option value="Admin">Admin</option>
-                    </select>
-                </div>
-                <button type="submit" class="btn btn-primary">Создать пользователя</button>
-            </form>
+                <button id="resetFilters" class="btn btn-outline">Сбросить</button>
+            </div>
 
+            <!-- Таблица пользователей -->
             <div class="orders-table-container">
                 <table class="orders-table">
                     <thead>
@@ -103,16 +91,64 @@
                     </tbody>
                 </table>
             </div>
+
+            <!-- Пагинация -->
+            <div class="pagination">
+                <button id="prevPage" class="btn btn-outline">← Назад</button>
+                <span id="pageInfo">Страница 1 из 1</span>
+                <button id="nextPage" class="btn btn-outline">Вперед →</button>
+            </div>
         </div>
     </main>
 
+    <!-- Модальное окно создания пользователя -->
+    <div id="createUserModal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="createUserModalTitle" tabindex="-1">
+        <div class="modal-content glass-modal" style="max-width: 450px; width: 95%;">
+            <button class="modal-close" data-close-modal>&times;</button>
+            
+            <div class="modal-header">
+                <h3 id="createUserModalTitle" class="modal-title">Создать пользователя</h3>
+            </div>
+            
+            <form id="createUserForm" class="modal-form">
+                <div class="form-group">
+                    <label for="createUsername">Логин *</label>
+                    <input type="text" id="createUsername" required placeholder="username" autocomplete="username">
+                </div>
+                
+                <div class="form-group">
+                    <label for="createPassword">Пароль *</label>
+                    <input type="password" id="createPassword" required placeholder="минимум 6 символов" minlength="6" autocomplete="new-password">
+                </div>
+                
+                <div class="form-group">
+                    <label for="createFullName">ФИО *</label>
+                    <input type="text" id="createFullName" required placeholder="ФИО" autocomplete="name">
+                </div>
+                
+                <div class="form-group">
+                    <label for="createRole">Роль *</label>
+                    <select id="createRole" required>
+                        <option value="Manager">Manager</option>
+                        <option value="Admin">Admin</option>
+                    </select>
+                </div>
+                
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-outline" onclick="hideCreateUserModal()">Отмена</button>
+                    <button type="submit" class="btn btn-primary">Создать</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <!-- Модальное окно редактирования пользователя -->
-    <div id="editUserModal" class="modal" role="dialog" aria-modal="true" aria-labelledby="editUserModalTitle" tabindex="-1">
-        <div class="modal-overlay" aria-label="Закрыть модальное окно" data-close-modal></div>
-        <div class="modal-content">
+    <div id="editUserModal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="editUserModalTitle" tabindex="-1">
+        <div class="modal-content glass-modal" style="max-width: 450px; width: 95%;">
+            <button class="modal-close" data-close-modal>&times;</button>
+            
             <div class="modal-header">
                 <h3 id="editUserModalTitle" class="modal-title">Редактировать пользователя</h3>
-                <button class="modal-close" data-close-modal>&times;</button>
             </div>
             
             <form id="editUserForm" class="modal-form">
@@ -145,14 +181,14 @@
     </div>
 
     <script type="module">
-        import { SidebarManager } from './JS/core/sidebar-manager.js';
-        import { PageManager } from './JS/core/page-manager.js';
+        import { SidebarManager } from './js/core/sidebar-manager.js';
+        import { PageManager } from './js/core/page-manager.js';
         
         document.addEventListener('DOMContentLoaded', () => {
             SidebarManager.init();
-            PageManager.initialize('users');
+            PageManager.initialize('page-name');
         });
     </script>
-    <script type="module" src="./JS/pages/users.js"></script>
+    <script type="module" src="./js/pages/users.js"></script>
 </body>
 </html>

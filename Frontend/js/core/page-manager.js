@@ -1,8 +1,6 @@
-import { apiService } from '../api/api.js';
 import { 
     secureGetUserData, 
     secureGetToken,
-    secureRemoveToken,
     handleApiError,
     initLayout 
 } from '../utils/utils.js';
@@ -23,8 +21,13 @@ export class PageManager {
             // Инициализация layout (навигация, пользователь, logout)
             initLayout(userData, pageType);
 
-            // Инициализация sidebar
-            SidebarManager.init();
+            // ФИКС: Явная инициализация sidebar с проверкой
+            console.log('PageManager: Initializing sidebar for', pageType);
+            if (typeof SidebarManager !== 'undefined') {
+                SidebarManager.init();
+            } else {
+                console.error('SidebarManager not found');
+            }
 
             // Вызов кастомной инициализации страницы
             if (initCallback) {

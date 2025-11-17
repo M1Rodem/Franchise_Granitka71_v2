@@ -6,6 +6,24 @@
 		
 	</PropertyGroup>
 	<ItemGroup>
+	  <Compile Remove="Helpers\**" />
+	  <Compile Remove="Migrations\**" />
+	  <Compile Remove="Services\Business\**" />
+	  <Compile Remove="temp-key-generator\**" />
+	  <Content Remove="Helpers\**" />
+	  <Content Remove="Migrations\**" />
+	  <Content Remove="Services\Business\**" />
+	  <Content Remove="temp-key-generator\**" />
+	  <EmbeddedResource Remove="Helpers\**" />
+	  <EmbeddedResource Remove="Migrations\**" />
+	  <EmbeddedResource Remove="Services\Business\**" />
+	  <EmbeddedResource Remove="temp-key-generator\**" />
+	  <None Remove="Helpers\**" />
+	  <None Remove="Migrations\**" />
+	  <None Remove="Services\Business\**" />
+	  <None Remove="temp-key-generator\**" />
+	</ItemGroup>
+	<ItemGroup>
 	  <Compile Remove="Models\City.cs" />
 	</ItemGroup>
 	<ItemGroup>
@@ -31,9 +49,6 @@
 	</ItemGroup>
 	<ItemGroup>
 		<Folder Include="Data\" />
-		<Folder Include="Helpers\" />
-		<Folder Include="Migrations\" />
-		<Folder Include="Services\Business\" />
 		<Folder Include="logs\" />
 		<Folder Include="wwwroot\uploads\orders\" />
 		<Folder Include="wwwroot\uploads\temp\" />

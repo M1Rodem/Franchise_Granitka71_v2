@@ -1,4 +1,3 @@
-// view-order.js
 import { PageManager } from '../core/page-manager.js';
 import { apiService } from '../api/api.js';
 import { 
@@ -8,7 +7,7 @@ import {
 } from '../utils/utils.js';
 import { renderPhotoGrid, attachPhotoEvents, cleanupPhotoBlobs, openPhotoPreview } from '../utils/photo-utils.js';
 import { ModalUtils } from '../utils/modal-utils.js';
-import { downloadOrderExcel, printOrder, getCurrentOrderId } from '../utils/print-utils.js';
+import { printOrder, downloadOrderExcel } from '../utils/print-utils.js';
 
 export class ViewOrderManager {
     constructor(pageManager) {
@@ -366,7 +365,6 @@ export class ViewOrderManager {
         }
 
         try {
-            const { downloadOrderExcel } = await import('../utils/photo-utils.js');
             await downloadOrderExcel(this.orderId);
         } catch (error) {
             console.error('Excel download error:', error);
@@ -381,7 +379,6 @@ export class ViewOrderManager {
         }
 
         try {
-            const { printOrder } = await import('../utils/photo-utils.js');
             await printOrder(this.orderId);
         } catch (error) {
             console.error('Print error:', error);

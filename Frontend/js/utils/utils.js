@@ -230,6 +230,17 @@ export function secureSetToken(token) {
             return false;
         }
         
+        // Декодируем JWT для проверки expiration
+        try {
+            const payload = JSON.parse(atob(token.split('.')[1]));
+            if (payload.exp && payload.exp * 1000 < Date.now()) {
+                console.warn('Token already expired');
+                return false;
+            }
+        } catch (e) {
+            console.warn('Cannot parse token payload:', e);
+        }
+        
         const secureToken = {
             value: token,
             timestamp: Date.now(),
@@ -418,86 +429,70 @@ export function initLayout(userData, pageType = 'default') {
         document.querySelectorAll('.admin-only').forEach(el => el.style.display = 'block');
     }
 
-    // Logout
+    // Logout - используем безопасную функцию
     const logoutBtn = document.getElementById('logoutBtn');
     if (logoutBtn) {
-        logoutBtn.addEventListener('click', () => {
-            if (typeof window.handleLogout === 'function') window.handleLogout();
+        // ФИКС: Удаляем старые обработчики и добавляем новый
+        logoutBtn.replaceWith(logoutBtn.cloneNode(true));
+        const newLogoutBtn = document.getElementById('logoutBtn');
+        
+        newLogoutBtn.addEventListener('click', () => {
+            secureRemoveToken();
+            window.location.href = 'login.html';
         });
     }
 
-    // Nav toggle
-    const burger = document.getElementById('burgerBtn') || document.querySelector('.burger-btn');
-    if (burger) {
-        burger.addEventListener('click', () => toggleNav());
-    }
-
-    // Nav links: close mobile, set active
-    document.querySelectorAll('.nav-item').forEach(item => {
-        item.addEventListener('click', (e) => {
-            if (window.innerWidth <= 768) toggleNav(false); // Close
-            document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
-            item.classList.add('active');
-        });
-        if (item.dataset.page === pageType) item.classList.add('active');
-    });
-
-    // Resize handler
-    let resizeTimeout;
-    window.addEventListener('resize', () => {
-        clearTimeout(resizeTimeout);
-        resizeTimeout = setTimeout(() => {
-            if (window.innerWidth > 768) toggleNav(false);
-        }, 250);
-    });
+    // ФИКС: Убираем дублирующую логику sidebar, оставляем только SidebarManager
+    console.log('Layout initialized - Sidebar should be managed by SidebarManager');
 }
 
-export function toggleNav(open = null) {
-    const sidebar = document.getElementById('sidebar') || document.querySelector('.sidebar');
-    const main = document.getElementById('mainContent') || document.querySelector('.main-content');
-    const burger = document.getElementById('burgerBtn') || document.querySelector('.burger-btn');
-    const isOpen = sidebar?.classList.contains('open') || false;
+// export function toggleNav(open = null) {
+//     const sidebar = document.getElementById('sidebar') || document.querySelector('.sidebar');
+//     const main = document.getElementById('mainContent') || document.querySelector('.main-content');
+//     const burger = document.getElementById('burgerBtn') || document.querySelector('.burger-btn');
+//     const isOpen = sidebar?.classList.contains('open') || false;
 
-    if (open !== null) {
-        if (open && !isOpen) {
-            sidebar?.classList.add('open');
-            main?.classList.add('shifted');
-            burger?.setAttribute('aria-expanded', 'true');
-            createBackdrop();
-        } else if (!open && isOpen) {
-            sidebar?.classList.remove('open');
-            main?.classList.remove('shifted');
-            burger?.setAttribute('aria-expanded', 'false');
-            removeBackdrop();
-        }
-        return;
-    }
+//     if (open !== null) {
+//         if (open && !isOpen) {
+//             sidebar?.classList.add('open');
+//             main?.classList.add('shifted');
+//             burger?.setAttribute('aria-expanded', 'true');
+//             createBackdrop();
+//         } else if (!open && isOpen) {
+//             sidebar?.classList.remove('open');
+//             main?.classList.remove('shifted');
+//             burger?.setAttribute('aria-expanded', 'false');
+//             removeBackdrop();
+//         }
+//         return;
+//     }
 
-    // Toggle
-    sidebar?.classList.toggle('open');
-    main?.classList.toggle('shifted');
-    burger?.setAttribute('aria-expanded', !isOpen);
-    if (sidebar?.classList.contains('open')) createBackdrop();
-    else removeBackdrop();
-}
+//     // Toggle
+//     sidebar?.classList.toggle('open');
+//     main?.classList.toggle('shifted');
+//     burger?.setAttribute('aria-expanded', !isOpen);
+//     if (sidebar?.classList.contains('open')) createBackdrop();
+//     else removeBackdrop();
+// }
 
-function createBackdrop() {
-    let backdrop = document.querySelector('.sidebar-backdrop');
-    if (!backdrop) {
-        backdrop = document.createElement('div');
-        backdrop.className = 'sidebar-backdrop';
-        backdrop.style.cssText = 'position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1001;';
-        backdrop.addEventListener('click', () => toggleNav(false));
-        document.body.appendChild(backdrop);
-    }
-}
+// function createBackdrop() {
+//     let backdrop = document.querySelector('.sidebar-backdrop');
+//     if (!backdrop) {
+//         backdrop = document.createElement('div');
+//         backdrop.className = 'sidebar-backdrop';
+//         backdrop.style.cssText = 'position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1001;';
+//         backdrop.addEventListener('click', () => toggleNav(false));
+//         document.body.appendChild(backdrop);
+//     }
+// }
 
-function removeBackdrop() {
-    const backdrop = document.querySelector('.sidebar-backdrop');
-    if (backdrop) backdrop.remove();
-}
+// function removeBackdrop() {
+//     const backdrop = document.querySelector('.sidebar-backdrop');
+//     if (backdrop) backdrop.remove();
+// }
 
 // ====== УТИЛИТЫ ======
+
 export function isToday(dateString) {
     if (!dateString) return false;
     const today = new Date().toDateString();

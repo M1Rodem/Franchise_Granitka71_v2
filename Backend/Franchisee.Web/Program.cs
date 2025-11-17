@@ -1,6 +1,7 @@
 ﻿using Franchisee.Web.Configuration;
 using Franchisee.Web.Models;
 using Franchisee.Web.Services;
+using Microsoft.EntityFrameworkCore;
 using Serilog;
 using Serilog.Events;
 
@@ -29,6 +30,48 @@ builder.Services.AddHostedService<ExpiredTempCleanupService>();
 AppConfiguration.ConfigureServices(builder.Services, builder.Configuration, builder.Environment);
 
 var app = builder.Build();
+
+// СОЗДАНИЕ АДМИНА ПРИ ПЕРВОМ ЗАПУСКЕ (УДАЛИ ПОСЛЕ НАСТРОЙКИ)
+//try
+//{
+//    using var scope = app.Services.CreateScope();
+//    var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+//    var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+
+//    // Ждем пока БД будет готова
+//    await context.Database.MigrateAsync();
+
+//    // Проверяем есть ли админ
+//    var hasAdmin = await context.Managers
+//        .AnyAsync(m => m.Role == UserRole.Admin && !m.IsBlocked);
+
+//    if (!hasAdmin)
+//    {
+//        var adminUser = new Manager
+//        {
+//            Username = "admin",
+//            PasswordHash = BCrypt.Net.BCrypt.HashPassword("admin123"),
+//            FullName = "Системный администратор",
+//            Role = UserRole.Admin,
+//            IsBlocked = false
+//        };
+
+//        context.Managers.Add(adminUser);
+//        await context.SaveChangesAsync();
+
+//        logger.LogInformation("Создан системный администратор: admin / admin123");
+//        logger.LogWarning("НЕ ЗАБУДЬ СМЕНИТЬ ПАРОЛЬ и УДАЛИТЬ ЭТОТ КОД!");
+//    }
+//    else
+//    {
+//        logger.LogInformation("Администратор уже существует в системе");
+//    }
+//}
+//catch (Exception ex)
+//{
+//    var logger = app.Services.GetRequiredService<ILogger<Program>>();
+//    logger.LogError(ex, "Ошибка при создании администратора");
+//}
 
 // ГЛОБАЛЬНАЯ ОБРАБОТКА ОШИБОК (ДО ВСЕГО)
 app.UseExceptionHandler(app => app.Run(async context =>
@@ -76,5 +119,4 @@ app.Use(async (context, next) =>
 AppConfiguration.ConfigurePipeline(app, app.Environment);
 
 app.UsePathBase("/api");
-app.UseRouting();
 app.Run();

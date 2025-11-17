@@ -4,6 +4,8 @@
 ## Get latest from https://github.com/github/gitignore/blob/main/VisualStudio.gitignore
 
 # User-specific files
+appsettings.Production.json
+appsettings.Development.json
 *.rsuser
 *.suo
 *.user
@@ -570,3 +572,47 @@ sftp-config.json
 # Visual Studio Code - https://code.visualstudio.com/
 .settings/
 .vscode/
+
+# ========== MIGRATIONS ==========
+# Игнорируем файлы миграций Entity Framework (генерируются автоматически)
+**/Migrations/
+!**/Migrations/*.cs
+**/Migrations/*.Designer.cs
+**/Migrations/*ModelSnapshot.cs
+
+# ========== SENSITIVE CONFIG FILES ==========
+# Файлы настроек (создаются вручную на сервере)
+appsettings.Production.json
+appsettings.Staging.json
+appsettings.Development.json
+*.env
+*.env.local
+
+# ========== UPLOADED FILES ==========
+# Загруженные пользователями файлы (должны создаваться на сервере)
+**/wwwroot/uploads/
+**/wwwroot/temp/
+
+# ========== LOGS ==========
+# Логи приложения
+logs/
+*.log
+Logs/
+
+# ========== DATABASE BACKUPS ==========
+# Резервные копии БД
+*.bak
+*.backup
+*.mdf
+*.ldf
+
+# ========== MIGRATIONS ==========
+# Игнорируем ВСЕ файлы в папке Migrations
+Franchisee.Web/Migrations/
+
+# Но разрешаем только сами классы миграций (без Designer.cs)
+!Franchisee.Web/Migrations/*.cs
+
+# Игнорируем автоматически генерируемые файлы
+Franchisee.Web/Migrations/*.Designer.cs
+Franchisee.Web/Migrations/*ModelSnapshot.cs

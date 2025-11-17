@@ -80,13 +80,13 @@ namespace Franchisee.Web.Services
                 await _context.SaveChangesAsync();
             }
         }
-        public void ChangePassword(int managerId, string newPassword)
+        public async Task ChangePasswordAsync(int managerId, string newPassword)
         {
-            var manager = _context.Managers.FirstOrDefault(m => m.Id == managerId);
+            var manager = await _context.Managers.FirstOrDefaultAsync(m => m.Id == managerId);
             if (manager != null)
             {
                 manager.PasswordHash = HashPassword(newPassword);
-                _context.SaveChanges(); 
+                await _context.SaveChangesAsync();
             }
         }
         public string HashPassword(string password)
@@ -105,6 +105,32 @@ namespace Franchisee.Web.Services
                 manager.FullName = fullName;
                 _context.SaveChanges();
             }
+        }
+        public async Task<(IEnumerable<Manager> managers, int totalCount)> GetPagedAsync(int page, int pageSize, string search = "")
+        {
+            var query = _context.Managers.AsNoTracking();
+
+            // Применяем поиск если указан
+            if (!string.IsNullOrEmpty(search))
+            {
+                search = search.ToLower();
+                query = query.Where(m =>
+                    m.Id.ToString().Contains(search) ||
+                    m.Username.ToLower().Contains(search) ||
+                    m.FullName.ToLower().Contains(search));
+            }
+
+            // Получаем общее количество
+            var totalCount = await query.CountAsync();
+
+            // Применяем пагинацию
+            var managers = await query
+                .OrderBy(m => m.Id)
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                .ToListAsync();
+
+            return (managers, totalCount);
         }
     }
 }

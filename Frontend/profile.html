@@ -111,14 +111,12 @@
     </main>
 
     <script type="module">
-        import { SidebarManager } from './JS/core/sidebar-manager.js';
-        import { PageManager } from './JS/core/page-manager.js';
-        
+        import { SidebarManager } from './js/core/sidebar-manager.js';
+
         document.addEventListener('DOMContentLoaded', () => {
             SidebarManager.init();
-            PageManager.initialize('profile');
         });
     </script>
-    <script type="module" src="./JS/pages/profile.js"></script>
+    <script type="module" src="./js/pages/profile.js"></script>
 </body>
 </html>

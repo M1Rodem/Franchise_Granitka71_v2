@@ -2,13 +2,8 @@ import { apiService } from '../api/api.js';
 import { ModalUtils } from '../utils/modal-utils.js';
 import { 
     formatDate, 
-    formatCurrency, 
     escapeHtml, 
-    showTempMessage,
-    getUserNameFromOrder,
-    formatFileSize,
-    getPaymentStatus,
-    getPaymentStatusText
+    showTempMessage
 } from '../utils/utils.js';
 
 let currentPage = 1;
@@ -43,6 +38,10 @@ function setupPageUI(userData) {
     if (userData.role === 'Admin') {
         document.querySelectorAll('.admin-only').forEach(element => {
             element.style.display = 'block';
+        });
+    } else {
+        document.querySelectorAll('.admin-only').forEach(element => {
+            element.style.display = 'none';
         });
     }
 }
@@ -159,6 +158,7 @@ function renderArchivedOrdersTable() {
     }
     
     updatePagination();
+    attachArchivedOrderEvents();
 }
 
 function createArchivedOrderRow(order) {
@@ -180,21 +180,30 @@ function createArchivedOrderRow(order) {
             <td data-label="Дата удаления">${deletedAt}</td>
             <td data-label="Осталось дней" class="${daysClass}">${daysLeft}</td>
             <td data-label="Действия" class="actions">
-                <button class="btn btn-primary btn-sm" onclick="viewArchivedOrder(${order.id})" 
-                        title="Просмотреть детали заказа">
-                    Просмотр
-                </button>
-                <button class="btn btn-success btn-sm" onclick="restoreArchivedOrder(${order.id})" 
-                        title="Вернуть заказ в активные">
-                    Восстановить
-                </button>
-                <button class="btn btn-danger btn-sm" onclick="permanentDeleteArchivedOrder(${order.id})" 
-                        title="Удалить заказ безвозвратно">
-                    Удалить
-                </button>
+                <button class="btn btn-primary btn-sm btn-view-archived" data-order-id="${order.id}">Просмотр</button>
+                <button class="btn btn-success btn-sm btn-restore-archived" data-order-id="${order.id}">Восстановить</button>
+                <button class="btn btn-danger btn-sm btn-delete-archived" data-order-id="${order.id}">Удалить</button>
             </td>
         </tr>
     `;
+}
+
+function attachArchivedOrderEvents() {
+    const tbody = document.getElementById('archivedOrdersTableBody');
+    if (!tbody) return;
+
+    tbody.addEventListener('click', (e) => {
+        const target = e.target;
+        const orderId = parseInt(target.dataset.orderId);
+        
+        if (target.classList.contains('btn-view-archived')) {
+            viewArchivedOrder(orderId);
+        } else if (target.classList.contains('btn-restore-archived')) {
+            restoreArchivedOrder(orderId);
+        } else if (target.classList.contains('btn-delete-archived')) {
+            permanentDeleteArchivedOrder(orderId);
+        }
+    });
 }
 
 function getDaysClass(daysLeft) {
@@ -348,7 +357,3 @@ export function calculateOrderTotal(order) {
         return sum + (price * quantity);
     }, 0);
 }
-
-window.viewArchivedOrder = viewArchivedOrder;
-window.restoreArchivedOrder = restoreArchivedOrder;
-window.permanentDeleteArchivedOrder = permanentDeleteArchivedOrder;

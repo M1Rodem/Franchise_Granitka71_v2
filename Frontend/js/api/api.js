@@ -1,7 +1,5 @@
-// API_BASE_URL из Vite env (подставляется на build-time)
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || __API_BASE_URL__ || '/api';
+const API_BASE_URL = '/api';
 
-import CryptoJS from 'crypto-js'; // Vite bundl'ит как ES module
 import { 
     secureGetToken,
     secureSetToken,
@@ -12,47 +10,92 @@ import {
 
 class ApiService {
     constructor() {
-        this.token = secureGetToken();
+        this.refreshToken();
         this.controller = new AbortController();
         this.setupImageAuth();
     }
 
+    refreshToken() {
+        this.token = secureGetToken();
+    }
+
     // Основной request с timeout (5s)
     async request(endpoint, options = {}) {
-        const url = `${API_BASE_URL}${endpoint}`;
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 5000);
+    
+    const url = `${API_BASE_URL}${endpoint}`;
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 5000);
 
-        const config = {
-            signal: controller.signal,
-            headers: { 'Content-Type': 'application/json', ...options.headers },
-            ...options
-        };
+    // СОЗДАЕМ HEADERS ОДИН РАЗ
+    const headers = { 
+        'Content-Type': 'application/json', 
+        ...options.headers 
+    };
 
-        if (this.token) {
-            config.headers['Authorization'] = `Bearer ${this.token}`;
+    // ДОБАВЛЯЕМ AUTHORIZATION
+    if (this.token) {
+        headers['Authorization'] = `Bearer ${this.token}`;
+    }
+
+    const config = {
+        signal: controller.signal,
+        headers: headers,
+        ...options
+    }
+
+    try {
+        const response = await fetch(url, config);
+        
+        clearTimeout(timeoutId);
+
+        if (response.status === 429) {
+            const retryAfter = response.headers.get('Retry-After');
+            showTempMessage(`Слишком много запросов. Попробуйте через ${retryAfter || 60} секунд`, 'error');
+            throw new Error('Rate limit exceeded');
         }
 
-        try {
-            const response = await fetch(url, config);
-            clearTimeout(timeoutId);
-
-            if (response.status === 401 && !endpoint.includes('/Auth/login')) {
-                this.handleUnauthorized();
-                throw new Error('Требуется авторизация');
-            }
-
-            const data = await this.parseResponse(response);
-            
-            if (!response.ok) {
-                throw this.createError(response, data);
-            }
-
-            return data;
-        } catch (error) {
-            if (error.name === 'AbortError') throw new Error('Запрос прерван (timeout)');
-            throw error;
+        const data = await this.parseResponse(response);
+        
+        if (!response.ok) {
+            throw this.createError(response, data);
         }
+
+        return data;
+    } catch (error) {
+        clearTimeout(timeoutId);
+        
+        if (!navigator.onLine) {
+            showTempMessage('Нет подключения к интернету', 'error');
+            throw new Error('Offline mode');
+        }
+        
+        if (error.name === 'AbortError') throw new Error('Запрос прерван (timeout)');
+        throw error;
+    }
+}
+
+    async requestWithRetry(endpoint, options = {}, maxRetries = 2) {
+        let lastError;
+        
+        for (let attempt = 0; attempt <= maxRetries; attempt++) {
+            try {
+                return await this.request(endpoint, options);
+            } catch (error) {
+                lastError = error;
+                
+                // Не повторяем для 4xx ошибок (кроме 429)
+                if (error.status >= 400 && error.status < 500 && error.status !== 429) {
+                    break;
+                }
+                
+                // Ждем перед повторной попыткой
+                if (attempt < maxRetries) {
+                    await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
+                }
+            }
+        }
+        
+        throw lastError;
     }
 
     // Helpers
@@ -249,6 +292,30 @@ class ApiService {
 
     // Photos
     async uploadTempPhoto(file) {
+        // Валидация размера файла (макс 20MB)
+        const MAX_SIZE = 20 * 1024 * 1024;
+        if (file.size > MAX_SIZE) {
+            throw new Error(`Файл слишком большой (макс: ${MAX_SIZE / 1024 / 1024}MB)`);
+        }
+        
+        // Валидация типа файла - полный список изображений
+        const allowedTypes = [
+            'image/jpeg',      // JPEG
+            'image/png',       // PNG
+            'image/webp',      // WebP
+            'image/gif',       // GIF
+            'image/bmp',       // BMP
+            'image/tiff',      // TIFF
+            'image/svg+xml',   // SVG
+            'image/heic',      // HEIC
+            'image/heif',      // HEIF
+            'image/avif'       // AVIF
+        ];
+        
+        if (!allowedTypes.includes(file.type)) {
+            throw new Error('Разрешены только файлы изображений: JPG, PNG, WebP, GIF, BMP, TIFF, SVG, HEIC, HEIF, AVIF');
+        }
+        
         const formData = new FormData();
         formData.append('file', file);
         
@@ -404,7 +471,7 @@ class ApiService {
     }
 
     async downloadOrderExcel(orderId) {
-        const response = await fetch(`${API_BASE_URL}/Print/order/${orderId}/download`, {
+        const response = await fetch(`/api/Print/order/${orderId}/download`, { 
             method: 'GET',
             headers: {
                 'Authorization': `Bearer ${this.token}`,
@@ -420,7 +487,7 @@ class ApiService {
     }
 
     async getOrderHtmlPrint(orderId) {
-        const response = await fetch(`${API_BASE_URL}/Print/order/${orderId}/html-print`, {
+        const response = await fetch(`/api/Print/order/${orderId}/html-print`, { // Вернул /html-print
             method: 'GET',
             headers: {
                 'Authorization': `Bearer ${this.token}`,
@@ -432,7 +499,22 @@ class ApiService {
             throw new Error(`HTML print failed: ${response.status}`);
         }
 
-        return response.text(); // Возвращаем HTML как текст
+        return response.text();
+    }
+
+    async getUsersPaged(filter = {}) {
+        const params = new URLSearchParams();
+        
+        // Базовые параметры пагинации
+        params.append('page', filter.page || 1);
+        params.append('pageSize', filter.pageSize || 10);
+        
+        // Поиск
+        if (filter.search) {
+            params.append('search', filter.search);
+        }
+        
+        return this.request(`/Users/paged?${params}`);
     }
 }
 

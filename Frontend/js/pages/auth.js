@@ -11,6 +11,9 @@ import {
 } from '../utils/utils.js';
 
 let submitDebounce = null;
+let failedAttempts = 0;
+const MAX_ATTEMPTS = 5;
+const LOCKOUT_TIME = 15 * 60 * 1000;
 
 document.addEventListener('DOMContentLoaded', () => {
     const loginForm = document.getElementById('loginForm');
@@ -19,8 +22,37 @@ document.addEventListener('DOMContentLoaded', () => {
     
     if (loginForm) {
         loginForm.addEventListener('submit', handleSubmitDebounced);
+        
+        const inputs = loginForm.querySelectorAll('input');
+        inputs.forEach(input => {
+            input.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    handleSubmitDebounced(e);
+                }
+            });
+        });
     }
 });
+
+function validateForm(username, password) {
+    const errors = [];
+
+     if (!username || username.length <= 0) {
+        errors.push('Логин не может быть пустым');
+    }
+
+    if (!password || password.length < 8) {
+        errors.push('Пароль должен содержать минимум 8 символа');
+    }
+    
+    // Защита от SQL injection-like patterns (базовая)
+    const suspiciousPatterns = /['";\\]|--|\/\*|\*\//;
+    if (suspiciousPatterns.test(username)) {
+        errors.push('Логин содержит недопустимые символы');
+    }
+    
+    return errors;
+}
 
 function handleSubmitDebounced(e) {
     e.preventDefault();
@@ -30,12 +62,20 @@ function handleSubmitDebounced(e) {
 }
 
 async function handleLogin(e) {
+    const lockoutUntil = localStorage.getItem('loginLockout');
+    if (lockoutUntil && Date.now() < parseInt(lockoutUntil)) {
+        const minutesLeft = Math.ceil((parseInt(lockoutUntil) - Date.now()) / 60000);
+        showTempMessage(`Слишком много попыток. Попробуйте через ${minutesLeft} минут`, 'error');
+        return;
+    }
     const username = document.getElementById('username').value.trim();
     const password = document.getElementById('password').value;
     const submitButton = document.querySelector('#loginForm button[type="submit"]');
 
-    if (!username || !password) {
-        showTempMessage('Заполните все поля', 'error');
+    // Валидация перед отправкой
+    const validationErrors = validateForm(username, password);
+    if (validationErrors.length > 0) {
+        showTempMessage(validationErrors[0], 'error');
         return;
     }
 
@@ -60,8 +100,15 @@ async function handleLogin(e) {
         
         window.location.href = 'dashboard.html';        
     } catch (error) {
-        // При любой ошибке очищаем потенциально невалидные данные
+        failedAttempts++;
         secureRemoveToken();
+
+        if (failedAttempts >= MAX_ATTEMPTS) {
+            const lockoutTime = Date.now() + LOCKOUT_TIME;
+            localStorage.setItem('loginLockout', lockoutTime.toString());
+            showTempMessage('Слишком много попыток. Аккаунт временно заблокирован.', 'error');
+            failedAttempts = 0;
+        }
         
         if (error.status === 401) {
             const serverMessage = error.data?.message || error.message || '';

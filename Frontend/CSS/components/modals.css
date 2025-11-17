@@ -88,9 +88,13 @@
     background: rgba(30, 41, 59, 0.8);
     border-bottom: 1px solid var(--glass-border);
     backdrop-filter: blur(20px);
-    position: sticky;
-    top: 0;
-    z-index: 1;
+    position: relative; /* Изменено с sticky */
+    min-height: 80px; /* Гарантируем достаточно места */
+}
+
+.archived-order-modal .header-content {
+    flex: 1;
+    margin-right: var(--space-6); /* Отступ от кнопки закрытия */
 }
 
 .archived-order-modal .header-content h2 {
@@ -118,6 +122,9 @@
 }
 
 .archived-order-modal .modal-close {
+    position: static; /* Убираем absolute позиционирование */
+    margin-left: auto;
+    flex-shrink: 0;
     background: none;
     border: none;
     font-size: var(--text-2xl);

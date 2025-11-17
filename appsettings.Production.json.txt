@@ -1,0 +1,32 @@
+{
+  "Jwt": {
+    "Key": "",
+    "Issuer": "Franchisee.Web",
+    "Audience": "Franchisee.WebUsers"
+  },
+  "ConnectionStrings": {
+    "DefaultConnection": "Host=;Port=;Database=;Username=;Password=;"
+  },
+  "Kestrel": {
+    "Endpoints": {
+      "Http": {
+        "Url": "http://0.0.0.0:5000"
+      }
+    }
+  },
+  "Logging": {
+    "LogLevel": {
+      "Default": "Warning",
+      "Microsoft.AspNetCore": "Warning"
+    }
+  },
+  "Serilog": {
+    "MinimumLevel": {
+      "Default": "Warning",
+      "Override": {
+        "Microsoft": "Warning",
+        "System": "Warning"
+      }
+    }
+  }
+}

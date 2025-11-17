@@ -1,44 +1,178 @@
 import { apiService } from '../api/api.js';
-import { showTempMessage, escapeHtml } from '../utils/utils.js';
+import { showTempMessage, escapeHtml, debounce } from '../utils/utils.js';
 import { ModalUtils } from '../utils/modal-utils.js';
 
+let currentPage = 1;
+let totalPages = 1;
+const pageSize = 10;
+let allUsers = [];
+let totalCount = 0;
 let currentEditUserId = null;
 
 document.addEventListener('DOMContentLoaded', () => {
-    const token = localStorage.getItem('token');
+    initializeUsersPage();
+});
+
+function initializeUsersPage() {
     const userData = apiService.getCurrentUser();
-    if (!token || !userData || userData.role !== 'Admin') {
+    if (!userData || userData.role !== 'Admin') {
         window.location.href = 'login.html';
         return;
     }
 
+    setupPageUI(userData);
+    setupEventListeners();
+    loadUsers();
+}
+
+function setupPageUI(userData) {
     const userNameEl = document.getElementById('userName');
     if (userNameEl) userNameEl.textContent = userData.fullName || 'Пользователь';
     document.querySelectorAll('.admin-only').forEach(el => el.style.display = 'block');
 
     const logoutBtn = document.getElementById('logoutBtn');
     if (logoutBtn) logoutBtn.addEventListener('click', () => apiService.logout());
+}
 
-    setupCreateForm();
+function setupEventListeners() {
+    // Поиск с debounce
+    const searchInput = document.getElementById('searchInput');
+    if (searchInput) {
+        searchInput.addEventListener('input', debounce(() => {
+            currentPage = 1;
+            applyFilters();
+        }, 300));
+    }
+
+    // Пагинация
+    document.getElementById('prevPage')?.addEventListener('click', prevPage);
+    document.getElementById('nextPage')?.addEventListener('click', nextPage);
+
+    // Кнопка создания пользователя
+    document.getElementById('createUserBtn')?.addEventListener('click', showCreateUserModal);
+    
+    // Сброс фильтров
+    document.getElementById('resetFilters')?.addEventListener('click', resetFilters);
+
+    // Модальные окна
+    setupCreateModal();
     setupEditModal();
-    loadUsers();
-});
+}
+
+function setupCreateModal() {
+    const modal = document.getElementById('createUserModal');
+    const form = document.getElementById('createUserForm');
+    
+    if (!modal || !form) return;
+
+    // Закрытие модалки
+    const closeElements = modal.querySelectorAll('[data-close-modal], .modal-close');
+    closeElements.forEach(element => {
+        element.addEventListener('click', () => hideCreateUserModal());
+    });
+
+    // Закрытие по клику вне модалки
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) {
+            hideCreateUserModal();
+        }
+    });
+
+    // Отправка формы
+    form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        await createUser();
+    });
+}
+
+function setupEditModal() {
+    const modal = document.getElementById('editUserModal');
+    const form = document.getElementById('editUserForm');
+    
+    if (!modal || !form) return;
+
+    // Закрытие модалки
+    const closeElements = modal.querySelectorAll('[data-close-modal], .modal-close, #cancelEditBtn');
+    closeElements.forEach(element => {
+        element.addEventListener('click', () => hideEditModal());
+    });
+
+    // Закрытие по клику вне модалки
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) {
+            hideEditModal();
+        }
+    });
+
+    // Отправка формы
+    form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        await saveUserChanges();
+    });
+}
 
 async function loadUsers() {
     const tbody = document.getElementById('usersTableBody');
     if (!tbody) return;
-    tbody.innerHTML = `<tr><td colspan="6" class="loading">Загрузка...</td></tr>`;
+    
+    showLoadingState(true);
+    
     try {
-        const users = await apiService.getUsers();
-        if (!Array.isArray(users) || users.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="6">Пользователи не найдены</td></tr>`;
-            return;
+        const response = await apiService.getUsersPaged({
+            page: currentPage,
+            pageSize: pageSize,
+            search: document.getElementById('searchInput')?.value || ''
+        });
+
+        if (response && Array.isArray(response.items)) {
+            allUsers = response.items;
+            totalCount = response.totalCount;
+            totalPages = response.totalPages;
+        } else {
+            allUsers = [];
+            totalCount = 0;
+            totalPages = 1;
         }
-        tbody.innerHTML = users.map(renderUserRow).join('');
-    } catch (e) {
-        console.error('Ошибка загрузки:', e);
-        tbody.innerHTML = `<tr><td colspan="6" style="color:#dc3545;">Ошибка загрузки пользователей</td></tr>`;
-        showTempMessage(e.message || 'Ошибка загрузки', 'error');
+
+        renderUsersTable();
+        updatePagination();
+        
+    } catch (error) {
+        console.error('Ошибка загрузки пользователей:', error);
+        showTempMessage(error.message || 'Ошибка загрузки пользователей', 'error');
+        tbody.innerHTML = `<tr><td colspan="6" style="color:#dc3545;">Ошибка загрузки</td></tr>`;
+    } finally {
+        showLoadingState(false);
+    }
+}
+
+async function applyFilters() {
+    await loadUsers();
+}
+
+function renderUsersTable() {
+    const tbody = document.getElementById('usersTableBody');
+    if (!tbody) return;
+
+    if (allUsers.length === 0) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="6" class="no-data">Пользователи не найдены</td>
+            </tr>
+        `;
+    } else {
+        tbody.innerHTML = allUsers.map(renderUserRow).join('');
+        
+        setTimeout(() => {
+            document.querySelectorAll('.orders-table td').forEach((td, index) => {
+                const headerText = document.querySelectorAll('.orders-table th')[index % 6]?.textContent;
+                if (headerText) {
+                    td.setAttribute('data-label', headerText);
+                }
+            });
+        }, 100);
+        
+        attachUserEvents();
     }
 }
 
@@ -49,6 +183,7 @@ function renderUserRow(u) {
     const toggleClass = u.isBlocked ? 'btn-success' : 'btn-danger';
     const nextRole = u.role === 'Admin' ? 'Manager' : 'Admin';
     const roleClass = u.role.toLowerCase();
+    
     return `
     <tr>
         <td>${u.id}</td>
@@ -57,79 +192,135 @@ function renderUserRow(u) {
         <td><span class="status-badge role-${roleClass}">${u.role}</span></td>
         <td><span class="status-badge ${statusClass}">${status}</span></td>
         <td class="actions">
-            <button class="btn btn-outline btn-sm" onclick="openEditModal(${u.id})">Редактировать</button>
-            <button class="btn ${toggleClass} btn-sm" onclick="toggleBlock(${u.id}, ${u.isBlocked})">${toggleText}</button>
-            <button class="btn btn-primary btn-sm" onclick="changeRole(${u.id}, '${nextRole}')">Сделать ${nextRole}</button>
-            <button class="btn btn-danger btn-sm" onclick="deleteUser(${u.id})">Удалить</button>
+            <button class="btn btn-outline btn-sm btn-edit-user" data-user-id="${u.id}">Редактировать</button>
+            <button class="btn ${toggleClass} btn-sm btn-toggle-block" data-user-id="${u.id}" data-is-blocked="${u.isBlocked}">${toggleText}</button>
+            <button class="btn btn-primary btn-sm btn-change-role" data-user-id="${u.id}" data-next-role="${nextRole}">Сделать ${nextRole}</button>
+            <button class="btn btn-danger btn-sm btn-delete-user" data-user-id="${u.id}">Удалить</button>
         </td>
     </tr>`;
 }
 
-function setupCreateForm() {
-    const form = document.getElementById('createUserForm');
-    if (!form) return;
+function attachUserEvents() {
+    const tbody = document.getElementById('usersTableBody');
+    if (!tbody) return;
 
-    form.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const payload = {
-            username: document.getElementById('newUsername').value.trim(),
-            password: document.getElementById('newPassword').value,
-            fullName: document.getElementById('newFullName').value.trim(),
-            role: document.getElementById('newRole').value
-        };
-
-        const validationError = validateCreateUser(payload);
-        if (validationError) {
-            showTempMessage(validationError, 'error');
-            return;
-        }
-
-        try {
-            await apiService.createUser(payload);
-            showTempMessage('Пользователь создан', 'success');
-            form.reset();
-            loadUsers();
-        } catch (e) {
-            showTempMessage(e.message || 'Не удалось создать пользователя', 'error');
+    tbody.addEventListener('click', (e) => {
+        const target = e.target;
+        const userId = parseInt(target.dataset.userId);
+        
+        if (target.classList.contains('btn-edit-user')) {
+            openEditModal(userId);
+        } else if (target.classList.contains('btn-toggle-block')) {
+            const isBlocked = target.dataset.isBlocked === 'true';
+            toggleBlock(userId, isBlocked);
+        } else if (target.classList.contains('btn-change-role')) {
+            const nextRole = target.dataset.nextRole;
+            changeRole(userId, nextRole);
+        } else if (target.classList.contains('btn-delete-user')) {
+            deleteUser(userId);
         }
     });
 }
 
-function setupEditModal() {
-    const modal = document.getElementById('editUserModal');
-    if (!modal) {
-        console.warn('Edit modal not found');
+function showLoadingState(loading) {
+    const tbody = document.getElementById('usersTableBody');
+    if (!tbody) return;
+    
+    if (loading) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="6" class="loading">Загрузка пользователей...</td>
+            </tr>
+        `;
+    }
+}
+
+function updatePagination() {
+    const pageInfo = document.getElementById('pageInfo');
+    const prevButton = document.getElementById('prevPage');
+    const nextButton = document.getElementById('nextPage');
+
+    if (pageInfo) {
+        pageInfo.textContent = `Страница ${currentPage} из ${totalPages || 1}`;
+    }
+    
+    if (prevButton) {
+        prevButton.disabled = currentPage === 1;
+        prevButton.style.opacity = currentPage === 1 ? '0.5' : '1';
+        prevButton.style.cursor = currentPage === 1 ? 'not-allowed' : 'pointer';
+    }
+    
+    if (nextButton) {
+        nextButton.disabled = currentPage >= totalPages;
+        nextButton.style.opacity = currentPage >= totalPages ? '0.5' : '1';
+        nextButton.style.cursor = currentPage >= totalPages ? 'not-allowed' : 'pointer';
+    }
+}
+
+function prevPage() {
+    if (currentPage > 1) {
+        currentPage--;
+        loadUsers();
+    }
+}
+
+function nextPage() {
+    if (currentPage < totalPages) {
+        currentPage++;
+        loadUsers();
+    }
+}
+
+function resetFilters() {
+    document.getElementById('searchInput').value = '';
+    currentPage = 1;
+    loadUsers();
+}
+
+// Модальное окно создания пользователя
+function showCreateUserModal() {
+    const modal = document.getElementById('createUserModal');
+    if (modal) {
+        modal.classList.add('active');
+        document.getElementById('createUsername').value = '';
+        document.getElementById('createPassword').value = '';
+        document.getElementById('createFullName').value = '';
+        document.getElementById('createRole').value = 'Manager';
+    }
+}
+
+function hideCreateUserModal() {
+    const modal = document.getElementById('createUserModal');
+    if (modal) {
+        modal.classList.remove('active');
+    }
+}
+
+async function createUser() {
+    const payload = {
+        username: document.getElementById('createUsername').value.trim(),
+        password: document.getElementById('createPassword').value,
+        fullName: document.getElementById('createFullName').value.trim(),
+        role: document.getElementById('createRole').value
+    };
+
+    const validationError = validateCreateUser(payload);
+    if (validationError) {
+        showTempMessage(validationError, 'error');
         return;
     }
 
-    const closeBtn = modal.querySelector('[data-close-modal]');
-    const modalClose = modal.querySelector('.modal-close');
-    const cancelBtn = document.getElementById('cancelEditBtn');
-    const form = document.getElementById('editUserForm');
-    const modalOverlay = modal.querySelector('.modal-overlay');
-
-    // Закрытие модалки
-    if (closeBtn) closeBtn.addEventListener('click', () => hideEditModal());
-    if (modalClose) modalClose.addEventListener('click', () => hideEditModal());
-    if (cancelBtn) cancelBtn.addEventListener('click', () => hideEditModal());
-    if (modalOverlay) {
-        modalOverlay.addEventListener('click', () => hideEditModal());
-    }
-
-    // Закрытие по клику на оверлей
-    modal.addEventListener('click', (e) => {
-        if (e.target === modal) hideEditModal();
-    });
-
-    // Отправка формы
-    if (form) {
-        form.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            await saveUserChanges();
-        });
+    try {
+        await apiService.createUser(payload);
+        showTempMessage('Пользователь создан', 'success');
+        hideCreateUserModal();
+        await loadUsers();
+    } catch (e) {
+        showTempMessage(e.message || 'Не удалось создать пользователя', 'error');
     }
 }
 
+// Модальное окно редактирования пользователя
 async function openEditModal(userId) {
     try {
         // Получаем список всех пользователей и находим нужного
@@ -161,13 +352,17 @@ async function openEditModal(userId) {
 
 function showEditModal() {
     const modal = document.getElementById('editUserModal');
-    modal.style.display = 'flex';
+    if (modal) {
+        modal.classList.add('active');
+    }
 }
 
 function hideEditModal() {
     const modal = document.getElementById('editUserModal');
-    modal.style.display = 'none';
-    currentEditUserId = null;
+    if (modal) {
+        modal.classList.remove('active');
+        currentEditUserId = null;
+    }
 }
 
 async function saveUserChanges() {
@@ -272,9 +467,3 @@ async function changeRole(id, role) {
         showTempMessage(e.message || 'Не удалось изменить роль', 'error');
     }
 }
-
-// Глобальные для onclick в HTML
-window.openEditModal = openEditModal;
-window.deleteUser = deleteUser;
-window.toggleBlock = toggleBlock;
-window.changeRole = changeRole;

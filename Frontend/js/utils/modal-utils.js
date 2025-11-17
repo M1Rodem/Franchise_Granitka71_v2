@@ -137,7 +137,7 @@ export class ModalUtils {
                             <span class="deleted-date">Удалён: ${formatDate(order.deletedAt)}</span>
                         </div>
                     </div>
-                    <button class="modal-close" onclick="ModalUtils.closeCurrentModal()">✕</button>
+                    <button class="modal-close" id="modalCloseBtn" aria-label="Закрыть окно">✕</button>
                 </div>
                 
                 <!-- Основная информация в две колонки -->
@@ -227,6 +227,12 @@ export class ModalUtils {
             document.getElementById('archivedPhotos').innerHTML = 
                 '<p class="no-photos">Фото отсутствуют</p>';
         }
+        setTimeout(() => {
+            const closeBtn = document.getElementById('modalCloseBtn');
+            if (closeBtn) {
+                closeBtn.addEventListener('click', () => this.closeCurrentModal());
+            }
+        }, 100);
     }
 
     /**

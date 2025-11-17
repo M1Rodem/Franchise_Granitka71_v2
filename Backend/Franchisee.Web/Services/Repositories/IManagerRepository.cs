@@ -4,6 +4,7 @@ namespace Franchisee.Web.Services.Repositories
 {
     public interface IManagerRepository
     {
+        Task<(IEnumerable<Manager> managers, int totalCount)> GetPagedAsync(int page, int pageSize, string search = "");
         Task<Manager?> GetByUsernameAsync(string username);
         Task<Manager?> GetByIdAsync(int id);
         Task<IEnumerable<Manager>> GetAllAsync(bool activeOnly = false);
@@ -12,7 +13,7 @@ namespace Franchisee.Web.Services.Repositories
         Task DeleteAsync(int id);
         Task BlockAsync(int id);
         Task UnblockAsync(int id);
-        void ChangePassword(int managerId, string newPassword);
+        Task ChangePasswordAsync(int managerId, string newPassword);
         bool VerifyPassword(string password, string passwordHash);
         string HashPassword(string password);
         void UpdateProfile(int managerId, string fullName);

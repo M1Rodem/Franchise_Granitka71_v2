@@ -39,7 +39,8 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: var(--space-4);
+    gap: var(--space-6);
+    flex-wrap: nowrap;
 }
 
 /* Left group: Burger + logo */
@@ -47,6 +48,7 @@
     display: flex;
     align-items: center;
     gap: var(--space-4);
+    flex-shrink: 0;
 }
 
 /* Burger button - hidden on desktop */
@@ -59,9 +61,10 @@
     cursor: pointer;
     padding: var(--space-3);
     border-radius: var(--radius);
-    transition: all var(--transition-normal) var(--ease-out-back);
+    transition: all var(--transition-fast) var(--ease-out-back);
     width: 44px;
     height: 44px;
+    min-height: 44px;
     align-items: center;
     justify-content: center;
     z-index: var(--z-fixed);
@@ -71,7 +74,7 @@
 .burger-btn:hover {
     background: var(--accent);
     border-color: var(--accent);
-    transform: scale(1.1) rotate(90deg);
+    transform: scale(1.05) rotate(90deg);
     box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
 }
 
@@ -80,32 +83,37 @@
     transform: rotate(90deg);
 }
 
-/* Logo/Title */
+/* Logo/Title - УЛУЧШЕНО: Better responsive sizing */
 .header h1 {
     font-size: var(--text-2xl);
     font-weight: 700;
     color: var(--text-primary);
     margin: 0;
-    animation: textGlow 3s ease-in-out infinite alternate;
+    animation: textGlow 4s ease-in-out infinite alternate;
     white-space: nowrap;
+    flex-shrink: 0;
+    line-height: 1;
 }
 
 @keyframes textGlow {
     from {
-        text-shadow: 0 0 5px rgba(59, 130, 246, 0.3);
+        text-shadow: 0 0 5px rgba(59, 130, 246, 0.2);
     }
     to {
-        text-shadow: 0 0 10px rgba(59, 130, 246, 0.5), 0 0 15px rgba(59, 130, 246, 0.2);
+        text-shadow: 0 0 8px rgba(59, 130, 246, 0.4), 0 0 12px rgba(59, 130, 246, 0.1);
     }
 }
 
-/* User info: Right side */
+/* User info: Right side - УЛУЧШЕНО: Better alignment */
 .user-info {
     display: flex;
     align-items: center;
     gap: var(--space-4);
     animation: fadeInRight 0.6s var(--ease-out-back) 0.2s both;
     flex-shrink: 0;
+    box-shadow: var(--shadow-sm);
+    border-radius: var(--radius-sm);
+    padding: var(--space-1);
 }
 
 @keyframes fadeInRight {
@@ -119,21 +127,79 @@
     }
 }
 
+/* User profile link - УЛУЧШЕНО: Fixed multiline issue */
 .user-profile-link {
     color: var(--text-secondary);
     text-decoration: none;
     font-weight: 500;
-    transition: all var(--transition-normal) var(--ease-out-back);
+    transition: all var(--transition-fast) var(--ease-out-back);
     padding: var(--space-3) var(--space-4);
     border-radius: var(--radius);
     position: relative;
     overflow: hidden;
     font-size: var(--text-base);
     white-space: nowrap;
-    min-height: 44px;
+    max-width: 200px;
     display: flex;
     align-items: center;
     background: transparent;
+    min-height: 44px;
+    text-overflow: ellipsis;
+    transition: max-width 0.3s var(--ease-out-back);
+    flex-shrink: 0;
+}
+
+.user-profile-link::after {
+    content: attr(data-fullname);
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--glass-background);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius);
+    padding: var(--space-2) var(--space-3);
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.3s var(--ease-out-back);
+    white-space: normal;
+    word-break: break-word;
+    max-width: 280px;
+    font-size: var(--text-sm);
+    color: var(--text-primary);
+    z-index: var(--z-fixed);
+    box-shadow: var(--glass-shadow);
+    pointer-events: none;
+}
+
+.user-profile-link:hover::after,
+.user-profile-link:focus::after {
+    opacity: 1;
+    visibility: visible;
+    transform: translateX(-50%) translateY(-5px);
+}
+
+/* УЛУЧШЕНО: Better multiline handling */
+.user-profile-link.multiline {
+    white-space: normal;
+    line-height: 1.2;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-height: 2.4em;
+    word-break: break-word;
+    hyphens: auto;
+}
+
+/* УЛУЧШЕНО: Prevent text wrapping on desktop */
+@media (min-width: 1025px) {
+    .user-profile-link.multiline {
+        -webkit-line-clamp: 1;
+        max-height: 1.2em;
+        white-space: nowrap;
+    }
 }
 
 .user-profile-link::before {
@@ -150,29 +216,32 @@
 .user-profile-link:hover {
     color: var(--text-primary);
     background: rgba(59, 130, 246, 0.15);
-    transform: translateY(-1px);
+    transform: translateY(-1px) scale(1.02);
 }
 
 .user-profile-link:hover::before {
     left: 100%;
 }
 
-/* Logout button in header - FIXED hover effect */
+/* Logout button */
 .header .btn-outline {
     background: transparent;
     color: var(--text-secondary);
     border: 1px solid var(--glass-border);
-    padding: var(--space-3) var(--space-5);
-    transition: all var(--transition-normal) var(--ease-out-back);
+    padding: var(--space-3) var(--space-4);
+    transition: all var(--transition-fast) var(--ease-out-back);
     position: relative;
     overflow: hidden;
     font-size: var(--text-base);
     font-weight: 500;
     min-height: 44px;
+    min-width: 80px;
     white-space: nowrap;
     display: flex;
     align-items: center;
     justify-content: center;
+    flex-shrink: 0;
+    border-radius: var(--radius);
 }
 
 .header .btn-outline::before {
@@ -190,7 +259,7 @@
     color: var(--error);
     background: rgba(239, 68, 68, 0.1);
     border-color: var(--error);
-    transform: translateY(-1px);
+    transform: translateY(-1px) scale(1.02);
     box-shadow: 0 4px 12px rgba(239, 68, 68, 0.2);
 }
 
@@ -201,25 +270,37 @@
 /* Tablet styles */
 @media (max-width: 1024px) {
     .header .container {
-        padding: 0 var(--space-4);
+        padding: 0 var(--space-5);
     }
     
     .header h1 {
         font-size: var(--text-xl);
     }
     
+    .header-content {
+        gap: var(--space-5);
+    }
+    
     .user-profile-link {
-        padding: var(--space-2) var(--space-3);
+        padding: var(--space-3) var(--space-4);
         font-size: var(--text-sm);
+        max-width: 180px;
+        min-height: 44px;
     }
     
     .header .btn-outline {
-        padding: var(--space-2) var(--space-4);
+        padding: var(--space-3) var(--space-4);
         font-size: var(--text-sm);
+        min-width: 75px;
+        min-height: 44px;
+    }
+    
+    .user-info {
+        box-shadow: none;
     }
 }
 
-/* Mobile styles */
+/* Mobile styles - УЛУЧШЕНО: Better mobile layout */
 @media (max-width: 768px) {
     .burger-btn {
         display: flex;
@@ -228,6 +309,10 @@
     .header h1 {
         font-size: var(--text-lg);
         display: block;
+        flex-shrink: 1;
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
     }
 
     .header-content {
@@ -235,9 +320,16 @@
         justify-content: space-between;
     }
 
+    .header .container {
+        padding: 0 var(--space-4);
+    }
+
     .user-info {
-        gap: var(--space-3);
+        gap: var(--space-2);
         align-items: center;
+        box-shadow: none;
+        flex-shrink: 1;
+        min-width: 0;
     }
 
     .user-profile-link {
@@ -245,8 +337,8 @@
         font-size: var(--text-sm);
         min-height: 40px;
         max-width: 120px;
-        overflow: hidden;
-        text-overflow: ellipsis;
+        flex-shrink: 1;
+        min-width: 0;
     }
 
     .header .btn-outline {
@@ -254,10 +346,11 @@
         font-size: var(--text-sm);
         min-height: 40px;
         min-width: 70px;
+        flex-shrink: 0;
     }
 }
 
-/* Стили для маленьких экранов (430px и меньше) */
+/* Small screens (430px and less) - УЛУЧШЕНО: Better compact layout */
 @media (max-width: 430px) {
     .header .container {
         padding: 0 var(--space-3);
@@ -266,37 +359,40 @@
     .header h1 {
         font-size: var(--text-base);
         display: block;
+        max-width: 100px;
+        overflow: hidden;
+        text-overflow: ellipsis;
     }
 
     .burger-btn {
-        width: 40px;
-        height: 40px;
+        width: 38px;
+        height: 38px;
         padding: var(--space-2);
         font-size: var(--text-lg);
         flex-shrink: 0;
+        min-height: 38px;
     }
 
     .user-info {
         gap: var(--space-2);
-        align-items: center;
     }
 
     .user-profile-link {
         font-size: var(--text-xs);
         padding: var(--space-2);
-        min-height: 36px;
+        min-height: 38px;
         max-width: 90px;
     }
 
     .header .btn-outline {
         font-size: var(--text-xs);
         padding: var(--space-2);
-        min-height: 36px;
+        min-height: 38px;
         min-width: 60px;
     }
 }
 
-/* Очень узкие экраны (360px и меньше) */
+/* Very narrow screens (360px and less) */
 @media (max-width: 360px) {
     .header .container {
         padding: 0 var(--space-2);
@@ -304,7 +400,7 @@
 
     .header h1 {
         font-size: var(--text-sm);
-        display: none;
+        max-width: 80px;
     }
 
     .burger-btn {
@@ -312,64 +408,77 @@
         height: 36px;
         font-size: var(--text-base);
         margin-right: var(--space-1);
+        min-height: 36px;
     }
 
     .user-info {
         gap: var(--space-1);
-        align-items: center;
     }
 
     .user-profile-link {
         font-size: var(--text-xs);
         padding: var(--space-1) var(--space-2);
-        min-height: 32px;
+        min-height: 36px;
         max-width: 70px;
     }
 
     .header .btn-outline {
         font-size: var(--text-xs);
         padding: var(--space-1) var(--space-2);
-        min-height: 32px;
-        min-width: 50px;
+        min-height: 36px;
+        min-width: 55px;
     }
 }
 
-/* Landscape ориентация на мобильных */
+/* Landscape orientation */
 @media (max-width: 768px) and (orientation: landscape) {
     .header {
-        height: 50px;
+        height: 56px;
     }
 
     .header-content {
         padding: 0;
+        gap: var(--space-2);
     }
 
     .user-profile-link {
         max-width: 100px;
+        min-height: 38px;
+        font-size: var(--text-xs);
     }
     
     .header .btn-outline {
         min-width: 60px;
+        min-height: 38px;
+    }
+    
+    .header h1 {
+        font-size: var(--text-base);
+        max-width: 90px;
     }
 }
 
-/* Улучшенные стили для промежуточных экранов */
+/* Intermediate screens */
 @media (max-width: 640px) {
     .header h1 {
         font-size: var(--text-base);
+        max-width: 110px;
     }
     
     .user-profile-link {
         max-width: 100px;
         font-size: var(--text-xs);
+        min-height: 40px;
     }
     
     .header .btn-outline {
         font-size: var(--text-xs);
+        min-width: 65px;
+        min-height: 40px;
     }
 }
 
-/* Стили для средних планшетов */
+/* Medium tablets */
 @media (min-width: 769px) and (max-width: 1024px) {
     .header h1 {
         font-size: var(--text-xl);
@@ -381,20 +490,42 @@
     }
 }
 
-/* Выравнивание элементов по вертикали */
+/* Desktop optimization - УЛУЧШЕНО: Prevent multiline on desktop */
+@media (min-width: 1025px) {
+    .user-profile-link {
+        max-width: 220px;
+    }
+    
+    .user-profile-link.multiline {
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        -webkit-line-clamp: 1;
+        line-clamp: 1;
+        max-height: none;
+    }
+}
+
+/* Tooltip positioning on mobile */
 @media (max-width: 768px) {
-    .header-content {
-        align-items: center;
+    .user-profile-link::after {
+        bottom: auto;
+        top: 100%;
+        transform: translateX(-50%) translateY(5px);
     }
     
-    .user-info {
-        align-items: center;
+    .user-profile-link:hover::after,
+    .user-profile-link:focus::after {
+        transform: translateX(-50%) translateY(5px);
     }
-    
-    .user-profile-link,
-    .header .btn-outline {
-        display: flex;
-        align-items: center;
-        justify-content: center;
+}
+
+/* УЛУЧШЕНО: Single line on mobile for multiline class */
+@media (max-width: 768px) {
+    .user-profile-link.multiline {
+        -webkit-line-clamp: 1;
+        line-clamp: 1;
+        max-height: 1.2em;
+        white-space: nowrap;
     }
 }

@@ -118,14 +118,14 @@
     </main>
 
     <script type="module">
-        import { SidebarManager } from './JS/core/sidebar-manager.js';
-        import { PageManager } from './JS/core/page-manager.js';
+        import { SidebarManager } from './js/core/sidebar-manager.js';
+        import { PageManager } from './js/core/page-manager.js';
         
         document.addEventListener('DOMContentLoaded', () => {
             SidebarManager.init();
-            PageManager.initialize('orders');
+            PageManager.initialize('page-name');
         });
     </script>
-    <script type="module" src="./JS/pages/orders.js"></script>
+    <script type="module" src="./js/pages/orders.js"></script>
 </body>
 </html>

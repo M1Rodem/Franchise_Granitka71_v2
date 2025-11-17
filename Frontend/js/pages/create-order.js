@@ -1,4 +1,3 @@
-// create-order.js
 import { PageManager } from '../core/page-manager.js';
 import { apiService } from '../api/api.js';
 import { formatCurrency, getTodayDate, isValidEmail, isValidPhone, populateForm,  getFormValue, showTempMessage, } from '../utils/utils.js';
@@ -70,7 +69,9 @@ export class CreateOrderManager {
         }
         
         if (this.uploadArea) {
-            setupDragAndDrop('photoUploadArea', uploadTempAndDisplay);
+            this.uploadArea.addEventListener('click', () => {
+                this.photoInput.click();
+            });
         }
 
         // Таблицы: Добавление строк

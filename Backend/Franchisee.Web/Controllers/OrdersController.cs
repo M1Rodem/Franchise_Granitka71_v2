@@ -258,7 +258,7 @@ namespace Franchisee.Web.Controllers
             var order = await _orderRepository.GetByIdAsync(id);
             if (order == null) return NotFound();
 
-            //if (!IsAdmin() && order.ManagerId != userId) return Forbid();
+            //if (!IsAdmin() && order.ManagerId != userId) return Forbid(); //Проверка кто может удалить заказ - не нужно
 
             await _orderRepository.SoftDeleteAsync(id);
             return NoContent();

@@ -2,7 +2,8 @@ import {
     secureGetUserData, 
     secureGetToken,
     handleApiError,
-    initLayout 
+    initLayout,
+    setupUserNameAdaptivity
 } from '../utils/utils.js';
 import { SidebarManager } from './sidebar-manager.js';
 
@@ -21,8 +22,12 @@ export class PageManager {
             // Инициализация layout (навигация, пользователь, logout)
             initLayout(userData, pageType);
 
+            // ИНИЦИАЛИЗАЦИЯ АДАПТИВНОСТИ ФИО - ДОБАВЛЕНО
+            setTimeout(() => {
+                setupUserNameAdaptivity();
+            }, 100);
+
             // ФИКС: Явная инициализация sidebar с проверкой
-            console.log('PageManager: Initializing sidebar for', pageType);
             if (typeof SidebarManager !== 'undefined') {
                 SidebarManager.init();
             } else {

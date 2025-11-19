@@ -1,5 +1,5 @@
 import { apiService } from '../api/api.js';
-import { formatDate, escapeHtml, getPaymentStatus, getPaymentStatusText, getUserNameFromOrder, getStatusBadgeClass } from '../utils/utils.js';
+import { formatDate, escapeHtml, getPaymentStatus, getPaymentStatusText, setupMobileUserName, getUserNameFromOrder, getStatusBadgeClass } from '../utils/utils.js';
 import { SidebarManager } from '../core/sidebar-manager.js';
 
 document.addEventListener('DOMContentLoaded', async () => {
@@ -72,30 +72,15 @@ function setupLogoutAndUser(userData) {
         });
     }
     
+    // Устанавливаем имя и инициализируем адаптивность
     const userNameElement = document.getElementById('userName');
     if (userNameElement && userData.fullName) {
-        const fullName = userData.fullName;
-        userNameElement.textContent = fullName;
-        userNameElement.setAttribute('data-fullname', fullName);
-        userNameElement.setAttribute('aria-label', `Перейти к профилю: ${fullName}`);
+        userNameElement.textContent = userData.fullName;
         
-        // УЛУЧШЕНО: Умное определение необходимости multiline
-        const updateUserNameLayout = () => {
-            const isMobile = window.innerWidth <= 768;
-            const threshold = isMobile ? 20 : 25; // Более консервативные пороги
-            
-            // Сбрасываем класс
-            userNameElement.classList.remove('multiline');
-            
-            // Добавляем multiline только если действительно необходимо
-            if (fullName.length > threshold) {
-                userNameElement.classList.add('multiline');
-            }
-        };
-        
-        // Вызываем при загрузке и при изменении размера окна
-        updateUserNameLayout();
-        window.addEventListener('resize', updateUserNameLayout);
+        // Инициализируем адаптивность
+        setTimeout(() => {
+            setupUserNameAdaptivity();
+        }, 150);
     }
 }
 

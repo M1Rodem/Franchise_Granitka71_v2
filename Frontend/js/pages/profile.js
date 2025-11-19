@@ -116,18 +116,21 @@ async function handlePasswordChange(e) {
     const newPass = getFormValue('newPassword');
     const confirm = getFormValue('confirmPassword');
 
+    // ВАЛИДАЦИЯ 1: Проверка заполненности полей
     if (!current || !newPass || !confirm) {
         showTempMessage('Заполните все поля пароля', 'error');
         return;
     }
     
-    if (newPass !== confirm) {
-        showTempMessage('Новый пароль и подтверждение не совпадают', 'error');
+    // ВАЛИДАЦИЯ 2: Проверка длины пароля (8 символов)
+    if (newPass.length < 8) {
+        showTempMessage('Пароль должен содержать минимум 8 символов', 'error');
         return;
     }
     
-    if (newPass.length < 6) {
-        showTempMessage('Пароль должен содержать минимум 6 символов', 'error');
+    // ВАЛИДАЦИЯ 3: Проверка совпадения паролей
+    if (newPass !== confirm) {
+        showTempMessage('Новый пароль и подтверждение не совпадают', 'error');
         return;
     }
 
@@ -148,12 +151,18 @@ async function handlePasswordChange(e) {
         
         showTempMessage('Пароль успешно изменён', 'success');
         
+        // Очищаем форму
         const passwordForm = document.getElementById('changePasswordForm');
         if (passwordForm) {
             passwordForm.reset();
         }
         
     } catch (err) {
-        showTempMessage(err.message || 'Ошибка смены пароля', 'error');
+        // ВАЛИДАЦИЯ 4: Обработка ошибки от сервера (неверный текущий пароль)
+        if (err.message && err.message.includes('Текущий пароль неверен')) {
+            showTempMessage('Текущий пароль неверен', 'error');
+        } else {
+            showTempMessage(err.message || 'Ошибка смены пароля', 'error');
+        }
     }
 }

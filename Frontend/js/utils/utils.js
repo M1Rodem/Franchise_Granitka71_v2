@@ -443,7 +443,6 @@ export function initLayout(userData, pageType = 'default') {
     }
 
     // ФИКС: Убираем дублирующую логику sidebar, оставляем только SidebarManager
-    console.log('Layout initialized - Sidebar should be managed by SidebarManager');
 }
 
 // export function toggleNav(open = null) {
@@ -557,4 +556,171 @@ export function formatFileSize(bytes) {
     let i = 0;
     while (bytes >= 1024 && i < units.length - 1) { bytes /= 1024; i++; }
     return `${bytes.toFixed(1)} ${units[i]}`;
+}
+
+// ====== АДАПТИВНОСТЬ ФИО ПОЛЬЗОВАТЕЛЯ ======
+
+/**
+ * Настройка адаптивного отображения ФИО пользователя
+ */
+export function setupUserNameAdaptivity() {
+    const userNameElement = document.getElementById('userName');
+    
+    if (!userNameElement) return;
+    
+    const fullName = userNameElement.textContent.trim();
+    const isMobile = window.innerWidth <= 768;
+    
+    // Всегда устанавливаем data-атрибут для тултипа
+    userNameElement.setAttribute('data-fullname', fullName);
+    userNameElement.setAttribute('aria-label', `Профиль: ${fullName}`);
+    
+    // На мобильных - УБИРАЕМ многострочность полностью
+    if (isMobile) {
+        userNameElement.classList.remove('multiline');
+    } else {
+        // На десктопе - многострочность только для очень длинных имен (>35 символов)
+        if (fullName.length > 35) {
+            userNameElement.classList.add('multiline');
+        } else {
+            userNameElement.classList.remove('multiline');
+        }
+    }
+}
+
+/**
+ * Обновление layout ФИО в зависимости от размера экрана
+ */
+function updateUserNameLayout(element, fullName) {
+    const width = window.innerWidth;
+    
+    // Сбрасываем классы
+    element.classList.remove('multiline');
+    
+    // Определяем стратегию отображения
+    if (width <= 430) {
+        // На очень маленьких экранах - всегда однострочное усечение
+        element.style.maxWidth = '70px';
+    } else if (width <= 768) {
+        // На мобильных - умное определение
+        if (fullName.length > 25) {
+            element.classList.add('multiline');
+        }
+        element.style.maxWidth = width <= 430 ? '90px' : '120px';
+    } else if (width <= 1024) {
+        // На планшетах
+        element.style.maxWidth = '150px';
+        if (fullName.length > 30) {
+            element.classList.add('multiline');
+        }
+    } else {
+        // На десктопе
+        element.style.maxWidth = '200px';
+        if (fullName.length > 35) {
+            element.classList.add('multiline');
+        }
+    }
+}
+
+/**
+ * Настройка отображения ФИО для тач-устройств
+ */
+function setupTouchUserName(element, fullName) {
+    let tapTimer;
+    let isExpanded = false;
+    
+    element.addEventListener('touchstart', function(e) {
+        e.preventDefault();
+        tapTimer = setTimeout(() => {
+            // Долгое нажатие - показываем полное имя
+            if (!isExpanded) {
+                const originalWidth = element.style.maxWidth;
+                const originalText = element.textContent;
+                
+                element.textContent = fullName;
+                element.style.maxWidth = 'none';
+                element.style.whiteSpace = 'normal';
+                element.style.background = 'var(--accent)';
+                element.style.color = 'var(--text-on-primary)';
+                isExpanded = true;
+                
+                // Возвращаем обратно через 3 секунды
+                setTimeout(() => {
+                    element.textContent = originalText;
+                    element.style.maxWidth = originalWidth;
+                    element.style.whiteSpace = '';
+                    element.style.background = '';
+                    element.style.color = '';
+                    isExpanded = false;
+                }, 3000);
+            }
+        }, 500);
+    });
+    
+    element.addEventListener('touchend', function() {
+        clearTimeout(tapTimer);
+    });
+    
+    element.addEventListener('touchmove', function() {
+        clearTimeout(tapTimer);
+    });
+}
+
+/**
+ * Инициализация адаптивности ФИО на всех страницах
+ */
+export function initUserNameAdaptivity() {
+    document.addEventListener('DOMContentLoaded', () => {
+        setTimeout(() => {
+            setupUserNameAdaptivity();
+        }, 100);
+    });
+}
+
+/**
+ * Умная адаптивность ФИО для мобильных устройств
+ */
+export function setupMobileUserName() {
+    const userNameElement = document.getElementById('userName');
+    
+    if (!userNameElement) return;
+    
+    const fullName = userNameElement.textContent.trim();
+    const isMobile = window.innerWidth <= 768;
+    
+    // Всегда устанавливаем data-атрибут для тултипа
+    userNameElement.setAttribute('data-fullname', fullName);
+    userNameElement.setAttribute('aria-label', `Профиль: ${fullName}`);
+    
+    // На мобильных - умное определение переноса
+    if (isMobile) {
+        // Сбрасываем multiline
+        userNameElement.classList.remove('multiline');
+        
+        // Для очень длинных имен на мобильных оставляем однострочное усечение
+        if (fullName.length > 25) {
+            userNameElement.classList.add('multiline');
+        }
+    } else {
+        // На десктопе - многострочность для длинных имен
+        userNameElement.classList.remove('multiline');
+        if (fullName.length > 30) {
+            userNameElement.classList.add('multiline');
+        }
+    }
+}
+
+/**
+ * Инициализация адаптивности header
+ */
+export function initHeaderAdaptivity() {
+    setupUserNameAdaptivity();
+    
+    // Обновляем при изменении размера
+    window.addEventListener('resize', setupUserNameAdaptivity);
+    
+    // Также обновляем после загрузки DOM
+    document.addEventListener('DOMContentLoaded', () => {
+        setTimeout(setupUserNameAdaptivity, 100);
+    });
 }

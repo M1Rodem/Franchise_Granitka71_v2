@@ -30,17 +30,18 @@
 .header .container {
     padding: 0 var(--space-6);
     width: 100%;
+    height: 100%;
 }
 
 .header-content {
     max-width: 1200px;
     margin: 0 auto;
     width: 100%;
+    height: 100%;
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: var(--space-6);
-    flex-wrap: nowrap;
 }
 
 /* Left group: Burger + logo */
@@ -61,10 +62,9 @@
     cursor: pointer;
     padding: var(--space-3);
     border-radius: var(--radius);
-    transition: all var(--transition-fast) var(--ease-out-back);
+    transition: all var(--transition-fast);
     width: 44px;
     height: 44px;
-    min-height: 44px;
     align-items: center;
     justify-content: center;
     z-index: var(--z-fixed);
@@ -74,7 +74,7 @@
 .burger-btn:hover {
     background: var(--accent);
     border-color: var(--accent);
-    transform: scale(1.05) rotate(90deg);
+    transform: scale(1.05);
     box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
 }
 
@@ -83,144 +83,101 @@
     transform: rotate(90deg);
 }
 
-/* Logo/Title - УЛУЧШЕНО: Better responsive sizing */
+/* Logo/Title */
 .header h1 {
     font-size: var(--text-2xl);
     font-weight: 700;
     color: var(--text-primary);
     margin: 0;
-    animation: textGlow 4s ease-in-out infinite alternate;
     white-space: nowrap;
     flex-shrink: 0;
-    line-height: 1;
+    line-height: 1.2;
 }
 
-@keyframes textGlow {
-    from {
-        text-shadow: 0 0 5px rgba(59, 130, 246, 0.2);
-    }
-    to {
-        text-shadow: 0 0 8px rgba(59, 130, 246, 0.4), 0 0 12px rgba(59, 130, 246, 0.1);
-    }
-}
-
-/* User info: Right side - УЛУЧШЕНО: Better alignment */
+/* User info: Right side */
 .user-info {
     display: flex;
     align-items: center;
     gap: var(--space-4);
-    animation: fadeInRight 0.6s var(--ease-out-back) 0.2s both;
     flex-shrink: 0;
-    box-shadow: var(--shadow-sm);
-    border-radius: var(--radius-sm);
-    padding: var(--space-1);
 }
 
-@keyframes fadeInRight {
-    from {
-        opacity: 0;
-        transform: translateX(20px);
-    }
-    to {
-        opacity: 1;
-        transform: translateX(0);
-    }
-}
-
-/* User profile link - УЛУЧШЕНО: Fixed multiline issue */
+/* User profile link - ИСПРАВЛЕНЫ РАЗМЕРЫ И ПЕРЕНОСЫ */
 .user-profile-link {
     color: var(--text-secondary);
     text-decoration: none;
     font-weight: 500;
-    transition: all var(--transition-fast) var(--ease-out-back);
+    transition: all var(--transition-fast);
     padding: var(--space-3) var(--space-4);
     border-radius: var(--radius);
     position: relative;
-    overflow: hidden;
     font-size: var(--text-base);
+    
+    /* Базовые стили адаптивности */
     white-space: nowrap;
-    max-width: 200px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 220px;
     display: flex;
     align-items: center;
     background: transparent;
     min-height: 44px;
-    text-overflow: ellipsis;
-    transition: max-width 0.3s var(--ease-out-back);
     flex-shrink: 0;
+    
+    border: 1px solid transparent;
+    cursor: pointer;
 }
 
-.user-profile-link::after {
-    content: attr(data-fullname);
-    position: absolute;
-    bottom: 100%;
-    left: 50%;
-    transform: translateX(-50%);
-    background: var(--glass-background);
-    border: 1px solid var(--glass-border);
-    border-radius: var(--radius);
-    padding: var(--space-2) var(--space-3);
-    opacity: 0;
-    visibility: hidden;
-    transition: all 0.3s var(--ease-out-back);
-    white-space: normal;
-    word-break: break-word;
-    max-width: 280px;
-    font-size: var(--text-sm);
-    color: var(--text-primary);
-    z-index: var(--z-fixed);
-    box-shadow: var(--glass-shadow);
-    pointer-events: none;
-}
-
-.user-profile-link:hover::after,
-.user-profile-link:focus::after {
-    opacity: 1;
-    visibility: visible;
-    transform: translateX(-50%) translateY(-5px);
-}
-
-/* УЛУЧШЕНО: Better multiline handling */
+/* Многострочное отображение для длинных имен - ТОЛЬКО ДЛЯ ОЧЕНЬ ДЛИННЫХ */
 .user-profile-link.multiline {
     white-space: normal;
-    line-height: 1.2;
+    line-height: 1.3;
     display: -webkit-box;
     -webkit-line-clamp: 2;
     -webkit-box-orient: vertical;
     overflow: hidden;
     text-overflow: ellipsis;
-    max-height: 2.4em;
     word-break: break-word;
     hyphens: auto;
+    max-height: 2.6em;
 }
 
-/* УЛУЧШЕНО: Prevent text wrapping on desktop */
-@media (min-width: 1025px) {
-    .user-profile-link.multiline {
-        -webkit-line-clamp: 1;
-        max-height: 1.2em;
-        white-space: nowrap;
-    }
-}
-
+/* CSS Tooltip для полного отображения ФИО */
 .user-profile-link::before {
-    content: '';
+    content: attr(data-fullname);
     position: absolute;
-    top: 0;
-    left: -100%;
-    width: 100%;
-    height: 100%;
-    background: linear-gradient(90deg, transparent, rgba(59, 130, 246, 0.2), transparent);
-    transition: left var(--transition-slow);
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%) translateY(8px);
+    background: var(--glass-background);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius);
+    padding: var(--space-3) var(--space-4);
+    font-size: var(--text-base);
+    white-space: normal;
+    word-break: break-word;
+    max-width: min(300px, 90vw);
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.2s ease;
+    z-index: var(--z-tooltip);
+    box-shadow: var(--glass-shadow);
+    backdrop-filter: var(--backdrop-blur);
+    pointer-events: none;
+    text-align: center;
+}
+
+.user-profile-link:hover::before {
+    opacity: 1;
+    visibility: visible;
+    transform: translateX(-50%) translateY(-4px);
 }
 
 .user-profile-link:hover {
     color: var(--text-primary);
-    background: rgba(59, 130, 246, 0.15);
-    transform: translateY(-1px) scale(1.02);
-}
-
-.user-profile-link:hover::before {
-    left: 100%;
+    background: rgba(59, 130, 246, 0.1);
+    border-color: var(--glass-border);
+    transform: translateY(-1px);
 }
 
 /* Logout button */
@@ -229,13 +186,11 @@
     color: var(--text-secondary);
     border: 1px solid var(--glass-border);
     padding: var(--space-3) var(--space-4);
-    transition: all var(--transition-fast) var(--ease-out-back);
-    position: relative;
-    overflow: hidden;
+    transition: all var(--transition-fast);
     font-size: var(--text-base);
     font-weight: 500;
     min-height: 44px;
-    min-width: 80px;
+    min-width: 90px;
     white-space: nowrap;
     display: flex;
     align-items: center;
@@ -244,288 +199,266 @@
     border-radius: var(--radius);
 }
 
-.header .btn-outline::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: -100%;
-    width: 100%;
-    height: 100%;
-    background: linear-gradient(90deg, transparent, rgba(239, 68, 68, 0.2), transparent);
-    transition: left var(--transition-slow);
-}
-
 .header .btn-outline:hover {
     color: var(--error);
     background: rgba(239, 68, 68, 0.1);
     border-color: var(--error);
-    transform: translateY(-1px) scale(1.02);
-    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.2);
+    transform: translateY(-1px);
 }
 
-.header .btn-outline:hover::before {
-    left: 100%;
-}
-
-/* Tablet styles */
+/* ===== TABLET STYLES (769px - 1024px) ===== */
 @media (max-width: 1024px) {
     .header .container {
         padding: 0 var(--space-5);
-    }
-    
-    .header h1 {
-        font-size: var(--text-xl);
     }
     
     .header-content {
         gap: var(--space-5);
     }
     
+    .header h1 {
+        font-size: var(--text-xl);
+    }
+    
     .user-profile-link {
-        padding: var(--space-3) var(--space-4);
-        font-size: var(--text-sm);
         max-width: 180px;
+        font-size: var(--text-sm);
+        padding: var(--space-3) var(--space-4);
         min-height: 44px;
     }
     
     .header .btn-outline {
-        padding: var(--space-3) var(--space-4);
+        min-width: 80px;
         font-size: var(--text-sm);
-        min-width: 75px;
+        padding: var(--space-3) var(--space-4);
         min-height: 44px;
-    }
-    
-    .user-info {
-        box-shadow: none;
     }
 }
 
-/* Mobile styles - УЛУЧШЕНО: Better mobile layout */
+/* ===== MOBILE STYLES (768px and less) - ИСПРАВЛЕНЫ РАЗМЕРЫ ===== */
 @media (max-width: 768px) {
     .burger-btn {
         display: flex;
-    }
-
-    .header h1 {
-        font-size: var(--text-lg);
-        display: block;
-        flex-shrink: 1;
-        min-width: 0;
-        overflow: hidden;
-        text-overflow: ellipsis;
-    }
-
-    .header-content {
-        gap: var(--space-3);
-        justify-content: space-between;
+        width: 44px;
+        height: 44px;
+        padding: var(--space-3);
+        font-size: var(--text-xl);
     }
 
     .header .container {
         padding: 0 var(--space-4);
     }
 
-    .user-info {
-        gap: var(--space-2);
-        align-items: center;
-        box-shadow: none;
-        flex-shrink: 1;
+    .header-content {
+        gap: var(--space-4);
+    }
+
+    .header-left {
+        gap: var(--space-3);
+        flex: 0 1 auto;
         min-width: 0;
     }
 
-    .user-profile-link {
-        padding: var(--space-2) var(--space-3);
-        font-size: var(--text-sm);
-        min-height: 40px;
-        max-width: 120px;
+    .header h1 {
+        font-size: var(--text-xl); /* УВЕЛИЧЕНО С var(--text-lg) */
         flex-shrink: 1;
         min-width: 0;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        max-width: 180px; /* УВЕЛИЧЕНО С 150px */
+    }
+
+    .user-info {
+        gap: var(--space-3);
+        flex-shrink: 0;
+    }
+
+    /* ФИО на мобильных - УВЕЛИЧЕНЫ РАЗМЕРЫ И ИСПРАВЛЕН ПЕРЕНОС */
+    .user-profile-link {
+        font-size: var(--text-sm);
+        padding: var(--space-2) var(--space-3);
+        min-height: 40px;
+        max-width: 140px;
+        border: none;
+        background: transparent;
+        
+        /* На мобильных - всегда однострочное с усечением */
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        display: block;
+    }
+
+    /* Убираем многострочность на мобильных */
+    .user-profile-link.multiline {
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        -webkit-line-clamp: 1;
+        max-height: none;
+        display: block;
     }
 
     .header .btn-outline {
-        padding: var(--space-2) var(--space-3);
         font-size: var(--text-sm);
+        padding: var(--space-2) var(--space-3);
         min-height: 40px;
         min-width: 70px;
-        flex-shrink: 0;
+    }
+
+    /* Позиционирование тултипа на мобильных */
+    .user-profile-link::before {
+        bottom: auto;
+        top: 100%;
+        left: 50%;
+        transform: translateX(-50%) translateY(-8px);
+        font-size: var(--text-sm);
+        padding: var(--space-2) var(--space-3);
+    }
+    
+    .user-profile-link:hover::before {
+        transform: translateX(-50%) translateY(4px);
     }
 }
 
-/* Small screens (430px and less) - УЛУЧШЕНО: Better compact layout */
-@media (max-width: 430px) {
+/* ===== SMALL MOBILE (480px and less) ===== */
+@media (max-width: 480px) {
     .header .container {
         padding: 0 var(--space-3);
     }
 
+    .header-content {
+        gap: var(--space-3);
+    }
+
     .header h1 {
         font-size: var(--text-base);
-        display: block;
+        max-width: 120px;
+    }
+
+    .burger-btn {
+        width: 40px;
+        height: 40px;
+        padding: var(--space-2);
+        font-size: var(--text-lg);
+    }
+
+    .user-info {
+        gap: var(--space-2);
+    }
+
+    /* ФИО на маленьких мобильных - УВЕЛИЧЕН РАЗМЕР */
+    .user-profile-link {
+        font-size: var(--text-sm);
+        padding: var(--space-2);
+        min-height: 40px;
         max-width: 100px;
-        overflow: hidden;
-        text-overflow: ellipsis;
+    }
+
+    .header .btn-outline {
+        font-size: var(--text-sm);
+        padding: var(--space-2);
+        min-height: 40px;
+        min-width: 60px;
+    }
+}
+
+/* ===== VERY SMALL MOBILE (360px and less) ===== */
+@media (max-width: 360px) {
+    .header h1 {
+        font-size: var(--text-sm);
+        max-width: 100px;
     }
 
     .burger-btn {
         width: 38px;
         height: 38px;
-        padding: var(--space-2);
-        font-size: var(--text-lg);
-        flex-shrink: 0;
-        min-height: 38px;
-    }
-
-    .user-info {
-        gap: var(--space-2);
     }
 
     .user-profile-link {
-        font-size: var(--text-xs);
-        padding: var(--space-2);
-        min-height: 38px;
         max-width: 90px;
-    }
-
-    .header .btn-outline {
-        font-size: var(--text-xs);
-        padding: var(--space-2);
         min-height: 38px;
-        min-width: 60px;
-    }
-}
-
-/* Very narrow screens (360px and less) */
-@media (max-width: 360px) {
-    .header .container {
-        padding: 0 var(--space-2);
-    }
-
-    .header h1 {
-        font-size: var(--text-sm);
-        max-width: 80px;
-    }
-
-    .burger-btn {
-        width: 36px;
-        height: 36px;
-        font-size: var(--text-base);
-        margin-right: var(--space-1);
-        min-height: 36px;
-    }
-
-    .user-info {
-        gap: var(--space-1);
-    }
-
-    .user-profile-link {
         font-size: var(--text-xs);
-        padding: var(--space-1) var(--space-2);
-        min-height: 36px;
-        max-width: 70px;
     }
 
     .header .btn-outline {
-        font-size: var(--text-xs);
-        padding: var(--space-1) var(--space-2);
-        min-height: 36px;
         min-width: 55px;
+        min-height: 38px;
+        font-size: var(--text-xs);
     }
 }
 
-/* Landscape orientation */
+/* ===== LANDSCAPE ORIENTATION ===== */
 @media (max-width: 768px) and (orientation: landscape) {
     .header {
         height: 56px;
     }
 
-    .header-content {
-        padding: 0;
-        gap: var(--space-2);
+    .header h1 {
+        font-size: var(--text-base);
+        max-width: 130px;
     }
 
     .user-profile-link {
-        max-width: 100px;
-        min-height: 38px;
-        font-size: var(--text-xs);
-    }
-    
-    .header .btn-outline {
-        min-width: 60px;
-        min-height: 38px;
-    }
-    
-    .header h1 {
-        font-size: var(--text-base);
-        max-width: 90px;
-    }
-}
-
-/* Intermediate screens */
-@media (max-width: 640px) {
-    .header h1 {
-        font-size: var(--text-base);
-        max-width: 110px;
-    }
-    
-    .user-profile-link {
-        max-width: 100px;
-        font-size: var(--text-xs);
+        max-width: 120px;
         min-height: 40px;
     }
     
     .header .btn-outline {
-        font-size: var(--text-xs);
         min-width: 65px;
         min-height: 40px;
     }
 }
 
-/* Medium tablets */
-@media (min-width: 769px) and (max-width: 1024px) {
-    .header h1 {
-        font-size: var(--text-xl);
+/* ===== DESKTOP OPTIMIZATION (1025px+) ===== */
+@media (min-width: 1025px) {
+    .user-profile-link {
+        max-width: 240px;
+    }
+
+    /* На десктопе оставляем многострочность только для очень длинных имен */
+    .user-profile-link.multiline {
+        -webkit-line-clamp: 2;
+        max-height: 2.6em;
+    }
+}
+
+/* ===== ACCESSIBILITY ===== */
+
+/* Отключение тултипа на тач-устройствах */
+@media (hover: none) and (pointer: coarse) {
+    .user-profile-link::before {
+        display: none;
+    }
+    
+    .user-profile-link:active {
+        background: rgba(59, 130, 246, 0.15);
+        transform: scale(0.98);
+    }
+}
+
+/* High contrast mode */
+@media (prefers-contrast: high) {
+    .header {
+        border-bottom: 2px solid var(--text-primary);
     }
     
     .user-profile-link,
     .header .btn-outline {
-        font-size: var(--text-sm);
+        border: 1px solid var(--text-primary);
     }
 }
 
-/* Desktop optimization - УЛУЧШЕНО: Prevent multiline on desktop */
-@media (min-width: 1025px) {
-    .user-profile-link {
-        max-width: 220px;
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+    .header {
+        animation: none;
     }
     
-    .user-profile-link.multiline {
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        -webkit-line-clamp: 1;
-        line-clamp: 1;
-        max-height: none;
-    }
-}
-
-/* Tooltip positioning on mobile */
-@media (max-width: 768px) {
-    .user-profile-link::after {
-        bottom: auto;
-        top: 100%;
-        transform: translateX(-50%) translateY(5px);
-    }
-    
-    .user-profile-link:hover::after,
-    .user-profile-link:focus::after {
-        transform: translateX(-50%) translateY(5px);
-    }
-}
-
-/* УЛУЧШЕНО: Single line on mobile for multiline class */
-@media (max-width: 768px) {
-    .user-profile-link.multiline {
-        -webkit-line-clamp: 1;
-        line-clamp: 1;
-        max-height: 1.2em;
-        white-space: nowrap;
+    .user-profile-link,
+    .header .btn-outline,
+    .burger-btn {
+        transition: none;
     }
 }

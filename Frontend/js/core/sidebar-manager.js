@@ -1,21 +1,14 @@
 export class SidebarManager {
     static init() {
-        console.log('SidebarManager: Initializing sidebar...');
-        
-        // ФИКС: Универсальная проверка production режима
         const isProduction = typeof process !== 'undefined' && process.env && process.env.NODE_ENV === 'production';
-        console.log('SidebarManager: Environment:', isProduction ? 'production' : 'development');
         
-        // Проверяем, существует ли sidebar в DOM
         const sidebar = document.getElementById('sidebar');
         if (!sidebar) {
             console.warn('SidebarManager: Sidebar element not found in DOM');
             return;
         }
         
-        // ФИКС: Принудительно показываем sidebar в production
         if (isProduction) {
-            console.log('SidebarManager: Ensuring sidebar visibility in production');
             sidebar.style.display = 'block';
             sidebar.style.visibility = 'visible';
             sidebar.style.opacity = '1';
@@ -31,13 +24,6 @@ export class SidebarManager {
         const burgerBtn = document.getElementById('burgerBtn');
         const sidebar = document.getElementById('sidebar');
         const mainContent = document.getElementById('mainContent');
-
-        console.log('SidebarManager: Setting up burger button', { 
-            burgerBtn: !!burgerBtn, 
-            sidebar: !!sidebar, 
-            mainContent: !!mainContent 
-        });
-
         if (burgerBtn && sidebar) {
             // ФИКС: Удаляем все старые обработчики
             const newBurgerBtn = burgerBtn.cloneNode(true);
@@ -46,7 +32,6 @@ export class SidebarManager {
             newBurgerBtn.addEventListener('click', (e) => {
                 e.stopPropagation();
                 e.preventDefault();
-                console.log('SidebarManager: Burger button clicked - toggling sidebar');
                 
                 const isOpening = !sidebar.classList.contains('open');
                 
@@ -62,9 +47,7 @@ export class SidebarManager {
                 this.toggleBackdrop(isOpening);
             });
             
-            console.log('SidebarManager: Burger button setup complete');
         } else {
-            console.warn('SidebarManager: Burger button or sidebar not found');
         }
     }
 
@@ -85,7 +68,6 @@ export class SidebarManager {
                 display: block;
             `;
             backdrop.addEventListener('click', () => {
-                console.log('SidebarManager: Backdrop clicked - closing sidebar');
                 this.closeSidebar();
             });
             document.body.appendChild(backdrop);
@@ -115,7 +97,6 @@ export class SidebarManager {
                 const isSidebar = e.target === sidebar || sidebar.contains(e.target);
                 
                 if (!isBurgerBtn && !isSidebar) {
-                    console.log('SidebarManager: Click outside - closing sidebar');
                     this.closeSidebar();
                 }
             }
@@ -126,7 +107,6 @@ export class SidebarManager {
             if (e.key === 'Escape') {
                 const sidebar = document.getElementById('sidebar');
                 if (sidebar && sidebar.classList.contains('open')) {
-                    console.log('SidebarManager: Escape pressed - closing sidebar');
                     this.closeSidebar();
                 }
             }
@@ -139,7 +119,6 @@ export class SidebarManager {
         const mainContent = document.getElementById('mainContent');
         
         if (sidebar && sidebar.classList.contains('open')) {
-            console.log('SidebarManager: Closing sidebar');
             sidebar.classList.remove('open');
             if (burgerBtn) {
                 burgerBtn.classList.remove('open');
@@ -154,14 +133,12 @@ export class SidebarManager {
 
     static setupActiveNav() {
         const currentPage = window.location.pathname.split('/').pop() || 'dashboard.html';
-        console.log('SidebarManager: Setting active nav for page:', currentPage);
         
         document.querySelectorAll('.nav-item').forEach(item => {
             const href = item.getAttribute('href');
             if (href === currentPage || (currentPage === '' && href === 'dashboard.html')) {
                 item.classList.add('active');
                 item.setAttribute('aria-current', 'page');
-                console.log('SidebarManager: Activated nav item:', href);
             } else {
                 item.classList.remove('active');
                 item.removeAttribute('aria-current');
@@ -174,7 +151,6 @@ export class SidebarManager {
             const userData = JSON.parse(localStorage.getItem('userData') || '{}');
             if (userData.role === 'Admin') {
                 document.body.classList.add('user-is-admin');
-                console.log('SidebarManager: Admin menu activated');
             }
         } catch (error) {
             console.warn('SidebarManager: Error setting up admin menu:', error);

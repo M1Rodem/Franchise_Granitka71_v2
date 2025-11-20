@@ -172,8 +172,8 @@ namespace Franchisee.Web.Services
                 PaymentStatus.NotPaid => query.Where(o => o.Payments.Sum(p => p.Amount) == 0),
                 PaymentStatus.Partial => query.Where(o => o.Payments.Sum(p => p.Amount) > 0
                                                        && o.Payments.Sum(p => p.Amount) < o.WorkItems.Sum(w => w.Price * w.Quantity)),
-                PaymentStatus.Paid => query.Where(o => o.Payments.Sum(p => p.Amount) >= o.WorkItems.Sum(w => w.Price * w.Quantity)
-                                                    && o.WorkItems.Sum(w => w.Price * w.Quantity) > 0),
+                PaymentStatus.Paid => query.Where(o => o.Payments.Sum(p => p.Amount) == o.WorkItems.Sum(w => w.Price * w.Quantity) // ИСПРАВЛЕНО: == вместо >=
+                                                        && o.WorkItems.Sum(w => w.Price * w.Quantity) > 0),
                 PaymentStatus.Overpaid => query.Where(o => o.Payments.Sum(p => p.Amount) > o.WorkItems.Sum(w => w.Price * w.Quantity)),
                 _ => query
             };

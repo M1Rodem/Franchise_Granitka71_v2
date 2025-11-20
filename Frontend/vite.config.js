@@ -21,36 +21,22 @@ export default defineConfig({
   build: {
     outDir: 'dist',
     emptyOutDir: true,
-    minify: 'terser',
-    terserOptions: {
-      compress: {
-        drop_console: false,
-        drop_debugger: true
-      },
-      mangle: false
-    },
-    sourcemap: true,
+    sourcemap: false,
     rollupOptions: {
-      input: (() => {
-        const htmlFiles = readdirSync('.').filter(f => f.endsWith('.html'));
-        if (htmlFiles.length === 0) {
-          console.warn('No .html files found in root. Adding default index.html entry.');
-          return { index: resolve(__dirname, 'index.html') };
-        }
-        return Object.fromEntries(
-          htmlFiles.map(f => [f.replace('.html', ''), resolve(__dirname, f)])
-        );
-      })(),
-      output: {
-        entryFileNames: 'assets/[name]-[hash].js',
-        chunkFileNames: 'assets/[name]-[hash].js',
-        assetFileNames: 'assets/[name]-[hash].[ext]'
+      input: {
+        // ЯВНО УКАЗЫВАЕМ ВСЕ HTML ФАЙЛЫ ИЗ КОРНЯ
+        'index': resolve(__dirname, 'index.html'),
+        'login': resolve(__dirname, 'login.html'), 
+        'dashboard': resolve(__dirname, 'dashboard.html'),
+        'orders': resolve(__dirname, 'orders.html'),
+        'view-order': resolve(__dirname, 'view-order.html'),
+        'create-order': resolve(__dirname, 'create-order.html'),
+        'archived-orders': resolve(__dirname, 'archived-orders.html'),
+        'profile': resolve(__dirname, 'profile.html'),
+        'users': resolve(__dirname, 'users.html')
       }
     }
   },
-  plugins: [
-    // УДАЛИЛ ПЛАГИН HTML-TRANSFORM - он ломает dev режим
-  ],
   esbuild: {
     target: 'es2020'
   }

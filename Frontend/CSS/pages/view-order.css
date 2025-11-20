@@ -212,9 +212,9 @@
 
 /* Таблицы внутри аккордеонов */
 .accordion-section .orders-table {
-    background: transparent;
-    box-shadow: none;
-    border: 1px solid var(--glass-border);
+    background: transparent !important;
+    box-shadow: none !important;
+    border: 1px solid var(--glass-border) !important;
 }
 
 .accordion-section .orders-table th {

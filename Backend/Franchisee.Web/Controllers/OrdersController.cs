@@ -59,7 +59,7 @@ namespace Franchisee.Web.Controllers
             _logger.LogInformation("Получение заказа {OrderId} для пользователя {UserId}", id, userId);
 
             var order = await _orderRepository.GetByIdAsync(id);
-            if (order == null) return NotFound($"Заказ с ID {id} не найден");ПафывкзхэдшоларыапфвукцощзхъПИЫВМФакхъвощзЗХОЩЪПфваымку
+            if (order == null) return NotFound($"Заказ с ID {id} не найден");
 
             var dto = MapToResponseDto(order);
             return Ok(dto);

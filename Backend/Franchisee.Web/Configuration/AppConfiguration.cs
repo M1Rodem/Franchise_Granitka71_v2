@@ -27,14 +27,29 @@ namespace Franchisee.Web.Configuration
             {
                 options.AddPolicy("AllowFrontend", policy =>
                 {
-                    policy.WithOrigins(
+                    var allowedOrigins = new List<string>
+                    {
                         "http://localhost:3000",
                         "http://127.0.0.1:3000",
                         "http://192.168.0.21:3000"
-                    )
-                    .AllowAnyHeader()
-                    .AllowAnyMethod()
-                    .AllowCredentials();
+                    };
+
+                    // Добавляем продакшен домены (замените на ваш домен)
+                    if (env.IsProduction())
+                    {
+                        allowedOrigins.AddRange(new[]
+                        {
+                            "https://granit71.ru",      // ваш домен
+                            "https://www.granit71.ru",  // с www
+                            "http://granit71.ru",       // http на всякий случай
+                            "http://www.granit71.ru"
+                        });
+                    }
+
+                    policy.WithOrigins(allowedOrigins.ToArray())
+                          .AllowAnyHeader()
+                          .AllowAnyMethod()
+                          .AllowCredentials();
                 });
             });
 
@@ -165,7 +180,7 @@ namespace Franchisee.Web.Configuration
                 app.UseSwaggerUI();
             }
 
-            //app.UseHttpsRedirection();
+            app.UseHttpsRedirection();
 
             // ДОБАВЛЯЕМ ПОДДЕРЖКУ СТАТИЧЕСКИХ ФАЙЛОВ ДО UseRouting()
             app.UseStaticFiles(); // Для wwwroot

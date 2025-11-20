@@ -1,547 +1,546 @@
-/* ===== TABLES COMPONENT ===== */
 .table, .orders-table {
-    width: 100% !important;
-    border-collapse: separate !important;
-    border-spacing: 0 !important;
-    font-size: var(--text-sm) !important;
-    background: var(--glass-background) !important;
-    backdrop-filter: var(--backdrop-blur) !important;
-    -webkit-backdrop-filter: var(--backdrop-blur) !important;
-    border-radius: var(--radius-xl) !important;
-    overflow: hidden !important;
-    box-shadow: var(--glass-shadow) !important;
-    border: 1px solid var(--glass-border) !important;
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    font-size: var(--text-sm);
+    background: var(--glass-background);
+    backdrop-filter: var(--backdrop-blur);
+    -webkit-backdrop-filter: var(--backdrop-blur);
+    border-radius: var(--radius-xl);
+    overflow: hidden;
+    box-shadow: var(--glass-shadow);
+    border: 1px solid var(--glass-border);
 }
 
 .table th, .orders-table th {
-    background: rgba(30, 41, 59, 0.8) !important;
-    padding: var(--space-4) var(--space-5) !important;
-    text-align: center !important;
-    font-weight: 600 !important;
-    color: var(--text-primary) !important;
-    border-bottom: 1px solid var(--glass-border) !important;
-    position: sticky !important;
-    top: 0 !important;
-    backdrop-filter: blur(10px) !important;
+    background: rgba(30, 41, 59, 0.8);
+    padding: var(--space-4) var(--space-5);
+    text-align: center;
+    font-weight: 600;
+    color: var(--text-primary);
+    border-bottom: 1px solid var(--glass-border);
+    position: sticky;
+    top: 0;
+    backdrop-filter: blur(10px);
 }
 
 .table td, .orders-table td {
-    padding: var(--space-4) var(--space-5) !important;
-    border-bottom: 1px solid var(--glass-border) !important;
-    text-align: center !important;
-    color: var(--text-secondary) !important;
-    line-height: var(--line-height-loose) !important;
-    transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94) !important;
+    padding: var(--space-4) var(--space-5);
+    border-bottom: 1px solid var(--glass-border);
+    text-align: center;
+    color: var(--text-secondary);
+    line-height: var(--line-height-loose);
+    transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
 }
 
 .table tbody tr:nth-child(even),
 .orders-table tbody tr:nth-child(even) {
-    background: rgba(30, 41, 59, 0.3) !important;
+    background: rgba(30, 41, 59, 0.3);
 }
 
 .table tbody tr:hover,
 .orders-table tbody tr:hover {
-    background: rgba(59, 130, 246, 0.1) !important;
-    color: var(--text-primary) !important;
-    transform: scale(1.002) !important;
+    background: rgba(59, 130, 246, 0.1);
+    color: var(--text-primary);
+    transform: scale(1.002);
 }
 
 .table tbody tr:last-child td,
 .orders-table tbody tr:last-child td {
-    border-bottom: none !important;
+    border-bottom: none;
 }
 
 /* Specific orders table styles */
 .orders-table-container {
-    background: var(--glass-background) !important;
-    backdrop-filter: var(--backdrop-blur) !important;
-    -webkit-backdrop-filter: var(--backdrop-blur) !important;
-    border-radius: var(--radius-xl) !important;
-    box-shadow: var(--glass-shadow) !important;
-    border: 1px solid var(--glass-border) !important;
-    overflow: hidden !important;
-    margin-bottom: var(--space-6) !important;
-    transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94) !important;
-    animation: fadeInUp 0.6s var(--ease-out-back) 0.4s both !important;
+    background: var(--glass-background);
+    backdrop-filter: var(--backdrop-blur);
+    -webkit-backdrop-filter: var(--backdrop-blur);
+    border-radius: var(--radius-xl);
+    box-shadow: var(--glass-shadow);
+    border: 1px solid var(--glass-border);
+    overflow: hidden;
+    margin-bottom: var(--space-6);
+    transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    animation: fadeInUp 0.6s var(--ease-out-back) 0.4s both;
 }
 
 .orders-table-container:hover {
-    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(59, 130, 246, 0.1) !important;
+    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(59, 130, 246, 0.1);
 }
 
 .orders-table th {
-    background: rgba(30, 41, 59, 0.9) !important;
-    font-size: var(--text-sm) !important;
-    text-transform: uppercase !important;
-    letter-spacing: 0.5px !important;
+    background: rgba(30, 41, 59, 0.9);
+    font-size: var(--text-sm);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
 }
 
 .orders-table tbody tr {
-    animation: slideInRight 0.5s var(--ease-out-back) both !important;
+    animation: slideInRight 0.5s var(--ease-out-back) both;
 }
 
 @keyframes slideInRight {
     from {
-        opacity: 0 !important;
-        transform: translateX(20px) !important;
+        opacity: 0;
+        transform: translateX(20px);
     }
     to {
-        opacity: 1 !important;
-        transform: translateX(0) !important;
+        opacity: 1;
+        transform: translateX(0);
     }
 }
 
 /* Анимация появления строк таблицы с задержкой */
-.orders-table tbody tr:nth-child(1) { animation-delay: 0.1s !important; }
-.orders-table tbody tr:nth-child(2) { animation-delay: 0.15s !important; }
-.orders-table tbody tr:nth-child(3) { animation-delay: 0.2s !important; }
-.orders-table tbody tr:nth-child(4) { animation-delay: 0.25s !important; }
-.orders-table tbody tr:nth-child(5) { animation-delay: 0.3s !important; }
+.orders-table tbody tr:nth-child(1) { animation-delay: 0.1s; }
+.orders-table tbody tr:nth-child(2) { animation-delay: 0.15s; }
+.orders-table tbody tr:nth-child(3) { animation-delay: 0.2s; }
+.orders-table tbody tr:nth-child(4) { animation-delay: 0.25s; }
+.orders-table tbody tr:nth-child(5) { animation-delay: 0.3s; }
 
 /* Status badges */
 .status-badge {
-    padding: var(--space-2) var(--space-3) !important;
-    border-radius: var(--radius) !important;
-    font-size: var(--text-xs) !important;
-    font-weight: 600 !important;
-    display: inline-flex !important;
-    align-items: center !important;
-    gap: var(--space-2) !important;
-    text-transform: uppercase !important;
-    letter-spacing: 0.5px !important;
-    border: 1px solid transparent !important;
-    transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94) !important;
+    padding: var(--space-2) var(--space-3);
+    border-radius: var(--radius);
+    font-size: var(--text-xs);
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    border: 1px solid transparent;
+    transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
 }
 
 .status-badge::before {
-    content: '' !important;
-    width: 8px !important;
-    height: 8px !important;
-    border-radius: 50% !important;
-    display: inline-block !important;
-    transition: all 0.3s ease !important;
+    content: '';
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    display: inline-block;
+    transition: all 0.3s ease;
 }
 
 .status-badge:hover {
-    transform: scale(1.05) !important;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2) !important;
+    transform: scale(1.05);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
 }
 
 .status-not_paid {
-    background: rgba(239, 68, 68, 0.15) !important;
-    color: var(--error) !important;
-    border-color: rgba(239, 68, 68, 0.3) !important;
+    background: rgba(239, 68, 68, 0.15);
+    color: var(--error);
+    border-color: rgba(239, 68, 68, 0.3);
 }
 
 .status-not_paid::before {
-    background: var(--error) !important;
+    background: var(--error);
 }
 
 .status-partial {
-    background: rgba(245, 158, 11, 0.15) !important;
-    color: var(--warning) !important;
-    border-color: rgba(245, 158, 11, 0.3) !important;
+    background: rgba(245, 158, 11, 0.15);
+    color: var(--warning);
+    border-color: rgba(245, 158, 11, 0.3);
 }
 
 .status-partial::before {
-    background: var(--warning) !important;
+    background: var(--warning);
 }
 
 .status-paid {
-    background: rgba(16, 185, 129, 0.15) !important;
-    color: var(--success) !important;
-    border-color: rgba(16, 185, 129, 0.3) !important;
+    background: rgba(16, 185, 129, 0.15);
+    color: var(--success);
+    border-color: rgba(16, 185, 129, 0.3);
 }
 
 .status-paid::before {
-    background: var(--success) !important;
+    background: var(--success);
 }
 
 .status-overpaid {
-    background: rgba(139, 92, 246, 0.15) !important;
-    color: #8b5cf6 !important;
-    border-color: rgba(139, 92, 246, 0.3) !important;
+    background: rgba(139, 92, 246, 0.15);
+    color: #8b5cf6;
+    border-color: rgba(139, 92, 246, 0.3);
 }
 
 .status-overpaid::before {
-    background: #8b5cf6 !important;
+    background: #8b5cf6;
 }
 
 /* Улучшенные стили для кнопок действий в таблице */
 .table-actions {
-    display: flex !important;
-    gap: var(--space-2) !important;
-    justify-content: flex-end !important;
-    flex-wrap: wrap !important;
+    display: flex;
+    gap: var(--space-2);
+    justify-content: flex-end;
+    flex-wrap: wrap;
 }
 
 .action-btn {
-    padding: var(--space-2) var(--space-3) !important;
-    border: none !important;
-    border-radius: var(--radius) !important;
-    font-size: var(--text-xs) !important;
-    font-weight: 500 !important;
-    cursor: pointer !important;
-    transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94) !important;
-    text-decoration: none !important;
-    display: inline-flex !important;
-    align-items: center !important;
-    gap: var(--space-1) !important;
-    min-height: 32px !important;
-    position: relative !important;
-    overflow: hidden !important;
+    padding: var(--space-2) var(--space-3);
+    border: none;
+    border-radius: var(--radius);
+    font-size: var(--text-xs);
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-1);
+    min-height: 32px;
+    position: relative;
+    overflow: hidden;
 }
 
 .action-btn-view {
-    background: rgba(59, 130, 246, 0.15) !important;
-    color: var(--accent) !important;
-    border: 1px solid rgba(59, 130, 246, 0.3) !important;
+    background: rgba(59, 130, 246, 0.15);
+    color: var(--accent);
+    border: 1px solid rgba(59, 130, 246, 0.3);
 }
 
 .action-btn-view:hover {
-    background: var(--accent) !important;
-    color: white !important;
-    transform: translateY(-1px) !important;
-    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3) !important;
-    border-color: var(--accent) !important;
+    background: var(--accent);
+    color: white;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+    border-color: var(--accent);
 }
 
 .action-btn-delete {
-    background: rgba(239, 68, 68, 0.15) !important;
-    color: var(--error) !important;
-    border: 1px solid rgba(239, 68, 68, 0.3) !important;
+    background: rgba(239, 68, 68, 0.15);
+    color: var(--error);
+    border: 1px solid rgba(239, 68, 68, 0.3);
 }
 
 .action-btn-delete:hover {
-    background: var(--error) !important;
-    color: white !important;
-    transform: translateY(-1px) !important;
-    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3) !important;
-    border-color: var(--error) !important;
+    background: var(--error);
+    color: white;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+    border-color: var(--error);
 }
 
 /* Улучшенные стили для контейнера действий */
 .actions {
-    display: flex !important;
-    gap: var(--space-2) !important;
-    justify-content: flex-end !important;
-    flex-wrap: wrap !important;
+    display: flex;
+    gap: var(--space-2);
+    justify-content: flex-end;
+    flex-wrap: wrap;
 }
 
 .actions .btn {
-    padding: var(--space-2) var(--space-3) !important;
-    border-radius: var(--radius) !important;
-    transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94) !important;
-    min-width: 80px !important;
-    height: 32px !important;
-    display: inline-flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-    background: rgba(30, 41, 59, 0.5) !important;
-    border: 1px solid var(--glass-border) !important;
-    color: var(--text-secondary) !important;
-    font-size: var(--text-xs) !important;
-    font-weight: 500 !important;
-    text-decoration: none !important;
+    padding: var(--space-2) var(--space-3);
+    border-radius: var(--radius);
+    transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    min-width: 80px;
+    height: 32px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(30, 41, 59, 0.5);
+    border: 1px solid var(--glass-border);
+    color: var(--text-secondary);
+    font-size: var(--text-xs);
+    font-weight: 500;
+    text-decoration: none;
 }
 
 .actions .btn-view {
-    background: rgba(59, 130, 246, 0.15) !important;
-    color: var(--accent) !important;
-    border: 1px solid rgba(59, 130, 246, 0.3) !important;
+    background: rgba(59, 130, 246, 0.15);
+    color: var(--accent);
+    border: 1px solid rgba(59, 130, 246, 0.3);
 }
 
 .actions .btn-view:hover {
-    background: var(--accent) !important;
-    color: white !important;
-    transform: translateY(-1px) !important;
-    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3) !important;
-    border-color: var(--accent) !important;
+    background: var(--accent);
+    color: white;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+    border-color: var(--accent);
 }
 
 .actions .btn-delete {
-    background: rgba(239, 68, 68, 0.15) !important;
-    color: var(--error) !important;
-    border: 1px solid rgba(239, 68, 68, 0.3) !important;
+    background: rgba(239, 68, 68, 0.15);
+    color: var(--error);
+    border: 1px solid rgba(239, 68, 68, 0.3);
 }
 
 .actions .btn-delete:hover {
-    background: var(--error) !important;
-    color: white !important;
-    transform: translateY(-1px) !important;
-    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3) !important;
-    border-color: var(--error) !important;
+    background: var(--error);
+    color: white;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+    border-color: var(--error);
 }
 
 /* Table cell alignment */
 .status-cell {
-    text-align: center !important;
+    text-align: center;
 }
 
 .amount-cell {
-    text-align: right !important;
-    font-weight: 600 !important;
-    color: var(--text-primary) !important;
-    transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94) !important;
+    text-align: right;
+    font-weight: 600;
+    color: var(--text-primary);
+    transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
 }
 
 .amount-cell:hover {
-    color: var(--accent) !important;
-    transform: scale(1.05) !important;
+    color: var(--accent);
+    transform: scale(1.05);
 }
 
 .date-cell {
-    color: var(--text-muted) !important;
-    font-size: var(--text-sm) !important;
+    color: var(--text-muted);
+    font-size: var(--text-sm);
 }
 
 /* Tablet styles */
 @media (max-width: 1024px) {
     .orders-table-container {
-        overflow-x: auto !important;
+        overflow-x: auto;
     }
     
     .orders-table {
-        min-width: 900px !important;
+        min-width: 900px;
     }
 }
 
 /* Мобильная версия для ВСЕХ таблиц .orders-table */
 @media (max-width: 768px) {
     .orders-table-container {
-        overflow: visible !important;
-        background: transparent !important;
-        box-shadow: none !important;
-        border: none !important;
-        border-radius: 0 !important;
+        overflow: visible;
+        background: transparent;
+        box-shadow: none;
+        border: none;
+        border-radius: 0;
     }
     
     .orders-table {
-        display: block !important;
-        min-width: auto !important;
-        background: transparent !important;
-        box-shadow: none !important;
-        border: none !important;
-        backdrop-filter: none !important;
+        display: block;
+        min-width: auto;
+        background: transparent;
+        box-shadow: none;
+        border: none;
+        backdrop-filter: none;
     }
     
     .orders-table thead {
-        display: none !important;
+        display: none;
     }
     
     .orders-table tbody {
-        display: flex !important;
-        flex-direction: column !important;
-        gap: var(--space-4) !important;
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-4);
     }
     
     .orders-table tr {
-        display: flex !important;
-        flex-direction: column !important;
-        padding: var(--space-5) !important;
-        background: var(--glass-background) !important;
-        backdrop-filter: var(--backdrop-blur) !important;
-        border-radius: var(--radius-lg) !important;
-        box-shadow: var(--glass-shadow) !important;
-        border: 1px solid var(--glass-border) !important;
-        transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94) !important;
-        animation: slideInUp 0.5s var(--ease-out-back) both !important;
+        display: flex;
+        flex-direction: column;
+        padding: var(--space-5);
+        background: var(--glass-background);
+        backdrop-filter: var(--backdrop-blur);
+        border-radius: var(--radius-lg);
+        box-shadow: var(--glass-shadow);
+        border: 1px solid var(--glass-border);
+        transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+        animation: slideInUp 0.5s var(--ease-out-back) both;
     }
     
     .orders-table tr:hover {
-        transform: translateY(-2px) !important;
-        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.4) !important;
+        transform: translateY(-2px);
+        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.4);
     }
     
     .orders-table td {
-        display: flex !important;
-        justify-content: space-between !important;
-        align-items: center !important;
-        text-align: left !important;
-        padding: var(--space-3) 0 !important;
-        border: none !important;
-        border-bottom: 1px solid rgba(255, 255, 255, 0.1) !important;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        text-align: left;
+        padding: var(--space-3) 0;
+        border: none;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
     }
 
     .orders-table tr:last-child {
-        border-bottom: 1px solid var(--glass-border) !important;
+        border-bottom: 1px solid var(--glass-border);
     }
     
     .orders-table tr:last-child td {
-        border-bottom: 1px solid rgba(255, 255, 255, 0.1) !important;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
     }
     
     .orders-table td:last-child {
-        border-bottom: none !important;
-        padding-top: var(--space-4) !important;
-        margin-top: var(--space-3) !important;
+        border-bottom: none;
+        padding-top: var(--space-4);
+        margin-top: var(--space-3);
     }
     
     .orders-table tr:last-child td:last-child {
-        border-bottom: none !important;
+        border-bottom: none;
     }
     
     .orders-table td:before {
-        content: attr(data-label) !important;
-        font-weight: 600 !important;
-        color: var(--accent) !important;
-        margin-right: var(--space-3) !important;
-        flex-shrink: 0 !important;
-        min-width: 100px !important;
+        content: attr(data-label);
+        font-weight: 600;
+        color: var(--accent);
+        margin-right: var(--space-3);
+        flex-shrink: 0;
+        min-width: 100px;
     }
     
     .actions {
-        justify-content: center !important;
-        width: 100% !important;
-        gap: var(--space-3) !important;
+        justify-content: center;
+        width: 100%;
+        gap: var(--space-3);
     }
     
     .actions .btn {
-        flex: 1 !important;
-        min-width: 100px !important;
-        height: 40px !important;
-        font-size: var(--text-sm) !important;
+        flex: 1;
+        min-width: 100px;
+        height: 40px;
+        font-size: var(--text-sm);
     }
     
     /* Скрываем tfoot в мобильной версии */
     .orders-table tfoot {
-        display: none !important;
+        display: none;
     }
     
     /* Анимация для мобильных карточек */
     @keyframes slideInUp {
         from {
-            opacity: 0 !important;
-            transform: translateY(20px) !important;
+            opacity: 0;
+            transform: translateY(20px);
         }
         to {
-            opacity: 1 !important;
-            transform: translateY(0) !important;
+            opacity: 1;
+            transform: translateY(0);
         }
     }
     
-    .orders-table tr:nth-child(1) { animation-delay: 0.1s !important; }
-    .orders-table tr:nth-child(2) { animation-delay: 0.15s !important; }
-    .orders-table tr:nth-child(3) { animation-delay: 0.2s !important; }
-    .orders-table tr:nth-child(4) { animation-delay: 0.25s !important; }
-    .orders-table tr:nth-child(5) { animation-delay: 0.3s !important; }
+    .orders-table tr:nth-child(1) { animation-delay: 0.1s; }
+    .orders-table tr:nth-child(2) { animation-delay: 0.15s; }
+    .orders-table tr:nth-child(3) { animation-delay: 0.2s; }
+    .orders-table tr:nth-child(4) { animation-delay: 0.25s; }
+    .orders-table tr:nth-child(5) { animation-delay: 0.3s; }
 }
 
 /* Стили для мобильного отображения итогов */
 .table-total-mobile {
-    display: none !important;
+    display: none;
 }
 
 @media (max-width: 768px) {
     .table-total-mobile {
-        display: block !important;
-        margin-top: var(--space-4) !important;
-        animation: slideInUp 0.5s var(--ease-out-back) 0.4s both !important;
+        display: block;
+        margin-top: var(--space-4);
+        animation: slideInUp 0.5s var(--ease-out-back) 0.4s both;
     }
 
     .orders-table tr:last-child {
-        border-bottom: 1px solid var(--glass-border) !important;
+        border-bottom: 1px solid var(--glass-border);
     }
 
     .orders-table-container {
-        overflow: visible !important;
-        background: transparent !important;
-        box-shadow: none !important;
-        border: none !important;
-        border-radius: 0 !important;
+        overflow: visible;
+        background: transparent;
+        box-shadow: none;
+        border: none;
+        border-radius: 0;
     }
     
     .orders-table {
-        display: block !important;
-        min-width: auto !important;
-        background: transparent !important;
-        box-shadow: none !important;
-        border: none !important;
-        backdrop-filter: none !important;
+        display: block;
+        min-width: auto;
+        background: transparent;
+        box-shadow: none;
+        border: none;
+        backdrop-filter: none;
     }
     
     .orders-table thead {
-        display: none !important;
+        display: none;
     }
     
     .orders-table tbody {
-        display: flex !important;
-        flex-direction: column !important;
-        gap: var(--space-4) !important;
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-4);
     }
     
     .orders-table tr {
-        display: flex !important;
-        flex-direction: column !important;
-        padding: var(--space-5) !important;
-        background: var(--glass-background) !important;
-        backdrop-filter: var(--backdrop-blur) !important;
-        border-radius: var(--radius-lg) !important;
-        box-shadow: var(--glass-shadow) !important;
-        border: 1px solid var(--glass-border) !important;
-        transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94) !important;
-        animation: slideInUp 0.5s var(--ease-out-back) both !important;
+        display: flex;
+        flex-direction: column;
+        padding: var(--space-5);
+        background: var(--glass-background);
+        backdrop-filter: var(--backdrop-blur);
+        border-radius: var(--radius-lg);
+        box-shadow: var(--glass-shadow);
+        border: 1px solid var(--glass-border);
+        transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+        animation: slideInUp 0.5s var(--ease-out-back) both;
     }
     
     .orders-table tr:hover {
-        transform: translateY(-2px) !important;
-        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.4) !important;
+        transform: translateY(-2px);
+        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.4);
     }
     
     .orders-table td {
-        display: flex !important;
-        justify-content: space-between !important;
-        align-items: center !important;
-        text-align: left !important;
-        padding: var(--space-3) 0 !important;
-        border: none !important;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        text-align: left;
+        padding: var(--space-3) 0;
+        border: none;
         border-bottom: 1px solid rgba(255, 255, 255, 0.1) !important;
     }
     
     /* ИСПРАВЛЕНИЕ: Убираем границу у последней ячейки в каждой строке */
     .orders-table td:last-child {
         border-bottom: none !important;
-        padding-top: var(--space-4) !important;
-        margin-top: var(--space-3) !important;
+        padding-top: var(--space-4);
+        margin-top: var(--space-3);
     }
     
     /* ИСПРАВЛЕНИЕ: У последней строки убираем все границы у последней ячейки */
     .orders-table tr:last-child td:last-child {
-        border-bottom: none !important;
+        border-bottom: none;
     }
     
     .orders-table td:before {
-        content: attr(data-label) !important;
-        font-weight: 600 !important;
-        color: var(--accent) !important;
-        margin-right: var(--space-3) !important;
-        flex-shrink: 0 !important;
-        min-width: 100px !important;
+        content: attr(data-label);
+        font-weight: 600;
+        color: var(--accent);
+        margin-right: var(--space-3);
+        flex-shrink: 0;
+        min-width: 100px;
     }
     
     .actions {
-        justify-content: center !important;
-        width: 100% !important;
-        gap: var(--space-3) !important;
+        justify-content: center;
+        width: 100%;
+        gap: var(--space-3);
     }
     
     .actions .btn {
-        flex: 1 !important;
-        min-width: 100px !important;
-        height: 40px !important;
-        font-size: var(--text-sm) !important;
+        flex: 1;
+        min-width: 100px;
+        height: 40px;
+        font-size: var(--text-sm);
     }
 }
 
 /* Еще более компактная версия для очень маленьких экранов */
 @media (max-width: 480px) {
     .orders-table tr {
-        padding: var(--space-4) !important;
+        padding: var(--space-4);
     }
     
     .orders-table td {
-        padding: var(--space-2) 0 !important;
-        font-size: var(--text-sm) !important;
+        padding: var(--space-2) 0;
+        font-size: var(--text-sm);
     }
 
     .orders-table tr:last-child td {
@@ -549,98 +548,98 @@
     }
     
     .actions {
-        gap: var(--space-2) !important;
+        gap: var(--space-2);
     }
     
     .actions .btn {
-        min-width: 80px !important;
-        height: 36px !important;
-        font-size: var(--text-xs) !important;
+        min-width: 80px;
+        height: 36px;
+        font-size: var(--text-xs);
     }
     
     .table-total-mobile .total-card {
-        padding: var(--space-5) !important;
-        background: var(--glass-background) !important;
-        backdrop-filter: var(--backdrop-blur) !important;
-        border-radius: var(--radius-lg) !important;
-        box-shadow: var(--glass-shadow) !important;
-        border: 1px solid var(--glass-border) !important;
-        text-align: center !important;
-        transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94) !important;
+        padding: var(--space-5);
+        background: var(--glass-background);
+        backdrop-filter: var(--backdrop-blur);
+        border-radius: var(--radius-lg);
+        box-shadow: var(--glass-shadow);
+        border: 1px solid var(--glass-border);
+        text-align: center;
+        transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
     }
 
     .table-total-mobile .total-card:hover {
-        transform: translateY(-2px) !important;
-        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.4) !important;
-        border-color: var(--accent) !important;
+        transform: translateY(-2px);
+        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.4);
+        border-color: var(--accent);
     }
     
     .table-total-mobile .total-label {
-        font-weight: 600 !important;
-        color: var(--text-primary) !important;
-        font-size: var(--text-lg) !important;
-        margin-bottom: var(--space-2) !important;
+        font-weight: 600;
+        color: var(--text-primary);
+        font-size: var(--text-lg);
+        margin-bottom: var(--space-2);
     }
     
     .table-total-mobile .total-amount {
-        font-weight: 700 !important;
-        color: var(--accent) !important;
-        font-size: var(--text-xl) !important;
+        font-weight: 700;
+        color: var(--accent);
+        font-size: var(--text-xl);
     }
 }
 
 /* Стили для маленьких кнопок в таблице */
 .actions .btn-small {
-    padding: var(--space-1) var(--space-3) !important;
-    min-width: 70px !important;
-    height: 28px !important;
-    font-size: var(--text-xs) !important;
+    padding: var(--space-1) var(--space-3);
+    min-width: 70px;
+    height: 28px;
+    font-size: var(--text-xs);
 }
 
 /* Убедись что класс danger заменен на btn-delete */
 .actions .danger {
-    background: rgba(239, 68, 68, 0.15) !important;
-    color: var(--error) !important;
-    border: 1px solid rgba(239, 68, 68, 0.3) !important;
+    background: rgba(239, 68, 68, 0.15);
+    color: var(--error);
+    border: 1px solid rgba(239, 68, 68, 0.3);
 }
 
 .actions .danger:hover {
-    background: var(--error) !important;
-    color: white !important;
-    transform: translateY(-1px) !important;
-    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3) !important;
-    border-color: var(--error) !important;
+    background: var(--error);
+    color: white;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+    border-color: var(--error);
 }
 
 @keyframes fadeInUp {
     from {
-        opacity: 0 !important;
-        transform: translateY(20px) !important;
+        opacity: 0;
+        transform: translateY(20px);
     }
     to {
-        opacity: 1 !important;
-        transform: translateY(0) !important;
+        opacity: 1;
+        transform: translateY(0);
     }
 }
 
 /* Мобильные стили для таблиц внутри аккордеонов */
 @media (max-width: 768px) {
     .accordion-section .orders-table {
-        display: block !important;
-        background: transparent !important;
-        box-shadow: none !important;
-        border: none !important;
-        backdrop-filter: none !important;
+        display: block;
+        background: transparent;
+        box-shadow: none;
+        border: none;
+        backdrop-filter: none;
     }
     
     .accordion-section .orders-table thead {
-        display: none !important;
+        display: none;
     }
     
     .accordion-section .orders-table tbody {
-        display: flex !important;
-        flex-direction: column !important;
-        gap: var(--space-4) !important;
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-4);
     }
     
     .accordion-section .orders-table tfoot {
@@ -648,36 +647,36 @@
     }
     
     .accordion-section .orders-table tr {
-        display: flex !important;
-        flex-direction: column !important;
-        padding: var(--space-4) !important;
-        background: var(--glass-background) !important;
-        backdrop-filter: var(--backdrop-blur) !important;
-        border-radius: var(--radius-lg) !important;
-        box-shadow: var(--glass-shadow) !important;
-        border: 1px solid var(--glass-border) !important;
-        animation: slideInUp 0.5s var(--ease-out-back) both !important;
+        display: flex;
+        flex-direction: column;
+        padding: var(--space-4);
+        background: var(--glass-background);
+        backdrop-filter: var(--backdrop-blur);
+        border-radius: var(--radius-lg);
+        box-shadow: var(--glass-shadow);
+        border: 1px solid var(--glass-border);
+        animation: slideInUp 0.5s var(--ease-out-back) both;
     }
     
     .accordion-section .orders-table td {
-        display: flex !important;
-        justify-content: space-between !important;
-        align-items: center !important;
-        text-align: left !important;
-        padding: var(--space-2) 0 !important;
-        border-bottom: 1px solid rgba(255, 255, 255, 0.1) !important;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        text-align: left;
+        padding: var(--space-2) 0;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
     }
     
     .accordion-section .orders-table td:last-child {
-        border-bottom: none !important;
+        border-bottom: none;
     }
     
     .accordion-section .orders-table td:before {
-        content: attr(data-label) !important;
-        font-weight: 600 !important;
-        color: var(--accent) !important;
-        margin-right: var(--space-3) !important;
-        min-width: 80px !important;
+        content: attr(data-label);
+        font-weight: 600;
+        color: var(--accent);
+        margin-right: var(--space-3);
+        min-width: 80px;
     }
 }
 
@@ -685,11 +684,11 @@
 @media (max-width: 768px) {
     /* Убираем скролл для таблиц создания заказа */
     #createOrderForm .orders-table-container {
-        overflow: visible !important;
-        background: transparent !important;
-        box-shadow: none !important;
-        border: none !important;
-        border-radius: 0 !important;
+        overflow: visible;
+        background: transparent;
+        box-shadow: none;
+        border: none;
+        border-radius: 0;
     }
     
     /* Улучшенные стили для кнопок удаления в карточках */
@@ -698,8 +697,8 @@
         color: var(--error) !important;
         border: 1px solid rgba(239, 68, 68, 0.3) !important;
         transition: all 0.3s ease !important;
-        width: 100% !important;
-        margin-top: var(--space-2) !important;
+        width: 100%;
+        margin-top: var(--space-2);
     }
     
     .remove-row-card:hover {
@@ -708,66 +707,4 @@
         transform: translateY(-1px) !important;
         box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3) !important;
     }
-}
-
-/* ===== FIX FOR TABLES IN ACCORDIONS ===== */
-
-/* Более специфичные селекторы для таблиц в аккордеонах */
-.accordion-section .section-content .orders-table {
-    width: 100% !important;
-    border-collapse: separate !important;
-    border-spacing: 0 !important;
-    font-size: var(--text-sm) !important;
-    background: var(--glass-background) !important;
-    backdrop-filter: var(--backdrop-blur) !important;
-    -webkit-backdrop-filter: var(--backdrop-blur) !important;
-    border-radius: var(--radius-xl) !important;
-    overflow: hidden !important;
-    box-shadow: var(--glass-shadow) !important;
-    border: 1px solid var(--glass-border) !important;
-}
-
-.accordion-section .section-content .orders-table th {
-    background: rgba(30, 41, 59, 0.8) !important;
-    padding: var(--space-4) var(--space-5) !important;
-    text-align: center !important;
-    font-weight: 600 !important;
-    color: var(--text-primary) !important;
-    border-bottom: 1px solid var(--glass-border) !important;
-    position: sticky !important;
-    top: 0 !important;
-    backdrop-filter: blur(10px) !important;
-}
-
-.accordion-section .section-content .orders-table td {
-    padding: var(--space-4) var(--space-5) !important;
-    border-bottom: 1px solid var(--glass-border) !important;
-    text-align: center !important;
-    color: var(--text-secondary) !important;
-    line-height: var(--line-height-loose) !important;
-}
-
-.accordion-section .section-content .orders-table tbody tr:nth-child(even) {
-    background: rgba(30, 41, 59, 0.3) !important;
-}
-
-.accordion-section .section-content .orders-table tbody tr:hover {
-    background: rgba(59, 130, 246, 0.1) !important;
-    color: var(--text-primary) !important;
-}
-
-.accordion-section .section-content .orders-table tfoot {
-    background: rgba(30, 41, 59, 0.4) !important;
-    font-weight: 600 !important;
-}
-
-.accordion-section .section-content .orders-table tfoot td {
-    border-top: 2px solid var(--glass-border) !important;
-    color: var(--text-primary) !important;
-}
-
-/* Убираем фон у section-content когда есть таблица */
-.accordion-section .section-content:has(.orders-table) {
-    background: transparent !important;
-    padding: 0 !important;
 }

@@ -113,7 +113,17 @@ export class ModalUtils {
     }
     
     static closeAllModals() {
-        document.querySelectorAll('.modal-overlay').forEach(modal => modal.remove());
+        document.querySelectorAll('.modal-overlay').forEach(modal => {
+            // Не удаляем модальные окна с определенными ID
+            const protectedModals = ['editUserModal', 'createUserModal'];
+            if (!protectedModals.includes(modal.id)) {
+                modal.remove();
+            } else {
+                // Для защищенных модалок просто скрываем
+                modal.style.display = 'none';
+                modal.classList.remove('active');
+            }
+        });
     }
 
     /**

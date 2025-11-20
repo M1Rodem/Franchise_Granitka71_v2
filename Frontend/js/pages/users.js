@@ -92,7 +92,7 @@ function setupEditModal() {
     if (!modal || !form) return;
 
     // Закрытие модалки
-    const closeElements = modal.querySelectorAll('[data-close-modal], .modal-close, #cancelEditBtn');
+    const closeElements = modal.querySelectorAll('[data-close-modal], .modal-close');
     closeElements.forEach(element => {
         element.addEventListener('click', () => hideEditModal());
     });
@@ -281,6 +281,7 @@ function resetFilters() {
 function showCreateUserModal() {
     const modal = document.getElementById('createUserModal');
     if (modal) {
+        modal.style.display = 'flex';
         modal.classList.add('active');
         document.getElementById('createUsername').value = '';
         document.getElementById('createPassword').value = '';
@@ -292,6 +293,7 @@ function showCreateUserModal() {
 function hideCreateUserModal() {
     const modal = document.getElementById('createUserModal');
     if (modal) {
+        modal.style.display = 'none';
         modal.classList.remove('active');
     }
 }
@@ -353,6 +355,7 @@ async function openEditModal(userId) {
 function showEditModal() {
     const modal = document.getElementById('editUserModal');
     if (modal) {
+        modal.style.display = 'flex';
         modal.classList.add('active');
     }
 }
@@ -360,6 +363,7 @@ function showEditModal() {
 function hideEditModal() {
     const modal = document.getElementById('editUserModal');
     if (modal) {
+        modal.style.display = 'none';
         modal.classList.remove('active');
         currentEditUserId = null;
     }
@@ -375,8 +379,8 @@ async function saveUserChanges() {
 
     const newPassword = document.getElementById('editPassword').value.trim();
     if (newPassword) {
-        if (newPassword.length < 6) {
-            showTempMessage('Пароль должен содержать минимум 6 символов', 'error');
+        if (newPassword.length < 8) {
+            showTempMessage('Пароль должен содержать минимум 8 символов', 'error');
             return;
         }
         payload.password = newPassword;
@@ -401,8 +405,8 @@ function validateCreateUser(payload) {
     if (!payload.username || !payload.password || !payload.fullName) {
         return 'Заполните обязательные поля';
     }
-    if (payload.password.length < 6) {
-        return 'Пароль должен быть не менее 6 символов';
+    if (payload.password.length < 8) {
+        return 'Пароль должен быть не менее 8 символов';
     }
     if (!['Admin', 'Manager'].includes(payload.role)) {
         return 'Неверная роль';

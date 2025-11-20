@@ -264,7 +264,6 @@ export function secureGetToken() {
         
         if (!secureToken.value || !secureToken.timestamp || !secureToken.signature) {
             console.warn('Invalid token structure');
-            secureRemoveToken();
             return null;
         }
         
@@ -285,7 +284,6 @@ export function secureGetToken() {
         return secureToken.value;
     } catch (error) {
         console.error('Token retrieval error:', error);
-        secureRemoveToken();
         return null;
     }
 }
@@ -333,17 +331,9 @@ export function secureGetUserData() {
         
         const userData = JSON.parse(stored);
         
-        // Проверка свежести данных (макс 24 часа)
-        if (Date.now() - (userData.timestamp || 0) > 24 * 60 * 60 * 1000) {
-            console.warn('User data too old');
-            secureRemoveToken();
-            return null;
-        }
-        
         return userData;
     } catch (error) {
         console.error('User data retrieval error:', error);
-        secureRemoveToken();
         return null;
     }
 }

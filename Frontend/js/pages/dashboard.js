@@ -1,13 +1,13 @@
 import { apiService } from '../api/api.js';
-import { formatDate, escapeHtml, getPaymentStatus, getPaymentStatusText, setupUserNameAdaptivity, getUserNameFromOrder, getStatusBadgeClass } from '../utils/utils.js';
+import {secureGetUserData, secureGetToken, formatDate, escapeHtml, getPaymentStatus, getPaymentStatusText, setupUserNameAdaptivity, getUserNameFromOrder, getStatusBadgeClass } from '../utils/utils.js';
 import { SidebarManager } from '../core/sidebar-manager.js';
 
 document.addEventListener('DOMContentLoaded', async () => {
     try {
         // Проверка авторизации
-        const userData = JSON.parse(localStorage.getItem('userData') || '{}');
-        const token = localStorage.getItem('token');
-        
+        const userData = secureGetUserData(); // он умеет распаковывать
+        const token = secureGetToken(); // он умеет распаковывать
+
         if (!userData || !token) {
             window.location.href = 'login.html';
             return;
@@ -21,6 +21,9 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         // Загрузка данных dashboard
         await loadDashboardData();
+        
+        // Инициализация кликабельных карточек
+        initStatCardsClickHandlers();
         
     } catch (error) {
         // В случае ошибки редирект на логин
@@ -153,4 +156,45 @@ function showLoadingState(loading) {
 
 function viewOrder(orderId) {
     window.location.href = `view-order.html?id=${orderId}`;
+}
+
+// ====== ОБРАБОТЧИКИ КЛИКОВ ДЛЯ СТАТИСТИЧЕСКИХ КАРТОЧЕК ======
+
+/**
+ * Обработка клика по статистической карточке
+ */
+function handleStatCardClick(event) {
+    const card = event.currentTarget;
+    const filterType = card.getAttribute('data-filter');
+    
+    // Сохраняем тип фильтра в localStorage для использования на странице orders
+    localStorage.setItem('dashboardFilter', filterType);
+    
+    // Переходим на страницу заказов
+    window.location.href = 'orders.html';
+}
+
+/**
+ * Инициализация кликабельных статистических карточек
+ */
+function initStatCardsClickHandlers() {
+    const statCards = document.querySelectorAll('.clickable-stat-card');
+    
+    statCards.forEach(card => {
+        // Добавляем обработчик клика
+        card.addEventListener('click', handleStatCardClick);
+        
+        // Добавляем обработчик клавиатуры для доступности
+        card.addEventListener('keydown', (event) => {
+            if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault();
+                handleStatCardClick(event);
+            }
+        });
+        
+        // Добавляем стили для интерактивности
+        card.style.cursor = 'pointer';
+        card.setAttribute('tabindex', '0');
+        card.setAttribute('role', 'button');
+    });
 }

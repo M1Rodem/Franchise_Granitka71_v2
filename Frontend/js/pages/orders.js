@@ -19,6 +19,7 @@ document.addEventListener('DOMContentLoaded', () => {
             localStorage.removeItem('token');
             localStorage.removeItem('userData');
             localStorage.removeItem('orderFilters');
+            localStorage.removeItem('dashboardFilter'); // Очищаем фильтр дашборда
             window.location.href = 'login.html';
         });
     }
@@ -27,6 +28,10 @@ document.addEventListener('DOMContentLoaded', () => {
 async function initializeOrdersPage() {
     setupOrdersEventListeners();
     loadFiltersFromUrl();
+    
+    // Применяем фильтр из дашборда, если он есть
+    await applyDashboardFilter();
+    
     await loadOrders();
 }
 
@@ -61,6 +66,75 @@ function setupOrdersEventListeners() {
 
     // Attach events to order rows (делегирование событий)
     attachOrderEvents();
+}
+
+/**
+ * Применяет фильтр из дашборда при переходе с dashboard
+ */
+async function applyDashboardFilter() {
+    const dashboardFilter = localStorage.getItem('dashboardFilter');
+    
+    if (!dashboardFilter) return;
+    
+    // Очищаем фильтр после применения
+    localStorage.removeItem('dashboardFilter');
+    
+    switch (dashboardFilter) {
+        case 'all':
+            // Все заказы - сбрасываем фильтры
+            await resetFilters();
+            showTempMessage('Показаны все заказы', 'info');
+            break;
+            
+        case 'unpaid':
+            // Неоплаченные заказы - используем правильное значение для select
+            // Проверяем какие значения используются в select
+            const statusFilter = document.getElementById('statusFilter');
+            // Ищем option со значением, соответствующим статусу 1 (Не оплачен)
+            const unpaidOption = Array.from(statusFilter.options).find(opt => 
+                mapStatusToEnum(opt.value) === 1
+            );
+            
+            if (unpaidOption) {
+                statusFilter.value = unpaidOption.value;
+            } else {
+                // Fallback: используем значение, которое соответствует статусу 1
+                statusFilter.value = 'unpaid';
+            }
+            
+            // Обновляем URL параметр
+            updateUrlParam('Status', '1');
+            // Загружаем заказы с фильтром
+            await loadOrdersWithFilters({
+                page: 1,
+                pageSize: pageSize,
+                sortBy: 'UpdatedAt',
+                sortDesc: true,
+                PaymentStatus: 1
+            });
+            showTempMessage('Показаны неоплаченные заказы', 'info');
+            break;
+            
+        case 'today':
+            // Заказы за сегодня
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('dateFrom').value = today;
+            document.getElementById('dateTo').value = today;
+            // Обновляем URL параметры
+            updateUrlParam('dateFrom', today);
+            updateUrlParam('dateTo', today);
+            // Загружаем заказы с фильтром
+            await loadOrdersWithFilters({
+                page: 1,
+                pageSize: pageSize,
+                sortBy: 'UpdatedAt',
+                sortDesc: true,
+                OrderDateFrom: today + 'T00:00:00.000Z',
+                OrderDateTo: today + 'T23:59:59.999Z'
+            });
+            showTempMessage('Показаны заказы за сегодня', 'info');
+            break;
+    }
 }
 
 function handleSearchInput() {

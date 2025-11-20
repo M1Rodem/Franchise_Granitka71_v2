@@ -55,15 +55,21 @@
         <div class="container">
             <section class="dashboard-stats" aria-labelledby="stats-heading">
                 <h2 id="stats-heading" class="sr-only">Статистика заказов</h2>
-                <div class="stat-card skeleton" data-type="total" role="img" aria-label="Всего заказов">
+                
+                <!-- Карточка "Всего заказов" с кликом на orders.html -->
+                <div class="stat-card skeleton clickable-stat-card" data-type="total" data-filter="all" role="button" aria-label="Перейти к списку всех заказов" tabindex="0">
                     <h3>Всего заказов</h3>
                     <div class="stat-number skeleton-text" id="totalOrders">0</div>
                 </div>
-                <div class="stat-card skeleton" data-type="unpaid" role="img" aria-label="Неоплаченные заказы">
+                
+                <!-- Карточка "Неоплаченные" с кликом на orders.html с фильтром -->
+                <div class="stat-card skeleton clickable-stat-card" data-type="unpaid" data-filter="unpaid" role="button" aria-label="Перейти к списку неоплаченных заказов" tabindex="0">
                     <h3>Неоплаченные</h3>
                     <div class="stat-number skeleton-text" id="unpaidOrders">0</div>
                 </div>
-                <div class="stat-card skeleton" data-type="today" role="img" aria-label="Заказы за сегодня">
+                
+                <!-- Карточка "За сегодня" с кликом на orders.html с фильтром по дате -->
+                <div class="stat-card skeleton clickable-stat-card" data-type="today" data-filter="today" role="button" aria-label="Перейти к списку заказов за сегодня" tabindex="0">
                     <h3>За сегодня</h3>
                     <div class="stat-number skeleton-text" id="todayOrders">0</div>
                 </div>

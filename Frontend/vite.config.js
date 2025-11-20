@@ -1,43 +1,44 @@
 import { defineConfig } from 'vite';
 import { resolve } from 'path';
-import { readdirSync } from 'fs';
 
-export default defineConfig({
-  root: './',
-  base: './',
-  server: {
-    port: 3000,
-    host: '0.0.0.0',
-    open: true,
-    proxy: {
-      '/api': {
-        target: process.env.API_PROXY_TARGET || 'http://localhost:5000',
-        changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api/, '/api'), 
-        secure: false
+export default defineConfig(({ mode }) => {
+  const isProduction = mode === 'production';
+  
+  return {
+    root: './',
+    base: isProduction ? '/' : './',
+    server: {
+      port: 3000,
+      host: '0.0.0.0',
+      proxy: {
+        '/api': {
+          target: process.env.API_PROXY_TARGET || 'http://localhost:5000',
+          changeOrigin: true,
+          rewrite: (path) => path.replace(/^\/api/, '/api'),
+          secure: false
+        }
       }
-    }
-  },
-  build: {
-    outDir: 'dist',
-    emptyOutDir: true,
-    sourcemap: false,
-    rollupOptions: {
-      input: {
-        // ЯВНО УКАЗЫВАЕМ ВСЕ HTML ФАЙЛЫ ИЗ КОРНЯ
-        'index': resolve(__dirname, 'index.html'),
-        'login': resolve(__dirname, 'login.html'), 
-        'dashboard': resolve(__dirname, 'dashboard.html'),
-        'orders': resolve(__dirname, 'orders.html'),
-        'view-order': resolve(__dirname, 'view-order.html'),
-        'create-order': resolve(__dirname, 'create-order.html'),
-        'archived-orders': resolve(__dirname, 'archived-orders.html'),
-        'profile': resolve(__dirname, 'profile.html'),
-        'users': resolve(__dirname, 'users.html')
+    },
+    build: {
+      outDir: 'dist',
+      emptyOutDir: true,
+      sourcemap: false,
+      rollupOptions: {
+        input: {
+          'index': resolve(__dirname, 'index.html'),
+          'login': resolve(__dirname, 'login.html'),
+          'dashboard': resolve(__dirname, 'dashboard.html'),
+          'orders': resolve(__dirname, 'orders.html'),
+          'view-order': resolve(__dirname, 'view-order.html'),
+          'create-order': resolve(__dirname, 'create-order.html'),
+          'archived-orders': resolve(__dirname, 'archived-orders.html'),
+          'profile': resolve(__dirname, 'profile.html'),
+          'users': resolve(__dirname, 'users.html')
+        }
       }
+    },
+    esbuild: {
+      target: 'es2020'
     }
-  },
-  esbuild: {
-    target: 'es2020'
-  }
+  };
 });

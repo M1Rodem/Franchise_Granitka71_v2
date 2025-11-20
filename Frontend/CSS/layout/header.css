@@ -284,8 +284,8 @@
 
     /* ФИО на мобильных - УВЕЛИЧЕНЫ РАЗМЕРЫ И ИСПРАВЛЕН ПЕРЕНОС */
     .user-profile-link {
-        font-size: var(--text-sm);
-        padding: var(--space-2) var(--space-3);
+        font-size: var(--text-xl);
+        padding: var(--space-3) var(--space-3);
         min-height: 40px;
         max-width: 140px;
         border: none;
@@ -307,7 +307,7 @@
         -webkit-line-clamp: 1;
         max-height: none;
         display: block; /* ИЗМЕНЕНО: было flex, стало block */
-        padding-top: var(--space-2);
+        padding-top: var(--space-3);
         padding-bottom: var(--space-2);
     }
 
@@ -344,7 +344,7 @@
     }
 
     .header h1 {
-        font-size: var(--text-base);
+        font-size: var(--text-xl);
         max-width: 120px;
     }
 
@@ -362,9 +362,9 @@
     /* ФИО на маленьких мобильных - УВЕЛИЧЕН РАЗМЕР */
     .user-profile-link {
         font-size: var(--text-sm);
-        padding: var(--space-2);
+        padding: var(--space-3);
         min-height: 40px;
-        max-width: 100px; /* УМЕНЬШАЕМ ШИРИНУ */
+        max-width: 130px; /* УМЕНЬШАЕМ ШИРИНУ */
     }
 
     .header .btn-outline {
@@ -407,12 +407,12 @@
     }
 
     .header h1 {
-        font-size: var(--text-base);
+        font-size: var(--text-2xl);
         max-width: 130px;
     }
 
     .user-profile-link {
-        max-width: 120px;
+        max-width: 200px;
         min-height: 40px;
     }
     

@@ -166,71 +166,53 @@ export class ViewOrderManager {
         `;
     }
 
-renderWorkItems(workItems) {
-    if (!this.workItemsContainer) return;
+    renderWorkItems(workItems) {
+        if (!this.workItemsContainer) return;
 
-    if (workItems.length === 0) {
-        this.workItemsContainer.innerHTML = '<p class="no-data">Нет работ</p>';
-        return;
-    }
-    
-    const total = workItems.reduce((sum, item) => sum + (Number(item.price || 0) * Number(item.quantity || 1)), 0);
-    
-    // Добавляем inline стили как fallback
-    const tableStyle = `
-        width: 100%; 
-        border-collapse: collapse; 
-        background: rgba(15, 23, 42, 0.8);
-        border-radius: 12px;
-        overflow: hidden;
-        margin-bottom: 16px;
-    `;
-    
-    this.workItemsContainer.innerHTML = `
-        <table class="orders-table" style="${tableStyle}">
-            <thead>
-                <tr>
-                    <th style="padding: 12px 16px; background: rgba(30, 41, 59, 0.9);">Описание</th>
-                    <th style="padding: 12px 16px; background: rgba(30, 41, 59, 0.9);">Кол-во</th>
-                    <th style="padding: 12px 16px; background: rgba(30, 41, 59, 0.9);">Цена</th>
-                    <th style="padding: 12px 16px; background: rgba(30, 41, 59, 0.9);">Итого</th>
-                    <th style="padding: 12px 16px; background: rgba(30, 41, 59, 0.9);">Примечание</th>
-                </tr>
-            </thead>
-            <tbody>
-                ${workItems.map(item => `
-                    <tr style="border-bottom: 1px solid rgba(255, 255, 255, 0.05);">
-                        <td data-label="Описание" style="padding: 12px 16px;">${escapeHtml(item.workDescription || item.name || '')}</td>
-                        <td data-label="Кол-во" style="padding: 12px 16px;">${item.quantity || 1}</td>
-                        <td data-label="Цена" style="padding: 12px 16px;">${formatCurrency(item.price || 0)}</td>
-                        <td data-label="Итого" style="padding: 12px 16px;">${formatCurrency((item.price || 0) * (item.quantity || 1))}</td>
-                        <td data-label="Примечание" style="padding: 12px 16px;">${escapeHtml(item.note || '—')}</td>
-                    </tr>
-                `).join('')}
-            </tbody>
-            <tfoot style="background: rgba(30, 41, 59, 0.6);">
-                <tr>
-                    <td colspan="3" style="padding: 12px 16px; border-top: 2px solid rgba(255, 255, 255, 0.1);"><strong>Итого по работам:</strong></td>
-                    <td colspan="2" style="padding: 12px 16px; border-top: 2px solid rgba(255, 255, 255, 0.1);"><strong>${formatCurrency(total)}</strong></td>
-                </tr>
-            </tfoot>
-        </table>
-        <div class="table-total-mobile">
-            <div class="total-card">
-                <div class="total-label">Итого по работам</div>
-                <div class="total-amount">${formatCurrency(total)}</div>
-            </div>
-        </div>
-    `;
-    
-    // Проверяем применение стилей
-    setTimeout(() => {
-        const table = this.workItemsContainer.querySelector('.orders-table');
-        if (table) {
-            const styles = window.getComputedStyle(table);
+        if (workItems.length === 0) {
+            this.workItemsContainer.innerHTML = '<p class="no-data">Нет работ</p>';
+            return;
         }
-    }, 100);
-}
+        
+        const total = workItems.reduce((sum, item) => sum + (Number(item.price || 0) * Number(item.quantity || 1)), 0);
+        
+        this.workItemsContainer.innerHTML = `
+            <table class="orders-table work-items-table view-order-table">
+                <thead>
+                    <tr>
+                        <th>Описание</th>
+                        <th>Кол-во</th>
+                        <th>Цена</th>
+                        <th>Итого</th>
+                        <th>Примечание</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${workItems.map(item => `
+                        <tr>
+                            <td data-label="Описание">${escapeHtml(item.workDescription || item.name || '')}</td>
+                            <td data-label="Кол-во">${item.quantity || 1}</td>
+                            <td data-label="Цена">${formatCurrency(item.price || 0)}</td>
+                            <td data-label="Итого">${formatCurrency((item.price || 0) * (item.quantity || 1))}</td>
+                            <td data-label="Примечание">${escapeHtml(item.note || '—')}</td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+                <tfoot>
+                    <tr>
+                        <td colspan="3"><strong>Итого по работам:</strong></td>
+                        <td colspan="2"><strong>${formatCurrency(total)}</strong></td>
+                    </tr>
+                </tfoot>
+            </table>
+            <div class="table-total-mobile">
+                <div class="total-card">
+                    <div class="total-label">Итого по работам</div>
+                    <div class="total-amount">${formatCurrency(total)}</div>
+                </div>
+            </div>
+        `;
+    }
 
     renderPayments(payments) {
         if (!this.paymentsContainer) return;
@@ -243,7 +225,7 @@ renderWorkItems(workItems) {
         const totalPaid = payments.reduce((sum, p) => sum + Number(p.amount || 0), 0);
 
         this.paymentsContainer.innerHTML = `
-            <table class="orders-table">
+            <table class="orders-table payments-table view-order-table">
                 <thead>
                     <tr>
                         <th>Тип</th>

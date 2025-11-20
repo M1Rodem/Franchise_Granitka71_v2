@@ -181,6 +181,7 @@ async function handlePasswordChange(e) {
             newPassword: newPass 
         });
         
+        // УСПЕШНОЕ ОПОВЕЩЕНИЕ - УЖЕ ЕСТЬ В КОДЕ
         showTempMessage('Пароль успешно изменён', 'success');
         
         // Очищаем форму

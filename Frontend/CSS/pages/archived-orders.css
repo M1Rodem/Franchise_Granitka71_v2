@@ -150,7 +150,7 @@
 .orders-table th {
     background: rgba(30, 41, 59, 0.9);
     padding: var(--space-5);
-    text-align: left;
+    text-align: center;
     font-weight: 600;
     color: var(--text-primary);
     border-bottom: 1px solid var(--glass-border);

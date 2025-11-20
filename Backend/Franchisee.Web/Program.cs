@@ -118,5 +118,4 @@ app.Use(async (context, next) =>
 // Настройка конвейера
 AppConfiguration.ConfigurePipeline(app, app.Environment);
 
-app.UsePathBase("/api");
 app.Run();

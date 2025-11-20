@@ -6,9 +6,9 @@
     "scripts": {
         "dev": "vite",
         "build": "vite build",
+        "build:prod": "vite build --mode production",
         "preview": "vite preview",
-        "start": "node server.js",
-        "obfuscate": "node obfuscate.js"
+        "start": "node server.js"
     },
     "dependencies": {
         "cors": "^2.8.5",

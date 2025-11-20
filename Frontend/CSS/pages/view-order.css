@@ -571,3 +571,162 @@
 .page-header-actions .btn-group .btn {
     border-radius: var(--radius);
 }
+
+/* ===== SPECIFIC STYLES FOR VIEW-ORDER PAGE TABLES ===== */
+
+/* Стили для таблиц на странице просмотра заказа */
+.view-order-table {
+    width: 100%;
+    border-collapse: collapse;
+    background: var(--glass-background);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    margin-bottom: var(--space-4);
+    box-shadow: var(--glass-shadow);
+    border: 1px solid var(--glass-border);
+}
+
+.view-order-table th {
+    background: rgba(30, 41, 59, 0.9);
+    padding: var(--space-4) var(--space-5);
+    text-align: center;
+    font-weight: 600;
+    color: var(--text-primary);
+    border-bottom: 1px solid var(--glass-border);
+    position: sticky;
+    top: 0;
+    backdrop-filter: blur(10px);
+}
+
+.view-order-table td {
+    padding: var(--space-4) var(--space-5);
+    border-bottom: 1px solid var(--glass-border);
+    text-align: center;
+    color: var(--text-secondary);
+    line-height: var(--line-height-loose);
+}
+
+.view-order-table tbody tr:nth-child(even) {
+    background: rgba(30, 41, 59, 0.3);
+}
+
+.view-order-table tbody tr:hover {
+    background: rgba(59, 130, 246, 0.1);
+    color: var(--text-primary);
+}
+
+.view-order-table tbody tr:last-child td {
+    border-bottom: none;
+}
+
+.view-order-table tfoot {
+    background: rgba(30, 41, 59, 0.6);
+    font-weight: 600;
+}
+
+.view-order-table tfoot td {
+    border-top: 2px solid var(--glass-border);
+    padding: var(--space-4) var(--space-5);
+}
+
+/* Мобильные стили для таблиц на странице просмотра */
+@media (max-width: 768px) {
+    .view-order-table {
+        background: transparent;
+        box-shadow: none;
+        border: none;
+        backdrop-filter: none;
+    }
+    
+    .view-order-table thead {
+        display: none;
+    }
+    
+    .view-order-table tbody {
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-4);
+    }
+    
+    .view-order-table tfoot {
+        display: none;
+    }
+    
+    .view-order-table tr {
+        display: flex;
+        flex-direction: column;
+        padding: var(--space-4);
+        background: var(--glass-background);
+        backdrop-filter: var(--backdrop-blur);
+        border-radius: var(--radius-lg);
+        box-shadow: var(--glass-shadow);
+        border: 1px solid var(--glass-border);
+    }
+    
+    .view-order-table td {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        text-align: left;
+        padding: var(--space-2) 0;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    
+    .view-order-table td:last-child {
+        border-bottom: none;
+        padding-top: var(--space-3);
+        margin-top: var(--space-2);
+    }
+    
+    .view-order-table td:before {
+        content: attr(data-label);
+        font-weight: 600;
+        color: var(--accent);
+        margin-right: var(--space-3);
+        min-width: 80px;
+    }
+    
+    /* Показываем мобильные итоги */
+    .table-total-mobile {
+        display: block;
+        margin-top: var(--space-4);
+    }
+    
+    .table-total-mobile .total-card {
+        padding: var(--space-4);
+        background: var(--glass-background);
+        backdrop-filter: var(--backdrop-blur);
+        border-radius: var(--radius-lg);
+        box-shadow: var(--glass-shadow);
+        border: 1px solid var(--glass-border);
+        text-align: center;
+    }
+    
+    .table-total-mobile .total-label {
+        font-weight: 600;
+        color: var(--text-primary);
+        font-size: var(--text-base);
+        margin-bottom: var(--space-2);
+    }
+    
+    .table-total-mobile .total-amount {
+        font-weight: 700;
+        color: var(--accent);
+        font-size: var(--text-lg);
+    }
+}
+
+/* Убедимся, что таблицы внутри аккордеонов наследуют правильные стили */
+.accordion-section .view-order-table {
+    background: transparent;
+    box-shadow: none;
+    border: 1px solid var(--glass-border);
+}
+
+.accordion-section .view-order-table th {
+    background: rgba(30, 41, 59, 0.4);
+}
+
+.accordion-section .view-order-table tfoot {
+    background: rgba(30, 41, 59, 0.4);
+}

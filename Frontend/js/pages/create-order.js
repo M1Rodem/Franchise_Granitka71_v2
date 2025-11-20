@@ -1,7 +1,7 @@
 import { PageManager } from '../core/page-manager.js';
 import { apiService } from '../api/api.js';
 import { formatCurrency, getTodayDate, isValidEmail, isValidPhone, populateForm,  getFormValue, showTempMessage, } from '../utils/utils.js';
-import { setupDragAndDrop, handlePhotoSelect, uploadTempAndDisplay, renderPhotoGrid, tempUploads, clearTempPhotos, attachPhotoEvents, getTempPhotoIds, loadAndCleanupTemp } from '../utils/photo-utils.js';
+import { handlePhotoSelect, uploadTempAndDisplay, renderPhotoGrid, tempUploads, clearTempPhotos, attachPhotoEvents, getTempPhotoIds, loadAndCleanupTemp } from '../utils/photo-utils.js';
 
 export class CreateOrderManager {
     constructor(pageManager) {
@@ -659,6 +659,7 @@ document.addEventListener('DOMContentLoaded', () => {
     PageManager.initialize('create-order', async () => {
         const createOrderManager = new CreateOrderManager(PageManager);
         await createOrderManager.initialize();
+
         
         // Сохраняем ссылку для возможного доступа извне
         window.createOrderManager = createOrderManager;
@@ -670,6 +671,7 @@ window.addEventListener('beforeunload', () => {
     if (window.createOrderManager) {
         window.createOrderManager.destroy();
     }
+
 });
 
 // Глобальные функции для legacy HTML

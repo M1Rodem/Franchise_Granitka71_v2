@@ -20,10 +20,40 @@ namespace Franchisee.Web.Services
                 .Include(o => o.WorkItems)
                 .Include(o => o.Payments)
                 .Include(o => o.Photos)
-                .Include(o => o.Manager)
+                .Include(o => o.Manager) // ДОБАВЛЯЕМ ПРОЕКЦИЮ
+                .Select(o => new Order
+                {
+                    Id = o.Id,
+                    OrderNumber = o.OrderNumber,
+                    Place = o.Place,
+                    InspectionPlace = o.InspectionPlace,
+                    OrderDate = o.OrderDate,
+                    DeceasedFullName = o.DeceasedFullName,
+                    CustomerFullName = o.CustomerFullName,
+                    CustomerEmail = o.CustomerEmail,
+                    Phone = o.Phone,
+                    Address = o.Address,
+                    MonumentType = o.MonumentType,
+                    MonumentSize = o.MonumentSize,
+                    AdditionalInfo = o.AdditionalInfo,
+                    Status = o.Status,
+                    TotalPrice = o.TotalPrice,
+                    CreatedAt = o.CreatedAt,
+                    UpdatedAt = o.UpdatedAt,
+                    ManagerId = o.ManagerId,
+                    Manager = o.Manager == null ? null : new Manager // ПРОЕКЦИЯ МЕНЕДЖЕРА
+                    {
+                        FullName = o.Manager.FullName,
+                    },
+                    WorkItems = o.WorkItems,
+                    Payments = o.Payments,
+                    Photos = o.Photos,
+                    IsDeleted = o.IsDeleted,
+                    DeletedAt = o.DeletedAt,
+                    IsArchived = o.IsArchived
+                })
                 .AsNoTracking();
         }
-
         public async Task<bool> ExistsAsync(int id)
         {
             return await _context.Orders.AnyAsync(o => o.Id == id);

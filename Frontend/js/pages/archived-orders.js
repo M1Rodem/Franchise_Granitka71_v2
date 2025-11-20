@@ -3,7 +3,8 @@ import { ModalUtils } from '../utils/modal-utils.js';
 import { 
     formatDate, 
     escapeHtml, 
-    showTempMessage
+    showTempMessage,
+    initHeaderAdaptivity
 } from '../utils/utils.js';
 
 let currentPage = 1;
@@ -15,6 +16,7 @@ let totalCount = 0;
 
 document.addEventListener('DOMContentLoaded', function() {
     initializeArchivedOrdersPage();
+    initHeaderAdaptivity();
 });
 
 function initializeArchivedOrdersPage() {

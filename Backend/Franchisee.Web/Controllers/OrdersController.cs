@@ -59,7 +59,7 @@ namespace Franchisee.Web.Controllers
             _logger.LogInformation("Получение заказа {OrderId} для пользователя {UserId}", id, userId);
 
             var order = await _orderRepository.GetByIdAsync(id);
-            if (order == null) return NotFound($"Заказ с ID {id} не найден");
+            if (order == null) return NotFound($"Заказ с ID {id} не найден");ПафывкзхэдшоларыапфвукцощзхъПИЫВМФакхъвощзЗХОЩЪПфваымку
 
             var dto = MapToResponseDto(order);
             return Ok(dto);
@@ -383,13 +383,44 @@ namespace Franchisee.Web.Controllers
             {
                 // ФИКС: Используем прямой запрос к БД с IgnoreQueryFilters
                 var query = _context.Orders
-                    .IgnoreQueryFilters()
-                    .Where(o => o.IsDeleted)
-                    .Include(o => o.WorkItems)
-                    .Include(o => o.Payments)
-                    .Include(o => o.Photos)
-                    .Include(o => o.Manager)
-                    .AsNoTracking();
+                .IgnoreQueryFilters()
+                .Where(o => o.IsDeleted)
+                .Include(o => o.WorkItems)
+                .Include(o => o.Payments)
+                .Include(o => o.Photos)
+                .Include(o => o.Manager)
+                .Select(o => new Order // ПРОЕКЦИЯ ДЛЯ АРХИВНЫХ ЗАКАЗОВ
+                {
+                    Id = o.Id,
+                    OrderNumber = o.OrderNumber,
+                    Place = o.Place,
+                    InspectionPlace = o.InspectionPlace,
+                    OrderDate = o.OrderDate,
+                    DeceasedFullName = o.DeceasedFullName,
+                    CustomerFullName = o.CustomerFullName,
+                    CustomerEmail = o.CustomerEmail,
+                    Phone = o.Phone,
+                    Address = o.Address,
+                    MonumentType = o.MonumentType,
+                    MonumentSize = o.MonumentSize,
+                    AdditionalInfo = o.AdditionalInfo,
+                    Status = o.Status,
+                    TotalPrice = o.TotalPrice,
+                    CreatedAt = o.CreatedAt,
+                    UpdatedAt = o.UpdatedAt,
+                    ManagerId = o.ManagerId,
+                    Manager = o.Manager == null ? null : new Manager
+                    {
+                        FullName = o.Manager.FullName,
+                    },
+                    WorkItems = o.WorkItems,
+                    Payments = o.Payments,
+                    Photos = o.Photos,
+                    IsDeleted = o.IsDeleted,
+                    DeletedAt = o.DeletedAt,
+                    IsArchived = o.IsArchived
+                })
+                .AsNoTracking();
 
                 // Применяем фильтры
                 if (!string.IsNullOrWhiteSpace(filter.SearchQuery))
@@ -507,12 +538,44 @@ namespace Franchisee.Web.Controllers
             try
             {
                 var order = await _context.Orders
-                    .IgnoreQueryFilters()
-                    .Include(o => o.WorkItems)
-                    .Include(o => o.Payments)
-                    .Include(o => o.Photos)
-                    .Include(o => o.Manager)
-                    .FirstOrDefaultAsync(o => o.Id == id && o.IsDeleted);
+                .IgnoreQueryFilters()
+                .Where(o => o.Id == id && o.IsDeleted)
+                .Include(o => o.WorkItems)
+                .Include(o => o.Payments)
+                .Include(o => o.Photos)
+                .Include(o => o.Manager)
+                .Select(o => new Order // ПРОЕКЦИЯ ДЛЯ АРХИВНОГО ЗАКАЗА
+                {
+                    Id = o.Id,
+                    OrderNumber = o.OrderNumber,
+                    Place = o.Place,
+                    InspectionPlace = o.InspectionPlace,
+                    OrderDate = o.OrderDate,
+                    DeceasedFullName = o.DeceasedFullName,
+                    CustomerFullName = o.CustomerFullName,
+                    CustomerEmail = o.CustomerEmail,
+                    Phone = o.Phone,
+                    Address = o.Address,
+                    MonumentType = o.MonumentType,
+                    MonumentSize = o.MonumentSize,
+                    AdditionalInfo = o.AdditionalInfo,
+                    Status = o.Status,
+                    TotalPrice = o.TotalPrice,
+                    CreatedAt = o.CreatedAt,
+                    UpdatedAt = o.UpdatedAt,
+                    ManagerId = o.ManagerId,
+                    Manager = o.Manager == null ? null : new Manager
+                    {
+                        FullName = o.Manager.FullName,
+                    },
+                    WorkItems = o.WorkItems,
+                    Payments = o.Payments,
+                    Photos = o.Photos,
+                    IsDeleted = o.IsDeleted,
+                    DeletedAt = o.DeletedAt,
+                    IsArchived = o.IsArchived
+                })
+            .FirstOrDefaultAsync();
 
                 if (order == null)
                     return NotFound("Архивный заказ не найден");

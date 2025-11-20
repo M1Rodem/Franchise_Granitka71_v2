@@ -1,9 +1,10 @@
 import { apiService } from '../api/api.js';
-import { showTempMessage, getFormValue } from '../utils/utils.js';
+import { showTempMessage, getFormValue, initHeaderAdaptivity } from '../utils/utils.js';
 import { ModalUtils } from '../utils/modal-utils.js';
 
 document.addEventListener('DOMContentLoaded', async () => {
     await initializeProfilePage();
+    initHeaderAdaptivity();
 });
 
 async function initializeProfilePage() {
@@ -68,6 +69,17 @@ function setupEventListeners() {
     const passwordForm = document.getElementById('changePasswordForm');
     if (passwordForm) {
         passwordForm.addEventListener('submit', handlePasswordChange);
+        
+        // РЕАЛЬНОЕ ВРЕМЯ ВАЛИДАЦИЯ ПАРОЛЯ
+        const newPasswordInput = document.getElementById('newPassword');
+        const confirmPasswordInput = document.getElementById('confirmPassword');
+        
+        if (newPasswordInput) {
+            newPasswordInput.addEventListener('blur', validatePasswordRealTime);
+        }
+        if (confirmPasswordInput) {
+            confirmPasswordInput.addEventListener('blur', validatePasswordRealTime);
+        }
     }
 
     const logoutBtn = document.getElementById('logoutBtn');
@@ -80,6 +92,26 @@ function setupEventListeners() {
             }
         });
     }
+}
+
+// РЕАЛЬНОЕ ВРЕМЯ ВАЛИДАЦИЯ ПАРОЛЯ (при потере фокуса)
+function validatePasswordRealTime() {
+    const newPass = getFormValue('newPassword');
+    const confirm = getFormValue('confirmPassword');
+    
+    // Валидация длины пароля (только если поле не пустое)
+    if (newPass && newPass.length > 0 && newPass.length < 8) {
+        showTempMessage('Пароль должен содержать минимум 8 символов', 'error', 3000);
+        return false;
+    }
+    
+    // Валидация совпадения паролей (только если оба поля заполнены)
+    if (newPass && confirm && newPass !== confirm) {
+        showTempMessage('Пароли не совпадают', 'error', 3000);
+        return false;
+    }
+    
+    return true;
 }
 
 async function handleProfileUpdate() {

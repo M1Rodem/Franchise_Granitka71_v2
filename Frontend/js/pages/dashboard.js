@@ -1,5 +1,5 @@
 import { apiService } from '../api/api.js';
-import { formatDate, escapeHtml, getPaymentStatus, getPaymentStatusText, setupMobileUserName, getUserNameFromOrder, getStatusBadgeClass } from '../utils/utils.js';
+import { formatDate, escapeHtml, getPaymentStatus, getPaymentStatusText, setupUserNameAdaptivity, getUserNameFromOrder, getStatusBadgeClass } from '../utils/utils.js';
 import { SidebarManager } from '../core/sidebar-manager.js';
 
 document.addEventListener('DOMContentLoaded', async () => {

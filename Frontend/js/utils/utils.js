@@ -575,17 +575,34 @@ export function setupUserNameAdaptivity() {
     userNameElement.setAttribute('data-fullname', fullName);
     userNameElement.setAttribute('aria-label', `Профиль: ${fullName}`);
     
-    // На мобильных - УБИРАЕМ многострочность полностью
+    // На мобильных - всегда однострочное с усечением
     if (isMobile) {
         userNameElement.classList.remove('multiline');
-    } else {
-        // На десктопе - многострочность только для очень длинных имен (>35 символов)
-        if (fullName.length > 35) {
-            userNameElement.classList.add('multiline');
-        } else {
-            userNameElement.classList.remove('multiline');
-        }
+        return;
     }
+    
+    // На десктопе: если ФИО больше 25 символов - включаем многострочность
+    // "Администратор Системы А" = 25 символов
+    if (fullName.length > 25) {
+        userNameElement.classList.add('multiline');
+    } else {
+        userNameElement.classList.remove('multiline');
+    }
+}
+
+/**
+ * Инициализация адаптивности header
+ */
+export function initHeaderAdaptivity() {
+    setupUserNameAdaptivity();
+    
+    // Обновляем при изменении размера
+    window.addEventListener('resize', setupUserNameAdaptivity);
+    
+    // Также обновляем после загрузки DOM
+    document.addEventListener('DOMContentLoaded', () => {
+        setTimeout(setupUserNameAdaptivity, 100);
+    });
 }
 
 /**
@@ -620,50 +637,6 @@ function updateUserNameLayout(element, fullName) {
             element.classList.add('multiline');
         }
     }
-}
-
-/**
- * Настройка отображения ФИО для тач-устройств
- */
-function setupTouchUserName(element, fullName) {
-    let tapTimer;
-    let isExpanded = false;
-    
-    element.addEventListener('touchstart', function(e) {
-        e.preventDefault();
-        tapTimer = setTimeout(() => {
-            // Долгое нажатие - показываем полное имя
-            if (!isExpanded) {
-                const originalWidth = element.style.maxWidth;
-                const originalText = element.textContent;
-                
-                element.textContent = fullName;
-                element.style.maxWidth = 'none';
-                element.style.whiteSpace = 'normal';
-                element.style.background = 'var(--accent)';
-                element.style.color = 'var(--text-on-primary)';
-                isExpanded = true;
-                
-                // Возвращаем обратно через 3 секунды
-                setTimeout(() => {
-                    element.textContent = originalText;
-                    element.style.maxWidth = originalWidth;
-                    element.style.whiteSpace = '';
-                    element.style.background = '';
-                    element.style.color = '';
-                    isExpanded = false;
-                }, 3000);
-            }
-        }, 500);
-    });
-    
-    element.addEventListener('touchend', function() {
-        clearTimeout(tapTimer);
-    });
-    
-    element.addEventListener('touchmove', function() {
-        clearTimeout(tapTimer);
-    });
 }
 
 /**
@@ -708,19 +681,4 @@ export function setupMobileUserName() {
             userNameElement.classList.add('multiline');
         }
     }
-}
-
-/**
- * Инициализация адаптивности header
- */
-export function initHeaderAdaptivity() {
-    setupUserNameAdaptivity();
-    
-    // Обновляем при изменении размера
-    window.addEventListener('resize', setupUserNameAdaptivity);
-    
-    // Также обновляем после загрузки DOM
-    document.addEventListener('DOMContentLoaded', () => {
-        setTimeout(setupUserNameAdaptivity, 100);
-    });
 }

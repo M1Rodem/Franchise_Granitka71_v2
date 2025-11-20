@@ -1,11 +1,11 @@
 {
   "Jwt": {
-    "Key": "",
+    "Key": "Изменить",
     "Issuer": "Franchisee.Web",
     "Audience": "Franchisee.WebUsers"
   },
   "ConnectionStrings": {
-    "DefaultConnection": "Host=;Port=;Database=;Username=;Password=;"
+    "DefaultConnection": "Host=localhost;Port=5432;Database=Granitka71;Username=нейм;Password=пароль;Pooling=true;Timeout=30;"
   },
   "Kestrel": {
     "Endpoints": {

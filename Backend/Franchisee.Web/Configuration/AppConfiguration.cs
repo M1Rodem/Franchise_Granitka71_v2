@@ -30,8 +30,6 @@ namespace Franchisee.Web.Configuration
                     var allowedOrigins = new List<string>
                     {
                         "http://localhost:3000",
-                        "http://127.0.0.1:3000",
-                        "http://192.168.0.21:3000"
                     };
 
                     // Добавляем продакшен домены (замените на ваш домен)

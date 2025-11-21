@@ -613,4 +613,4 @@ Franchisee.Web/Migrations/
 
 # Игнорируем автоматически генерируемые файлы
 Franchisee.Web/Migrations/*.Designer.cs
-Franchisee.Web/Migrations/*ModelSnapshot.cs
+Franchisee.Web/Migrations/*ModelSnapshot.cs"Localtonet/localtonet.exe" 

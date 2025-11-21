@@ -57,6 +57,10 @@ class ApiService {
         const data = await this.parseResponse(response);
         
         if (!response.ok) {
+            if (response.status === 401) {
+                this.handleUnauthorized();
+                throw this.createError(response, data);
+            }
             throw this.createError(response, data);
         }
 
@@ -124,10 +128,13 @@ class ApiService {
     handleUnauthorized() {
         this.token = null;
         secureRemoveToken();
-        if (typeof handleLogout === 'function') {
-            handleLogout();
-        } else {
-            window.location.href = 'login.html';
+        
+        if (!window.location.pathname.includes('login.html')) {
+            if (typeof handleLogout === 'function') {
+                handleLogout();
+            } else {
+                window.location.href = 'login.html';
+            }
         }
     }
 
@@ -407,6 +414,10 @@ class ApiService {
 
     async deleteTempPhoto(tempId) {
         return this.request(`/Photos/temp/${tempId}`, { method: 'DELETE' });
+    }
+
+    async deleteOrderPhoto(photoId) {
+        return this.request(`/Photos/edit/${photoId}`, { method: 'DELETE' });
     }
 
     // Users

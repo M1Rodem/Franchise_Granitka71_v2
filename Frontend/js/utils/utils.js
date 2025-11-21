@@ -226,7 +226,6 @@ export function removeFromStorage(key) {
 export function secureSetToken(token) {
     try {
         if (!token || typeof token !== 'string') {
-            console.error('Invalid token provided');
             return false;
         }
         
@@ -234,11 +233,9 @@ export function secureSetToken(token) {
         try {
             const payload = JSON.parse(atob(token.split('.')[1]));
             if (payload.exp && payload.exp * 1000 < Date.now()) {
-                console.warn('Token already expired');
                 return false;
             }
         } catch (e) {
-            console.warn('Cannot parse token payload:', e);
         }
         
         const secureToken = {
@@ -250,7 +247,6 @@ export function secureSetToken(token) {
         localStorage.setItem('token', JSON.stringify(secureToken));
         return true;
     } catch (error) {
-        console.error('Token storage error:', error);
         return false;
     }
 }
@@ -261,29 +257,25 @@ export function secureGetToken() {
         if (!stored) return null;
         
         const secureToken = JSON.parse(stored);
+        const actualToken = secureToken.value;
         
-        if (!secureToken.value || !secureToken.timestamp || !secureToken.signature) {
-            console.warn('Invalid token structure');
-            return null;
+        if (!actualToken) return null;
+        
+        try {
+            const parts = actualToken.split('.');
+            if (parts.length === 3) {
+                const payload = JSON.parse(atob(parts[1]));
+                if (payload.exp && payload.exp * 1000 < Date.now()) {
+                    secureRemoveToken();
+                    return null;
+                }
+            }
+        } catch (e) {
         }
         
-        const expectedSignature = btoa(secureToken.value.slice(-10) + secureToken.timestamp).slice(0, 20);
-        if (secureToken.signature !== expectedSignature) {
-            console.warn('Token integrity check failed');
-            secureRemoveToken();
-            return null;
-        }
+        return actualToken;
         
-        const tokenAge = Date.now() - secureToken.timestamp;
-        if (tokenAge > 24 * 60 * 60 * 1000) { // 24 часа
-            console.warn('Token too old:', tokenAge);
-            secureRemoveToken();
-            return null;
-        }
-        
-        return secureToken.value;
     } catch (error) {
-        console.error('Token retrieval error:', error);
         return null;
     }
 }

@@ -141,8 +141,43 @@ namespace Franchisee.Web.Services
 
         public async Task UpdateAsync(Order order)
         {
-            _context.Orders.Update(order);
-            await _context.SaveChangesAsync();
+            // ЗАГРУЖАЕМ заказ ВМЕСТЕ с WorkItems и Payments
+            var existingOrder = await _context.Orders
+                .Include(o => o.WorkItems)    // ← ДОБАВИТЬ эту строку
+                .Include(o => o.Payments)     // ← ДОБАВИТЬ эту строку
+                .Include(o => o.Manager)
+                .FirstOrDefaultAsync(o => o.Id == order.Id);
+
+            if (existingOrder != null)
+            {
+                // Сохраняем оригинального менеджера
+                var originalManager = existingOrder.Manager;
+                var originalManagerId = existingOrder.ManagerId;
+
+                // ОБНОВЛЯЕМ ТОЛЬКО ОСНОВНЫЕ ПОЛЯ, НЕ КОЛЛЕКЦИИ:
+                existingOrder.Place = order.Place;
+                existingOrder.InspectionPlace = order.InspectionPlace;
+                existingOrder.OrderDate = order.OrderDate;
+                existingOrder.DeceasedFullName = order.DeceasedFullName;
+                existingOrder.CustomerFullName = order.CustomerFullName;
+                existingOrder.CustomerEmail = order.CustomerEmail;
+                existingOrder.Phone = order.Phone;
+                existingOrder.Address = order.Address;
+                existingOrder.MonumentType = order.MonumentType;
+                existingOrder.MonumentSize = order.MonumentSize;
+                existingOrder.AdditionalInfo = order.AdditionalInfo;
+                existingOrder.Status = order.Status;
+                existingOrder.TotalPrice = order.TotalPrice;
+                existingOrder.UpdatedAt = DateTime.UtcNow;
+
+                // ВОССТАНАВЛИВАЕМ менеджера (не меняем его)
+                existingOrder.Manager = originalManager;
+                existingOrder.ManagerId = originalManagerId;
+
+                // НЕ трогаем WorkItems, Payments, Photos - они уже обработаны в контроллере
+
+                await _context.SaveChangesAsync();
+            }
         }
 
         public async Task SoftDeleteAsync(int id)

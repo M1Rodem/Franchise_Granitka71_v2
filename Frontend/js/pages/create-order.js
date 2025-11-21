@@ -10,6 +10,7 @@ export class CreateOrderManager {
         this.orderPhotos = [];
         this.originalOrderData = null;
         this.workItemsCount = 0;
+        this.photosToDelete = [];
         
         this.initElements();
         this.bindEvents();
@@ -45,9 +46,15 @@ export class CreateOrderManager {
         this.setupNumberInputs();
         await this.checkEditMode();
         
-        // Прикрепление событий для фото
+        // ФИКС: Передаем photoManager для управления удалением
         if (this.photoPreview) {
-            attachPhotoEvents('photoPreview');
+            attachPhotoEvents('photoPreview', { 
+                mode: this.editingOrderId ? 'edit' : 'view',
+                photoManager: this, // Передаем ссылку на менеджер
+                onPhotoDeleted: (photoId) => {
+                    // Больше не нужно - теперь удаление отложенное
+                }
+            });
         }
     }
 
@@ -263,11 +270,26 @@ export class CreateOrderManager {
     async handleOrderCreation(orderData) {
         try {
             let result;
+            
             if (this.editingOrderId) {
                 result = await apiService.updateOrder(this.editingOrderId, orderData);
+                
+                // УДАЛЯЕМ ФОТО ПОСЛЕ УСПЕШНОГО ОБНОВЛЕНИЯ ЗАКАЗА
+                if (this.photosToDelete.length > 0) {
+                    for (const photoId of this.photosToDelete) {
+                        try {
+                            await apiService.deleteOrderPhoto(photoId);
+                        } catch (error) {
+                            console.error(`Failed to delete photo ${photoId}:`, error);
+                        }
+                    }
+                }
             } else {
                 result = await apiService.createOrder(orderData);
             }
+            
+            // Очищаем массив после успешного сохранения
+            this.photosToDelete = [];
             
             if (tempUploads.length > 0) {
                 await apiService.commitPhotos(this.editingOrderId || result.id, tempUploads);
@@ -405,27 +427,70 @@ export class CreateOrderManager {
         if (!this.workItemsTable) return;
 
         const row = this.workItemsTable.insertRow();
-        row.innerHTML = `
-            <td>
-                <input type="hidden" name="workItemId" value="${data.id || ''}">
-                <input type="text" name="workDescription" value="${data.workDescription || ''}" placeholder="Описание работы">
-            </td>
-            <td>
-                <input type="number" name="price" value="${data.price || ''}" min="0" step="0.01" 
-                       placeholder="Цена" class="no-spinners">
-            </td>
-            <td><input type="number" name="quantity" value="${data.quantity || 1}" min="1" placeholder="Кол-во"></td>
-            <td><input type="text" name="note" value="${data.note || ''}" placeholder="Примечание"></td>
-            <td><button type="button" class="btn btn-danger btn-sm remove-row">Удалить</button></td>
-        `;
+        
+        // Ячейка 1: ID и описание
+        const cell1 = row.insertCell();
+        
+        const hiddenInput = document.createElement('input');
+        hiddenInput.type = 'hidden';
+        hiddenInput.name = 'workItemId';
+        hiddenInput.value = data.id || '';
+        
+        const descInput = document.createElement('input');
+        descInput.type = 'text';
+        descInput.name = 'workDescription';
+        descInput.value = data.workDescription || '';
+        descInput.placeholder = 'Описание работы';
+        
+        cell1.appendChild(hiddenInput);
+        cell1.appendChild(descInput);
+        
+        // Ячейка 2: Цена
+        const cell2 = row.insertCell();
+        const priceInput = document.createElement('input');
+        priceInput.type = 'number';
+        priceInput.name = 'price';
+        priceInput.value = data.price || '';
+        priceInput.min = '0';
+        priceInput.step = '0.01';
+        priceInput.placeholder = 'Цена';
+        priceInput.className = 'no-spinners';
+        cell2.appendChild(priceInput);
+        
+        // Ячейка 3: Количество
+        const cell3 = row.insertCell();
+        const quantityInput = document.createElement('input');
+        quantityInput.type = 'number';
+        quantityInput.name = 'quantity';
+        quantityInput.value = data.quantity || 1;
+        quantityInput.min = '1';
+        quantityInput.placeholder = 'Кол-во';
+        cell3.appendChild(quantityInput);
+        
+        // Ячейка 4: Примечание
+        const cell4 = row.insertCell();
+        const noteInput = document.createElement('input');
+        noteInput.type = 'text';
+        noteInput.name = 'note';
+        noteInput.value = data.note || '';
+        noteInput.placeholder = 'Примечание';
+        cell4.appendChild(noteInput);
+        
+        // Ячейка 5: Кнопка удаления
+        const cell5 = row.insertCell();
+        const deleteBtn = document.createElement('button');
+        deleteBtn.type = 'button';
+        deleteBtn.className = 'btn btn-danger btn-sm remove-row';
+        deleteBtn.textContent = 'Удалить';
+        cell5.appendChild(deleteBtn);
 
-        const inputs = row.querySelectorAll('input');
-        inputs.forEach(input => {
+        // Обработчики событий
+        [descInput, priceInput, quantityInput, noteInput].forEach(input => {
             input.addEventListener('input', () => this.calculateTotalPrice());
             input.addEventListener('change', () => this.calculateTotalPrice());
         });
 
-        row.querySelector('.remove-row').addEventListener('click', () => {
+        deleteBtn.addEventListener('click', () => {
             row.remove();
             this.calculateTotalPrice();
         });
@@ -499,40 +564,91 @@ export class CreateOrderManager {
         if (!paymentType) {
             paymentType = isAdditionalPayment ? 'Доплата' : 'Аванс';
         }
-        
-        const row = this.paymentsTable.insertRow();
-        row.innerHTML = `
-            <td>
-                <input type="hidden" name="paymentId" value="${data.id || ''}">
-                <input type="text" name="paymentTypeDisplay" value="${paymentType}" 
-                       class="form-control" readonly style="background-color: #f8f9fa;">
-                <input type="hidden" name="paymentType" value="${paymentType}">
-            </td>
-            <td>
-                <input type="number" name="amount" value="${data.amount || ''}" min="0" step="0.01" 
-                       placeholder="0.00" class="form-control no-spinners">
-            </td>
-            <td>
-                <input type="date" name="paymentDate" value="${paymentDateValue}" 
-                       class="form-control">
-            </td>
-            <td>
-                <input type="text" name="note" value="${data.note || ''}" 
-                       placeholder="Примечание" class="form-control">
-            </td>
-            <td>
-                ${isAdditionalPayment ? 
-                    '<button type="button" class="btn btn-danger btn-sm remove-row">Удалить</button>' : 
-                    '<span class="text-muted">Основной</span>'
-                }
-            </td>
-        `;
 
+        const row = this.paymentsTable.insertRow();
+        
+        // Ячейка 1: Тип платежа
+        const cell1 = row.insertCell();
+        
+        const hiddenId = document.createElement('input');
+        hiddenId.type = 'hidden';
+        hiddenId.name = 'paymentId';
+        hiddenId.value = data.id || '';
+        
+        const typeDisplay = document.createElement('input');
+        typeDisplay.type = 'text';
+        typeDisplay.name = 'paymentTypeDisplay';
+        typeDisplay.value = paymentType;
+        typeDisplay.className = 'form-control';
+        typeDisplay.readOnly = true;
+        typeDisplay.style.backgroundColor = '#f8f9fa';
+        
+        const hiddenType = document.createElement('input');
+        hiddenType.type = 'hidden';
+        hiddenType.name = 'paymentType';
+        hiddenType.value = paymentType;
+        
+        cell1.appendChild(hiddenId);
+        cell1.appendChild(typeDisplay);
+        cell1.appendChild(hiddenType);
+        
+        // Ячейка 2: Сумма
+        const cell2 = row.insertCell();
+        const amountInput = document.createElement('input');
+        amountInput.type = 'number';
+        amountInput.name = 'amount';
+        amountInput.value = data.amount || '';
+        amountInput.min = '0';
+        amountInput.step = '0.01';
+        amountInput.placeholder = '0.00';
+        amountInput.className = 'form-control no-spinners';
+        cell2.appendChild(amountInput);
+        
+        // Ячейка 3: Дата платежа
+        const cell3 = row.insertCell();
+        const dateInput = document.createElement('input');
+        dateInput.type = 'date';
+        dateInput.name = 'paymentDate';
+        dateInput.value = paymentDateValue;
+        dateInput.className = 'form-control';
+        cell3.appendChild(dateInput);
+        
+        // Ячейка 4: Примечание
+        const cell4 = row.insertCell();
+        const noteInput = document.createElement('input');
+        noteInput.type = 'text';
+        noteInput.name = 'note';
+        noteInput.value = data.note || '';
+        noteInput.placeholder = 'Примечание';
+        noteInput.className = 'form-control';
+        cell4.appendChild(noteInput);
+        
+        // Ячейка 5: Действия
+        const cell5 = row.insertCell();
+        
         if (isAdditionalPayment) {
-            row.querySelector('.remove-row').addEventListener('click', () => {
+            const deleteBtn = document.createElement('button');
+            deleteBtn.type = 'button';
+            deleteBtn.className = 'btn btn-danger btn-sm remove-row';
+            deleteBtn.textContent = 'Удалить';
+            cell5.appendChild(deleteBtn);
+            
+            deleteBtn.addEventListener('click', () => {
                 row.remove();
             });
+        } else {
+            const span = document.createElement('span');
+            span.className = 'text-muted';
+            span.textContent = 'Основной';
+            cell5.appendChild(span);
         }
+    }
+
+    escapeHtml(text) {
+        if (!text) return '';
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
     }
 
     renderPaymentsTable(payments) {

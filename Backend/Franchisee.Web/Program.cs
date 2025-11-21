@@ -115,6 +115,29 @@ app.Use(async (context, next) =>
     await next();
 });
 
+var environment = builder.Environment;
+Console.WriteLine($"Current environment: {environment.EnvironmentName}");
+Console.WriteLine($"Конфигурация загриужена: appsettings.json, appsettings.{environment.EnvironmentName}.json");
+
+app.MapGet("/api/environment", () =>
+{
+    var environment = app.Environment;
+    var config = new
+    {
+        Environment = environment.EnvironmentName,
+        IsProduction = environment.IsProduction(),
+        IsDevelopment = environment.IsDevelopment(),
+        ConfigurationFiles = new[]
+        {
+            "appsettings.json",
+            $"appsettings.{environment.EnvironmentName}.json"
+        },
+        ConnectionString = builder.Configuration.GetConnectionString("DefaultConnection") != null,
+        JwtConfig = builder.Configuration["Jwt:Key"] != null
+    };
+    return config;
+});
+
 // Настройка конвейера
 AppConfiguration.ConfigurePipeline(app, app.Environment);
 

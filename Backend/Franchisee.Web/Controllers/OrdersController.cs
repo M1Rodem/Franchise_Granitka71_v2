@@ -153,78 +153,98 @@ namespace Franchisee.Web.Controllers
             var userId = GetCurrentUserId();
             _logger.LogInformation("Обновление заказа {OrderId} для {UserId}", id, userId);
 
-            var order = await _orderRepository.GetByIdAsync(id);
-            if (order == null) return NotFound();
-
-            if (!IsAdmin() && order.ManagerId != userId) return Forbid();
-
             using var transaction = await _context.Database.BeginTransactionAsync();
 
             try
             {
+                // Загружаем заказ ВНУТРИ транзакции
+                var order = await _context.Orders
+                    .Include(o => o.WorkItems)
+                    .Include(o => o.Payments)
+                    .Include(o => o.Photos)
+                    .Include(o => o.Manager)
+                    .FirstOrDefaultAsync(o => o.Id == id);
+
+                if (order == null) return NotFound();
+                if (!IsAdmin() && order.ManagerId != userId) return Forbid();
+
+                _logger.LogInformation("ДО обновления: WorkItems count = {WorkItemsCount}, Payments count = {PaymentsCount}",
+                    order.WorkItems.Count, order.Payments.Count);
+
+                // Обновляем основные поля
                 if (!string.IsNullOrEmpty(request.Place)) order.Place = request.Place;
-
-                if (!string.IsNullOrEmpty(request.InspectionPlace))
-                    order.InspectionPlace = request.InspectionPlace;
-
-                if (request.OrderDate.HasValue)
-                    order.OrderDate = request.OrderDate.Value;
-
-                if (!string.IsNullOrEmpty(request.DeceasedFullName))
-                    order.DeceasedFullName = request.DeceasedFullName;
-
-                if (!string.IsNullOrEmpty(request.CustomerFullName))
-                    order.CustomerFullName = request.CustomerFullName;
-
-                if (!string.IsNullOrEmpty(request.CustomerEmail))
-                    order.CustomerEmail = request.CustomerEmail;
-
-                if (!string.IsNullOrEmpty(request.Phone))
-                    order.Phone = request.Phone;
-
-                if (!string.IsNullOrEmpty(request.Address))
-                    order.Address = request.Address;
-
-                if (!string.IsNullOrEmpty(request.MonumentType))
-                    order.MonumentType = request.MonumentType;
-
-                if (!string.IsNullOrEmpty(request.MonumentSize))
-                    order.MonumentSize = request.MonumentSize;
+                if (!string.IsNullOrEmpty(request.InspectionPlace)) order.InspectionPlace = request.InspectionPlace;
+                if (request.OrderDate.HasValue) order.OrderDate = request.OrderDate.Value.ToUniversalTime();
+                if (!string.IsNullOrEmpty(request.DeceasedFullName)) order.DeceasedFullName = request.DeceasedFullName;
+                if (!string.IsNullOrEmpty(request.CustomerFullName)) order.CustomerFullName = request.CustomerFullName;
+                if (!string.IsNullOrEmpty(request.CustomerEmail)) order.CustomerEmail = request.CustomerEmail;
+                if (!string.IsNullOrEmpty(request.Phone)) order.Phone = request.Phone;
+                if (!string.IsNullOrEmpty(request.Address)) order.Address = request.Address;
+                if (!string.IsNullOrEmpty(request.MonumentType)) order.MonumentType = request.MonumentType;
+                if (!string.IsNullOrEmpty(request.MonumentSize)) order.MonumentSize = request.MonumentSize;
 
                 order.AdditionalInfo = request.AdditionalInfo ?? order.AdditionalInfo;
-
-                if (request.Status.HasValue)
-                    order.Status = request.Status.Value;
-
+                if (request.Status.HasValue) order.Status = request.Status.Value;
                 order.UpdatedAt = DateTime.UtcNow;
 
-                // WorkItems: full replace если provided
-                if (request.WorkItems != null && request.WorkItems.Any())
+                // WorkItems: полная замена
+                if (request.WorkItems != null)
                 {
-                    _context.RemoveRange(order.WorkItems);
-                    order.WorkItems.Clear();
+                    _logger.LogInformation("Обновление WorkItems: удаляем {OldCount} старых, добавляем {NewCount} новых",
+                        order.WorkItems.Count, request.WorkItems.Count);
+
+                    // Удаляем старые WorkItems через отдельный запрос
+                    var existingWorkItems = await _context.OrderWorkItems
+                        .Where(w => w.OrderId == id)
+                        .ToListAsync();
+                    _context.OrderWorkItems.RemoveRange(existingWorkItems);
+
+                    // Добавляем новые WorkItems
                     foreach (var wi in request.WorkItems)
                     {
-                        wi.OrderId = id;
-                        order.WorkItems.Add(wi);
+                        var newWorkItem = new OrderWorkItem
+                        {
+                            OrderId = id,
+                            WorkDescription = wi.WorkDescription,
+                            Price = wi.Price,
+                            Quantity = wi.Quantity,
+                            Note = wi.Note
+                        };
+                        _context.OrderWorkItems.Add(newWorkItem);
                     }
                 }
 
-                // Аналогично для Payments
-                if (request.Payments != null && request.Payments.Any())
+                // Payments: полная замена
+                if (request.Payments != null)
                 {
-                    _context.RemoveRange(order.Payments);
-                    order.Payments.Clear();
+                    _logger.LogInformation("Обновление Payments: удаляем {OldCount} старых, добавляем {NewCount} новых",
+                        order.Payments.Count, request.Payments.Count);
+
+                    // Удаляем старые Payments через отдельный запрос
+                    var existingPayments = await _context.OrderPayments
+                        .Where(p => p.OrderId == id)
+                        .ToListAsync();
+                    _context.OrderPayments.RemoveRange(existingPayments);
+
+                    // Добавляем новые Payments
                     foreach (var payment in request.Payments)
                     {
-                        payment.OrderId = id;
-                        order.Payments.Add(payment);
+                        var newPayment = new OrderPayment
+                        {
+                            OrderId = id,
+                            Amount = payment.Amount,
+                            PaymentDate = payment.PaymentDate.ToUniversalTime(),
+                            PaymentType = payment.PaymentType,
+                            Note = payment.Note
+                        };
+                        _context.OrderPayments.Add(newPayment);
                     }
                 }
 
-                await _orderRepository.UpdateAsync(order);
+                // Сохраняем все изменения
+                await _context.SaveChangesAsync();
 
-                // Новые фото
+                // Обрабатываем новые фото
                 if (request.TempUploadIds?.Any() == true)
                 {
                     await _photoService.CommitTempToOrderAsync(id, request.TempUploadIds, userId);
@@ -232,20 +252,33 @@ namespace Franchisee.Web.Controllers
 
                 await transaction.CommitAsync();
 
-                var dto = MapToResponseDto(order);
+                // Перезагружаем заказ для DTO
+                var updatedOrder = await _context.Orders
+                    .Include(o => o.WorkItems)
+                    .Include(o => o.Payments)
+                    .Include(o => o.Photos)
+                    .Include(o => o.Manager)
+                    .AsNoTracking()
+                    .FirstOrDefaultAsync(o => o.Id == id);
+
+                if (updatedOrder == null)
+                {
+                    _logger.LogWarning("Заказ {OrderId} не найден после обновления", id);
+                    return StatusCode(500, "Ошибка при получении обновленного заказа");
+                }
+
+                var dto = MapToResponseDto(updatedOrder);
+
+                _logger.LogInformation("Заказ {OrderId} успешно обновлен. WorkItems: {WorkItemsCount}, Payments: {PaymentsCount}",
+                    id, updatedOrder.WorkItems.Count, updatedOrder.Payments.Count);
+
                 return Ok(dto);
-            }
-            catch (DbUpdateConcurrencyException ex) when (!OrderExists(id))
-            {
-                await transaction.RollbackAsync();
-                _logger.LogError(ex, "Concurrency ошибка обновления {OrderId}", id);
-                return NotFound();
             }
             catch (Exception ex)
             {
                 await transaction.RollbackAsync();
                 _logger.LogError(ex, "Ошибка обновления заказа {OrderId}", id);
-                return StatusCode(500, "Ошибка обновления");
+                return StatusCode(500, "Ошибка обновления заказа");
             }
         }
 

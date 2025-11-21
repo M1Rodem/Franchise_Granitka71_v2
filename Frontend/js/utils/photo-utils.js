@@ -323,37 +323,67 @@ export async function removeTempPhoto(tempId) {
 /**
  * Удаление привязанного фото в режиме редактирования
  */
-export async function removeCommittedPhoto(photoId) {
+export async function markPhotoForDeletion(photoId, photoManager) {
     try {
-        // ПОЛУЧИТЬ КОНКРЕТНЫЙ ЭЛЕМЕНТ ФОТО
-        const photoElement = document.querySelector(`.photo-item[data-server-id="${photoId}"]`);
+        // Находим элемент фото
+        const photoElement = document.querySelector(`.photo-item[data-photo-id="${photoId}"]`);
         const fileName = photoElement?.querySelector('.photo-name')?.textContent || 'фото';
         
         // ПОДТВЕРЖДЕНИЕ УДАЛЕНИЯ
         const confirmed = await ModalUtils.confirm({
             title: 'Удаление фото',
-            message: `Вы уверены, что хотите удалить фото "${fileName}"?`,
+            message: `Вы уверены, что хотите удалить фото "${fileName}"? Фото будет удалено только после сохранения изменений.`,
             confirmText: 'Удалить',
             danger: true
         });
         
         if (!confirmed) return;
         
-        // УДАЛЕНИЕ ТОЛЬКО КОНКРЕТНОГО ФОТО
-        await apiService.deletePhoto(photoId);
-        
+        // Помечаем фото для удаления визуально
         if (photoElement) {
-            photoElement.remove(); // Удаляем только этот элемент
+            photoElement.style.opacity = '0.5';
+            photoElement.style.filter = 'grayscale(100%)';
+            photoElement.querySelector('.photo-remove-server').textContent = '✓';
+            photoElement.querySelector('.photo-remove-server').title = 'Восстановить фото';
+            photoElement.classList.add('photo-marked-for-deletion');
         }
         
-        // ПОМЕТИТЬ ЧТО БЫЛИ ИЗМЕНЕНИЯ
+        // Добавляем в массив на удаление
+        if (photoManager && photoManager.photosToDelete) {
+            photoManager.photosToDelete.push(photoId);
+        }
+        
+        // Помечаем что были изменения
         window.photoWasDeleted = true;
         
-        showTempMessage('Фото удалено', 'success');
+        showTempMessage('Фото помечено для удаления. Изменения сохранятся после нажатия "Сохранить изменения"', 'info');
+        
     } catch (error) {
-        console.error('Remove committed photo error:', error);
-        showTempMessage('Ошибка удаления фото', 'error');
+        console.error('Mark photo for deletion error:', error);
+        showTempMessage('Ошибка при пометке фото для удаления', 'error');
     }
+}
+
+export function restorePhotoFromDeletion(photoId, photoManager) {
+    const photoElement = document.querySelector(`.photo-item[data-photo-id="${photoId}"]`);
+    
+    if (photoElement) {
+        photoElement.style.opacity = '1';
+        photoElement.style.filter = 'none';
+        photoElement.querySelector('.photo-remove-server').textContent = '✖';
+        photoElement.querySelector('.photo-remove-server').title = 'Удалить фото из заказа';
+        photoElement.classList.remove('photo-marked-for-deletion');
+    }
+    
+    // Убираем из массива на удаление
+    if (photoManager && photoManager.photosToDelete) {
+        const index = photoManager.photosToDelete.indexOf(photoId);
+        if (index > -1) {
+            photoManager.photosToDelete.splice(index, 1);
+        }
+    }
+    
+    showTempMessage('Фото восстановлено', 'success');
 }
 
 /**
@@ -387,19 +417,29 @@ export function attachPhotoEvents(containerId, options = {}) {
     const container = document.getElementById(containerId);
     if (!container) return;
     
-    const { mode = 'view', orderNumber } = options;
+    const { mode = 'view', orderNumber, photoManager } = options;
     
     container.addEventListener('click', async (e) => {
         e.preventDefault();
         const photoItem = e.target.closest('.photo-item');
         if (!photoItem) return;
         
-        // УДАЛЕНИЕ ПРИВЯЗАННОГО ФОТО (режим редактирования)
+        // Обработчик для кнопки удаления/восстановления в режиме редактирования
         if (e.target.classList.contains('photo-remove-server')) {
             e.stopPropagation();
-            const photoId = photoItem.dataset.serverId;
-            if (photoId) {
-                await removeCommittedPhoto(photoId);
+            const photoId = photoItem.dataset.photoId;
+            
+            if (!photoId) return;
+            
+            // Проверяем, помечено ли фото для удаления
+            const isMarkedForDeletion = photoItem.classList.contains('photo-marked-for-deletion');
+            
+            if (isMarkedForDeletion) {
+                // Восстанавливаем фото
+                restorePhotoFromDeletion(photoId, photoManager);
+            } else {
+                // Помечаем для удаления
+                await markPhotoForDeletion(photoId, photoManager);
             }
             return;
         }

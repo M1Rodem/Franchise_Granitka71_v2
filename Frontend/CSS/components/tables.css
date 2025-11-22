@@ -300,20 +300,47 @@
 .table-container .no-data,
 .orders-table ~ .no-data,
 .table ~ .no-data {
-    text-align: center !important;
+        text-align: center !important;
     color: var(--text-muted) !important;
     font-style: italic !important;
-    padding: var(--space-8) !important;
+    padding: var(--space-12) !important;
     background: rgba(30, 41, 59, 0.2) !important;
-    border-radius: var(--radius) !important;
-    border: 1px dashed var(--glass-border) !important;
+    border-radius: var(--radius-lg) !important;
+    border: 2px dashed var(--glass-border) !important;
     display: flex !important;
     align-items: center !important;
     justify-content: center !important;
     flex-direction: column !important;
     gap: var(--space-4) !important;
     margin: var(--space-4) 0 !important;
-    animation: fadeIn 0.6s ease-out !important;
+    animation: fadeInScale 0.6s ease-out !important;
+    transition: all 0.3s ease !important;
+}
+
+@keyframes fadeInScale {
+    from {
+        opacity: 0;
+        transform: scale(0.95);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+.orders-table tbody tr:hover .no-data,
+.orders-table tbody tr .no-data:hover,
+.orders-table tbody tr:has(.no-data):hover {
+    background: rgba(30, 41, 59, 0.2) !important;
+    transform: none !important;
+    box-shadow: none !important;
+    color: var(--text-muted) !important;
+    border-color: var(--glass-border) !important;
+}
+
+.orders-table tbody tr .no-data {
+    pointer-events: none;
+    background: rgba(30, 41, 59, 0.2) !important;
 }
 
 /* Специфичные стили для пустых состояний внутри таблиц платежей и работ */
@@ -582,10 +609,6 @@
         padding: var(--space-2) 0;
         font-size: var(--text-sm);
     }
-
-    .orders-table tr:last-child td {
-        border-bottom: 1px solid rgba(255, 255, 255, 0.1) !important;
-    }
     
     .actions {
         gap: var(--space-2);
@@ -748,3 +771,4 @@
         box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3) !important;
     }
 }
+

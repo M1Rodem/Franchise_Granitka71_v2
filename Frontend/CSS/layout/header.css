@@ -1,4 +1,4 @@
-/* ===== HEADER COMPONENT ===== */
+/* ===== MODERN HEADER COMPONENT ===== */
 .header {
     position: fixed;
     top: 0;
@@ -92,6 +92,16 @@
     white-space: nowrap;
     flex-shrink: 0;
     line-height: 1.2;
+    background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    transition: all 0.3s var(--ease-out-smooth);
+}
+
+.header h1:hover {
+    transform: translateY(-1px);
+    text-shadow: 0 2px 8px rgba(255, 255, 255, 0.2);
 }
 
 /* User info: Right side */
@@ -102,12 +112,12 @@
     flex-shrink: 0;
 }
 
-/* User profile link - ФИКСИРОВАННЫЙ ПЕРЕНОС ПО СИМВОЛАМ */
+/* User profile link - ОРИГИНАЛЬНЫЕ СТИЛИ с улучшенной анимацией */
 .user-profile-link {
     color: var(--text-secondary);
     text-decoration: none;
     font-weight: 500;
-    transition: all var(--transition-fast);
+    transition: all 0.3s var(--ease-out-smooth);
     padding: var(--space-3) var(--space-4);
     border-radius: var(--radius);
     position: relative;
@@ -119,7 +129,7 @@
     text-overflow: ellipsis;
     max-width: 220px;
     display: flex;
-    align-items: center; /* Всегда по центру */
+    align-items: center;
     justify-content: center;
     background: transparent;
     min-height: 44px;
@@ -131,20 +141,18 @@
     line-height: 1.3;
 }
 
-
-/* Многострочное отображение для длинных имен - ТОЛЬКО ДЛЯ ОЧЕНЬ ДЛИННЫХ */
+/* Многострочное отображение для длинных имен */
 .user-profile-link.multiline {
     white-space: normal;
     line-height: 1.3;
     display: -webkit-box;
-    -webkit-line-clamp: 2;
     -webkit-box-orient: vertical;
     overflow: hidden;
     text-overflow: ellipsis;
     word-break: break-word;
     hyphens: auto;
     max-height: 2.6em;
-    align-items: flex-start; /* ИЗМЕНЕНО: было center, стало flex-start */
+    align-items: flex-start;
     justify-content: center;
     padding-top: inherit;
     padding-bottom: var(--space-2);
@@ -167,7 +175,7 @@
     max-width: min(300px, 90vw);
     opacity: 0;
     visibility: hidden;
-    transition: all 0.2s ease;
+    transition: all 0.3s var(--ease-out-smooth);
     z-index: var(--z-tooltip);
     box-shadow: var(--glass-shadow);
     backdrop-filter: var(--backdrop-blur);
@@ -181,20 +189,41 @@
     transform: translateX(-50%) translateY(-4px);
 }
 
+/* УЛУЧШЕННАЯ АНИМАЦИЯ ДЛЯ ФИО */
+.user-profile-link::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, 
+        transparent, 
+        rgba(59, 130, 246, 0.1), 
+        transparent);
+    transition: left 0.6s var(--ease-out-smooth);
+    border-radius: var(--radius);
+}
+
 .user-profile-link:hover {
     color: var(--text-primary);
     background: rgba(59, 130, 246, 0.1);
     border-color: var(--glass-border);
-    transform: translateY(-1px);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.15);
 }
 
-/* Logout button */
+.user-profile-link:hover::after {
+    left: 100%;
+}
+
+/* Logout button - ОРИГИНАЛЬНЫЕ СТИЛИ с улучшенной анимацией */
 .header .btn-outline {
     background: transparent;
     color: var(--text-secondary);
     border: 1px solid var(--glass-border);
     padding: var(--space-3) var(--space-4);
-    transition: all var(--transition-fast);
+    transition: all 0.3s var(--ease-out-smooth);
     font-size: var(--text-base);
     font-weight: 500;
     min-height: 44px;
@@ -205,13 +234,36 @@
     justify-content: center;
     flex-shrink: 0;
     border-radius: var(--radius);
+    position: relative;
+    overflow: hidden;
+}
+
+/* УЛУЧШЕННАЯ АНИМАЦИЯ ДЛЯ КНОПКИ ВЫХОДА */
+.header .btn-outline::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, 
+        transparent, 
+        rgba(239, 68, 68, 0.1), 
+        transparent);
+    transition: left 0.6s var(--ease-out-smooth);
+    border-radius: var(--radius);
 }
 
 .header .btn-outline:hover {
     color: var(--error);
     background: rgba(239, 68, 68, 0.1);
     border-color: var(--error);
-    transform: translateY(-1px);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.15);
+}
+
+.header .btn-outline:hover::before {
+    left: 100%;
 }
 
 /* ===== TABLET STYLES (769px - 1024px) ===== */
@@ -268,13 +320,13 @@
     }
 
     .header h1 {
-        font-size: var(--text-xl); /* УВЕЛИЧЕНО С var(--text-lg) */
+        font-size: var(--text-xl);
         flex-shrink: 1;
         min-width: 0;
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
-        max-width: 180px; /* УВЕЛИЧЕНО С 150px */
+        max-width: 180px;
     }
 
     .user-info {
@@ -282,20 +334,19 @@
         flex-shrink: 0;
     }
 
-    /* ФИО на мобильных - УВЕЛИЧЕНЫ РАЗМЕРЫ И ИСПРАВЛЕН ПЕРЕНОС */
+    /* ФИО на мобильных */
     .user-profile-link {
-        font-size: var(--text-xl);
+        font-size: var(--text-sm);
         padding: var(--space-3) var(--space-3);
         min-height: 40px;
         max-width: 140px;
         border: none;
         background: transparent;
         
-        /* ОБЯЗАТЕЛЬНЫЕ СТИЛИ ДЛЯ ОБРЕЗАНИЯ */
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
-        display: block; /* ИЗМЕНЕНО: было flex, стало block */
+        display: block;
         text-align: center;
     }
 
@@ -304,9 +355,8 @@
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
-        -webkit-line-clamp: 1;
         max-height: none;
-        display: block; /* ИЗМЕНЕНО: было flex, стало block */
+        display: block;
         padding-top: var(--space-3);
         padding-bottom: var(--space-2);
     }
@@ -359,12 +409,12 @@
         gap: var(--space-2);
     }
 
-    /* ФИО на маленьких мобильных - УВЕЛИЧЕН РАЗМЕР */
+    /* ФИО на маленьких мобильных */
     .user-profile-link {
         font-size: var(--text-sm);
         padding: var(--space-3);
         min-height: 40px;
-        max-width: 130px; /* УМЕНЬШАЕМ ШИРИНУ */
+        max-width: 130px;
     }
 
     .header .btn-outline {
@@ -388,7 +438,7 @@
     }
 
     .user-profile-link {
-        max-width: 80px; /* ЕЩЕ МЕНЬШЕ ДЛЯ ОЧЕНЬ МАЛЕНЬКИХ ЭКРАНОВ */
+        max-width: 80px;
         min-height: 38px;
         font-size: var(--text-xs);
     }
@@ -428,9 +478,7 @@
         max-width: 240px;
     }
     
-    /* На десктопе многострочность только для длинных имен */
     .user-profile-link.multiline {
-        -webkit-line-clamp: 2;
         max-height: 2.6em;
     }
 }
@@ -447,6 +495,11 @@
         background: rgba(59, 130, 246, 0.15);
         transform: scale(0.98);
     }
+    
+    .header .btn-outline:active {
+        background: rgba(239, 68, 68, 0.1);
+        transform: scale(0.98);
+    }
 }
 
 /* High contrast mode */
@@ -458,6 +511,12 @@
     .user-profile-link,
     .header .btn-outline {
         border: 1px solid var(--text-primary);
+    }
+    
+    .header h1 {
+        background: none !important;
+        -webkit-text-fill-color: var(--text-primary) !important;
+        color: var(--text-primary) !important;
     }
 }
 
@@ -471,5 +530,16 @@
     .header .btn-outline,
     .burger-btn {
         transition: none;
+    }
+    
+    .user-profile-link::after,
+    .header .btn-outline::before {
+        display: none;
+    }
+    
+    .user-profile-link:hover,
+    .header .btn-outline:hover,
+    .burger-btn:hover {
+        transform: none;
     }
 }

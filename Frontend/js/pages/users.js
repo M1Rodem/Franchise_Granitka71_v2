@@ -78,6 +78,12 @@ function setupCreateModal() {
         }
     });
 
+    // Валидация логина в реальном времени
+    const usernameInput = document.getElementById('createUsername');
+    if (usernameInput) {
+        usernameInput.addEventListener('input', validateUsernameRealTime);
+    }
+
     // Отправка формы
     form.addEventListener('submit', async (e) => {
         e.preventDefault();
@@ -104,11 +110,65 @@ function setupEditModal() {
         }
     });
 
+    // Валидация логина в реальном времени для редактирования
+    const editUsernameInput = document.getElementById('editUsername');
+    if (editUsernameInput) {
+        editUsernameInput.addEventListener('input', validateUsernameRealTime);
+    }
+
     // Отправка формы
     form.addEventListener('submit', async (e) => {
         e.preventDefault();
         await saveUserChanges();
     });
+}
+
+// Валидация логина в реальном времени
+function validateUsernameRealTime(e) {
+    const input = e.target;
+    const value = input.value;
+    const errorElement = input.parentNode.querySelector('.field-error');
+    
+    // Регулярное выражение для запрещенных символов
+    const forbiddenChars = /[\/"\\<>]/;
+    
+    if (forbiddenChars.test(value)) {
+        // Показываем ошибку с анимацией
+        if (!errorElement) {
+            const error = document.createElement('div');
+            error.className = 'field-error';
+            error.textContent = 'Логин не может содержать символы / " \\ < >';
+            input.parentNode.appendChild(error);
+        } else {
+            // Если ошибка уже есть, обновляем текст
+            errorElement.textContent = 'Логин не может содержать символы / " \\ < >';
+        }
+        input.classList.add('error');
+        input.classList.remove('valid');
+    } else if (value.length >= 3) {
+        // Валидное значение
+        if (errorElement) {
+            errorElement.classList.add('hiding');
+            setTimeout(() => {
+                if (errorElement.parentNode) {
+                    errorElement.remove();
+                }
+            }, 200);
+        }
+        input.classList.remove('error');
+        input.classList.add('valid');
+    } else {
+        // Нет ошибки, но значение еще не валидно
+        if (errorElement) {
+            errorElement.classList.add('hiding');
+            setTimeout(() => {
+                if (errorElement.parentNode) {
+                    errorElement.remove();
+                }
+            }, 200);
+        }
+        input.classList.remove('error', 'valid');
+    }
 }
 
 async function loadUsers() {
@@ -287,6 +347,9 @@ function showCreateUserModal() {
         document.getElementById('createPassword').value = '';
         document.getElementById('createFullName').value = '';
         document.getElementById('createRole').value = 'Manager';
+        
+        // Очищаем возможные ошибки валидации
+        clearValidationErrors();
     }
 }
 
@@ -295,7 +358,23 @@ function hideCreateUserModal() {
     if (modal) {
         modal.style.display = 'none';
         modal.classList.remove('active');
+        clearValidationErrors();
     }
+}
+
+// Очистка ошибок валидации
+function clearValidationErrors() {
+    document.querySelectorAll('.field-error').forEach(error => {
+        error.classList.add('hiding');
+        setTimeout(() => {
+            if (error.parentNode) {
+                error.remove();
+            }
+        }, 200);
+    });
+    document.querySelectorAll('.error, .valid').forEach(input => {
+        input.classList.remove('error', 'valid');
+    });
 }
 
 async function createUser() {
@@ -343,6 +422,9 @@ async function openEditModal(userId) {
         document.getElementById('currentRole').textContent = user.role;
         document.getElementById('editUserModalTitle').textContent = `Редактировать: ${user.username}`;
 
+        // Очищаем ошибки валидации
+        clearValidationErrors();
+
         // Показываем модалку
         showEditModal();
         
@@ -366,6 +448,7 @@ function hideEditModal() {
         modal.style.display = 'none';
         modal.classList.remove('active');
         currentEditUserId = null;
+        clearValidationErrors();
     }
 }
 
@@ -376,6 +459,13 @@ async function saveUserChanges() {
         username: document.getElementById('editUsername').value.trim(),
         fullName: document.getElementById('editFullName').value.trim()
     };
+
+    // Проверяем валидацию логина
+    const usernameValidation = validateUsername(payload.username);
+    if (usernameValidation) {
+        showTempMessage(usernameValidation, 'error');
+        return;
+    }
 
     const newPassword = document.getElementById('editPassword').value.trim();
     if (newPassword) {
@@ -401,16 +491,44 @@ async function saveUserChanges() {
     }
 }
 
+// Валидация логина
+function validateUsername(username) {
+    const forbiddenChars = /[\/"\\<>]/;
+    
+    if (forbiddenChars.test(username)) {
+        return 'Логин не может содержать символы / " \\ < >';
+    }
+    
+    if (username.length < 3) {
+        return 'Логин должен содержать минимум 3 символа';
+    }
+    
+    if (username.length > 50) {
+        return 'Логин не может превышать 50 символов';
+    }
+    
+    return null;
+}
+
 function validateCreateUser(payload) {
     if (!payload.username || !payload.password || !payload.fullName) {
         return 'Заполните обязательные поля';
     }
+    
+    // Валидация логина
+    const usernameValidation = validateUsername(payload.username);
+    if (usernameValidation) {
+        return usernameValidation;
+    }
+    
     if (payload.password.length < 8) {
         return 'Пароль должен быть не менее 8 символов';
     }
+    
     if (!['Admin', 'Manager'].includes(payload.role)) {
         return 'Неверная роль';
     }
+    
     return null;
 }
 

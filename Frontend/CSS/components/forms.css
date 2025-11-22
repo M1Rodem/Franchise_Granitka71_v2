@@ -156,3 +156,156 @@
         align-items: stretch;
     }
 }
+
+/* Стили для ошибок валидации */
+.field-error {
+    color: var(--error);
+    font-size: var(--text-sm);
+    margin-top: var(--space-2);
+    padding: var(--space-2);
+    background: rgba(239, 68, 68, 0.1);
+    border-radius: var(--radius);
+    border: 1px solid rgba(239, 68, 68, 0.2);
+    animation: slideDownFadeIn 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    transform-origin: top center;
+    overflow: hidden;
+    max-height: 100px;
+    opacity: 1;
+    transition: all 0.3s ease;
+}
+
+.field-error.hiding {
+    animation: slideUpFadeOut 0.2s cubic-bezier(0.55, 0.085, 0.68, 0.53) forwards;
+    max-height: 0;
+    opacity: 0;
+    margin-top: 0;
+    padding-top: 0;
+    padding-bottom: 0;
+    border: none;
+}
+
+.form-group input.error,
+.form-group select.error,
+.form-group textarea.error {
+    border-color: var(--error) !important;
+    background: rgba(239, 68, 68, 0.05) !important;
+    animation: inputErrorShake 0.5s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
+}
+
+.form-group input.error:focus,
+.form-group select.error:focus,
+.form-group textarea.error:focus {
+    border-color: var(--error) !important;
+    box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1) !important;
+    animation: inputErrorPulse 0.6s ease;
+}
+
+/* Анимация появления ошибки */
+@keyframes slideDownFadeIn {
+    0% {
+        opacity: 0;
+        max-height: 0;
+        transform: translateY(-10px) scale(0.95);
+    }
+    100% {
+        opacity: 1;
+        max-height: 100px;
+        transform: translateY(0) scale(1);
+    }
+}
+
+/* Анимация исчезновения ошибки */
+@keyframes slideUpFadeOut {
+    0% {
+        opacity: 1;
+        max-height: 100px;
+        transform: translateY(0) scale(1);
+    }
+    100% {
+        opacity: 0;
+        max-height: 0;
+        transform: translateY(-10px) scale(0.95);
+    }
+}
+
+/* Анимация тряски для поля с ошибкой */
+@keyframes inputErrorShake {
+    0%, 100% {
+        transform: translateX(0);
+    }
+    10%, 30%, 50%, 70%, 90% {
+        transform: translateX(-4px);
+    }
+    20%, 40%, 60%, 80% {
+        transform: translateX(4px);
+    }
+}
+
+/* Анимация пульсации при фокусе на поле с ошибкой */
+@keyframes inputErrorPulse {
+    0% {
+        box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4);
+    }
+    70% {
+        box-shadow: 0 0 0 6px rgba(239, 68, 68, 0);
+    }
+    100% {
+        box-shadow: 0 0 0 0 rgba(239, 68, 68, 0);
+    }
+}
+
+/* Плавное изменение состояния полей */
+.form-group input,
+.form-group select,
+.form-group textarea {
+    transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+/* Анимация для успешной валидации */
+.form-group input.valid,
+.form-group select.valid,
+.form-group textarea.valid {
+    border-color: var(--success) !important;
+    background: rgba(16, 185, 129, 0.05) !important;
+    animation: inputValidSuccess 0.6s ease;
+}
+
+@keyframes inputValidSuccess {
+    0% {
+        transform: scale(1);
+    }
+    50% {
+        transform: scale(1.02);
+    }
+    100% {
+        transform: scale(1);
+    }
+}
+
+/* Индикатор загрузки валидации */
+.form-group .validating {
+    position: relative;
+}
+
+.form-group .validating::after {
+    content: '';
+    position: absolute;
+    right: var(--space-3);
+    top: 50%;
+    transform: translateY(-50%);
+    width: 16px;
+    height: 16px;
+    border: 2px solid transparent;
+    border-top: 2px solid var(--accent);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% {
+        transform: translateY(-50%) rotate(0deg);
+    }
+    100% {
+        transform: translateY(-50%) rotate(360deg);
+    }
+}

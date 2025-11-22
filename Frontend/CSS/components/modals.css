@@ -371,15 +371,37 @@
     transform: scale(1.05);
 }
 
+/* ===== ИСПРАВЛЕННЫЕ СТИЛИ ДЛЯ ПУСТЫХ СОСТОЯНИЙ ===== */
+/* Усиленная специфичность для корректного отображения в Production */
 .archived-order-modal .no-photos,
-.archived-order-modal .no-data {
-    text-align: center;
-    color: var(--text-muted);
-    padding: var(--space-8);
-    font-style: italic;
-    background: rgba(30, 41, 59, 0.3);
-    border-radius: var(--radius);
-    border: 1px dashed var(--glass-border);
+.archived-order-modal .no-data,
+.photos-section .no-photos,
+.photos-container .no-photos {
+    text-align: center !important;
+    color: var(--text-muted) !important;
+    padding: var(--space-8) !important;
+    font-style: italic !important;
+    background: rgba(30, 41, 59, 0.3) !important;
+    border-radius: var(--radius) !important;
+    border: 1px dashed var(--glass-border) !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    flex-direction: column !important;
+    width: 100% !important;
+    margin: 0 auto !important;
+    line-height: 1.5 !important;
+    word-wrap: break-word !important;
+    white-space: normal !important;
+}
+
+/* Дополнительная специфичность для контейнера фото */
+.archived-order-modal .photos-container .no-photos {
+    text-align: center !important;
+    justify-content: center !important;
+    align-items: center !important;
+    display: flex !important;
+    min-height: 120px !important;
 }
 
 /* СТАТУС-БЕЙДЖИ С ПРАВИЛЬНЫМИ ЦВЕТАМИ */

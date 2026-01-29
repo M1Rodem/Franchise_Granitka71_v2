@@ -1,5 +1,5 @@
 import { apiService } from '../api/api.js';
-import { showTempMessage, escapeHtml, debounce } from '../utils/utils.js';
+import { showTempMessage, escapeHtml, debounce, getUserRole, isAdmin, secureGetUserData  } from '../utils/utils.js';
 import { ModalUtils } from '../utils/modal-utils.js';
 
 let currentPage = 1;
@@ -15,11 +15,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
 function initializeUsersPage() {
     const userData = apiService.getCurrentUser();
-    if (!userData || userData.role !== 'Admin') {
-        window.location.href = 'login.html';
+    const userRole = getUserRole(); // Используем новую функцию из utils.js
+    
+    // Manager не имеет доступа к странице пользователей
+    if (!userData || userRole === 'Manager') {
+        window.location.href = 'dashboard.html';
         return;
     }
-
+    
+    // Admin и SuperAdmin имеют доступ
     setupPageUI(userData);
     setupEventListeners();
     loadUsers();
@@ -28,7 +32,12 @@ function initializeUsersPage() {
 function setupPageUI(userData) {
     const userNameEl = document.getElementById('userName');
     if (userNameEl) userNameEl.textContent = userData.fullName || 'Пользователь';
-    document.querySelectorAll('.admin-only').forEach(el => el.style.display = 'block');
+    
+    // Показываем элементы для Admin И SuperAdmin
+    const userRole = getUserRole();
+    if (userRole === 'Admin' || userRole === 'SuperAdmin') {
+        document.querySelectorAll('.admin-only').forEach(el => el.style.display = 'block');
+    }
 
     const logoutBtn = document.getElementById('logoutBtn');
     if (logoutBtn) logoutBtn.addEventListener('click', () => apiService.logout());
@@ -241,8 +250,32 @@ function renderUserRow(u) {
     const statusClass = u.isBlocked ? 'status-blocked' : 'status-active';
     const toggleText = u.isBlocked ? 'Разблокировать' : 'Заблокировать';
     const toggleClass = u.isBlocked ? 'btn-success' : 'btn-danger';
-    const nextRole = u.role === 'Admin' ? 'Manager' : 'Admin';
     const roleClass = u.role.toLowerCase();
+    
+    // Определяем следующую роль для кнопки изменения
+    let nextRole = '';
+    let showRoleButton = true;
+    
+    // Логика изменения роли:
+    // - Manager -> Admin (для Admin/SuperAdmin)
+    // - Admin -> Manager (для Admin/SuperAdmin)
+    // - SuperAdmin - нельзя менять, если текущий пользователь не SuperAdmin
+    if (u.role === 'Manager') {
+        nextRole = 'Admin';
+    } else if (u.role === 'Admin') {
+        nextRole = 'Manager';
+    } else if (u.role === 'SuperAdmin') {
+        // Для SuperAdmin кнопку изменения роли показываем только если текущий пользователь тоже SuperAdmin
+        const currentUserRole = getUserRole();
+        if (currentUserRole === 'SuperAdmin') {
+            nextRole = 'Admin'; // SuperAdmin может понизить до Admin
+        } else {
+            showRoleButton = false; // Admin не может менять роль SuperAdmin
+        }
+    }
+    
+    // Проверяем права текущего пользователя
+    const currentUserRole = getUserRole();
     
     return `
     <tr>
@@ -254,8 +287,8 @@ function renderUserRow(u) {
         <td class="actions">
             <button class="btn btn-outline btn-sm btn-edit-user" data-user-id="${u.id}">Редактировать</button>
             <button class="btn ${toggleClass} btn-sm btn-toggle-block" data-user-id="${u.id}" data-is-blocked="${u.isBlocked}">${toggleText}</button>
-            <button class="btn btn-primary btn-sm btn-change-role" data-user-id="${u.id}" data-next-role="${nextRole}">Сделать ${nextRole}</button>
-            <button class="btn btn-danger btn-sm btn-delete-user" data-user-id="${u.id}">Удалить</button>
+            ${showRoleButton ? `<button class="btn btn-primary btn-sm btn-change-role" data-user-id="${u.id}" data-next-role="${nextRole}">Сделать ${nextRole}</button>` : ''}
+            ${currentUserRole === 'SuperAdmin' || u.role !== 'SuperAdmin' ? `<button class="btn btn-danger btn-sm btn-delete-user" data-user-id="${u.id}">Удалить</button>` : ''}
         </td>
     </tr>`;
 }
@@ -338,6 +371,7 @@ function resetFilters() {
 }
 
 // Модальное окно создания пользователя
+// В функции showCreateUserModal():
 function showCreateUserModal() {
     const modal = document.getElementById('createUserModal');
     if (modal) {
@@ -346,7 +380,26 @@ function showCreateUserModal() {
         document.getElementById('createUsername').value = '';
         document.getElementById('createPassword').value = '';
         document.getElementById('createFullName').value = '';
-        document.getElementById('createRole').value = 'Manager';
+        
+        // Настраиваем список ролей в зависимости от текущего пользователя
+        const roleSelect = document.getElementById('createRole');
+        const currentUserRole = getUserRole();
+        
+        if (currentUserRole === 'SuperAdmin') {
+            // SuperAdmin может создавать любые роли
+            roleSelect.innerHTML = `
+                <option value="Manager">Менеджер</option>
+                <option value="Admin">Администратор</option>
+                <option value="SuperAdmin">Главный администратор</option>
+            `;
+        } else {
+            // Admin может создавать только Manager и Admin
+            roleSelect.innerHTML = `
+                <option value="Manager">Менеджер</option>
+                <option value="Admin">Администратор</option>
+            `;
+        }
+        roleSelect.value = 'Manager'; // Значение по умолчанию
         
         // Очищаем возможные ошибки валидации
         clearValidationErrors();
@@ -525,7 +578,13 @@ function validateCreateUser(payload) {
         return 'Пароль должен быть не менее 8 символов';
     }
     
-    if (!['Admin', 'Manager'].includes(payload.role)) {
+    // Проверка допустимых ролей в зависимости от текущего пользователя
+    const currentUserRole = getUserRole();
+    const allowedRoles = currentUserRole === 'SuperAdmin' 
+        ? ['Manager', 'Admin', 'SuperAdmin']
+        : ['Manager', 'Admin'];
+    
+    if (!allowedRoles.includes(payload.role)) {
         return 'Неверная роль';
     }
     
@@ -533,6 +592,26 @@ function validateCreateUser(payload) {
 }
 
 async function deleteUser(id) {
+    const user = allUsers.find(u => u.id === id);
+    if (!user) return;
+    
+    const currentUserRole = getUserRole();
+    
+    // Проверка прав:
+    // - Нельзя удалять SuperAdmin, если текущий пользователь не SuperAdmin
+    // - Нельзя удалять самого себя
+    const currentUser = secureGetUserData();
+    
+    if (user.role === 'SuperAdmin' && currentUserRole !== 'SuperAdmin') {
+        showTempMessage('Только Главный администратор может удалять SuperAdmin', 'error');
+        return;
+    }
+    
+    if (user.id === currentUser?.id) {
+        showTempMessage('Вы не можете удалить свой собственный аккаунт', 'error');
+        return;
+    }
+    
     const confirmed = await ModalUtils.confirm({
         title: 'Удалить пользователя?',
         message: 'Это действие необратимо.',
@@ -573,17 +652,35 @@ async function toggleBlock(id, isBlocked) {
     }
 }
 
-async function changeRole(id, role) {
+async function changeRole(id, nextRole) {
+    const user = allUsers.find(u => u.id === id);
+    if (!user) return;
+    
+    // Проверяем права:
+    const currentUserRole = getUserRole();
+    
+    // Admin не может менять роль SuperAdmin
+    if (user.role === 'SuperAdmin' && currentUserRole !== 'SuperAdmin') {
+        showTempMessage('Только Главный администратор может изменять роль SuperAdmin', 'error');
+        return;
+    }
+    
+    // Admin не может создавать SuperAdmin
+    if (nextRole === 'SuperAdmin' && currentUserRole !== 'SuperAdmin') {
+        showTempMessage('Только Главный администратор может назначать роль SuperAdmin', 'error');
+        return;
+    }
+    
     const confirmed = await ModalUtils.confirm({
-        title: `Изменить роль на ${role}?`,
-        message: `Роль пользователя будет изменена на ${role}.`,
+        title: `Изменить роль на ${nextRole}?`,
+        message: `Роль пользователя будет изменена на ${nextRole}.`,
         confirmText: 'Изменить'
     });
     if (!confirmed) return;
 
     try {
-        await apiService.changeUserRole(id, role);
-        showTempMessage(`Роль изменена на ${role}`, 'success');
+        await apiService.changeUserRole(id, nextRole);
+        showTempMessage(`Роль изменена на ${nextRole}`, 'success');
         await loadUsers();
     } catch (e) {
         showTempMessage(e.message || 'Не удалось изменить роль', 'error');

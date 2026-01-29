@@ -2,7 +2,7 @@
 
 namespace Franchisee.Web.Models
 {
-    public enum UserRole { Manager, Admin }
+    public enum UserRole { Manager, Admin, SuperAdmin }
     public class Manager
     {
         [Key] public int Id { get; set; }

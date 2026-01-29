@@ -8,6 +8,7 @@ import {
 import { renderPhotoGrid, attachPhotoEvents, cleanupPhotoBlobs, openPhotoPreview } from '../utils/photo-utils.js';
 import { ModalUtils } from '../utils/modal-utils.js';
 import { printOrder, downloadOrderExcel } from '../utils/print-utils.js';
+import { checkBlocking, handleNavigationWithBlockingCheck } from '../notification/notification-blocking.js';
 
 export class ViewOrderManager {
     constructor(pageManager) {
@@ -35,6 +36,35 @@ export class ViewOrderManager {
         this.deleteBtn = document.getElementById('deleteBtn');
         this.excelBtn = document.getElementById('excelBtn');
         this.printBtn = document.getElementById('printBtn');
+    }
+
+    async checkPageAccess() {
+        // Для Admin/SuperAdmin всегда разрешаем
+        const userData = apiService.getCurrentUser();
+        if (userData?.role === 'Admin' || userData?.role === 'SuperAdmin') {
+            return;
+        }
+        
+        try {
+            const blockingResult = await checkBlocking();
+            
+            if (blockingResult?.isBlocked) {
+                // Блокировка! Редирект на уведомления
+                if (blockingResult.message) {
+                    showTempMessage(blockingResult.message, 'error');
+                }
+                
+                setTimeout(() => {
+                    window.location.href = 'notifications.html';
+                }, 1000);
+                
+                // Бросаем ошибку чтобы остановить дальнейшую инициализацию
+                throw new Error('Доступ заблокирован');
+            }
+        } catch (error) {
+            console.warn('[CreateOrder] Ошибка проверки доступа:', error);
+            // Продолжаем загрузку при ошибке (fail-open)
+        }
     }
 
     bindEvents() {

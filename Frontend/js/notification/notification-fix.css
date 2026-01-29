@@ -1,0 +1,827 @@
+/* ===== NOTIFICATION MODAL - КОМПАКТНАЯ ВЕРСИЯ ===== */
+
+/* Модалка */
+#notificationDetailsModal.modal {
+    background: rgba(15, 23, 42, 0.85);
+    backdrop-filter: blur(8px);
+    display: none; /* Будет flex при открытии */
+    align-items: center;
+    justify-content: center;
+    padding: var(--space-4);
+    overflow-y: auto; /* Скролл для всей модалки если нужно */
+}
+
+#notificationDetailsModal .modal-content {
+    background: var(--glass-background);
+    backdrop-filter: var(--backdrop-blur);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius-xl);
+    box-shadow: var(--glass-shadow-hover);
+    max-width: 650px; /* Уменьшил ширину с 800px */
+    width: 100%;
+    max-height: 85vh; /* Ограничиваем высоту */
+    display: flex;
+    flex-direction: column;
+    overflow: hidden; /* Важно! */
+}
+
+/* Хедер - фиксированный */
+#notificationDetailsModal .modal-header {
+    padding: var(--space-4) var(--space-5);
+    border-bottom: 1px solid var(--glass-border);
+    background: rgba(30, 41, 59, 0.6);
+    border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+    flex-shrink: 0; /* Не сжимается */
+    backdrop-filter: blur(12px);
+}
+
+#notificationDetailsModal .modal-title {
+    margin: 0;
+    color: var(--text-primary);
+    font-weight: 700;
+    font-size: var(--text-lg); /* Уменьшил шрифт */
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 80%;
+}
+
+#notificationDetailsModal .modal-close {
+    background: transparent;
+    border: 1px solid var(--glass-border);
+    width: 32px; /* Уменьшил */
+    height: 32px;
+    border-radius: var(--radius-lg);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-muted);
+    transition: all 0.2s ease;
+    flex-shrink: 0;
+}
+
+#notificationDetailsModal .modal-close:hover {
+    background: var(--error);
+    border-color: var(--error);
+    color: white;
+    transform: rotate(90deg);
+}
+
+/* Тело модалки - СКРОЛЛ */
+#notificationDetailsModal .modal-body {
+    padding: 0;
+    flex: 1; /* Занимает доступное пространство */
+    overflow-y: auto; /* Включаем вертикальный скролл */
+    min-height: 0; /* Важно для flex-scroll */
+}
+
+#notificationDetailsModal .modal-body::-webkit-scrollbar {
+    width: 6px;
+}
+
+#notificationDetailsModal .modal-body::-webkit-scrollbar-track {
+    background: rgba(30, 41, 59, 0.3);
+    border-radius: 3px;
+}
+
+#notificationDetailsModal .modal-body::-webkit-scrollbar-thumb {
+    background: var(--accent);
+    border-radius: 3px;
+}
+
+#notificationDetailsModal .modal-body::-webkit-scrollbar-thumb:hover {
+    background: var(--accent-hover);
+}
+
+/* Контент */
+#notificationDetailsModal #notificationDetailsContent {
+    padding: var(--space-5);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4); /* Уменьшил отступы между секциями */
+    min-height: min-content;
+}
+
+/* Секции */
+#notificationDetailsModal .details-section {
+    margin-bottom: 0;
+    break-inside: avoid; /* Не разрывать при скролле */
+}
+
+#notificationDetailsModal .glass-card {
+    background: rgba(30, 41, 59, 0.55);
+    backdrop-filter: blur(16px);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+}
+
+/* Уменьшаем отступы в секциях */
+#notificationDetailsModal .details-section-header {
+    padding: var(--space-3) var(--space-4);
+    background: rgba(30, 41, 59, 0.4);
+    border-bottom: 1px solid var(--glass-border);
+}
+
+#notificationDetailsModal .details-section-title {
+    margin: 0;
+    color: var(--text-primary);
+    font-weight: 600;
+    font-size: var(--text-base); /* Уменьшил */
+}
+
+#notificationDetailsModal .details-section-body {
+    padding: var(--space-4);
+}
+
+#notificationDetailsModal .details-section-body.p-0 {
+    padding: 0;
+}
+
+/* Таблица деталей - более компактная */
+#notificationDetailsModal .details-table {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+}
+
+#notificationDetailsModal .details-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: var(--space-2) var(--space-3); /* Уменьшил отступы */
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    min-height: 36px; /* Фиксированная высота строки */
+}
+
+#notificationDetailsModal .details-row:last-child {
+    border-bottom: none;
+}
+
+#notificationDetailsModal .details-label {
+    font-size: var(--text-xs); /* Уменьшил */
+    font-weight: 500;
+    color: var(--text-muted);
+    white-space: nowrap;
+}
+
+#notificationDetailsModal .details-value {
+    font-size: var(--text-xs); /* Уменьшил */
+    font-weight: 500;
+    text-align: right;
+    max-width: 50%; /* Ограничиваем ширину значения */
+    word-break: break-word;
+    padding-left: var(--space-2);
+}
+
+/* Аккордеон - более компактный */
+#notificationDetailsModal .notification-accordion {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2); /* Уменьшил */
+}
+
+#notificationDetailsModal .accordion-group {
+    background: rgba(30, 41, 59, 0.4);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius-md); /* Уменьшил радиус */
+    overflow: hidden;
+}
+
+#notificationDetailsModal .accordion-header {
+    padding: var(--space-3) var(--space-4); /* Уменьшил */
+    background: rgba(30, 41, 59, 0.6);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    cursor: pointer;
+    transition: background 0.2s ease;
+    min-height: 44px; /* Фиксированная высота */
+}
+
+#notificationDetailsModal .accordion-header:hover {
+    background: rgba(59, 130, 246, 0.15);
+}
+
+#notificationDetailsModal .accordion-title {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2); /* Уменьшил */
+    font-weight: 600;
+    font-size: var(--text-sm); /* Уменьшил */
+    color: var(--text-primary);
+}
+
+#notificationDetailsModal .change-count {
+    font-size: var(--text-xs); /* Уменьшил */
+    color: var(--accent);
+    background: rgba(59, 130, 246, 0.15);
+    padding: 1px 6px; /* Уменьшил */
+    border-radius: var(--radius-sm);
+}
+
+#notificationDetailsModal .accordion-content {
+    padding: var(--space-4); /* Уменьшил */
+    background: rgba(30, 41, 59, 0.3);
+    border-top: 1px solid var(--glass-border);
+    display: none;
+    max-height: 400px; /* Ограничиваем высоту контента */
+    overflow-y: auto; /* Скролл внутри аккордеона если много */
+}
+
+#notificationDetailsModal .accordion-group.expanded .accordion-content {
+    display: block;
+}
+
+/* Футер с кнопками - фиксированный внизу */
+#notificationDetailsModal .modal-footer {
+    padding: var(--space-4) var(--space-5);
+    border-top: 1px solid var(--glass-border);
+    background: rgba(30, 41, 59, 0.6);
+    border-radius: 0 0 var(--radius-xl) var(--radius-xl);
+    flex-shrink: 0; /* Не сжимается */
+    backdrop-filter: blur(12px);
+}
+
+#notificationDetailsModal .notification-action-buttons {
+    display: flex;
+    gap: var(--space-3); /* Уменьшил */
+    justify-content: flex-end;
+}
+
+/* Кнопки - более компактные */
+#notificationDetailsModal .modal-action-btn {
+    padding: var(--space-2) var(--space-4); /* Уменьшил */
+    font-size: var(--text-xs); /* Уменьшил */
+    font-weight: 500;
+    min-height: 36px; /* Уменьшил */
+    border-radius: var(--radius-lg);
+    transition: all 0.2s ease;
+    white-space: nowrap;
+}
+
+#notificationDetailsModal .modal-action-btn.btn-primary {
+    background: linear-gradient(135deg, var(--accent) 0%, var(--accent-hover) 100%);
+    color: white;
+    border: 1px solid var(--accent);
+}
+
+#notificationDetailsModal .modal-action-btn.btn-primary:hover {
+    background: linear-gradient(135deg, var(--accent-hover) 0%, var(--accent-active) 100%);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+}
+
+#notificationDetailsModal .modal-action-btn.btn-outline {
+    background: transparent;
+    border: 1px solid var(--glass-border);
+    color: var(--text-secondary);
+}
+
+#notificationDetailsModal .modal-action-btn.btn-outline:hover {
+    background: var(--accent);
+    color: white;
+    border-color: var(--accent);
+}
+
+#notificationDetailsModal .modal-action-btn.btn-danger {
+    background: var(--error);
+    color: white;
+    border: none;
+}
+
+#notificationDetailsModal .modal-action-btn.btn-danger:hover {
+    background: #dc2626;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+}
+
+/* Адаптивность для мобильных */
+@media (max-width: 768px) {
+    #notificationDetailsModal.modal {
+        padding: var(--space-2);
+        align-items: flex-end; /* На мобильных снизу */
+    }
+    
+    #notificationDetailsModal .modal-content {
+        max-width: 100%;
+        max-height: 90vh;
+        margin-bottom: env(safe-area-inset-bottom, 0);
+        border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+    }
+    
+    #notificationDetailsModal .modal-header,
+    #notificationDetailsModal .modal-footer {
+        padding: var(--space-3);
+    }
+    
+    #notificationDetailsModal #notificationDetailsContent {
+        padding: var(--space-3);
+        gap: var(--space-3);
+    }
+    
+    #notificationDetailsModal .details-row {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: var(--space-1);
+        padding: var(--space-2) 0;
+        min-height: auto;
+    }
+    
+    #notificationDetailsModal .details-value {
+        max-width: 100%;
+        text-align: left;
+        padding-left: 0;
+    }
+    
+    #notificationDetailsModal .notification-action-buttons {
+        flex-direction: column;
+        width: 100%;
+    }
+    
+    #notificationDetailsModal .modal-action-btn {
+        width: 100%;
+    }
+    
+    #notificationDetailsModal .details-section-header,
+    #notificationDetailsModal .details-section-body {
+        padding: var(--space-3);
+    }
+    
+    #notificationDetailsModal .accordion-header {
+        padding: var(--space-2) var(--space-3);
+        min-height: 40px;
+    }
+    
+    #notificationDetailsModal .accordion-content {
+        padding: var(--space-3);
+        max-height: 300px;
+    }
+}
+
+/* Очень маленькие экраны */
+@media (max-width: 480px) {
+    #notificationDetailsModal .modal-title {
+        font-size: var(--text-base);
+        max-width: 70%;
+    }
+    
+    #notificationDetailsModal .details-section-title {
+        font-size: var(--text-sm);
+    }
+    
+    #notificationDetailsModal .details-label,
+    #notificationDetailsModal .details-value {
+        font-size: var(--text-xs);
+    }
+    
+    #notificationDetailsModal .accordion-title {
+        font-size: var(--text-xs);
+    }
+    
+    #notificationDetailsModal .modal-action-btn {
+        font-size: var(--text-xs);
+        padding: var(--space-1) var(--space-3);
+        min-height: 32px;
+    }
+}
+
+/* ===== ИСПРАВЛЕННЫЕ ТАБЛИЦЫ В АККОРДЕОНЕ ===== */
+
+/* Строки сравнения */
+#notificationDetailsModal .diff-row {
+    display: flex;
+    flex-direction: column;
+    padding: var(--space-3) var(--space-4);
+    background: rgba(30, 41, 59, 0.3);
+    border-radius: var(--radius-md);
+    margin-bottom: var(--space-2);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    transition: all 0.2s ease;
+}
+
+#notificationDetailsModal .diff-row:hover {
+    background: rgba(30, 41, 59, 0.4);
+    border-color: rgba(59, 130, 246, 0.2);
+}
+
+#notificationDetailsModal .diff-row.diff-changed {
+    background: rgba(59, 130, 246, 0.08);
+    border-left: 3px solid var(--accent);
+}
+
+#notificationDetailsModal .diff-label {
+    font-weight: 600;
+    font-size: var(--text-sm);
+    color: var(--text-primary);
+    margin-bottom: var(--space-2);
+    padding-bottom: var(--space-1);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+#notificationDetailsModal .diff-values {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-3);
+}
+
+#notificationDetailsModal .diff-old,
+#notificationDetailsModal .diff-new {
+    padding: var(--space-2) var(--space-3);
+    background: rgba(30, 41, 59, 0.2);
+    border-radius: var(--radius-sm);
+    font-size: var(--text-sm);
+    border: 1px solid transparent;
+}
+
+#notificationDetailsModal .diff-old {
+    border-color: rgba(239, 68, 68, 0.2);
+}
+
+#notificationDetailsModal .diff-new {
+    border-color: rgba(16, 185, 129, 0.2);
+}
+
+#notificationDetailsModal .diff-value-label {
+    display: block;
+    font-size: var(--text-xs);
+    color: var(--text-muted);
+    margin-bottom: var(--space-1);
+    font-weight: 500;
+}
+
+/* Стили для измененных значений */
+#notificationDetailsModal .strikethrough.red {
+    text-decoration: line-through;
+    color: var(--error) !important;
+    opacity: 0.8;
+}
+
+#notificationDetailsModal .bold.green {
+    font-weight: 600;
+    color: var(--success) !important;
+}
+
+/* Коллекции (WorkItems, Payments, Photos) */
+#notificationDetailsModal .collection-diff {
+    margin-top: var(--space-4);
+    background: rgba(30, 41, 59, 0.25);
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--glass-border);
+    overflow: hidden;
+}
+
+#notificationDetailsModal .collection-header {
+    padding: var(--space-3) var(--space-4);
+    background: rgba(30, 41, 59, 0.4);
+    border-bottom: 1px solid var(--glass-border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+#notificationDetailsModal .collection-header h5 {
+    margin: 0;
+    color: var(--text-primary);
+    font-size: var(--text-base);
+    font-weight: 600;
+}
+
+#notificationDetailsModal .collection-count {
+    font-size: var(--text-xs);
+    color: var(--text-muted);
+    background: rgba(148, 163, 184, 0.15);
+    padding: 2px 8px;
+    border-radius: var(--radius-sm);
+}
+
+#notificationDetailsModal .collection-stats {
+    display: flex;
+    gap: var(--space-3);
+}
+
+#notificationDetailsModal .stat-old,
+#notificationDetailsModal .stat-new {
+    font-size: var(--text-xs);
+    padding: 2px 8px;
+    border-radius: var(--radius-sm);
+    font-weight: 500;
+}
+
+#notificationDetailsModal .stat-old {
+    background: rgba(239, 68, 68, 0.15);
+    color: var(--error);
+}
+
+#notificationDetailsModal .stat-new {
+    background: rgba(16, 185, 129, 0.15);
+    color: var(--success);
+}
+
+#notificationDetailsModal .collection-comparison {
+    padding: var(--space-4);
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-4);
+}
+
+#notificationDetailsModal .collection-old,
+#notificationDetailsModal .collection-new {
+    background: rgba(30, 41, 59, 0.2);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    border: 1px solid var(--glass-border);
+}
+
+#notificationDetailsModal .collection-old {
+    border-color: rgba(239, 68, 68, 0.3);
+}
+
+#notificationDetailsModal .collection-new {
+    border-color: rgba(16, 185, 129, 0.3);
+}
+
+/* Стили для WorkItems (виды работ) */
+#notificationDetailsModal .work-item {
+    padding: var(--space-3);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    background: rgba(30, 41, 59, 0.1);
+}
+
+#notificationDetailsModal .work-item:last-child {
+    border-bottom: none;
+}
+
+#notificationDetailsModal .work-item-row {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: var(--space-1);
+    font-size: var(--text-sm);
+}
+
+#notificationDetailsModal .work-item-label {
+    color: var(--text-muted);
+    font-weight: 500;
+}
+
+#notificationDetailsModal .work-item-value {
+    color: var(--text-secondary);
+    text-align: right;
+    max-width: 60%;
+    word-break: break-word;
+}
+
+#notificationDetailsModal .work-total {
+    padding: var(--space-3);
+    background: rgba(30, 41, 59, 0.3);
+    border-top: 1px solid var(--glass-border);
+    font-weight: 600;
+    color: var(--text-primary);
+    text-align: right;
+}
+
+/* Стили для Payments (платежи) */
+#notificationDetailsModal .payment-item {
+    padding: var(--space-3);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    background: rgba(30, 41, 59, 0.1);
+}
+
+#notificationDetailsModal .payment-item:last-child {
+    border-bottom: none;
+}
+
+#notificationDetailsModal .payment-item-row {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: var(--space-1);
+    font-size: var(--text-sm);
+}
+
+#notificationDetailsModal .payment-label {
+    color: var(--text-muted);
+    font-weight: 500;
+}
+
+#notificationDetailsModal .payment-value {
+    color: var(--text-secondary);
+    text-align: right;
+    max-width: 60%;
+    word-break: break-word;
+}
+
+#notificationDetailsModal .payment-total {
+    padding: var(--space-3);
+    background: rgba(30, 41, 59, 0.3);
+    border-top: 1px solid var(--glass-border);
+    font-weight: 600;
+    color: var(--text-primary);
+    text-align: right;
+}
+
+/* Адаптивность для таблиц */
+@media (max-width: 768px) {
+    #notificationDetailsModal .diff-values {
+        grid-template-columns: 1fr;
+        gap: var(--space-2);
+    }
+    
+    #notificationDetailsModal .collection-comparison {
+        grid-template-columns: 1fr;
+        gap: var(--space-3);
+    }
+    
+    #notificationDetailsModal .work-item-row,
+    #notificationDetailsModal .payment-item-row {
+        flex-direction: column;
+        gap: var(--space-1);
+    }
+    
+    #notificationDetailsModal .work-item-value,
+    #notificationDetailsModal .payment-value {
+        max-width: 100%;
+        text-align: left;
+    }
+}
+
+/* Улучшаем отображение внутри аккордеона */
+#notificationDetailsModal .accordion-content {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+}
+
+#notificationDetailsModal .accordion-content > *:last-child {
+    margin-bottom: 0;
+}
+
+/* ===== ФИКС ДЛЯ ДЕТАЛЕЙ ТАБЛИЦЫ НА МОБИЛЬНЫХ ===== */
+
+/* Для всех экранов */
+#notificationDetailsModal .details-table {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+}
+
+#notificationDetailsModal .details-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: var(--space-3) var(--space-4); /* Увеличил отступы */
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    min-height: 48px; /* Увеличил минимальную высоту */
+}
+
+#notificationDetailsModal .details-row:last-child {
+    border-bottom: none;
+}
+
+#notificationDetailsModal .details-label {
+    font-size: var(--text-sm);
+    font-weight: 500;
+    color: var(--text-muted);
+    min-width: 140px; /* Фиксированная минимальная ширина для лейбла */
+    flex-shrink: 0; /* Не сжимается */
+}
+
+#notificationDetailsModal .details-value {
+    font-size: var(--text-sm);
+    font-weight: 500;
+    text-align: right;
+    color: var(--text-primary);
+    flex: 1; /* Занимает оставшееся пространство */
+    padding-left: var(--space-3);
+    word-break: break-word;
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    gap: var(--space-2);
+}
+
+/* Цветные значения */
+#notificationDetailsModal .details-value.text-warning {
+    color: var(--warning);
+    font-weight: 600;
+}
+
+#notificationDetailsModal .details-value.text-accent {
+    color: var(--accent);
+    font-weight: 600;
+}
+
+/* МОБИЛЬНАЯ АДАПТИВНОСТЬ - ФИКС */
+@media (max-width: 768px) {
+    #notificationDetailsModal .details-row {
+        flex-direction: row; /* ОСТАВЛЯЕМ В СТРОКУ НА МОБИЛЬНЫХ */
+        align-items: flex-start; /* Выравниваем по верху */
+        padding: var(--space-3) var(--space-3);
+        min-height: auto;
+    }
+    
+    #notificationDetailsModal .details-label {
+        min-width: 120px; /* Уменьшаем на мобильных */
+        font-size: var(--text-xs);
+        padding-right: var(--space-2);
+        align-self: flex-start;
+    }
+    
+    #notificationDetailsModal .details-value {
+        font-size: var(--text-xs);
+        text-align: left; /* ТЕПЕРЬ СЛЕВА НА МОБИЛЬНЫХ */
+        padding-left: 0;
+        justify-content: flex-start; /* Выравнивание слева */
+        flex-wrap: wrap;
+    }
+    
+    /* Для длинных значений делаем перенос */
+    #notificationDetailsModal .details-value.text-warning,
+    #notificationDetailsModal .details-value.text-accent {
+        word-break: break-word;
+        hyphens: auto;
+    }
+}
+
+/* Для очень маленьких экранов */
+@media (max-width: 480px) {
+    #notificationDetailsModal .details-row {
+        padding: var(--space-2) var(--space-2);
+    }
+    
+    #notificationDetailsModal .details-label {
+        min-width: 100px;
+        font-size: var(--text-xs);
+    }
+    
+    #notificationDetailsModal .details-value {
+        font-size: var(--text-xs);
+    }
+    
+    /* Делаем значения более заметными */
+    #notificationDetailsModal .details-value.text-warning {
+        background: rgba(245, 158, 11, 0.1);
+        padding: 2px 6px;
+        border-radius: var(--radius-sm);
+        border-left: 2px solid var(--warning);
+    }
+    
+    #notificationDetailsModal .details-value.text-accent {
+        background: rgba(59, 130, 246, 0.1);
+        padding: 2px 6px;
+        border-radius: var(--radius-sm);
+        border-left: 2px solid var(--accent);
+    }
+}
+
+/* Дополнительно: улучшаем визуальное разделение */
+#notificationDetailsModal .details-table {
+    background: rgba(30, 41, 59, 0.2);
+    border-radius: var(--radius-lg);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    overflow: hidden;
+}
+
+#notificationDetailsModal .details-row:nth-child(even) {
+    background: rgba(30, 41, 59, 0.1);
+}
+
+#notificationDetailsModal .details-row:hover {
+    background: rgba(59, 130, 246, 0.05);
+}
+
+#notificationsBadge.badge {
+    display: none; /* По умолчанию скрыт */
+    align-items: center;
+    justify-content: center;
+    min-width: 20px;
+    height: 20px;
+    border-radius: 10px;
+    font-size: 11px;
+    font-weight: 700; /* Полужирный для лучшей читаемости */
+    transition: all 0.3s ease;
+    border: 1px solid transparent;
+}
+
+#notificationsBadge.badge-danger {
+    background-color: var(--error) !important;
+    color: white !important;
+    border-color: var(--error-dark, #dc2626) !important;
+}
+
+#notificationsBadge.badge-secondary {
+    background-color: var(--text-muted) !important;
+    color: var(--dark-blue, #1e293b) !important; /* Темно-синий цвет текста */
+    border-color: var(--text-muted-dark, #64748b) !important;
+}
+
+#notificationsBadge.badge-secondary {
+    background-color: #94a3b8 !important; /* Серый фон */
+    color: #0f172a !important; /* Темно-синий/черный текст */
+    border-color: #64748b !important;
+}
+
+/* Когда бейдж должен быть виден */
+#notificationsBadge.badge[style*="display: inline-flex"],
+#notificationsBadge.badge[style*="display: inline-block"] {
+    display: inline-flex !important;
+}

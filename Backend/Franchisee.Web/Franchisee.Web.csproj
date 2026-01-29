@@ -7,24 +7,17 @@
 	</PropertyGroup>
 	<ItemGroup>
 	  <Compile Remove="Helpers\**" />
-	  <Compile Remove="Migrations\**" />
 	  <Compile Remove="Services\Business\**" />
 	  <Compile Remove="temp-key-generator\**" />
 	  <Content Remove="Helpers\**" />
-	  <Content Remove="Migrations\**" />
 	  <Content Remove="Services\Business\**" />
 	  <Content Remove="temp-key-generator\**" />
 	  <EmbeddedResource Remove="Helpers\**" />
-	  <EmbeddedResource Remove="Migrations\**" />
 	  <EmbeddedResource Remove="Services\Business\**" />
 	  <EmbeddedResource Remove="temp-key-generator\**" />
 	  <None Remove="Helpers\**" />
-	  <None Remove="Migrations\**" />
 	  <None Remove="Services\Business\**" />
 	  <None Remove="temp-key-generator\**" />
-	</ItemGroup>
-	<ItemGroup>
-	  <Compile Remove="Models\City.cs" />
 	</ItemGroup>
 	<ItemGroup>
 		<PackageReference Include="BCrypt.Net-Next" Version="4.0.3" />
@@ -45,11 +38,14 @@
 		<PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="9.0.4" />
 		<PackageReference Include="Serilog.AspNetCore" Version="9.0.0" />
 		<PackageReference Include="SixLabors.ImageSharp" Version="3.1.11" />
-		<PackageReference Include="Swashbuckle.AspNetCore" Version="9.0.6" />		
+		<PackageReference Include="Swashbuckle.AspNetCore" Version="9.0.6" />
+		<PackageReference Include="Microsoft.AspNetCore.SignalR" Version="1.2.9" />
+		<PackageReference Include="Microsoft.AspNetCore.SignalR.Client" Version="9.0.9" />
 	</ItemGroup>
 	<ItemGroup>
 		<Folder Include="Data\" />
 		<Folder Include="logs\" />
+		<Folder Include="Migrations\" />
 		<Folder Include="wwwroot\uploads\orders\" />
 		<Folder Include="wwwroot\uploads\temp\" />
 		

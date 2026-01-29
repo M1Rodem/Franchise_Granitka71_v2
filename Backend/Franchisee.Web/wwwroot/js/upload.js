@@ -13,7 +13,6 @@ async function uploadPhoto(orderId, file) {
         }
 
         const result = await response.json();
-        console.log('Фото загружено:', result);
         return result;
     } catch (error) {
         console.error('Ошибка:', error);

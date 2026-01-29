@@ -17,9 +17,49 @@ namespace Franchisee.Web.Configuration
         public DbSet<OrderPayment> OrderPayments { get; set; }
         public DbSet<OrderPhoto> OrderPhotos { get; set; }
         public DbSet<TempUpload> TempUploads { get; set; }
+        public DbSet<Notification> Notifications { get; set; }
+        public DbSet<NotificationRecipient> NotificationRecipients { get; set; }
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
+
+            // Конфигурация для NotificationRecipient
+            modelBuilder.Entity<NotificationRecipient>(entity =>
+            {
+                entity.HasIndex(nr => new { nr.NotificationId, nr.UserId }).IsUnique();
+
+                entity.HasIndex(nr => new { nr.Status, nr.ResolvedAt })
+                    .HasFilter("\"ResolvedAt\" IS NOT NULL")
+                    .HasDatabaseName("IX_NotificationRecipients_Status_ResolvedAt");
+
+                entity.HasOne(nr => nr.Notification)
+                    .WithMany(n => n.Recipients)
+                    .HasForeignKey(nr => nr.NotificationId)
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasOne(nr => nr.User)
+                    .WithMany()
+                    .HasForeignKey(nr => nr.UserId)
+                    .OnDelete(DeleteBehavior.Restrict);
+            });
+
+            // Конфигурация для Notification
+            modelBuilder.Entity<Notification>(entity =>
+            {  
+                entity.HasIndex(n => n.CreatedAt)
+                    .HasDatabaseName("IX_Notifications_CreatedAt");
+
+                entity.HasOne(n => n.Initiator)
+                    .WithMany()
+                    .HasForeignKey(n => n.InitiatorId)
+                    .OnDelete(DeleteBehavior.Restrict);
+
+                entity.HasOne(n => n.Order)
+                    .WithMany()
+                    .HasForeignKey(n => n.OrderId)
+                    .OnDelete(DeleteBehavior.Restrict);
+            });
+
 
             // Order конфигурация
             modelBuilder.Entity<Order>()
@@ -28,6 +68,13 @@ namespace Franchisee.Web.Configuration
             modelBuilder.Entity<Order>()
                 .Property(o => o.TotalPrice)
                 .HasPrecision(18, 2);
+
+            // ВАЖНО: Конфигурация связи Order -> Manager (добавить этот блок)
+            modelBuilder.Entity<Order>()
+                .HasOne(o => o.Manager)
+                .WithMany(m => m.Orders)
+                .HasForeignKey(o => o.ManagerId)
+                .OnDelete(DeleteBehavior.Restrict); // Запретить удаление менеджера, если есть заказы
 
             // OrderWorkItem конфигурация
             modelBuilder.Entity<OrderWorkItem>()

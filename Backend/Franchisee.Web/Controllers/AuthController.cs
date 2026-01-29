@@ -44,7 +44,12 @@ namespace Franchisee.Web.Controllers
                 }
 
                 // УСПЕШНАЯ АВТОРИЗАЦИЯ
-                var role = user.Role == UserRole.Admin ? "Admin" : "Manager";
+                var role = user.Role switch
+                {
+                    UserRole.SuperAdmin => "SuperAdmin",
+                    UserRole.Admin => "Admin",
+                    _ => "Manager"
+                };
                 _logger.LogInformation("Успешный вход для пользователя: {Username} с ролью: {Role}", user.Username, role);
 
                 var key = _config["Jwt:Key"];

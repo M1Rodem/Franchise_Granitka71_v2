@@ -1,22 +1,64 @@
-﻿using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Mvc;
+﻿using DocumentFormat.OpenXml.InkML;
+using Franchisee.Web.Configuration;
 using Franchisee.Web.Models;
 using Franchisee.Web.Services.Repositories;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using System.Security.Claims;
 
 namespace Franchisee.Web.Controllers
 {
-    [Authorize(Roles = "Admin")]
+    [Authorize(Policy = "Admin")]
     [ApiController]
     [Route("api/[controller]")]
     public class UsersController : ControllerBase
     {
         private readonly IManagerRepository _managerRepository;
         private readonly ILogger<UsersController> _logger;
+        private readonly ApplicationDbContext _context;
 
-        public UsersController(IManagerRepository managerRepository, ILogger<UsersController> logger)
+        public UsersController(
+            IManagerRepository managerRepository,
+            ILogger<UsersController> logger,
+            ApplicationDbContext context)
         {
             _managerRepository = managerRepository;
             _logger = logger;
+            _context = context;
+        }
+
+        private bool IsSuperAdmin() => User.IsInRole("SuperAdmin");
+        private bool IsAdmin() => User.IsInRole("Admin") || User.IsInRole("SuperAdmin");
+
+        private ActionResult? CheckRoleCreationPermissions(UserRole roleToCreate)
+        {
+            var currentUserRole = GetCurrentUserRole();
+
+            // SuperAdmin может создавать любые роли
+            if (currentUserRole == UserRole.SuperAdmin)
+            {
+                return null; // Разрешено
+            }
+
+            // Admin может создавать только Manager и Admin
+            if (currentUserRole == UserRole.Admin)
+            {
+                if (roleToCreate == UserRole.SuperAdmin)
+                {
+                    return StatusCode(403, "У вас нет прав создавать пользователей с ролью Главный администратор");
+                }
+                return null; // Разрешено
+            }
+
+            return StatusCode(403, "Недостаточно прав");
+        }
+
+        private UserRole GetCurrentUserRole()
+        {
+            if (User.IsInRole("SuperAdmin")) return UserRole.SuperAdmin;
+            if (User.IsInRole("Admin")) return UserRole.Admin;
+            return UserRole.Manager;
         }
 
         [HttpGet]
@@ -92,11 +134,17 @@ namespace Franchisee.Web.Controllers
             {
                 _logger.LogInformation("Создание нового менеджера: {Username}", createDto.Username);
 
-                // Исправляем парсинг роли - добавляем игнорирование регистра
                 UserRole role;
                 if (!Enum.TryParse<UserRole>(createDto.Role, true, out role))
                 {
-                    return BadRequest($"Неверная роль: {createDto.Role}. Допустимые значения: Admin, Manager");
+                    return BadRequest($"Неверная роль: {createDto.Role}. Допустимые значения: Manager, Admin, SuperAdmin");
+                }
+
+                // Проверка прав на создание пользователя с указанной ролью
+                var permissionCheck = CheckRoleCreationPermissions(role);
+                if (permissionCheck != null)
+                {
+                    return permissionCheck;
                 }
 
                 if (string.IsNullOrEmpty(createDto.Password) || createDto.Password.Length < 8)
@@ -107,12 +155,11 @@ namespace Franchisee.Web.Controllers
                 var hashedPassword = _managerRepository.HashPassword(createDto.Password);
 
                 var manager = new Manager
-
                 {
                     Username = createDto.Username,
                     PasswordHash = hashedPassword,
                     FullName = createDto.FullName,
-                    Role = role, // используем распаршенную роль
+                    Role = role,
                     IsBlocked = false
                 };
 
@@ -190,7 +237,30 @@ namespace Franchisee.Web.Controllers
             try
             {
                 // Парсим строку в enum
-                manager.Role = Enum.Parse<UserRole>(changeRoleDto.Role);
+                UserRole newRole = Enum.Parse<UserRole>(changeRoleDto.Role, true);
+
+                // Проверка прав на изменение роли
+                var currentUserRole = GetCurrentUserRole();
+
+                // Если пытаемся изменить роль на SuperAdmin
+                if (newRole == UserRole.SuperAdmin && currentUserRole != UserRole.SuperAdmin)
+                {
+                    return StatusCode(403, "Только Главный администратор может назначать роль SuperAdmin");
+                }
+
+                // Если текущий пользователь - Admin, он не может изменять роли других Admin
+                if (currentUserRole == UserRole.Admin && manager.Role == UserRole.SuperAdmin)
+                {
+                    return StatusCode(403, "Вы не можете изменять роль Главного администратора");
+                }
+
+                // Admin не может повысить пользователя до SuperAdmin
+                if (currentUserRole == UserRole.Admin && newRole == UserRole.SuperAdmin)
+                {
+                    return StatusCode(403, "Вы не можете назначать роль SuperAdmin");
+                }
+
+                manager.Role = newRole;
                 await _managerRepository.UpdateAsync(manager);
 
                 _logger.LogInformation("Роль менеджера {ManagerId} изменена на {Role}", id, changeRoleDto.Role);
@@ -198,7 +268,7 @@ namespace Franchisee.Web.Controllers
             }
             catch (ArgumentException)
             {
-                return BadRequest("Роль должна быть 'Admin' или 'Manager'");
+                return BadRequest("Роль должна быть 'Manager', 'Admin' или 'SuperAdmin'");
             }
         }
 
@@ -231,10 +301,29 @@ namespace Franchisee.Web.Controllers
             var manager = await _managerRepository.GetByIdAsync(id);
             if (manager == null) return NotFound("Менеджер не найден");
 
+            // Проверка: нельзя удалять SuperAdmin, если текущий пользователь не SuperAdmin
+            var currentUserRole = GetCurrentUserRole();
+            if (manager.Role == UserRole.SuperAdmin && currentUserRole != UserRole.SuperAdmin)
+            {
+                return StatusCode(403, "Только Главный администратор может удалять других Главных администраторов");
+            }
+
+            // Проверка: нельзя удалять самого себя
+            var currentUserId = int.Parse(User.FindFirst(ClaimTypes.Name)?.Value ?? "0");
+            if (manager.Id == currentUserId)
+            {
+                return BadRequest("Вы не можете удалить свой собственный аккаунт");
+            }
+
+            // Проверка на наличие активных заказов
+            var hasActiveOrders = await _context.Orders.AnyAsync(o => o.ManagerId == id && !o.IsDeleted);
+            if (hasActiveOrders)
+            {
+                return BadRequest("Невозможно удалить менеджера, у которого есть активные заказы. Сначала передайте заказы другому менеджеру.");
+            }
+
             await _managerRepository.DeleteAsync(id);
             return Ok("Менеджер удален");
         }
-
-
     }
 }

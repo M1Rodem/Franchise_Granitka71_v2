@@ -163,7 +163,20 @@ export function getUserNameFromOrder(order) {
 
 export function isAdmin() {
     const user = secureGetUserData();
-    return user?.role === 'Admin';
+    // Проверяем Admin ИЛИ SuperAdmin
+    return user?.role === 'Admin' || user?.role === 'SuperAdmin';
+}
+
+// ДОБАВЛЯЕМ НОВУЮ ФУНКЦИЮ ДЛЯ ПРОВЕРКИ SuperAdmin
+export function isSuperAdmin() {
+    const user = secureGetUserData();
+    return user?.role === 'SuperAdmin';
+}
+
+// ДОБАВЛЯЕМ ФУНКЦИЮ ДЛЯ ПРОВЕРКИ ЛЮБОЙ РОЛИ
+export function getUserRole() {
+    const user = secureGetUserData();
+    return user?.role || 'Manager'; // По умолчанию Manager
 }
 
 
@@ -406,8 +419,8 @@ export function initLayout(userData, pageType = 'default') {
         userNameElement.textContent = userData.fullName || userData.username || 'Пользователь';
     }
 
-    // Admin toggle
-    if (userData.role === 'Admin') {
+    // Admin toggle - для Admin И SuperAdmin
+    if (userData.role === 'Admin' || userData.role === 'SuperAdmin') {
         document.querySelectorAll('.admin-only').forEach(el => el.style.display = 'block');
     }
 
@@ -423,8 +436,6 @@ export function initLayout(userData, pageType = 'default') {
             window.location.href = 'login.html';
         });
     }
-
-    // ФИКС: Убираем дублирующую логику sidebar, оставляем только SidebarManager
 }
 
 // export function toggleNav(open = null) {

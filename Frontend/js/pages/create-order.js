@@ -2,6 +2,8 @@ import { PageManager } from '../core/page-manager.js';
 import { apiService } from '../api/api.js';
 import { formatCurrency, getTodayDate, isValidEmail, isValidPhone, populateForm,  getFormValue, showTempMessage, } from '../utils/utils.js';
 import { handlePhotoSelect, uploadTempAndDisplay, renderPhotoGrid, tempUploads, clearTempPhotos, attachPhotoEvents, getTempPhotoIds, loadAndCleanupTemp } from '../utils/photo-utils.js';
+import { NotificationManager } from '../notification/notification-manager.js';
+import { checkBlocking } from '../notification/notification-blocking.js';
 
 export class CreateOrderManager {
     constructor(pageManager) {
@@ -17,6 +19,9 @@ export class CreateOrderManager {
     }
 
     initElements() {
+        // ПРОВЕРЯЕМ БЛОКИРОВКУ ПРИ ЗАГРУЗКЕ СТРАНИЦЫ
+        this.checkPageAccess();
+
         // Основные элементы формы
         this.form = document.getElementById('createOrderForm');
         this.pageTitle = document.getElementById('pageTitle');
@@ -55,6 +60,38 @@ export class CreateOrderManager {
                     // Больше не нужно - теперь удаление отложенное
                 }
             });
+        }
+    }
+
+     /**
+     * Проверка доступа к странице при прямой загрузке по URL
+     */
+    async checkPageAccess() {
+        // Для Admin/SuperAdmin всегда разрешаем
+        const userData = apiService.getCurrentUser();
+        if (userData?.role === 'Admin' || userData?.role === 'SuperAdmin') {
+            return;
+        }
+        
+        try {
+            const blockingResult = await checkBlocking();
+            
+            if (blockingResult?.isBlocked) {
+                // Блокировка! Редирект на уведомления
+                if (blockingResult.message) {
+                    showTempMessage(blockingResult.message, 'error');
+                }
+                
+                setTimeout(() => {
+                    window.location.href = 'notifications.html';
+                }, 2000);
+                
+                // Бросаем ошибку чтобы остановить дальнейшую инициализацию
+                throw new Error('Доступ заблокирован');
+            }
+        } catch (error) {
+            console.warn('[CreateOrder] Ошибка проверки доступа:', error);
+            // Продолжаем загрузку при ошибке (fail-open)
         }
     }
 
@@ -274,6 +311,23 @@ export class CreateOrderManager {
             if (this.editingOrderId) {
                 result = await apiService.updateOrder(this.editingOrderId, orderData);
                 
+                // ФИКС: Проверяем, не является ли ответ "запрос отправлен"
+                if (result.success && result.message && result.message.includes("Запрос отправлен")) {
+                    // Менеджер редактировал чужой заказ - показываем сообщение о запросе
+                    showTempMessage(result.message, 'info');
+                    
+                    // Обновляем счетчик уведомлений
+                    if (window.NotificationManager) {
+                        await NotificationManager.updateBadgeCount();
+                    }
+                    
+                    // Перенаправляем на страницу заказа
+                    setTimeout(() => {
+                        window.location.href = `view-order.html?id=${this.editingOrderId}`;
+                    }, 2000);
+                    return result;
+                }
+                
                 // УДАЛЯЕМ ФОТО ПОСЛЕ УСПЕШНОГО ОБНОВЛЕНИЯ ЗАКАЗА
                 if (this.photosToDelete.length > 0) {
                     for (const photoId of this.photosToDelete) {
@@ -311,6 +365,21 @@ export class CreateOrderManager {
             return result;
         } catch (error) {
             console.error('Order creation error:', error);
+            
+            // ФИКС: Проверяем, не ошибка ли это "запроса на изменение"
+            if (error.data?.message && error.data.message.includes("Запрос отправлен")) {
+                showTempMessage(error.data.message, 'info');
+                
+                if (window.NotificationManager) {
+                    await NotificationManager.updateBadgeCount();
+                }
+                
+                setTimeout(() => {
+                    window.location.href = `view-order.html?id=${this.editingOrderId}`;
+                }, 2000);
+                return;
+            }
+            
             showTempMessage('Ошибка сохранения: ' + (error.data?.message || error.message), 'error');
             throw error;
         }

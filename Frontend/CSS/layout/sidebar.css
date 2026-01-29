@@ -1,3 +1,8 @@
+/* ВСЕГДА показывать навигационное меню */
+.nav-menu {
+    display: flex !important;
+    flex-direction: column;
+}
 /* ===== MODERN SIDEBAR COMPONENT ===== */
 .sidebar {
     position: fixed;

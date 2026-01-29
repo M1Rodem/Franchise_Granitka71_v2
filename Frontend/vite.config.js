@@ -10,12 +10,25 @@ export default defineConfig(({ mode }) => {
     server: {
       port: 3000,
       host: '0.0.0.0',
+      allowedHosts: [
+        '6wb01uktj.localto.net',
+        '.localto.net' // разрешаем все поддомены localto.net
+      ],
+      cors: true,
       proxy: {
         '/api': {
           target: process.env.API_PROXY_TARGET || 'http://localhost:5000',
           changeOrigin: true,
-          rewrite: (path) => path.replace(/^\/api/, '/api'),
-          secure: false
+          secure: false,
+          ws: true,  // ← КРИТИЧЕСКИ ВАЖНО!
+          configure: (proxy, _options) => {
+            proxy.on('proxyReq', (proxyReq, req, _res) => {
+              console.log('[VITE PROXY] →', req.method, req.url);
+            });
+            proxy.on('proxyRes', (proxyRes, req, _res) => {
+              console.log('[VITE PROXY] ←', proxyRes.statusCode, req.url);
+            });
+          }
         }
       }
     },

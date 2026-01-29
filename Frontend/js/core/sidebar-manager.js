@@ -1,6 +1,32 @@
+import { apiService } from '../api/api.js';
+import { NotificationManager } from '../notification/notification-manager.js';
+import { secureGetUserData } from '../utils/utils.js';
+import { initBlockingHandlers } from '../notification/notification-blocking.js';
+
+// Глобальное состояние счётчика (реальный синглтон)
+const GlobalNotificationState = {
+    count: 0,
+    badgeElement: null,
+    isConnected: false,
+    subscribers: new Set()
+};
+
 export class SidebarManager {
-    static init() {
-        const isProduction = typeof process !== 'undefined' && process.env && process.env.NODE_ENV === 'production';
+    constructor() {
+        this.pageInitialized = false;
+        this.unsubscribers = [];
+        this.sidebarElement = null;
+        this.blockingHandlersInitialized = false;
+    }
+
+    /**
+     * Инициализация sidebar на странице
+     */
+    init() {
+        // Если уже инициализирован на этой странице, пропускаем
+        if (this.pageInitialized) {
+            return;
+        }
         
         const sidebar = document.getElementById('sidebar');
         if (!sidebar) {
@@ -8,24 +34,473 @@ export class SidebarManager {
             return;
         }
         
-        if (isProduction) {
-            sidebar.style.display = 'block';
-            sidebar.style.visibility = 'visible';
-            sidebar.style.opacity = '1';
-        }
+        this.sidebarElement = sidebar;
         
+        // ВСЕГДА показываем сайдбар для всех пользователей
+        sidebar.style.display = 'block';
+        sidebar.style.visibility = 'visible';
+        sidebar.style.opacity = '1';
+        
+        // Настраиваем БАЗОВЫЙ UI (можно сразу)
         this.setupBurgerButton();
         this.setupSidebarClose();
         this.setupActiveNav();
-        this.setupAdminMenu();
+        
+        
+        // Функция для отложенной инициализации админ-меню
+        const initAdminMenuDelayed = () => {
+            // Даём время на загрузку данных пользователя
+            setTimeout(() => {
+                this.setupAdminMenu();
+            }, 150); // Увеличиваем задержку для гарантии
+        };
+        
+        // Запускаем после полной загрузки DOM
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initAdminMenuDelayed);
+        } else {
+            initAdminMenuDelayed();
+        }
+        
+        // Находим или создаём элемент бейджа
+        this.findOrCreateBadgeElement();
+        
+        // Инициализируем систему уведомлений ТОЛЬКО если пользователь авторизован
+        const initNotificationsDelayed = () => {
+            setTimeout(() => {
+                const userData = this.getUserDataWithRetry(); // Используем helper
+                if (userData?.id) {
+                    this.initializeNotificationSystem();
+                } else {
+                    this.updateBadgeUI(0, false);
+                }
+            }, 200);
+        };
+        
+        initNotificationsDelayed();
+        
+        // ИНИЦИАЛИЗИРУЕМ ОБРАБОТЧИКИ БЛОКИРОВКИ
+        this.setupBlockingHandlers();
+        
+        this.pageInitialized = true;
+        
+        console.log('[SidebarManager] Инициализация завершена');
     }
 
-    static setupBurgerButton() {
+    /**
+     * Настройка обработчиков блокировки для навигации
+     */
+    setupBlockingHandlers() {
+        // Используем импортированную функцию
+        initBlockingHandlers();
+        
+        // Дополнительная логика для сайдбара
+        this.setupSidebarSpecificHandlers();
+    }
+
+    /**
+     * Специфичные обработчики для сайдбара
+     */
+    setupSidebarSpecificHandlers() {
+        const sidebar = this.sidebarElement;
+        if (!sidebar) return;
+        
+        // Можно добавить дополнительную визуальную обратную связь
+        const blockedLinks = sidebar.querySelectorAll(
+            'a[href*="create-order"], a[href*="archived-orders"]'
+        );
+        
+        blockedLinks.forEach(link => {
+            // Добавляем data-атрибут для идентификации защищенных ссылок
+            link.setAttribute('data-blocking-check', 'true');
+            
+            // Можно добавить подсказку
+            const originalTitle = link.getAttribute('title') || '';
+            if (!originalTitle.includes('блокировка')) {
+                link.setAttribute('title', `${originalTitle} (требует выполнения уведомлений)`.trim());
+            }
+        });
+    }
+
+    /**
+     * Получение данных пользователя с повторными попытками
+     */
+    getUserDataWithRetry(maxAttempts = 5, delay = 100) {
+        for (let attempt = 0; attempt < maxAttempts; attempt++) {
+            // Пробуем все доступные методы
+            let userData = null;
+            
+            if (typeof secureGetUserData === 'function') {
+                userData = secureGetUserData();
+            }
+            
+            if (!userData && window.apiService && typeof window.apiService.getCurrentUser === 'function') {
+                userData = window.apiService.getCurrentUser();
+            }
+            
+            if (!userData || !userData.role) {
+                try {
+                    const stored = localStorage.getItem('userData');
+                    if (stored) {
+                        userData = JSON.parse(stored);
+                    }
+                } catch (e) {
+                    // Игнорируем ошибки парсинга
+                }
+            }
+            
+            if (userData && userData.role) {
+                return userData;
+            }
+            
+            // Ждем перед следующей попыткой
+            if (attempt < maxAttempts - 1) {
+                // Блокирующий sleep (только для демо, в продакшене лучше промисы)
+                const start = Date.now();
+                while (Date.now() - start < delay) { /* wait */ }
+            }
+        }
+        
+        return null;
+    }
+
+    /**
+     * Поиск или создание элемента бейджа
+     */
+    findOrCreateBadgeElement() {
+        // Используем глобальный элемент если он уже есть
+        if (GlobalNotificationState.badgeElement) {
+            return GlobalNotificationState.badgeElement;
+        }
+        
+        // Ищем существующий бейдж
+        let badgeElement = document.getElementById('notificationsBadge');
+        
+        if (!badgeElement) {
+            // Ищем ссылку на уведомления
+            const notificationsLink = document.querySelector('[href="notifications.html"]');
+            if (notificationsLink) {
+                // Создаём бейдж если его нет
+                badgeElement = document.createElement('span');
+                badgeElement.id = 'notificationsBadge';
+                badgeElement.className = 'badge';
+                badgeElement.style.display = 'none';
+                badgeElement.setAttribute('aria-label', '0 непрочитанных уведомлений');
+                notificationsLink.appendChild(badgeElement);
+            }
+        }
+        
+        // Сохраняем в глобальное состояние
+        GlobalNotificationState.badgeElement = badgeElement;
+        
+        return badgeElement;
+    }
+
+    /**
+     * Инициализация системы уведомлений (SignalR + счётчик)
+     */
+    async initializeNotificationSystem() {
+        try {
+            if (!this.initializedNotifications) {
+                // Используем patched версию
+                await NotificationManager.init();
+                this.initializedNotifications = true;
+            }
+            
+            // Получаем состояние через новую функцию или старую
+            const hubState = notificationHub.getConnectionState ? 
+                            notificationHub.getConnectionState() : 
+                            { state: notificationHub.getState() };
+            
+            console.log('SidebarManager: Notification system initialized. Hub state:', hubState);
+            
+        } catch (error) {
+            console.error('SidebarManager: Failed to initialize notification system:', error);
+            // НЕ пробрасываем ошибку дальше - система должна работать без уведомлений
+        }
+    }
+
+    updateBadgeWithStats(stats) {
+        const { totalCount, hasActive } = stats;
+        
+        // Обновляем глобальное состояние
+        if (GlobalNotificationState.count !== totalCount) {
+            GlobalNotificationState.count = totalCount;
+        }
+        
+        // Обновляем UI с правильным состоянием
+        this.updateBadgeUI(totalCount, hasActive);
+    }
+
+
+    setupManagerSubscriptions(manager) {
+        this.cleanupSubscriptions(); // очищаем старые, если были
+
+        const unsubscribeCount = manager.on('notification_count_updated', (count) => {
+            this.updateGlobalCount(count, true);
+        });
+
+        const unsubscribeStats = manager.on('notification_state_updated', (stats) => {
+            // Обновляем глобальное состояние
+            if (GlobalNotificationState.count !== stats.totalCount) {
+                GlobalNotificationState.count = stats.totalCount;
+            }
+            
+            // Обновляем UI с правильным состоянием
+            this.updateBadgeUI(stats.totalCount, stats.hasActive);
+        });
+
+        const unsubscribeReceived = manager.on('notification_received', (notification) => {
+            this.incrementGlobalCount();
+            if (notification.type === 0 || notification.type === 1) {
+                this.animateBadge('pulse');
+            }
+        });
+
+        const unsubscribeResolved = manager.on('notification_resolved', (data) => {
+            this.decrementGlobalCount();
+        });
+
+        const unsubscribeState = manager.on('connection_state_changed', (state) => {
+            if (state.state === 'disconnected' || state.state === 'failed') {
+                GlobalNotificationState.isConnected = false;
+            } else if (state.state === 'connected') {
+                GlobalNotificationState.isConnected = true;
+            }
+        });
+
+        this.unsubscribers = [
+            unsubscribeCount,
+            unsubscribeStats,
+            unsubscribeReceived,
+            unsubscribeResolved,
+            unsubscribeState
+        ];
+    }
+
+    /**
+     * Загрузка начального количества уведомлений через API
+     */
+    async loadInitialNotificationCount() {
+        try {
+            const response = await apiService.getNotifications({
+                status: 'pending', // Только активные (не отложенные)
+                page: 1,
+                pageSize: 1
+            });
+            
+            const count = response.totalCount || 0;
+            this.updateGlobalCount(count, false); // false = без анимации
+            
+        } catch (error) {
+            console.warn('SidebarManager: Error loading initial notification count:', error.message);
+            // Устанавливаем 0 при ошибке
+            this.updateGlobalCount(0, false);
+        }
+    }
+
+    /**
+     * Настройка подписок на SignalR события (глобально)
+     */
+    setupSignalRSubscriptions() {
+        // Если уже есть подписки на этой странице, очищаем
+        this.cleanupSubscriptions();
+        
+        
+        // Подписка на обновление счётчика
+        const unsubscribeCount = notificationHub.on(
+            notificationHub.events.NOTIFICATION_COUNT_UPDATED, 
+            (count) => {
+                this.updateGlobalCount(count, true);
+            }
+        );
+        
+        // Подписка на новое уведомление
+        const unsubscribeReceived = notificationHub.on(
+            notificationHub.events.NOTIFICATION_RECEIVED, 
+            (notification) => {
+                // Инкрементируем счётчик для нового уведомления
+                this.incrementGlobalCount();
+                
+                // Анимация для важных уведомлений
+                if (notification.type === 0 || notification.type === 1) {
+                    this.animateBadge('pulse');
+                }
+            }
+        );
+        
+        // Подписка на обработанное уведомление
+        const unsubscribeResolved = notificationHub.on(
+            notificationHub.events.NOTIFICATION_RESOLVED, 
+            (data) => {
+                // Декрементируем счётчик если было активное уведомление
+                this.decrementGlobalCount();
+            }
+        );
+        
+        // Подписка на изменение состояния соединения
+        const unsubscribeState = notificationHub.on(
+            notificationHub.events.CONNECTION_STATE_CHANGED,
+            (state) => {
+                if (state.state === 'disconnected' || state.state === 'failed') {
+                    GlobalNotificationState.isConnected = false;
+                } else if (state.state === 'connected') {
+                    GlobalNotificationState.isConnected = true;
+                }
+            }
+        );
+        
+        // Сохраняем функции отписки (для этой страницы)
+        this.unsubscribers = [
+            unsubscribeCount,
+            unsubscribeReceived,
+            unsubscribeResolved,
+            unsubscribeState
+        ];
+        
+    }
+
+    /**
+     * Обновление глобального счётчика
+     */
+    updateGlobalCount(newCount, animate = true) {
+        const count = Math.max(0, newCount);
+        
+        // Если значение не изменилось - выходим
+        if (GlobalNotificationState.count === count) return;
+        
+        const oldCount = GlobalNotificationState.count;
+        GlobalNotificationState.count = count;
+        
+        // Обновляем UI
+        this.updateBadgeUI(count, animate);
+        
+        // Уведомляем подписчиков (если будут в будущем)
+        GlobalNotificationState.subscribers.forEach(callback => {
+            try {
+                callback(count);
+            } catch (err) {
+                console.warn('SidebarManager: Subscriber error:', err);
+            }
+        });
+    }
+
+    /**
+     * Увеличение глобального счётчика на 1
+     */
+    incrementGlobalCount() {
+        this.updateGlobalCount(GlobalNotificationState.count + 1, true);
+    }
+
+    /**
+     * Уменьшение глобального счётчика на 1
+     */
+    decrementGlobalCount() {
+        if (GlobalNotificationState.count > 0) {
+            this.updateGlobalCount(GlobalNotificationState.count - 1, true);
+        }
+    }
+
+    /**
+     * Обновление UI бейджа
+     */
+    updateBadgeUI(count = GlobalNotificationState.count, hasActive = false) {
+        const badge = GlobalNotificationState.badgeElement;
+        if (!badge) {
+            console.warn('SidebarManager: Badge element not found');
+            // Попробуем найти заново
+            this.findOrCreateBadgeElement();
+            return;
+        }
+        
+        const notificationsLink = badge.closest('a[href="notifications.html"]');
+        
+        if (count > 0) {
+            // Показываем бейдж
+            badge.textContent = count > 99 ? '99+' : count;
+            badge.style.display = 'inline-block';
+            badge.setAttribute('aria-label', `${count} ${hasActive ? 'активных' : 'отложенных'} уведомлений`);
+            
+            // Сбрасываем классы и добавляем нужные
+            badge.className = 'badge';
+            
+            if (hasActive) {
+                badge.classList.add('badge-active');
+            } else {
+                badge.classList.add('badge-postponed');
+            }
+            
+            // Обновляем кнопку в сайдбаре
+            if (notificationsLink) {
+                notificationsLink.classList.remove('has-active', 'has-postponed');
+                if (hasActive) {
+                    notificationsLink.classList.add('has-active');
+                } else {
+                    notificationsLink.classList.add('has-postponed');
+                }
+            }
+            
+        } else {
+            // Скрываем бейдж
+            badge.style.display = 'none';
+            badge.removeAttribute('aria-label');
+            badge.className = 'badge';
+            
+            // Сбрасываем стили кнопки
+            if (notificationsLink) {
+                notificationsLink.classList.remove('has-active', 'has-postponed');
+            }
+        }
+    }
+
+    /**
+     * Анимация бейджа
+     */
+    animateBadge(animationType = 'pulse') {
+        const badge = GlobalNotificationState.badgeElement;
+        if (!badge || GlobalNotificationState.count === 0) return;
+        
+        badge.classList.add(animationType);
+        
+        setTimeout(() => {
+            badge.classList.remove(animationType);
+        }, 1500);
+    }
+
+    /**
+     * Очистка подписок этой страницы
+     */
+    cleanupSubscriptions() {
+        if (this.unsubscribers.length > 0) {
+            this.unsubscribers.forEach(unsubscribe => {
+                try {
+                    unsubscribe();
+                } catch (err) {
+                    console.warn('SidebarManager: Error unsubscribing:', err);
+                }
+            });
+            this.unsubscribers = [];
+        }
+    }
+
+    /**
+     * Получение текущего количества уведомлений
+     */
+    getNotificationCount() {
+        return GlobalNotificationState.count;
+    }
+
+    // ──────────────────────────────────────────────────────────────────────────────
+    // UI МЕТОДЫ (без изменений от оригинальной рабочей версии)
+    // ──────────────────────────────────────────────────────────────────────────────
+
+    setupBurgerButton() {
         const burgerBtn = document.getElementById('burgerBtn');
         const sidebar = document.getElementById('sidebar');
         const mainContent = document.getElementById('mainContent');
+        
         if (burgerBtn && sidebar) {
-            // ФИКС: Удаляем все старые обработчики
+            // Клонируем для удаления старых обработчиков
             const newBurgerBtn = burgerBtn.cloneNode(true);
             burgerBtn.parentNode.replaceChild(newBurgerBtn, burgerBtn);
             
@@ -34,7 +509,6 @@ export class SidebarManager {
                 e.preventDefault();
                 
                 const isOpening = !sidebar.classList.contains('open');
-                
                 sidebar.classList.toggle('open');
                 newBurgerBtn.classList.toggle('open');
                 newBurgerBtn.setAttribute('aria-expanded', sidebar.classList.contains('open'));
@@ -42,16 +516,13 @@ export class SidebarManager {
                 if (mainContent) {
                     mainContent.classList.toggle('shifted');
                 }
-
-                // Add/remove backdrop for mobile
+                
                 this.toggleBackdrop(isOpening);
             });
-            
-        } else {
         }
     }
 
-    static toggleBackdrop(show) {
+    toggleBackdrop(show) {
         let backdrop = document.querySelector('.sidebar-backdrop');
         
         if (show && !backdrop) {
@@ -72,7 +543,6 @@ export class SidebarManager {
             });
             document.body.appendChild(backdrop);
             
-            // Анимация появления
             setTimeout(() => {
                 backdrop.style.opacity = '1';
             }, 10);
@@ -86,8 +556,7 @@ export class SidebarManager {
         }
     }
 
-    static setupSidebarClose() {
-        // ФИКС: Более надежная обработка закрытия
+    setupSidebarClose() {
         document.addEventListener('click', (e) => {
             const sidebar = document.getElementById('sidebar');
             const burgerBtn = document.getElementById('burgerBtn');
@@ -102,7 +571,6 @@ export class SidebarManager {
             }
         });
 
-        // Close on escape key
         document.addEventListener('keydown', (e) => {
             if (e.key === 'Escape') {
                 const sidebar = document.getElementById('sidebar');
@@ -113,7 +581,7 @@ export class SidebarManager {
         });
     }
 
-    static closeSidebar() {
+    closeSidebar() {
         const sidebar = document.getElementById('sidebar');
         const burgerBtn = document.getElementById('burgerBtn');
         const mainContent = document.getElementById('mainContent');
@@ -131,7 +599,7 @@ export class SidebarManager {
         }
     }
 
-    static setupActiveNav() {
+    setupActiveNav() {
         const currentPage = window.location.pathname.split('/').pop() || 'dashboard.html';
         
         document.querySelectorAll('.nav-item').forEach(item => {
@@ -146,14 +614,107 @@ export class SidebarManager {
         });
     }
 
-    static setupAdminMenu() {
+    setupAdminMenu() {
         try {
-            const userData = JSON.parse(localStorage.getItem('userData') || '{}');
-            if (userData.role === 'Admin') {
-                document.body.classList.add('user-is-admin');
+            // ГАРАНТИРУЕМ получение пользователя ЛЮБЫМ способом
+            let userData = null;
+            
+            // СПОСОБ 1: secureGetUserData из utils.js (если доступно глобально)
+            if (typeof secureGetUserData === 'function') {
+                userData = secureGetUserData();
             }
+            
+            // СПОСОБ 2: Через window.utils (если модуль экспортирован в window)
+            if (!userData && window.utils && typeof window.utils.secureGetUserData === 'function') {
+                userData = window.utils.secureGetUserData();
+            }
+            
+            // СПОСОБ 3: Через apiService
+            if (!userData && window.apiService && typeof window.apiService.getCurrentUser === 'function') {
+                userData = window.apiService.getCurrentUser();
+            }
+            
+            // СПОСОБ 4: Прямо из localStorage (последнее средство)
+            if (!userData || !userData.role) {
+                try {
+                    const stored = localStorage.getItem('userData');
+                    if (stored) {
+                        userData = JSON.parse(stored);
+                    }
+                } catch (e) {
+                    console.warn('SidebarManager: Cannot parse userData from localStorage');
+                }
+            }
+            
+            const userRole = userData?.role;
+            
+            // ЕСЛИ данные еще не готовы - откладываем и пробуем снова
+            if (!userRole) {
+                setTimeout(() => this.setupAdminMenu(), 100);
+                return;
+            }
+            
+            const usersLink = document.querySelector('a[href="users.html"]');
+            
+            if (!usersLink) {
+                console.error('SidebarManager: Users link not found!');
+                return;
+            }
+            
+            if (userRole === 'Admin' || userRole === 'SuperAdmin') {
+                document.body.classList.add('user-is-admin');
+                
+                // 1. Удаляем inline-style который скрывает (display: none)
+                usersLink.removeAttribute('style');
+                
+                // 2. НЕ удаляем класс admin-only! Вместо этого добавляем его обратно
+                usersLink.classList.add('admin-only');
+                
+                // 3. Явно устанавливаем display
+                usersLink.style.display = 'block';
+                
+                // 4. Добавляем специальный класс для золотой обводки
+                usersLink.classList.add('admin-gold-border'); // если нужно
+                
+                
+            } else {
+                // Для Manager
+                // 1. Скрываем
+                usersLink.style.display = 'none';
+                
+                // 2. Удаляем класс admin-only (чтобы не было золотой обводки у менеджера)
+                usersLink.classList.remove('admin-only');
+            }
+            
+            // Добавляем класс роли для CSS
+            document.body.classList.add(`user-role-${userRole.toLowerCase()}`);
+            
         } catch (error) {
-            console.warn('SidebarManager: Error setting up admin menu:', error);
+            console.warn('SidebarManager: Error in setupAdminMenu:', error);
         }
     }
+
+    /**
+     * Очистка ресурсов (при переходе на новую страницу)
+     */
+    destroy() {
+        // Очищаем подписки этой страницы
+        this.cleanupSubscriptions();
+        
+        // Сбрасываем флаг инициализации страницы
+        this.pageInitialized = false;
+        
+    }
+
+    /**
+     * Статический метод для обратной совместимости
+     */
+    static init() {
+        const instance = new SidebarManager();
+        instance.init();
+        return instance;
+    }
 }
+
+// Экспортируем глобальное состояние для отладки
+export { GlobalNotificationState };

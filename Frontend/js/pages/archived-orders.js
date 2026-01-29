@@ -32,11 +32,6 @@ function initializeArchivedOrdersPage() {
 }
 
 function setupPageUI(userData) {
-    const userNameElement = document.getElementById('userName');
-    if (userNameElement) {
-        userNameElement.textContent = userData.fullName || userData.username || 'Пользователь';
-    }
-
     if (userData.role === 'Admin') {
         document.querySelectorAll('.admin-only').forEach(element => {
             element.style.display = 'block';

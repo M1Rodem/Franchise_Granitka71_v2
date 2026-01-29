@@ -3,5 +3,5 @@ npm run dev
 
 prod run - 
 npm run build
-set NODE_ENV=production 
+set NODE_ENV=production
 node server.js

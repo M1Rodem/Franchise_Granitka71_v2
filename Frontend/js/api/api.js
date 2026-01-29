@@ -4,6 +4,7 @@ import {
     secureGetToken,
     secureSetToken,
     secureRemoveToken,
+    secureSetUserData,
     secureGetUserData, 
     showTempMessage 
 } from '../utils/utils.js';
@@ -103,15 +104,29 @@ class ApiService {
     }
 
     // Helpers
-    async parseResponse(response) {
+        async parseResponse(response) {
         const contentType = response.headers.get('content-type') || '';
-        if (contentType.includes('application/json')) {
-            return await response.json();
+        try {
+            if (contentType.includes('application/json')) {
+                return await response.json();
+            }
+            return { message: await response.text() };
+        } catch (error) {
+            console.error('Ошибка парсинга ответа:', error);
+            // Возвращаем структурированную ошибку вместо падения
+            return { 
+                error: true, 
+                message: `Ошибка обработки ответа: ${error.message}`,
+                status: response.status
+            };
         }
-        return { message: await response.text() };
     }
 
     createError(response, data) {
+        if (!data || typeof data !== 'object') {
+            data = { message: `Ошибка ${response.status}` };
+        }
+        
         let message = data.message || `Ошибка ${response.status}`;
         if (data.errors && typeof data.errors === 'object') {
             const details = Object.entries(data.errors)
@@ -119,6 +134,12 @@ class ApiService {
                 .join('\n');
             if (details) message += `\n${details}`;
         }
+        
+        // Дополнительная информация из не-JSON ответов
+        if (typeof data === 'string') {
+            message = data;
+        }
+        
         const error = new Error(message);
         error.status = response.status;
         error.data = data;
@@ -144,19 +165,47 @@ class ApiService {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(credentials),
-            signal: new AbortController().signal // Timeout отдельно
+            signal: new AbortController().signal
         });
 
-        const data = await response.json();
+        // ФИКС: Проверяем, что ответ есть и его можно парсить как JSON
+        let data;
+        try {
+            const contentType = response.headers.get('content-type');
+            if (contentType && contentType.includes('application/json')) {
+                data = await response.json();
+            } else {
+                // Если не JSON, пытаемся получить текст
+                const text = await response.text();
+                data = { message: text || 'Ошибка авторизации' };
+            }
+        } catch (parseError) {
+            console.error('Ошибка парсинга ответа:', parseError);
+            data = { 
+                message: `Ошибка сервера: ${parseError.message || 'Некорректный ответ'}`
+            };
+        }
         
         if (!response.ok) {
             const error = new Error(data.message || `Ошибка ${response.status}`);
             error.status = response.status;
+            error.data = data;
             throw error;
         }
         
         if (data.token) {
             this.setToken(data.token);
+            // СОХРАНЯЕМ ДАННЫЕ ПОЛЬЗОВАТЕЛЯ С РОЛЬЮ
+            secureSetUserData({
+                id: data.id,
+                username: data.username,
+                fullName: data.fullName,
+                role: data.role // Важно: 'Manager', 'Admin' или 'SuperAdmin'
+            });
+        } else if (!data.token && response.ok) {
+            // Если ответ успешный, но нет токена - это странно
+            console.warn('Login successful but no token received');
+            throw new Error('Отсутствует токен авторизации в ответе сервера');
         }
         
         return data;
@@ -456,6 +505,62 @@ class ApiService {
         return this.request(`/Users/${id}/unblock`, { method: 'POST' });
     }
 
+    // Notifications
+    async getNotifications(options = {}) {
+        const { 
+            status = 'active',  // "active", "postponed", "pending", "approved", "rejected", "all"
+            page = 1, 
+            pageSize = 20 
+        } = options;
+        
+        const params = new URLSearchParams();
+        params.append('status', status);
+        params.append('page', page);
+        params.append('pageSize', pageSize);
+        
+        return this.request(`/notifications?${params.toString()}`);
+    }
+
+    async getUnreadNotificationsCount() {
+        const response = await this.request('/notifications/count');
+        // Ответ от бэкенда: { count: 5 }
+        return response;
+    }
+
+    async resolveNotification(id, status, note = '') {
+        // Конвертируем числовой статус в строковый по enum
+        let statusString;
+        switch(status) {
+            case 0: statusString = "Pending"; break;
+            case 1: statusString = "Approved"; break; // "Принять"
+            case 2: statusString = "Rejected"; break; // "Отклонить"
+            case 3: statusString = "Postponed"; break; // "Отложить"
+            default: statusString = "Pending";
+        }
+        
+        // ПРАВИЛЬНАЯ структура согласно ResolveNotificationRequest
+        const body = {
+            status: statusString,  // Обязательное поле: "Approved" или "Rejected"
+            note: note || null      // Опциональное поле
+        };
+        return this.request(`/notifications/${id}/resolve`, {
+            method: 'POST',
+            body: JSON.stringify(body)
+        });
+    }
+    
+    async postponeNotification(id, minutes = 30, reason = '') {
+        // Согласно PostponeNotificationRequest
+        const body = {
+            minutes: minutes,  // По умолчанию 30
+            reason: reason || null
+        };
+        
+        return this.request(`/notifications/${id}/postpone`, {
+            method: 'POST',
+            body: JSON.stringify(body)
+        });
+    }
     // Utils
     setToken(token) {
         if (secureSetToken(token)) {

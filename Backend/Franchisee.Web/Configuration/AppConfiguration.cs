@@ -1,6 +1,7 @@
 ﻿using Franchisee.Web.Configuration;
 using Franchisee.Web.Models;
 using Franchisee.Web.Services;
+using Franchisee.Web.Services.Hubs;
 using Franchisee.Web.Services.Repositories;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Http.Features;
@@ -17,12 +18,11 @@ namespace Franchisee.Web.Configuration
 {
     public static class AppConfiguration
     {
-
         public static void ConfigureServices(IServiceCollection services, IConfiguration configuration, IWebHostEnvironment env)
         {
             services.Configure<AppSettings>(configuration.GetSection("AppSettings"));
 
-            // ДОБАВЛЯЕМ CORS В САМОМ НАЧАЛЕ
+            // CORS
             services.AddCors(options =>
             {
                 options.AddPolicy("AllowFrontend", policy =>
@@ -30,16 +30,27 @@ namespace Franchisee.Web.Configuration
                     var allowedOrigins = new List<string>
                     {
                         "http://localhost:3000",
+                        "http://localhost:5000",
+                        "https://localhost:5001",
                     };
 
-                    // Добавляем продакшен домены (замените на ваш домен)
+                    // Добавляем WebSocket origins
+                    allowedOrigins.AddRange(new[]
+                    {
+                        "ws://localhost:3000",
+                        "wss://localhost:3000",
+                        "ws://localhost:5000",
+                        "wss://localhost:5000"
+                    });
+
+                    // Добавляем продакшен домены
                     if (env.IsProduction())
                     {
                         allowedOrigins.AddRange(new[]
                         {
-                            "https://granit71.ru",      // ваш домен
-                            "https://www.granit71.ru",  // с www
-                            "http://granit71.ru",       // http на всякий случай
+                            "https://granit71.ru",
+                            "https://www.granit71.ru",
+                            "http://granit71.ru",
                             "http://www.granit71.ru"
                         });
                     }
@@ -47,25 +58,20 @@ namespace Franchisee.Web.Configuration
                     policy.WithOrigins(allowedOrigins.ToArray())
                           .AllowAnyHeader()
                           .AllowAnyMethod()
-                          .AllowCredentials();
+                          .AllowCredentials()
+                          .SetIsOriginAllowedToAllowWildcardSubdomains();
                 });
             });
 
             services.AddScoped<IPrintService, PrintService>();
 
-            // ДОБАВЛЯЕМ ПОДДЕРЖКУ ФАЙЛОВ
-            services.Configure<IISServerOptions>(options =>
-            {
-                options.AllowSynchronousIO = true;
-            });
-
-            // ДОБАВЛЯЕМ ЛИМИТ ДЛЯ БОЛЬШИХ ФАЙЛОВ
+            // Поддержка больших файлов
             services.Configure<FormOptions>(options =>
             {
                 options.MultipartBodyLengthLimit = 100_000_000; // 100 MB
             });
 
-            // Основные сервисы MVC + JSON игнор циклов
+            // Основные сервисы MVC
             services.AddControllers()
                 .AddJsonOptions(options =>
                 {
@@ -74,7 +80,7 @@ namespace Franchisee.Web.Configuration
                 });
             services.AddEndpointsApiExplorer();
 
-            // Swagger + JWT Authorize кнопка + File Upload
+            // Swagger + JWT
             services.AddSwaggerGen(c =>
             {
                 c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
@@ -87,19 +93,19 @@ namespace Franchisee.Web.Configuration
                     Description = "Введите 'Bearer' [пробел] и ваш JWT токен."
                 });
                 c.AddSecurityRequirement(new OpenApiSecurityRequirement
-        {
-            {
-                new OpenApiSecurityScheme
                 {
-                    Reference = new OpenApiReference
                     {
-                        Type = ReferenceType.SecurityScheme,
-                        Id = "Bearer"
+                        new OpenApiSecurityScheme
+                        {
+                            Reference = new OpenApiReference
+                            {
+                                Type = ReferenceType.SecurityScheme,
+                                Id = "Bearer"
+                            }
+                        },
+                        Array.Empty<string>()
                     }
-                },
-                Array.Empty<string>()
-            }
-        });
+                });
 
                 // загрузки файлов в Swagger
                 c.OperationFilter<FileUploadOperationFilter>();
@@ -117,7 +123,7 @@ namespace Franchisee.Web.Configuration
             })
             .AddJwtBearer(options =>
             {
-                options.RequireHttpsMetadata = env.IsProduction(); // в dev можно false
+                options.RequireHttpsMetadata = env.IsProduction();
                 options.SaveToken = true;
                 options.TokenValidationParameters = new TokenValidationParameters
                 {
@@ -125,27 +131,28 @@ namespace Franchisee.Web.Configuration
                     IssuerSigningKey = new SymmetricSecurityKey(keyBytes),
                     ValidateIssuer = false,
                     ValidateAudience = false,
-                    ClockSkew = TimeSpan.Zero // без запаса по времени
+                    ClockSkew = TimeSpan.Zero
                 };
-                // Логи JWT ошибок
+
                 options.Events = new JwtBearerEvents
                 {
-                    OnAuthenticationFailed = context =>
+                    OnMessageReceived = context =>
                     {
-                        var logger = context.HttpContext.RequestServices.GetRequiredService<ILogger<Program>>();
-                        logger.LogError(context.Exception, "Аутентификация не удалась");
-                        return Task.CompletedTask;
-                    },
-                    OnTokenValidated = context =>
-                    {
-                        var logger = context.HttpContext.RequestServices.GetRequiredService<ILogger<Program>>();
-                        logger.LogInformation("Токен валиден. Пользователь: {User}", context.Principal?.Identity?.Name);
-                        return Task.CompletedTask;
-                    },
-                    OnChallenge = context =>
-                    {
-                        var logger = context.HttpContext.RequestServices.GetRequiredService<ILogger<Program>>();
-                        logger.LogWarning("Неавторизованный доступ: {Status}", context.Response.StatusCode);
+                        var accessToken = context.Request.Query["access_token"];
+
+                        if (!string.IsNullOrEmpty(accessToken))
+                        {
+                            context.Token = accessToken;
+                        }
+                        else if (context.Request.Headers.ContainsKey("Authorization"))
+                        {
+                            var authHeader = context.Request.Headers["Authorization"].ToString();
+                            if (authHeader.StartsWith("Bearer "))
+                            {
+                                context.Token = authHeader.Substring("Bearer ".Length);
+                            }
+                        }
+
                         return Task.CompletedTask;
                     }
                 };
@@ -154,7 +161,9 @@ namespace Franchisee.Web.Configuration
             // Авторизация по ролям
             services.AddAuthorization(options =>
             {
-                options.AddPolicy("Admin", policy => policy.RequireRole("Admin"));
+                options.AddPolicy("Admin", policy => policy.RequireRole("Admin", "SuperAdmin"));
+                options.AddPolicy("SuperAdmin", policy => policy.RequireRole("SuperAdmin"));
+                options.AddPolicy("ManagerOrHigher", policy => policy.RequireRole("Manager", "Admin", "SuperAdmin"));
             });
 
             // Регистрируем контекст БД
@@ -165,11 +174,17 @@ namespace Franchisee.Web.Configuration
             services.AddScoped<IPhotoService, PhotoService>();
             services.AddScoped<IManagerRepository, ManagerRepository>();
             services.AddScoped<IOrderRepository, OrderRepository>();
+            services.AddScoped<INotificationService, NotificationService>();
+
+            // Фоновые сервисы
+            services.AddHostedService<OldNotificationsCleanupService>();
+            services.AddHostedService<PostponedNotificationCleanupService>();
+            services.AddHostedService<ExpiredTempCleanupService>();
         }
 
         public static void ConfigurePipeline(IApplicationBuilder app, IWebHostEnvironment env)
         {
-            // СОЗДАЕМ ПАПКИ ДЛЯ ЗАГРУЗОК ПЕРЕД ВСЕМ
+            // СОЗДАЕМ ПАПКИ ДЛЯ ЗАГРУЗОК
             CreateUploadDirectories(app, env);
 
             if (env.IsDevelopment())
@@ -180,8 +195,8 @@ namespace Franchisee.Web.Configuration
 
             app.UseHttpsRedirection();
 
-            // ДОБАВЛЯЕМ ПОДДЕРЖКУ СТАТИЧЕСКИХ ФАЙЛОВ ДО UseRouting()
-            app.UseStaticFiles(); // Для wwwroot
+            // Статические файлы
+            app.UseStaticFiles();
             app.UseStaticFiles(new StaticFileOptions
             {
                 FileProvider = new PhysicalFileProvider(
@@ -191,7 +206,7 @@ namespace Franchisee.Web.Configuration
 
             app.UseRouting();
 
-            // ДОБАВЛЯЕМ UseCors ПОСЛЕ UseRouting()
+            // CORS
             app.UseCors("AllowFrontend");
 
             app.UseAuthentication();
@@ -200,6 +215,15 @@ namespace Franchisee.Web.Configuration
             app.UseEndpoints(endpoints =>
             {
                 endpoints.MapControllers();
+
+                // SignalR endpoint
+                endpoints.MapHub<NotificationHub>("/api/notificationhub", options =>
+                {
+                    options.Transports = Microsoft.AspNetCore.Http.Connections.HttpTransportType.WebSockets |
+                                         Microsoft.AspNetCore.Http.Connections.HttpTransportType.LongPolling;
+                    options.ApplicationMaxBufferSize = 102400;
+                    options.TransportMaxBufferSize = 102400;
+                });
             });
         }
 
@@ -226,6 +250,7 @@ namespace Franchisee.Web.Configuration
             }
         }
     }
+
     public class FileUploadOperationFilter : IOperationFilter
     {
         public void Apply(OpenApiOperation operation, OperationFilterContext context)

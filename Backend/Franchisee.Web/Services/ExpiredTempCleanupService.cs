@@ -1,8 +1,9 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿using Franchisee.Web.Configuration;
+using Franchisee.Web.Models;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
-using Franchisee.Web.Configuration;
 
 namespace Franchisee.Web.Services
 {
@@ -12,6 +13,7 @@ namespace Franchisee.Web.Services
         private readonly IServiceProvider _serviceProvider;
         private readonly TimeSpan _cleanupInterval = TimeSpan.FromHours(1); // Проверка каждый час
         private readonly TimeSpan _archiveRetention = TimeSpan.FromDays(7); // Хранить 7 дней
+        private readonly TimeSpan _pendingApprovalRetention = TimeSpan.FromDays(14); // 14 дней для файлов ожидающих approval
 
         public ExpiredTempCleanupService(ILogger<ExpiredTempCleanupService> logger, IServiceProvider serviceProvider)
         {
@@ -44,17 +46,44 @@ namespace Franchisee.Web.Services
             using var scope = _serviceProvider.CreateScope();
             var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
 
+            var now = DateTime.UtcNow;
+
+            // учитываем разные TTL в зависимости от NotificationId
             var expired = await context.TempUploads
                 .IgnoreQueryFilters()
-                .Where(t => t.ExpiresAt <= DateTime.UtcNow)
+                .Where(t =>
+                    // Файлы без уведомления (preview) - 1 час
+                    (t.NotificationId == null && t.ExpiresAt <= now) ||
+                    // Файлы с уведомлением (pending approval) - 14 дней
+                    (t.NotificationId != null && t.ExpiresAt <= now)
+                )
                 .ToListAsync();
 
             foreach (var temp in expired)
             {
+                // если файл связан с активным уведомлением, не удаляем
+                if (temp.NotificationId.HasValue)
+                {
+                    var notification = await context.Notifications
+                        .IgnoreQueryFilters()
+                        .FirstOrDefaultAsync(n => n.Id == temp.NotificationId.Value);
+
+                    // Если уведомление еще активно (Pending или Postponed), пропускаем удаление
+                    if (notification != null &&
+                        (notification.Status == NotificationStatus.Pending ||
+                         notification.Status == NotificationStatus.Postponed))
+                    {
+                        _logger.LogDebug("Пропускаем файл {TempId}, связанный с активным уведомлением {NotificationId}",
+                            temp.Id, temp.NotificationId);
+                        continue;
+                    }
+                }
+
                 if (System.IO.File.Exists(temp.FilePath))
                 {
                     System.IO.File.Delete(temp.FilePath);
-                    _logger.LogInformation("Удален временный файл: {FilePath}", temp.FilePath);
+                    _logger.LogInformation("Удален временный файл: {FilePath} (NotificationId: {NotificationId})",
+                        temp.FilePath, temp.NotificationId);
                 }
                 context.TempUploads.Remove(temp);
             }
@@ -63,6 +92,36 @@ namespace Franchisee.Web.Services
             {
                 await context.SaveChangesAsync();
                 _logger.LogInformation("Очищено {Count} временных файлов", expired.Count);
+            }
+
+            // очищаем TempUploads с несуществующими NotificationId
+            await CleanupOrphanedTempUploadsAsync(context);
+        }
+
+        // Очистка "осиротевших" TempUploads
+        private async Task CleanupOrphanedTempUploadsAsync(ApplicationDbContext context)
+        {
+            var orphanedTempUploads = await context.TempUploads
+                .IgnoreQueryFilters()
+                .Where(t => t.NotificationId != null)
+                .Where(t => !context.Notifications.Any(n => n.Id == t.NotificationId))
+                .ToListAsync();
+
+            foreach (var temp in orphanedTempUploads)
+            {
+                if (System.IO.File.Exists(temp.FilePath))
+                {
+                    System.IO.File.Delete(temp.FilePath);
+                    _logger.LogWarning("Удален 'осиротевший' временный файл: {FilePath} (NotificationId: {NotificationId} не существует)",
+                        temp.FilePath, temp.NotificationId);
+                }
+                context.TempUploads.Remove(temp);
+            }
+
+            if (orphanedTempUploads.Any())
+            {
+                await context.SaveChangesAsync();
+                _logger.LogInformation("Очищено {Count} 'осиротевших' временных файлов", orphanedTempUploads.Count);
             }
         }
 

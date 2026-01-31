@@ -33,17 +33,6 @@ namespace Franchisee.Web.Controllers
             _logger = logger;
             _photoService = photoService;
         }
-
-        private int GetCurrentUserId()
-        {
-            var userIdStr = User.FindFirst("UserId")?.Value;
-            if (string.IsNullOrEmpty(userIdStr) || !int.TryParse(userIdStr, out int userId))
-            {
-                throw new UnauthorizedAccessException("Неверный ID пользователя");
-            }
-            return userId;
-        }
-
         private string? GetSafeFilePath(string filePath)
         {
             if (string.IsNullOrEmpty(filePath))
@@ -62,6 +51,18 @@ namespace Franchisee.Web.Controllers
                 return null;
             }
         }
+        private int GetCurrentUserId()
+        {
+            var userIdStr = User.FindFirst("UserId")?.Value;
+            if (string.IsNullOrEmpty(userIdStr) || !int.TryParse(userIdStr, out int userId))
+            {
+                throw new UnauthorizedAccessException("Неверный ID пользователя");
+            }
+            return userId;
+        }
+
+        private bool IsAdminOrHigher() => User.IsInRole("Admin") || User.IsInRole("SuperAdmin");
+        private bool IsSuperAdmin() => User.IsInRole("SuperAdmin");
 
         // POST: api/Photos/upload-temp
         [HttpPost("upload-temp")]
@@ -109,17 +110,70 @@ namespace Franchisee.Web.Controllers
             if (tempIds == null || !tempIds.Any())
                 return BadRequest("Нет файлов для перемещения");
 
-            var order = await _context.Orders.FirstOrDefaultAsync(o => o.Id == orderId && !o.IsDeleted);
+            var order = await _context.Orders
+                .Include(o => o.Photos)
+                .FirstOrDefaultAsync(o => o.Id == orderId && !o.IsDeleted);
+
             if (order == null)
                 return NotFound("Заказ не найден");
 
+            var userId = GetCurrentUserId();
+
             try
             {
-                var uploaderId = int.Parse(User.FindFirst("UserId")?.Value ?? "0");
+                if (!IsAdminOrHigher() && order.ManagerId != userId)
+                {
+                    _logger.LogInformation(
+                        "Менеджер {UserId} запрашивает добавление фото в чужой заказ {OrderId} (владелец: {ManagerId})",
+                        userId, orderId, order.ManagerId);
+
+                    // Проверяем лимит фото
+                    if (order.Photos.Count + tempIds.Count > 10) // MaxPhotosPerOrder = 10
+                    {
+                        return BadRequest($"Максимальное количество фото в заказе: 10. Текущее: {order.Photos.Count}, хотите добавить: {tempIds.Count}");
+                    }
+
+                    var notificationService = HttpContext.RequestServices.GetRequiredService<INotificationService>();
+
+                    var proposedChanges = new Dictionary<string, object>
+                    {
+                        ["Photos"] = new
+                        {
+                            addedTempIds = tempIds,
+                            removedPhotoIds = new List<int>() // Нет удаляемых фото
+                        }
+                    };
+
+                    var notificationId = await notificationService.CreateOrderUpdateRequestAsync(
+                        orderId: orderId,
+                        initiatorId: userId,
+                        proposedChanges: proposedChanges,
+                        comment: $"Добавление {tempIds.Count} фото в заказ"
+                    );
+
+                    _logger.LogInformation(
+                        "Создано уведомление {NotificationId} для добавления фото в заказ {OrderId}",
+                        notificationId, orderId);
+
+                    return Ok(new
+                    {
+                        success = true,
+                        message = $"Запрос на добавление {tempIds.Count} фото отправлен владельцу заказа и администраторам",
+                        notificationId = notificationId,
+                        requiresApproval = true
+                    });
+                }
+
+                var uploaderId = GetCurrentUserId();
                 var committedCount = await _photoService.CommitTempToOrderAsync(orderId, tempIds, uploaderId);
 
                 _logger.LogInformation("Moved {Count} temp photos to order {OrderId}", committedCount, orderId);
-                return Ok(new { message = $"Перемещено {committedCount} фото", addedCount = committedCount });
+                return Ok(new
+                {
+                    message = $"Перемещено {committedCount} фото",
+                    addedCount = committedCount,
+                    requiresApproval = false
+                });
             }
             catch (Exception ex)
             {
@@ -271,14 +325,58 @@ namespace Franchisee.Web.Controllers
             try
             {
                 var userId = GetCurrentUserId();
-                var photo = await _context.OrderPhotos.FindAsync(id);
+                var photo = await _context.OrderPhotos
+                    .Include(p => p.Order)
+                    .FirstOrDefaultAsync(p => p.Id == id);
 
-                if (photo == null) return NoContent();
+                if (photo == null)
+                    return NoContent();
+
+                if (photo.Order == null)
+                    return BadRequest("Фото не принадлежит заказу");
+
+                var order = photo.Order;
+
+                if (!IsAdminOrHigher() && order.ManagerId != userId)
+                {
+                    _logger.LogInformation(
+                        "Менеджер {UserId} запрашивает удаление фото {PhotoId} из чужого заказа {OrderId} (владелец: {ManagerId})",
+                        userId, id, order.Id, order.ManagerId);
+
+                    var notificationService = HttpContext.RequestServices.GetRequiredService<INotificationService>();
+
+                    var proposedChanges = new Dictionary<string, object>
+                    {
+                        ["Photos"] = new
+                        {
+                            addedTempIds = new List<int>(), // Нет добавляемых фото
+                            removedPhotoIds = new List<int> { id } // Удаляем это фото
+                        }
+                    };
+
+                    var notificationId = await notificationService.CreateOrderUpdateRequestAsync(
+                        orderId: order.Id,
+                        initiatorId: userId,
+                        proposedChanges: proposedChanges,
+                        comment: $"Удаление фото: {photo.OriginalFileName}"
+                    );
+
+                    _logger.LogInformation(
+                        "Создано уведомление {NotificationId} для удаления фото {PhotoId} из заказа {OrderId}",
+                        notificationId, id, order.Id);
+
+                    return Ok(new
+                    {
+                        success = true,
+                        message = "Запрос на удаление фото отправлен владельцу заказа и администраторам",
+                        notificationId = notificationId,
+                        requiresApproval = true
+                    });
+                }
 
                 if (User.Identity?.IsAuthenticated != true)
                     return Unauthorized("Требуется авторизация");
 
-                //   ПРОВЕРЯЕМ БЕЗОПАСНОСТЬ ПУТИ ПЕРЕД УДАЛЕНИЕМ
                 var safePath = GetSafeFilePath(photo.FilePath);
                 if (!string.IsNullOrEmpty(safePath) && System.IO.File.Exists(safePath))
                 {
@@ -306,20 +404,17 @@ namespace Franchisee.Web.Controllers
                 .IgnoreQueryFilters()
                 .FirstOrDefaultAsync(t => t.Id == tempId);
 
-            if (temp == null) return NotFound("Temp file not found");
+            if (temp == null)
+                return NotFound("Temp file not found");
+            // ЛЮБОЙ авторизованный пользователь может просматривать временные фото
 
-            var userIdClaim = User.FindFirst("UserId");
-            if (userIdClaim == null || !int.TryParse(userIdClaim.Value, out int userId))
-                return Unauthorized("Invalid user ID");
-
-            if (temp.UploaderId != userId) return Forbid("Access denied");
-
-            //   ПРОВЕРЯЕМ БЕЗОПАСНОСТЬ ПУТИ
+            // ПРОВЕРЯЕМ БЕЗОПАСНОСТЬ ПУТИ
             var safePath = GetSafeFilePath(temp.FilePath);
             if (string.IsNullOrEmpty(safePath))
                 return BadRequest("Некорректный путь к файлу");
 
-            if (!System.IO.File.Exists(safePath)) return NotFound("File not found on disk");
+            if (!System.IO.File.Exists(safePath))
+                return NotFound("File not found on disk");
 
             var contentType = temp.ContentType ?? "application/octet-stream";
             return PhysicalFile(safePath, contentType, enableRangeProcessing: true);

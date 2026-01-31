@@ -3,6 +3,7 @@ using Franchisee.Web.Models;
 using Franchisee.Web.Services.Hubs;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Infrastructure;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
@@ -42,7 +43,7 @@ namespace Franchisee.Web.Services
 
             try
             {
-                // 1. Получаем заказ и его владельца
+                // 1. Получаем заказ и его владельца (СУЩЕСТВУЮЩАЯ ЛОГИКА)
                 var order = await _context.Orders
                     .Include(o => o.Manager)
                     .FirstOrDefaultAsync(o => o.Id == orderId);
@@ -50,14 +51,41 @@ namespace Franchisee.Web.Services
                 if (order == null)
                     throw new ArgumentException($"Заказ {orderId} не найден");
 
-                // 2. Получаем инициатора
+                // 2. Получаем инициатора (СУЩЕСТВУЮЩАЯ ЛОГИКА)
                 var initiator = await _context.Managers
                     .FirstOrDefaultAsync(m => m.Id == initiatorId);
 
                 if (initiator == null)
                     throw new ArgumentException($"Инициатор {initiatorId} не найден");
 
-                // 3. Создаём уведомление
+                if (proposedChanges.TryGetValue("Photos", out var photosChangeObj))
+                {
+                    var photosChange = JsonSerializer.Deserialize<JsonElement>(JsonSerializer.Serialize(photosChangeObj));
+
+                    if (photosChange.TryGetProperty("addedTempIds", out var addedTempIdsElement))
+                    {
+                        var addedTempIds = addedTempIdsElement.Deserialize<List<int>>();
+
+                        if (addedTempIds?.Any() == true)
+                        {
+                            // Обновляем временные файлы - связываем их с уведомлением
+                            var tempUploads = await _context.TempUploads
+                                .Where(t => addedTempIds.Contains(t.Id) && t.UploaderId == initiatorId)
+                                .ToListAsync();
+
+                            foreach (var tempUpload in tempUploads)
+                            {
+                                // Пока только помечаем, что файл ожидает approval
+                                // NotificationId установим после создания уведомления
+                                tempUpload.ExpiresAt = DateTime.UtcNow.AddDays(14); // 14 дней для approval
+                            }
+
+                            await _context.SaveChangesAsync();
+                        }
+                    }
+                }
+
+                // 3. Создаём уведомление (СУЩЕСТВУЮЩАЯ ЛОГИКА)
                 var notification = new Notification
                 {
                     Type = NotificationType.OrderUpdateRequest,
@@ -86,7 +114,32 @@ namespace Franchisee.Web.Services
                 _context.Notifications.Add(notification);
                 await _context.SaveChangesAsync();
 
-                // 4. Добавляем получателей с УНИКАЛЬНЫМИ ID пользователей
+                if (proposedChanges.TryGetValue("Photos", out photosChangeObj))
+                {
+                    var photosChange = JsonSerializer.Deserialize<JsonElement>(JsonSerializer.Serialize(photosChangeObj));
+
+                    if (photosChange.TryGetProperty("addedTempIds", out var addedTempIdsElement))
+                    {
+                        var addedTempIds = addedTempIdsElement.Deserialize<List<int>>();
+
+                        if (addedTempIds?.Any() == true)
+                        {
+                            var tempUploads = await _context.TempUploads
+                                .Where(t => addedTempIds.Contains(t.Id) && t.UploaderId == initiatorId)
+                                .ToListAsync();
+
+                            foreach (var tempUpload in tempUploads)
+                            {
+                                tempUpload.NotificationId = notification.Id;
+                                tempUpload.ExpiresAt = DateTime.UtcNow.AddDays(14);
+                            }
+
+                            await _context.SaveChangesAsync();
+                        }
+                    }
+                }
+
+                // 4. Добавляем получателей с УНИКАЛЬНЫМИ ID пользователей (СУЩЕСТВУЮЩАЯ ЛОГИКА)
                 var recipientUserIds = new HashSet<int>();
 
                 // 4.1. Владелец заказа
@@ -122,7 +175,7 @@ namespace Franchisee.Web.Services
                 await _context.SaveChangesAsync();
                 await transaction.CommitAsync();
 
-                // 5. Отправляем SignalR уведомления КАЖДОМУ пользователю ОДИН РАЗ
+                // 5. Отправляем SignalR уведомления КАЖДОМУ пользователю ОДИН РАЗ (СУЩЕСТВУЮЩАЯ ЛОГИКА)
                 foreach (var userId in recipientUserIds)
                 {
                     await SendRealTimeNotificationAsync(notification, userId);
@@ -340,7 +393,7 @@ namespace Franchisee.Web.Services
                     await SendSystemNotificationAsync(
                         infoMessage,
                         notification.OrderId,
-                        notification.Order?.OrderNumber, 
+                        notification.Order?.OrderNumber,
                         null,
                         notification.InitiatorId.Value);
 
@@ -466,6 +519,7 @@ namespace Franchisee.Web.Services
                 var order = await _context.Orders
                     .Include(o => o.WorkItems)
                     .Include(o => o.Payments)
+                    .Include(o => o.Photos)
                     .FirstOrDefaultAsync(o => o.Id == notification.OrderId.Value);
 
                 if (order == null)
@@ -487,7 +541,7 @@ namespace Franchisee.Web.Services
 
                 bool hasChanges = false;
 
-                // Применяем изменения к полям
+                // Применяем изменения к полям (СУЩЕСТВУЮЩАЯ ЛОГИКА)
                 foreach (var change in changesDict)
                 {
                     var fieldName = change.Key;
@@ -506,8 +560,8 @@ namespace Franchisee.Web.Services
                             _logger.LogDebug("Найден 'new' в поле {FieldName}, newValue ValueKind: {NewValueKind}",
                                 fieldName, newValue.ValueKind);
 
-                            // Пропускаем WorkItems и Payments - обрабатываем отдельно
-                            if (fieldName == "WorkItems" || fieldName == "Payments")
+                            // Пропускаем WorkItems, Payments и Photos - обрабатываем отдельно
+                            if (fieldName == "WorkItems" || fieldName == "Payments" || fieldName == "Photos")
                             {
                                 _logger.LogDebug("Пропускаем {FieldName} для отдельной обработки", fieldName);
                                 continue;
@@ -522,7 +576,7 @@ namespace Franchisee.Web.Services
                     }
                 }
 
-                // Применяем WorkItems
+                // Применяем WorkItems (СУЩЕСТВУЮЩАЯ ЛОГИКА)
                 if (changesDict.TryGetValue("WorkItems", out var workItemsProp))
                 {
                     _logger.LogDebug("Обработка WorkItems, ValueKind: {ValueKind}", workItemsProp.ValueKind);
@@ -545,7 +599,7 @@ namespace Franchisee.Web.Services
                     _logger.LogDebug("WorkItems отсутствует в changesDict");
                 }
 
-                // Применяем Payments
+                // Применяем Payments (СУЩЕСТВУЮЩАЯ ЛОГИКА)
                 if (changesDict.TryGetValue("Payments", out var paymentsProp))
                 {
                     _logger.LogDebug("Обработка Payments, ValueKind: {ValueKind}", paymentsProp.ValueKind);
@@ -566,6 +620,21 @@ namespace Franchisee.Web.Services
                 else
                 {
                     _logger.LogDebug("Payments отсутствует в changesDict");
+                }
+
+                if (changesDict.TryGetValue("Photos", out var photosProp))
+                {
+                    _logger.LogDebug("Обработка Photos, ValueKind: {ValueKind}", photosProp.ValueKind);
+
+                    hasChanges |= await ApplyPhotoChangesAsync(
+                        order.Id,
+                        notification.Id,
+                        notification.InitiatorId ?? 0,
+                        photosProp);
+                }
+                else
+                {
+                    _logger.LogDebug("Photos отсутствует в changesDict");
                 }
 
                 if (hasChanges)
@@ -590,6 +659,117 @@ namespace Franchisee.Web.Services
                 _logger.LogError(ex, "=== ОШИБКА в ApplyOrderChangesAsync для уведомления {NotificationId} ===",
                     notification.Id);
                 throw;
+            }
+        }
+
+        //Применение изменений фото
+        private async Task<bool> ApplyPhotoChangesAsync(
+            int orderId,
+            int notificationId,
+            int initiatorId,
+            JsonElement photosProp)
+        {
+            try
+            {
+                _logger.LogDebug("=== ApplyPhotoChangesAsync для заказа {OrderId}, уведомление {NotificationId} ===",
+                    orderId, notificationId);
+
+                // Пытаемся получить PhotoService через DI
+                var photoService = _context.GetService<IPhotoService>();
+                if (photoService == null)
+                {
+                    _logger.LogError("Не удалось получить IPhotoService для обработки фото");
+                    return false;
+                }
+
+                bool hasChanges = false;
+                
+                if (photosProp.TryGetProperty("addedTempIds", out var addedTempIdsElement))
+                {
+                    var addedTempIds = addedTempIdsElement.Deserialize<List<int>>();
+
+                    if (addedTempIds?.Any() == true)
+                    {
+                        _logger.LogDebug("Добавление {Count} фото из временных файлов", addedTempIds.Count);
+
+                        // Получаем заказ для проверки лимита фото
+                        var order = await _context.Orders
+                            .Include(o => o.Photos)
+                            .FirstOrDefaultAsync(o => o.Id == orderId);
+
+                        if (order == null)
+                        {
+                            _logger.LogWarning("Заказ {OrderId} не найден при применении изменений фото", orderId);
+                            return false;
+                        }
+
+                        // Проверяем лимит
+                        if (order.Photos.Count + addedTempIds.Count > 10) // MaxPhotosPerOrder = 10
+                        {
+                            _logger.LogError("Превышен лимит фото в заказе {OrderId}. Текущее: {Current}, хотим добавить: {ToAdd}",
+                                orderId, order.Photos.Count, addedTempIds.Count);
+                            throw new InvalidOperationException(
+                                $"Превышен лимит фото в заказе. Максимум: 10, текущее: {order.Photos.Count}, хотите добавить: {addedTempIds.Count}");
+                        }
+
+                        // Применяем добавление фото
+                        var committedCount = await photoService.CommitTempToOrderAsync(
+                            orderId,
+                            addedTempIds,
+                            initiatorId);
+
+                        if (committedCount > 0)
+                        {
+                            hasChanges = true;
+                            _logger.LogDebug("Добавлено {Count} фото в заказ {OrderId}", committedCount, orderId);
+                        }
+
+                        // Очищаем NotificationId у TempUploads (если они еще есть)
+                        var tempUploads = await _context.TempUploads
+                            .Where(t => addedTempIds.Contains(t.Id))
+                            .ToListAsync();
+
+                        foreach (var tempUpload in tempUploads)
+                        {
+                            tempUpload.NotificationId = null;
+                        }
+
+                        await _context.SaveChangesAsync();
+                    }
+                }
+
+                if (photosProp.TryGetProperty("removedPhotoIds", out var removedPhotoIdsElement))
+                {
+                    var removedPhotoIds = removedPhotoIdsElement.Deserialize<List<int>>();
+
+                    if (removedPhotoIds?.Any() == true)
+                    {
+                        _logger.LogDebug("Удаление {Count} фото", removedPhotoIds.Count);
+
+                        foreach (var photoId in removedPhotoIds)
+                        {
+                            try
+                            {
+                                await photoService.DeletePhotoFilesAsync(photoId);
+                                hasChanges = true;
+                                _logger.LogDebug("Удалено фото {PhotoId} из заказа {OrderId}", photoId, orderId);
+                            }
+                            catch (Exception ex)
+                            {
+                                _logger.LogError(ex, "Ошибка удаления фото {PhotoId}", photoId);
+                                // Продолжаем удаление других фото
+                            }
+                        }
+                    }
+                }
+
+                _logger.LogDebug("=== ApplyPhotoChangesAsync УСПЕШНО для заказа {OrderId} ===", orderId);
+                return hasChanges;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Ошибка применения изменений фото для заказа {OrderId}", orderId);
+                return false;
             }
         }
 

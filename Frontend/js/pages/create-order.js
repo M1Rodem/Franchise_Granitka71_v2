@@ -1,8 +1,17 @@
 import { PageManager } from '../core/page-manager.js';
 import { apiService } from '../api/api.js';
 import { formatCurrency, getTodayDate, isValidEmail, isValidPhone, populateForm,  getFormValue, showTempMessage, } from '../utils/utils.js';
-import { handlePhotoSelect, uploadTempAndDisplay, renderPhotoGrid, tempUploads, clearTempPhotos, attachPhotoEvents, getTempPhotoIds, loadAndCleanupTemp } from '../utils/photo-utils.js';
-import { NotificationManager } from '../notification/notification-manager.js';
+import { 
+    handlePhotoSelect, 
+    uploadTempAndDisplay, 
+    uploadTempToDraft,
+    renderPhotoGrid, 
+    tempUploads, 
+    clearTempPhotos, 
+    attachPhotoEvents, 
+    getTempPhotoIds, 
+    loadAndCleanupTemp 
+} from '../utils/photo-utils.js';
 import { checkBlocking } from '../notification/notification-blocking.js';
 
 export class CreateOrderManager {
@@ -12,10 +21,148 @@ export class CreateOrderManager {
         this.orderPhotos = [];
         this.originalOrderData = null;
         this.workItemsCount = 0;
-        this.photosToDelete = [];
+        
+        this.draftChanges = {
+            fieldChanges: {},      // измененные поля формы
+            removedPhotoIds: [],   // фото для удаления
+            tempUploadIds: []      // временные фото для добавления
+        };
         
         this.initElements();
         this.bindEvents();
+    }
+    
+    collectFormData() {
+        const orderDateValue = getFormValue('orderDate');
+        
+        // 1. ПРОВЕРЯЕМ, ИЗМЕНИЛАСЬ ЛИ ДАТА ПО СРАВНЕНИЮ С ОТОБРАЖАЕМОЙ
+        const displayDate = this.originalOrderData ? 
+            new Date(this.originalOrderData.orderDate).toISOString().slice(0, 10) : 
+            '';
+        
+        let finalOrderDate;
+        if (this.originalOrderData && orderDateValue === displayDate) {
+            // ДАТА НЕ ИЗМЕНИЛАСЬ - используем ОРИГИНАЛЬНУЮ дату с временем
+            finalOrderDate = this.originalOrderData.orderDate;
+        } else {
+            // ДАТА ИЗМЕНИЛАСЬ - преобразуем в ISO с полночью UTC
+            finalOrderDate = orderDateValue ? 
+                new Date(orderDateValue + 'T00:00:00Z').toISOString() : 
+                new Date().toISOString();
+        }
+        
+        // 2. ПРОВЕРЯЕМ, ИЗМЕНИЛИСЬ ЛИ РАБОТЫ
+        const currentWorkItems = this.collectWorkItems();
+        let workItemsToSend = null;
+        let calculatedTotal = 0;
+        
+        if (this.originalOrderData) {
+            const originalWorkItems = this.originalOrderData.workItems || [];
+            
+            // Быстрая проверка по длине
+            if (currentWorkItems.length !== originalWorkItems.length) {
+                workItemsToSend = currentWorkItems;
+            } else {
+                // Глубокое сравнение
+                let workItemsChanged = false;
+                for (let i = 0; i < currentWorkItems.length; i++) {
+                    const current = currentWorkItems[i];
+                    const original = originalWorkItems[i];
+                    
+                    if (!original || 
+                        String(current.workDescription || '').trim() !== String(original.workDescription || '').trim() ||
+                        Number(current.price || 0) !== Number(original.price || 0) ||
+                        Number(current.quantity || 1) !== Number(original.quantity || 1) ||
+                        String(current.note || '').trim() !== String(original.note || '').trim()) {
+                        workItemsChanged = true;
+                        break;
+                    }
+                }
+                
+                if (workItemsChanged) {
+                    workItemsToSend = currentWorkItems;
+                }
+                // Если не изменились - workItemsToSend останется null
+            }
+        } else {
+            // Для нового заказа всегда отправляем
+            workItemsToSend = currentWorkItems;
+        }
+        
+        // 3. ПРОВЕРЯЕМ, ИЗМЕНИЛИСЬ ЛИ ПЛАТЕЖИ
+        const currentPayments = this.collectPayments();
+        let paymentsToSend = null;
+        
+        if (this.originalOrderData) {
+            const originalPayments = this.originalOrderData.payments || [];
+            
+            if (currentPayments.length !== originalPayments.length) {
+                paymentsToSend = currentPayments;
+            } else {
+                let paymentsChanged = false;
+                for (let i = 0; i < currentPayments.length; i++) {
+                    const current = currentPayments[i];
+                    const original = originalPayments[i];
+                    
+                    if (!original ||
+                        String(current.paymentType || '').trim() !== String(original.paymentType || '').trim() ||
+                        Number(current.amount || 0) !== Number(original.amount || 0) ||
+                        String(current.note || '').trim() !== String(original.note || '').trim()) {
+                        
+                        // Сравниваем даты (только дату без времени)
+                        const currentDate = current.paymentDate ? 
+                            new Date(current.paymentDate).toISOString().slice(0, 10) : '';
+                        const originalDate = original.paymentDate ? 
+                            new Date(original.paymentDate).toISOString().slice(0, 10) : '';
+                        
+                        if (currentDate !== originalDate) {
+                            paymentsChanged = true;
+                            break;
+                        }
+                    }
+                }
+                
+                if (paymentsChanged) {
+                    paymentsToSend = currentPayments;
+                }
+            }
+        } else {
+            // Для нового заказа всегда отправляем
+            paymentsToSend = currentPayments;
+        }
+        
+        // 4. ФОРМИРУЕМ ОБЪЕКТ ДАННЫХ
+        const data = {
+            place: getFormValue('place'),
+            inspectionPlace: getFormValue('inspectionPlace') || '',
+            orderDate: finalOrderDate, // ИСПРАВЛЕННАЯ ДАТА
+            deceasedFullName: getFormValue('deceasedFullName'),
+            customerFullName: getFormValue('customerFullName'),
+            customerEmail: getFormValue('customerEmail') || '',
+            phone: getFormValue('phone'),
+            address: getFormValue('address'),
+            monumentType: getFormValue('monumentType'),
+            monumentSize: getFormValue('monumentSize'),
+            additionalInfo: getFormValue('additionalInfo') || '',
+            
+            removedPhotoIds: this.draftChanges.removedPhotoIds,
+            tempUploadIds: this.draftChanges.tempUploadIds
+        };
+        
+        // 5. ДОБАВЛЯЕМ ТОЛЬКО ИЗМЕНЕННЫЕ МАССИВЫ
+        if (workItemsToSend !== null) {
+            data.workItems = workItemsToSend;
+            calculatedTotal = workItemsToSend.reduce((sum, item) => {
+                return sum + (Number(item.price) || 0) * (Number(item.quantity) || 1);
+            }, 0);
+            data.totalPrice = calculatedTotal;
+        }
+        
+        if (paymentsToSend !== null) {
+            data.payments = paymentsToSend;
+        }
+        
+        return data;
     }
 
     initElements() {
@@ -51,14 +198,11 @@ export class CreateOrderManager {
         this.setupNumberInputs();
         await this.checkEditMode();
         
-        // ФИКС: Передаем photoManager для управления удалением
         if (this.photoPreview) {
             attachPhotoEvents('photoPreview', { 
                 mode: this.editingOrderId ? 'edit' : 'view',
-                photoManager: this, // Передаем ссылку на менеджер
-                onPhotoDeleted: (photoId) => {
-                    // Больше не нужно - теперь удаление отложенное
-                }
+                photoManager: this, 
+                orderNumber: this.editingOrderId
             });
         }
     }
@@ -106,15 +250,51 @@ export class CreateOrderManager {
             });
         }
 
-        // Фото: Input и Drag&Drop
+        // Input и Drag&Drop (ОБНОВЛЕННЫЙ КОД)
         if (this.photoInput) {
-            this.photoInput.addEventListener('change', (e) => 
-                handlePhotoSelect(e, uploadTempAndDisplay));
+            this.photoInput.addEventListener('change', (e) => {
+                // Используем нашу новую функцию для каждого файла
+                const files = e.target.files;
+                for (let file of files) {
+                    if (file.type.startsWith('image/') && file.size <= 10 * 1024 * 1024) {
+                        this.handlePhotoUpload(file);
+                    } else {
+                        showTempMessage(`Пропущен файл ${file.name}: не изображение или слишком большой`, 'error');
+                    }
+                }
+                e.target.value = ''; // Сброс input
+            });
         }
         
+        // Drag & Drop (ОБНОВЛЕННЫЙ КОД)
         if (this.uploadArea) {
+            // Клик для выбора файлов
             this.uploadArea.addEventListener('click', () => {
                 this.photoInput.click();
+            });
+            
+            // Drag & Drop
+            this.uploadArea.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                this.uploadArea.classList.add('dragover');
+            });
+            
+            this.uploadArea.addEventListener('dragleave', () => {
+                this.uploadArea.classList.remove('dragover');
+            });
+            
+            this.uploadArea.addEventListener('drop', (e) => {
+                e.preventDefault();
+                this.uploadArea.classList.remove('dragover');
+                
+                const files = e.dataTransfer.files;
+                for (let file of files) {
+                    if (file.type.startsWith('image/') && file.size <= 10 * 1024 * 1024) {
+                        this.handlePhotoUpload(file);
+                    } else {
+                        showTempMessage(`Пропущен файл ${file.name}: не изображение или слишком большой`, 'error');
+                    }
+                }
             });
         }
 
@@ -223,10 +403,12 @@ export class CreateOrderManager {
         try {
             const order = await apiService.getOrder(id);
             
+            // ИЗМЕНЕНО: Сохраняем оригинальную дату ПОЛНОСТЬЮ, а не обрезанную
             this.originalOrderData = {
                 place: order.place,
                 inspectionPlace: order.inspectionPlace,
-                orderDate: order.orderDate ? new Date(order.orderDate).toISOString().slice(0, 10) : getTodayDate(),
+                // СОХРАНЯЕМ ПОЛНУЮ ISO СТРОКУ С ВРЕМЕНЕМ
+                orderDate: order.orderDate ? new Date(order.orderDate).toISOString() : new Date().toISOString(),
                 deceasedFullName: order.deceasedFullName,
                 customerFullName: order.customerFullName,
                 customerEmail: order.customerEmail,
@@ -240,7 +422,13 @@ export class CreateOrderManager {
                 photoIds: order.photos ? order.photos.map(p => p.id) : []
             };
             
-            populateForm('createOrderForm', this.originalOrderData);
+            // СОЗДАЕМ ОТДЕЛЬНЫЙ ОБЪЕКТ ДЛЯ ОТОБРАЖЕНИЯ С ОБРЕЗАННОЙ ДАТОЙ
+            const displayData = {
+                ...this.originalOrderData,
+                orderDate: order.orderDate ? new Date(order.orderDate).toISOString().slice(0, 10) : getTodayDate()
+            };
+            
+            populateForm('createOrderForm', displayData);
             this.renderWorkItemsTable(this.originalOrderData.workItems);
             this.renderPaymentsTable(this.originalOrderData.payments);
             this.calculateTotalPrice();
@@ -252,35 +440,6 @@ export class CreateOrderManager {
             console.error('Load order error:', error);
             showTempMessage('Ошибка загрузки заказа: ' + error.message, 'error');
         }
-    }
-
-    collectFormData() {
-        const orderDateValue = getFormValue('orderDate');
-        
-        const workItems = this.collectWorkItems();
-        const calculatedTotal = workItems.reduce((sum, item) => {
-            return sum + (Number(item.price) || 0) * (Number(item.quantity) || 1);
-        }, 0);
-        
-        const data = {
-            place: getFormValue('place'),
-            inspectionPlace: getFormValue('inspectionPlace') || '',
-            orderDate: orderDateValue ? new Date(orderDateValue).toISOString() : new Date().toISOString(),
-            deceasedFullName: getFormValue('deceasedFullName'),
-            customerFullName: getFormValue('customerFullName'),
-            customerEmail: getFormValue('customerEmail') || '',
-            phone: getFormValue('phone'),
-            address: getFormValue('address'),
-            monumentType: getFormValue('monumentType'),
-            monumentSize: getFormValue('monumentSize'),
-            additionalInfo: getFormValue('additionalInfo') || '',
-            workItems: workItems,
-            payments: this.collectPayments(),
-            totalPrice: calculatedTotal,
-            tempUploadIds: getTempPhotoIds()
-        };
-        
-        return data;
     }
 
     validateForm(data) {
@@ -298,8 +457,15 @@ export class CreateOrderManager {
             return 'Неверный формат телефона';
         }
         
-        const workItemsError = this.validateWorkItems(data.workItems);
-        if (workItemsError) return workItemsError;
+        // ИЗМЕНЕНО: Валидируем workItems только если они есть в data
+        if (data.workItems && Array.isArray(data.workItems)) {
+            const workItemsError = this.validateWorkItems(data.workItems);
+            if (workItemsError) return workItemsError;
+        } else if (!this.editingOrderId) {
+            // Для нового заказа workItems обязательны
+            return 'Укажите хотя бы один вид работ';
+        }
+        // Для редактирования: если workItems нет в data, значит они не изменились - это нормально
         
         return null;
     }
@@ -310,45 +476,12 @@ export class CreateOrderManager {
             
             if (this.editingOrderId) {
                 result = await apiService.updateOrder(this.editingOrderId, orderData);
-                
-                // ФИКС: Проверяем, не является ли ответ "запрос отправлен"
-                if (result.success && result.message && result.message.includes("Запрос отправлен")) {
-                    // Менеджер редактировал чужой заказ - показываем сообщение о запросе
-                    showTempMessage(result.message, 'info');
-                    
-                    // Обновляем счетчик уведомлений
-                    if (window.NotificationManager) {
-                        await NotificationManager.updateBadgeCount();
-                    }
-                    
-                    // Перенаправляем на страницу заказа
-                    setTimeout(() => {
-                        window.location.href = `view-order.html?id=${this.editingOrderId}`;
-                    }, 2000);
-                    return result;
-                }
-                
-                // УДАЛЯЕМ ФОТО ПОСЛЕ УСПЕШНОГО ОБНОВЛЕНИЯ ЗАКАЗА
-                if (this.photosToDelete.length > 0) {
-                    for (const photoId of this.photosToDelete) {
-                        try {
-                            await apiService.deleteOrderPhoto(photoId);
-                        } catch (error) {
-                            console.error(`Failed to delete photo ${photoId}:`, error);
-                        }
-                    }
-                }
             } else {
+                // Для нового заказа - обычное создание
                 result = await apiService.createOrder(orderData);
             }
             
-            // Очищаем массив после успешного сохранения
-            this.photosToDelete = [];
-            
-            if (tempUploads.length > 0) {
-                await apiService.commitPhotos(this.editingOrderId || result.id, tempUploads);
-            }
-            
+            this.clearDraftChanges();
             clearTempPhotos();
             
             const message = this.editingOrderId ? 'Заказ обновлён' : 'Заказ создан';
@@ -385,6 +518,39 @@ export class CreateOrderManager {
         }
     }
 
+    clearDraftChanges() {
+        this.draftChanges = {
+            fieldChanges: {},
+            removedPhotoIds: [],
+            tempUploadIds: []
+        };
+    }
+
+    /**
+     * Обработка загрузки фото с интеграцией в draftChanges
+     */
+    async handlePhotoUpload(file) {
+        try {
+            const tempId = await uploadTempAndDisplay(file, this);
+            return tempId;
+        } catch (error) {
+            console.error('Photo upload error:', error);
+            showTempMessage('Ошибка загрузки фото: ' + error.message, 'error');
+            throw error;
+        }
+    }
+    /**
+     * Обработка удаления временного фото с интеграцией в draftChanges
+     */
+    async handleTempPhotoRemoval(tempId) {
+        try {
+            await removeTempPhoto(tempId, this);
+        } catch (error) {
+            console.error('Temp photo removal error:', error);
+            throw error;
+        }
+    }
+
     hasFormDataChanged(originalData, currentData) {
         const fieldsToCompare = [
             'place', 'inspectionPlace', 'deceasedFullName',
@@ -401,6 +567,17 @@ export class CreateOrderManager {
             }
         }
         
+        // ПРОВЕРКА ДАТЫ (учитываем, что originalData.orderDate теперь полная ISO строка)
+        const originalDate = originalData.orderDate ? 
+            new Date(originalData.orderDate).toISOString().slice(0, 10) : '';
+        const currentDate = currentData.orderDate ? 
+            new Date(currentData.orderDate).toISOString().slice(0, 10) : '';
+        
+        if (originalDate !== currentDate) {
+            return true;
+        }
+        
+        // ПРОВЕРКА РАБОТ (теперь currentData.workItems может быть undefined)
         const normalizeWorkItem = (item) => ({
             workDescription: String(item.workDescription || '').trim(),
             price: Number(item.price) || 0,
@@ -425,10 +602,12 @@ export class CreateOrderManager {
             }
         }
         
+        // ПРОВЕРКА ПЛАТЕЖЕЙ (теперь currentData.payments может быть undefined)
         const normalizePayment = (payment) => ({
             paymentType: String(payment.paymentType || '').trim(),
             amount: Number(payment.amount) || 0,
-            paymentDate: String(payment.paymentDate || '').trim(),
+            paymentDate: payment.paymentDate ? 
+                new Date(payment.paymentDate).toISOString().slice(0, 10) : '',
             note: String(payment.note || '').trim()
         });
         
@@ -449,6 +628,7 @@ export class CreateOrderManager {
             }
         }
         
+        // ПРОВЕРКА ФОТО (осталось без изменений)
         const originalPhotoIds = originalData.photoIds || [];
         const currentServerPhotoIds = currentData.photoIds || [];
         
@@ -813,6 +993,11 @@ export class CreateOrderManager {
     }
 
     validateWorkItems(items) {
+        // ИЗМЕНЕНО: Проверяем, что items существует и это массив
+        if (!items || !Array.isArray(items)) {
+            return 'Некорректные данные работ';
+        }
+        
         for (let i = 0; i < items.length; i++) {
             const wi = items[i];
             if (!wi.workDescription || wi.workDescription.trim() === '') {
@@ -863,13 +1048,25 @@ window.addEventListener('beforeunload', () => {
 window.addWorkItemRow = function() {
     if (window.createOrderManager) window.createOrderManager.addWorkItemRow();
 };
+
 window.addPaymentRow = function() {
     if (window.createOrderManager) window.createOrderManager.addAdditionalPayment();
 };
+
 window.calculateTotalPrice = function() {
     if (window.createOrderManager) window.createOrderManager.calculateTotalPrice();
 };
+
 window.removeRow = function(btn) { 
     btn.closest('tr').remove(); 
     if (window.createOrderManager) window.createOrderManager.calculateTotalPrice();
+};
+
+window.removeTempPhotoGlobal = function(tempId) {
+    if (window.createOrderManager && window.createOrderManager.handleTempPhotoRemoval) {
+        window.createOrderManager.handleTempPhotoRemoval(tempId);
+    } else {
+        // Fallback для обратной совместимости
+        removeTempPhoto(tempId);
+    }
 };

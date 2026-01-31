@@ -107,26 +107,28 @@ async function handleFiles(files, uploadCallback) {
 }
 
 /**
- * Загрузка временного фото и создание превью
+ * Загрузка временного фото (УСТАРЕВШАЯ ВЕРСИЯ - для обратной совместимости)
+ * @deprecated Используйте uploadTempToDraft вместо этого
  */
-export async function uploadTempAndDisplay(file) {
+export async function uploadTempAndDisplay(file, draftManager = null) {
     try {
         const photoData = await apiService.uploadTempPhoto(file);
-        const previewUrl = await apiService.getTempPreview(photoData.id);
+        const tempId = photoData.id;
+        const previewUrl = await apiService.getTempPreview(tempId);
         
         const container = document.getElementById('photoPreview');
         if (!container) return null;
         
         const photoItem = document.createElement('div');
         photoItem.className = 'photo-item';
-        photoItem.dataset.tempId = photoData.id;
+        photoItem.dataset.tempId = tempId;
         
         photoItem.innerHTML = `
             <div class="photo-container">
                 <img src="${sanitizeUrl(previewUrl)}"
                     alt="${escapeHtml(file.name)}"
                     class="photo-img">
-                <button class="photo-remove" title="Удалить фото">✖</button>
+                <button class="photo-remove" title="Удалить временное фото">✖</button>
             </div>
             <div class="photo-info">
                 <div class="photo-name">${escapeHtml(file.name)}</div>
@@ -135,21 +137,125 @@ export async function uploadTempAndDisplay(file) {
         `;
         
         container.appendChild(photoItem);
-        tempUploads.push(photoData.id);
-
-        // Фикс: Сохрани в localStorage (backup для reload)
-        const stored = JSON.parse(localStorage.getItem(TEMP_STORAGE_KEY) || '[]');
-        stored.push(photoData.id);
-        localStorage.setItem(TEMP_STORAGE_KEY, JSON.stringify(stored));
+        
+        if (draftManager && draftManager.draftChanges) {
+            if (draftManager.draftChanges.tempUploadIds.indexOf(tempId) === -1) {
+                draftManager.draftChanges.tempUploadIds.push(tempId);
+            }
+        } 
+        else {
+            tempUploads.push(tempId);
+            const stored = JSON.parse(localStorage.getItem(TEMP_STORAGE_KEY) || '[]');
+            stored.push(tempId);
+            localStorage.setItem(TEMP_STORAGE_KEY, JSON.stringify(stored));
+        }
         
         showTempMessage(`Фото "${file.name}" загружено`, 'success');
-        return photoData.id;
+        return tempId;
     } catch (error) {
         console.error('Upload error:', error);
         showTempMessage('Ошибка загрузки: ' + error.message, 'error');
         throw error;
     }
 }
+
+/**
+ * НОВАЯ ФУНКЦИЯ: Загрузка временного фото с привязкой к draft
+ */
+export async function uploadTempToDraft(file, draftManager) {
+    if (!draftManager || !draftManager.draftChanges) {
+        throw new Error('Draft manager required for uploadTempToDraft');
+    }
+    
+    try {
+        const photoData = await apiService.uploadTempPhoto(file);
+        const tempId = photoData.id;
+        const previewUrl = await apiService.getTempPreview(tempId);
+        
+        const container = document.getElementById('photoPreview');
+        if (!container) return null;
+        
+        const photoItem = document.createElement('div');
+        photoItem.className = 'photo-item';
+        photoItem.dataset.tempId = tempId;
+        
+        photoItem.innerHTML = `
+            <div class="photo-container">
+                <img src="${sanitizeUrl(previewUrl)}"
+                    alt="${escapeHtml(file.name)}"
+                    class="photo-img">
+                <button class="photo-remove" title="Удалить временное фото">✖</button>
+            </div>
+            <div class="photo-info">
+                <div class="photo-name">${escapeHtml(file.name)}</div>
+                <div class="photo-meta">${formatDate(new Date())} | ${formatFileSize(file.size)}</div>
+            </div>
+        `;
+        
+        container.appendChild(photoItem);
+        
+        if (draftManager.draftChanges.tempUploadIds.indexOf(tempId) === -1) {
+            draftManager.draftChanges.tempUploadIds.push(tempId);
+        }
+        
+        showTempMessage(`Фото "${file.name}" загружено`, 'success');
+        return tempId;
+    } catch (error) {
+        console.error('Upload to draft error:', error);
+        showTempMessage('Ошибка загрузки: ' + error.message, 'error');
+        throw error;
+    }
+}
+
+/**
+ * Обновленная функция удаления временного фото
+ */
+export async function removeTempPhoto(tempId, draftManager = null) {
+    try {
+        // ПОЛУЧИТЬ ИНФОРМАЦИЮ О ФОТО ДЛЯ СООБЩЕНИЯ
+        const tempPhotoElement = document.querySelector(`[data-temp-id="${tempId}"]`);
+        const fileName = tempPhotoElement?.querySelector('.photo-name')?.textContent || 'фото';
+        
+        // ПОДТВЕРЖДЕНИЕ УДАЛЕНИЯ
+        const confirmed = await ModalUtils.confirm({
+            title: 'Удаление фото',
+            message: `Вы уверены, что хотите удалить фото "${fileName}"?`,
+            confirmText: 'Удалить',
+            danger: true
+        });
+        
+        if (!confirmed) return;
+        
+        // УДАЛЕНИЕ ИЗ DOM
+        if (tempPhotoElement) tempPhotoElement.remove();
+        
+        if (draftManager && draftManager.draftChanges) {
+            const index = draftManager.draftChanges.tempUploadIds.indexOf(tempId);
+            if (index > -1) {
+                draftManager.draftChanges.tempUploadIds.splice(index, 1);
+            }
+        }
+        else {
+            const index = tempUploads.indexOf(tempId);
+            if (index > -1) tempUploads.splice(index, 1);
+            
+            // Обновить localStorage
+            const stored = JSON.parse(localStorage.getItem(TEMP_STORAGE_KEY) || '[]');
+            const storedIndex = stored.indexOf(tempId);
+            if (storedIndex > -1) stored.splice(storedIndex, 1);
+            localStorage.setItem(TEMP_STORAGE_KEY, JSON.stringify(stored));
+        }
+        
+        // УДАЛЕНИЕ С СЕРВЕРА
+        await apiService.deleteTempPhoto(tempId);
+        
+        showTempMessage('Фото удалено', 'success');
+    } catch (error) {
+        console.error('Remove temp photo error:', error);
+        showTempMessage('Ошибка удаления фото', 'error');
+    }
+}
+
 
 /**
  * Открытие фото в улучшенном модальном окне
@@ -282,45 +388,6 @@ export async function renderPhotoGrid(photos, containerId, options = {}) {
 }
 
 /**
- * Удаление временного фото
- */
-export async function removeTempPhoto(tempId) {
-    try {
-        // ПОЛУЧИТЬ ИНФОРМАЦИЮ О ФОТО ДЛЯ СООБЩЕНИЯ
-        const tempPhotoElement = document.querySelector(`[data-temp-id="${tempId}"]`);
-        const fileName = tempPhotoElement?.querySelector('.photo-name')?.textContent || 'фото';
-        
-        // ПОДТВЕРЖДЕНИЕ УДАЛЕНИЯ
-        const confirmed = await ModalUtils.confirm({
-            title: 'Удаление фото',
-            message: `Вы уверены, что хотите удалить фото "${fileName}"?`,
-            confirmText: 'Удалить',
-            danger: true
-        });
-        
-        if (!confirmed) return;
-        
-        // УДАЛЕНИЕ
-        if (tempPhotoElement) tempPhotoElement.remove();
-        
-        const index = tempUploads.indexOf(tempId);
-        if (index > -1) tempUploads.splice(index, 1);
-        
-        // Обновить localStorage
-        const stored = JSON.parse(localStorage.getItem(TEMP_STORAGE_KEY) || '[]');
-        const storedIndex = stored.indexOf(tempId);
-        if (storedIndex > -1) stored.splice(storedIndex, 1);
-        localStorage.setItem(TEMP_STORAGE_KEY, JSON.stringify(stored));
-        
-        await apiService.deleteTempPhoto(tempId);
-        showTempMessage('Фото удалено', 'success');
-    } catch (error) {
-        console.error('Remove temp photo error:', error);
-        showTempMessage('Ошибка удаления фото', 'error');
-    }
-}
-
-/**
  * Удаление привязанного фото в режиме редактирования
  */
 export async function markPhotoForDeletion(photoId, photoManager) {
@@ -348,13 +415,13 @@ export async function markPhotoForDeletion(photoId, photoManager) {
             photoElement.classList.add('photo-marked-for-deletion');
         }
         
-        // Добавляем в массив на удаление
-        if (photoManager && photoManager.photosToDelete) {
-            photoManager.photosToDelete.push(photoId);
+        if (photoManager && photoManager.draftChanges) {
+            // Убираем дубликаты
+            const index = photoManager.draftChanges.removedPhotoIds.indexOf(photoId);
+            if (index === -1) {
+                photoManager.draftChanges.removedPhotoIds.push(photoId);
+            }
         }
-        
-        // Помечаем что были изменения
-        window.photoWasDeleted = true;
         
         showTempMessage('Фото помечено для удаления. Изменения сохранятся после нажатия "Сохранить изменения"', 'info');
         
@@ -375,11 +442,10 @@ export function restorePhotoFromDeletion(photoId, photoManager) {
         photoElement.classList.remove('photo-marked-for-deletion');
     }
     
-    // Убираем из массива на удаление
-    if (photoManager && photoManager.photosToDelete) {
-        const index = photoManager.photosToDelete.indexOf(photoId);
+    if (photoManager && photoManager.draftChanges) {
+        const index = photoManager.draftChanges.removedPhotoIds.indexOf(photoId);
         if (index > -1) {
-            photoManager.photosToDelete.splice(index, 1);
+            photoManager.draftChanges.removedPhotoIds.splice(index, 1);
         }
     }
     
@@ -444,17 +510,22 @@ export function attachPhotoEvents(containerId, options = {}) {
             return;
         }
         
-        // УДАЛЕНИЕ ВРЕМЕННОГО ФОТО (режим создания)
         if (e.target.classList.contains('photo-remove')) {
             e.stopPropagation();
             const tempId = photoItem.dataset.tempId;
             if (tempId) {
-                await removeTempPhoto(tempId);
+                // Если передан photoManager с draftChanges - используем его
+                if (photoManager && typeof photoManager.handleTempPhotoRemoval === 'function') {
+                    await photoManager.handleTempPhotoRemoval(tempId);
+                } else {
+                    // Для обратной совместимости
+                    await removeTempPhoto(tempId);
+                }
             }
             return;
         }
         
-        // ПРОСМОТР ФОТО
+        // ПРОСМОТР ФОТО (без изменений)
         const imgElement = photoItem.querySelector('.photo-img');
         const imageUrl = imgElement?.src;
         const fileName = imgElement?.alt || 'Фото';

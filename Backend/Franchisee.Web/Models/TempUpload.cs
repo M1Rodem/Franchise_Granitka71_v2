@@ -12,9 +12,14 @@ namespace Franchisee.Web.Models
         public int? Height { get; set; }
         public string OriginalFileName { get; set; } = string.Empty;
         public long Size { get; set; }
-        public int UploaderId { get; set; }
+        [Required] public int UploaderId { get; set; }
+
+        public int? NotificationId { get; set; }
 
         public DateTime UploadedAt { get; set; } = DateTime.UtcNow;
-        public DateTime ExpiresAt { get; set; } = DateTime.UtcNow.AddHours(1);  // 1h TTL
+
+        public DateTime ExpiresAt { get; set; } = DateTime.UtcNow.AddHours(1);
+
+        public bool IsPendingApproval => NotificationId.HasValue;
     }
 }

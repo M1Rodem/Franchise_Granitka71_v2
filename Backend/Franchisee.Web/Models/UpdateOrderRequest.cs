@@ -19,5 +19,6 @@ namespace Franchisee.Web.Models
         public List<OrderWorkItem>? WorkItems { get; set; }
         public List<OrderPayment>? Payments { get; set; }
         public List<int>? TempUploadIds { get; set; }
+        public List<int>? RemovedPhotoIds { get; set; }
     }
 }

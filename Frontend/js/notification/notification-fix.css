@@ -825,3 +825,118 @@
 #notificationsBadge.badge[style*="display: inline-block"] {
     display: inline-flex !important;
 }
+
+/* Стили для diff фотографий */
+.photos-diff-container {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-5);
+    margin-top: var(--space-4);
+}
+
+.photos-section {
+    background: var(--glass-background);
+    border-radius: var(--radius-lg);
+    padding: var(--space-4);
+    border: 1px solid var(--glass-border);
+}
+
+.photos-section-header {
+    margin-bottom: var(--space-3);
+    padding-bottom: var(--space-3);
+    border-bottom: 1px solid var(--glass-border);
+}
+
+.photos-removed {
+    border-left: 4px solid var(--error);
+}
+
+.photos-added {
+    border-left: 4px solid var(--success);
+}
+
+.photos-list {
+    min-height: 80px;
+}
+
+.photos-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(120px, 120px)); /* Фиксированная ширина */
+    gap: var(--space-3);
+    justify-content: start; /* Выравнивание по левому краю */
+}
+
+@media (max-width: 768px) {
+    .photos-grid {
+        grid-template-columns: repeat(auto-fill, minmax(100px, 100px)); /* Уменьшаем на мобильных */
+        gap: var(--space-2);
+    }
+}
+
+
+.photo-item {
+    background: rgba(30, 41, 59, 0.4);
+    border-radius: var(--radius-md);
+    padding: var(--space-3);
+    text-align: center;
+    transition: transform 0.2s ease;
+}
+
+.photo-item:hover {
+    transform: translateY(-2px);
+}
+
+.photo-removed {
+    background: rgba(220, 53, 69, 0.1);
+    border: 1px solid rgba(220, 53, 69, 0.2);
+}
+
+.photo-added {
+    background: rgba(25, 135, 84, 0.1);
+    border: 1px solid rgba(25, 135, 84, 0.2);
+}
+
+.photo-preview {
+    margin-bottom: var(--space-2);
+}
+
+.photo-icon {
+    font-size: 24px;
+    display: block;
+}
+
+.photo-name {
+    font-size: var(--text-sm);
+    font-weight: 500;
+    margin-bottom: var(--space-1);
+    word-break: break-word;
+}
+
+.photo-meta {
+    font-size: var(--text-xs);
+    color: var(--text-muted);
+}
+
+.photo-id {
+    display: block;
+    margin-bottom: 2px;
+}
+
+.photo-status {
+    display: block;
+    font-style: italic;
+}
+
+.no-photos {
+    padding: var(--space-4);
+    text-align: center;
+    color: var(--text-muted);
+    font-style: italic;
+}
+
+/* Адаптивность */
+@media (max-width: 768px) {
+    .photos-diff-container {
+        grid-template-columns: 1fr;
+    }
+}

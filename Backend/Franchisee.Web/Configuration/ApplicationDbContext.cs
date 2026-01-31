@@ -19,11 +19,12 @@ namespace Franchisee.Web.Configuration
         public DbSet<TempUpload> TempUploads { get; set; }
         public DbSet<Notification> Notifications { get; set; }
         public DbSet<NotificationRecipient> NotificationRecipients { get; set; }
+
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
 
-            // Конфигурация для NotificationRecipient
+            // Конфигурация для NotificationRecipient (СУЩЕСТВУЮЩАЯ ЛОГИКА)
             modelBuilder.Entity<NotificationRecipient>(entity =>
             {
                 entity.HasIndex(nr => new { nr.NotificationId, nr.UserId }).IsUnique();
@@ -43,9 +44,9 @@ namespace Franchisee.Web.Configuration
                     .OnDelete(DeleteBehavior.Restrict);
             });
 
-            // Конфигурация для Notification
+            // Конфигурация для Notification (СУЩЕСТВУЮЩАЯ ЛОГИКА)
             modelBuilder.Entity<Notification>(entity =>
-            {  
+            {
                 entity.HasIndex(n => n.CreatedAt)
                     .HasDatabaseName("IX_Notifications_CreatedAt");
 
@@ -60,23 +61,40 @@ namespace Franchisee.Web.Configuration
                     .OnDelete(DeleteBehavior.Restrict);
             });
 
+            // Связь TempUpload → Notification
+            modelBuilder.Entity<TempUpload>(entity =>
+            {
+                entity.HasIndex(t => t.NotificationId)
+                    .HasDatabaseName("IX_TempUploads_NotificationId");
 
-            // Order конфигурация
+                entity.HasOne<Notification>()
+                    .WithMany()
+                    .HasForeignKey(t => t.NotificationId)
+                    .OnDelete(DeleteBehavior.SetNull); // При удалении уведомления, NotificationId = NULL
+
+                entity.HasIndex(t => t.ExpiresAt)
+                    .HasDatabaseName("IX_TempUploads_ExpiresAt");
+
+                entity.HasIndex(t => new { t.UploaderId, t.ExpiresAt })
+                    .HasDatabaseName("IX_TempUploads_UploaderId_ExpiresAt");
+            });
+
+            // Order конфигурация (СУЩЕСТВУЮЩАЯ ЛОГИКА)
             modelBuilder.Entity<Order>()
-                .HasQueryFilter(o => !o.IsDeleted); // Автоматически фильтруем удаленные
+                .HasQueryFilter(o => !o.IsDeleted);
 
             modelBuilder.Entity<Order>()
                 .Property(o => o.TotalPrice)
                 .HasPrecision(18, 2);
 
-            // ВАЖНО: Конфигурация связи Order -> Manager (добавить этот блок)
+            // Конфигурация связи Order -> Manager (СУЩЕСТВУЮЩАЯ ЛОГИКА)
             modelBuilder.Entity<Order>()
                 .HasOne(o => o.Manager)
                 .WithMany(m => m.Orders)
                 .HasForeignKey(o => o.ManagerId)
-                .OnDelete(DeleteBehavior.Restrict); // Запретить удаление менеджера, если есть заказы
+                .OnDelete(DeleteBehavior.Restrict);
 
-            // OrderWorkItem конфигурация
+            // OrderWorkItem конфигурация (СУЩЕСТВУЮЩАЯ ЛОГИКА)
             modelBuilder.Entity<OrderWorkItem>()
                 .HasOne(w => w.Order)
                 .WithMany(o => o.WorkItems)
@@ -87,7 +105,7 @@ namespace Franchisee.Web.Configuration
                 .Property(w => w.Price)
                 .HasPrecision(18, 2);
 
-            // OrderPayment конфигурация
+            // OrderPayment конфигурация (СУЩЕСТВУЮЩАЯ ЛОГИКА)
             modelBuilder.Entity<OrderPayment>()
                 .HasOne(p => p.Order)
                 .WithMany(o => o.Payments)
@@ -98,30 +116,30 @@ namespace Franchisee.Web.Configuration
                 .Property(p => p.Amount)
                 .HasPrecision(18, 2);
 
-            // OrderPhoto конфигурация
+            // OrderPhoto конфигурация (СУЩЕСТВУЮЩАЯ ЛОГИКА)
             modelBuilder.Entity<OrderPhoto>()
                 .HasOne(p => p.Order)
                 .WithMany(o => o.Photos)
                 .HasForeignKey(p => p.OrderId)
                 .OnDelete(DeleteBehavior.Cascade);
 
-            // Manager конфигурация (опционально)
+            // Manager конфигурация (СУЩЕСТВУЮЩАЯ ЛОГИКА)
             modelBuilder.Entity<Manager>()
                 .HasIndex(m => m.Username)
-                .IsUnique(); // Уникальный логин
+                .IsUnique();
 
             modelBuilder.Entity<OrderPhoto>()
                 .HasOne(p => p.Uploader)
-                .WithMany()  // No navigation back
+                .WithMany()
                 .HasForeignKey(p => p.UploaderId)
-                .OnDelete(DeleteBehavior.Restrict);  // Не удаляем менеджера при delete photo
+                .OnDelete(DeleteBehavior.Restrict);
 
             modelBuilder.Entity<TempUpload>()
-                .HasQueryFilter(t => t.ExpiresAt > DateTime.UtcNow);  // Auto filter expired
+                .HasQueryFilter(t => t.ExpiresAt > DateTime.UtcNow); // Автоматически фильтрует просроченные
 
             modelBuilder.Entity<Order>()
                  .Property(o => o.InspectionPlace)
-                 .HasMaxLength(200); // Ограничение длины
+                 .HasMaxLength(200);
         }
     }
 }

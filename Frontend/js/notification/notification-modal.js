@@ -1,7 +1,8 @@
 import { escapeHtml, formatValue, formatFileSize } from './notification-utils.js';
 import { NOTIFICATION_STATUS, NOTIFICATION_TYPES } from './notification-types.js';
 import { showTempMessage, formatDate } from '../utils/utils.js';
-import { getState } from './notification-state.js'; // или правильный путь
+import { getState } from './notification-state.js';
+import { openPhotoPreview } from '../utils/photo-utils.js';
 
 export class NotificationViewModal {
     constructor(manager) {
@@ -10,8 +11,316 @@ export class NotificationViewModal {
         this.currentNotificationId = null;
         this.currentNotificationData = null;
         
-        // НЕ инициализируем DOM элементы в конструкторе
-        // Они будут инициализированы при первом вызове show()
+        this.photoPreviewCache = new Map();
+    }
+
+    async getPhotoPreviewUrl(id, type) {
+        const cacheKey = `${type}_${id}`;
+        
+        if (this.photoPreviewCache.has(cacheKey)) {
+            return this.photoPreviewCache.get(cacheKey);
+        }
+        
+        try {
+            const { apiService } = await import('../api/api.js');
+            let photoUrl;
+            
+            if (type === 'added') {
+                // Загружаем временное фото
+                photoUrl = await apiService.getTempPreview(id);
+            } else {
+                // Загружаем постоянное фото
+                photoUrl = await apiService.getPhotoUrl(id);
+            }
+            
+            this.photoPreviewCache.set(cacheKey, photoUrl);
+            return photoUrl;
+            
+        } catch (error) {
+            console.warn(`Не удалось загрузить фото ${id}:`, error.message);
+            
+            // Fallback только при ошибке
+            const fallbackUrl = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgZmlsbD0iI2VlZSIvPjx0ZXh0IHg9IjUwIiB5PSI1MCIgZm9udC1mYW1pbHk9IkFyaWFsIiBmb250LXNpemU9IjEyIiBmaWxsPSIjNjY2IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBkeT0iLjNlbSI+0J/RgNC+0LTRg9C60YI8L3RleHQ+PC9zdmc+';
+            this.photoPreviewCache.set(cacheKey, fallbackUrl);
+            return fallbackUrl;
+        }
+    }
+
+    async generatePhotoItem(id, type, index) {
+        const isAdded = type === 'added';
+        const label = isAdded ? `Новое фото #${id}` : `Удаляем фото #${id}`;
+        const statusText = isAdded ? 'Будет добавлено' : 'Будет удалено';
+        
+        try {
+            const previewUrl = await this.getPhotoPreviewUrl(id, type);
+            
+            // СОЗДАЕМ УНИКАЛЬНЫЙ ID ДЛЯ УВЕДОМЛЕНИЯ
+            const uniquePhotoId = `${type}_${id}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+            
+            return `
+                <div class="photo-item ${isAdded ? 'photo-added' : 'photo-removed'}" 
+                    data-photo-id="${id}"
+                    data-photo-type="${type}"
+                    data-photo-index="${index + 1}"
+                    data-unique-id="${uniquePhotoId}"
+                    ${this.currentNotificationData?.orderNumber ? `data-order-number="${this.currentNotificationData.orderNumber}"` : ''}>
+                    <div class="photo-preview" role="button" tabindex="0" aria-label="Открыть фото ${label}" data-open-photo>
+                        <img src="${previewUrl}" 
+                            alt="${label}"
+                            class="photo-img"
+                            loading="lazy"
+                            data-src="${previewUrl}"
+                            data-filename="${label}">
+                        <div class="photo-overlay"></div>
+                    </div>
+                    <div class="photo-info">
+                        <div class="photo-name" title="${label}">${label}</div>
+                        <div class="photo-meta">
+                            <span class="photo-status">${statusText}</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+        } catch (error) {
+            return `
+                <div class="photo-item photo-error">
+                    <div class="photo-preview" style="background: var(--glass-background);">
+                        <span class="photo-icon">❌</span>
+                    </div>
+                    <div class="photo-info">
+                        <div class="photo-name">${label}</div>
+                        <div class="photo-meta">Ошибка загрузки</div>
+                    </div>
+                </div>
+            `;
+        }
+    }
+
+    /**
+     * Инициализирует обработчики кликов для фото в модалке
+     */
+    initPhotoClickHandlers() {
+        // Используем делегирование событий
+        if (this.contentElement) {
+            this.contentElement.addEventListener('click', (e) => {
+                this.handlePhotoClick(e);
+            });
+            
+            // Также обрабатываем нажатие Enter для accessibility
+            this.contentElement.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                    this.handlePhotoClick(e);
+                }
+            });
+        }
+    }
+
+    /**
+     * Обрабатывает клик по фото
+     */
+    handlePhotoClick(event) {
+        // Находим ближайший элемент photo-preview или photo-img
+        const photoPreview = event.target.closest('[data-open-photo]');
+        const photoImg = event.target.closest('.photo-img');
+        
+        if (!photoPreview && !photoImg) return;
+        
+        event.preventDefault();
+        event.stopPropagation();
+        
+        // Находим родительский photo-item
+        const photoItem = (photoPreview || photoImg).closest('.photo-item');
+        if (!photoItem) return;
+        
+        // Получаем данные фото
+        const imgElement = photoItem.querySelector('.photo-img');
+        if (!imgElement) return;
+        
+        const imageSrc = imgElement.src || imgElement.dataset.src;
+        const fileName = imgElement.alt || imgElement.dataset.filename || 'Фото';
+        const photoId = photoItem.dataset.photoId;
+        const photoIndex = photoItem.dataset.photoIndex;
+        const orderNumber = photoItem.dataset.orderNumber || this.currentNotificationData?.orderNumber;
+        
+        if (!imageSrc || imageSrc.includes('data:image/svg+xml')) {
+            console.warn('Не удалось получить URL фото для просмотра');
+            return;
+        }
+        
+        // Открываем фото в полноэкранном режиме
+        try {
+            // Используем существующую функцию из photo-utils.js
+            if (typeof openPhotoPreview === 'function') {
+                openPhotoPreview(imageSrc, fileName, photoId, orderNumber, photoIndex);
+            } else {
+                // Fallback: простая модалка
+                this.openSimplePhotoPreview(imageSrc, fileName);
+            }
+        } catch (error) {
+            console.error('Ошибка открытия фото:', error);
+            this.openSimplePhotoPreview(imageSrc, fileName);
+        }
+    }
+
+    /**
+     * Простой fallback просмотр фото (если openPhotoPreview недоступен)
+     */
+    openSimplePhotoPreview(imageSrc, fileName) {
+        const modal = document.createElement('div');
+        modal.className = 'photo-modal-overlay';
+        modal.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.9);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+            padding: 20px;
+        `;
+        
+        modal.innerHTML = `
+            <div style="max-width: 90vw; max-height: 90vh; position: relative;">
+                <img src="${imageSrc}" alt="${fileName}" style="max-width: 100%; max-height: 90vh; object-fit: contain;">
+                <button style="position: absolute; top: 10px; right: 10px; background: #fff; border: none; width: 30px; height: 30px; border-radius: 50%; cursor: pointer; font-size: 20px;">×</button>
+            </div>
+        `;
+        
+        document.body.appendChild(modal);
+        
+        // Обработчик закрытия
+        const closeModal = () => {
+            document.body.removeChild(modal);
+            document.removeEventListener('keydown', handleKeydown);
+        };
+        
+        const handleKeydown = (e) => {
+            if (e.key === 'Escape') closeModal();
+        };
+        
+        modal.querySelector('button').addEventListener('click', closeModal);
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) closeModal();
+        });
+        document.addEventListener('keydown', handleKeydown);
+    }
+
+    async renderPhotoItems(photoIds, type) {
+        if (!photoIds || photoIds.length === 0) {
+            return '<div class="no-photos">Нет фотографий</div>';
+        }
+        
+        const photoPromises = photoIds.map((id, index) => 
+            this.generatePhotoItem(id, type, index)
+        );
+        
+        try {
+            const photoElements = await Promise.all(photoPromises);
+            return `<div class="photos-grid">${photoElements.join('')}</div>`;
+            
+        } catch (error) {
+            console.error('Ошибка при рендеринге фото:', error);
+            return '<div class="photo-error-container">Ошибка загрузки фотографий</div>';
+        }
+    }
+
+    async generatePhotosDiff(photosChange) {
+        const addedIds = photosChange.addedTempIds || [];
+        const removedIds = photosChange.removedPhotoIds || [];
+        
+        const addedCount = addedIds.length;
+        const removedCount = removedIds.length;
+        
+        if (addedCount === 0 && removedCount === 0) {
+            return '<div class="no-changes">Нет изменений в фотографиях</div>';
+        }
+        
+        const [addedPhotosHtml, removedPhotosHtml] = await Promise.all([
+            addedCount > 0 ? this.renderPhotoItems(addedIds, 'added') : '',
+            removedCount > 0 ? this.renderPhotoItems(removedIds, 'removed') : ''
+        ]);
+        
+        return `
+            <div class="photos-diff">
+                ${removedCount > 0 ? `
+                    <div class="photos-section removed">
+                        <h6>Удалено (${removedCount})</h6>
+                        ${removedPhotosHtml}
+                    </div>
+                ` : ''}
+                
+                ${addedCount > 0 ? `
+                    <div class="photos-section added">
+                        <h6>Добавлено (${addedCount})</h6>
+                        ${addedPhotosHtml}
+                    </div>
+                ` : ''}
+            </div>
+        `;
+    }
+
+    async generateGroupContent(proposedChanges, fields) {
+        let content = '';
+        
+        for (const field of fields) {
+            const change = proposedChanges[field];
+            
+            if (field === 'Photos' && (change.addedTempIds !== undefined || change.removedPhotoIds !== undefined)) {
+                content += await this.generatePhotosDiff(change);
+            } else if (['WorkItems', 'Payments', 'Photos'].includes(field)) {
+                content += this.generateCollectionDiff(field, change);
+            } else {
+                content += this.generateSimpleFieldDiff(field, change);
+            }
+        }
+        
+        return content;
+    }
+
+    async generateAccordionGroups(proposedChanges) {
+        if (!proposedChanges || Object.keys(proposedChanges).length === 0) {
+            return '<p class="no-changes">Нет информации об изменениях</p>';
+        }
+        
+        const groups = {
+            'Основная информация': ['Status', 'TotalPrice', 'OrderDate', 'MonumentType', 'MonumentSize', 'AdditionalInfo'],
+            'Клиент и место': ['CustomerFullName', 'CustomerEmail', 'Phone', 'Address', 'Place', 'InspectionPlace', 'DeceasedFullName'],
+            'Работы': ['WorkItems'],
+            'Платежи': ['Payments'],
+            'Фотографии': ['Photos']
+        };
+        
+        let accordionHtml = '<div class="notification-accordion">';
+        
+        for (const [groupName, fields] of Object.entries(groups)) {
+            const changedFields = fields.filter(field => proposedChanges[field]);
+            if (changedFields.length === 0) continue;
+            
+            const changeCount = this.countChangesInGroup(proposedChanges, changedFields);
+            
+            accordionHtml += `
+                <div class="accordion-group">
+                    <div class="accordion-header">
+                        <div class="accordion-title">
+                            <span>${groupName}</span>
+                            <span class="change-count">(${changeCount} ${this.getChangeWord(changeCount)})</span>
+                        </div>
+                        <span class="accordion-icon">▼</span>
+                    </div>
+                    <div class="accordion-content">
+                        ${await this.generateGroupContent(proposedChanges, changedFields)}
+                    </div>
+                </div>
+            `;
+        }
+        
+        accordionHtml += '</div>';
+        
+        return accordionHtml;
     }
 
     // Проверяем, доступна ли модалка на этой странице
@@ -165,9 +474,9 @@ export class NotificationViewModal {
             `;
         }
         
-        // АККОРДЕОН С ИЗМЕНЕНИЯМИ (оставляем как есть, но упрощаем стили)
+        // АККОРДЕОН С ИЗМЕНЕНИЯМИ (асинхронный рендеринг)
         if (!notification.isInformation && notification.data?.proposedChanges) {
-            html += this.generateAccordionGroups(notification.data.proposedChanges);
+            html += await this.generateAccordionGroups(notification.data.proposedChanges);
         }
         
         // ИНФОРМАЦИОННЫЕ УВЕДОМЛЕНИЯ
@@ -183,7 +492,10 @@ export class NotificationViewModal {
         
         // ОБНОВЛЯЕМ КОНТЕНТ
         this.contentElement.innerHTML = html;
-        
+
+        // ИНИЦИАЛИЗИРУЕМ ОБРАБОТЧИКИ ДЛЯ ФОТО
+        this.initPhotoClickHandlers();
+
         // ИНИЦИАЛИЗИРУЕМ АККОРДЕОН
         if (!notification.isInformation) {
             this.initAccordion();
@@ -264,6 +576,26 @@ export class NotificationViewModal {
         
         // ДОБАВЛЯЕМ СТИЛИ
         this.addButtonStyles();
+    }
+
+    /**
+     * Получает все фото в текущем уведомлении для навигации
+     */
+    getCurrentNotificationPhotos() {
+        if (!this.contentElement) return [];
+        
+        const photoItems = this.contentElement.querySelectorAll('.photo-item:not(.photo-error)');
+        return Array.from(photoItems).map(item => {
+            const img = item.querySelector('.photo-img');
+            return {
+                element: item,
+                src: img?.src || img?.dataset.src,
+                alt: img?.alt || img?.dataset.filename,
+                photoId: item.dataset.photoId,
+                photoIndex: item.dataset.photoIndex,
+                orderNumber: item.dataset.orderNumber
+            };
+        }).filter(photo => photo.src && !photo.src.includes('data:image/svg+xml'));
     }
 
     removeExistingActionButtons() {
@@ -416,284 +748,242 @@ export class NotificationViewModal {
         document.head.appendChild(style);
     }
 
-addButtonStyles() {
-    const style = document.createElement('style');
-    style.id = 'notification-modal-styles';
-    style.textContent = `
-        /* ==========================================================================
-           Стили для блока кнопок действий в модальном окне уведомлений
-           ========================================================================== */
+    addButtonStyles() {
+        const style = document.createElement('style');
+        style.id = 'notification-modal-styles';
+        style.textContent = `
+            /* ==========================================================================
+            Стили для блока кнопок действий в модальном окне уведомлений
+            ========================================================================== */
 
-        .notification-action-buttons {
-            display: flex;
-            gap: var(--space-4);
-            padding: var(--space-5) var(--space-6);
-            border-top: 1px solid var(--glass-border);
-            background: var(--glass-background);
-            backdrop-filter: var(--backdrop-blur);
-            -webkit-backdrop-filter: var(--backdrop-blur);
-            box-shadow: var(--glass-shadow);
-            margin-top: var(--space-6);
-            position: sticky;
-            bottom: 0;
-            z-index: 10;
-        }
-
-        .notification-action-buttons .btn {
-            padding: var(--space-3) var(--space-5);
-            font-size: var(--text-base);
-            font-weight: 500;
-            min-height: 44px;
-            border-radius: var(--radius-lg);
-            transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-        }
-
-        .notification-action-buttons .btn:hover {
-            transform: translateY(-1px);
-            box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
-        }
-
-        /* Конкретные кнопки */
-        .notification-action-buttons .btn-outline {
-            background: transparent;
-            border: 1px solid var(--glass-border);
-            color: var(--text-secondary);
-        }
-
-        .notification-action-buttons .btn-outline:hover {
-            background: var(--accent);
-            color: var(--text-on-primary);
-            border-color: var(--accent);
-        }
-
-        .notification-action-buttons .btn-danger {
-            background: var(--error);
-            color: white;
-            border: none;
-        }
-
-        .notification-action-buttons .btn-danger:hover {
-            background: #c82333;
-        }
-
-        .notification-action-buttons .btn-success,
-        .notification-action-buttons .btn-primary {
-            background: linear-gradient(135deg, var(--accent) 0%, var(--accent-hover) 100%);
-            color: white;
-            border: 1px solid var(--accent);
-            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.25);
-        }
-
-        .notification-action-buttons .btn-success:hover,
-        .notification-action-buttons .btn-primary:hover {
-            background: linear-gradient(135deg, var(--accent-hover) 0%, var(--accent-active) 100%);
-            box-shadow: 0 8px 20px rgba(59, 130, 246, 0.4);
-            transform: translateY(-2px);
-        }
-
-        /* Мобильная адаптивность */
-        @media (max-width: 768px) {
             .notification-action-buttons {
-                flex-direction: column;
-                gap: var(--space-3);
-                padding: var(--space-4) var(--space-5);
+                display: flex;
+                gap: var(--space-4);
+                padding: var(--space-5) var(--space-6);
+                border-top: 1px solid var(--glass-border);
+                background: var(--glass-background);
+                backdrop-filter: var(--backdrop-blur);
+                -webkit-backdrop-filter: var(--backdrop-blur);
+                box-shadow: var(--glass-shadow);
+                margin-top: var(--space-6);
+                position: sticky;
+                bottom: 0;
+                z-index: 10;
             }
 
             .notification-action-buttons .btn {
-                width: 100%;
+                padding: var(--space-3) var(--space-5);
+                font-size: var(--text-base);
+                font-weight: 500;
+                min-height: 44px;
+                border-radius: var(--radius-lg);
+                transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
             }
-        }
 
-        /* ==========================================================================
-           Аккордеон (notification-accordion)
-           ========================================================================== */
+            .notification-action-buttons .btn:hover {
+                transform: translateY(-1px);
+                box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
+            }
 
-        .notification-accordion {
-            margin-top: var(--space-5);
-        }
+            /* Конкретные кнопки */
+            .notification-action-buttons .btn-outline {
+                background: transparent;
+                border: 1px solid var(--glass-border);
+                color: var(--text-secondary);
+            }
 
-        .accordion-group {
-            background: var(--glass-background);
-            backdrop-filter: var(--backdrop-blur);
-            border: 1px solid var(--glass-border);
-            border-radius: var(--radius-lg);
-            margin-bottom: var(--space-4);
-            overflow: hidden;
-            box-shadow: var(--glass-shadow);
-        }
+            .notification-action-buttons .btn-outline:hover {
+                background: var(--accent);
+                color: var(--text-on-primary);
+                border-color: var(--accent);
+            }
 
-        .accordion-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: var(--space-4) var(--space-5);
-            background: rgba(30, 41, 59, 0.4);
-            backdrop-filter: blur(8px);
-            cursor: pointer;
-            transition: background 0.25s ease;
-        }
+            .notification-action-buttons .btn-danger {
+                background: var(--error);
+                color: white;
+                border: none;
+            }
 
-        .accordion-header:hover {
-            background: rgba(59, 130, 246, 0.15);
-        }
+            .notification-action-buttons .btn-danger:hover {
+                background: #c82333;
+            }
 
-        .accordion-title {
-            display: flex;
-            align-items: center;
-            gap: var(--space-3);
-            font-weight: 600;
-            font-size: var(--text-base);
-            color: var(--text-primary);
-        }
+            .notification-action-buttons .btn-success,
+            .notification-action-buttons .btn-primary {
+                background: linear-gradient(135deg, var(--accent) 0%, var(--accent-hover) 100%);
+                color: white;
+                border: 1px solid var(--accent);
+                box-shadow: 0 4px 12px rgba(59, 130, 246, 0.25);
+            }
 
-        .change-count {
-            font-size: var(--text-sm);
-            color: var(--accent);
-            background: rgba(59, 130, 246, 0.18);
-            padding: 2px 10px;
-            border-radius: var(--radius-sm);
-        }
+            .notification-action-buttons .btn-success:hover,
+            .notification-action-buttons .btn-primary:hover {
+                background: linear-gradient(135deg, var(--accent-hover) 0%, var(--accent-active) 100%);
+                box-shadow: 0 8px 20px rgba(59, 130, 246, 0.4);
+                transform: translateY(-2px);
+            }
 
-        .accordion-icon {
-            font-size: var(--text-lg);
-            color: var(--text-muted);
-            transition: transform 0.3s ease;
-        }
+            /* Мобильная адаптивность */
+            @media (max-width: 768px) {
+                .notification-action-buttons {
+                    flex-direction: column;
+                    gap: var(--space-3);
+                    padding: var(--space-4) var(--space-5);
+                }
 
-        .accordion-group.expanded .accordion-icon {
-            transform: rotate(180deg);
-        }
+                .notification-action-buttons .btn {
+                    width: 100%;
+                }
+            }
 
-        .accordion-content {
-            padding: var(--space-5);
-            background: rgba(30, 41, 59, 0.25);
-        }
+            /* ==========================================================================
+            Аккордеон (notification-accordion)
+            ========================================================================== */
 
-        /* ==========================================================================
-           Diff-таблица
-           ========================================================================== */
+            .notification-accordion {
+                margin-top: var(--space-5);
+            }
 
-        .changed-row {
-            background: rgba(59, 130, 246, 0.12) !important;
-        }
+            .accordion-group {
+                background: var(--glass-background);
+                backdrop-filter: var(--backdrop-blur);
+                border: 1px solid var(--glass-border);
+                border-radius: var(--radius-lg);
+                margin-bottom: var(--space-4);
+                overflow: hidden;
+                box-shadow: var(--glass-shadow);
+            }
 
-        .strikethrough.red {
-            text-decoration: line-through;
-            color: var(--error) !important;
-        }
+            .accordion-header {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                padding: var(--space-4) var(--space-5);
+                background: rgba(30, 41, 59, 0.4);
+                backdrop-filter: blur(8px);
+                cursor: pointer;
+                transition: background 0.25s ease;
+            }
 
-        .bold.green {
-            font-weight: 700;
-            color: var(--success) !important;
-        }
+            .accordion-header:hover {
+                background: rgba(59, 130, 246, 0.15);
+            }
 
-        .border-left-red {
-            border-left: 4px solid var(--error);
-            padding-left: var(--space-4);
-        }
+            .accordion-title {
+                display: flex;
+                align-items: center;
+                gap: var(--space-3);
+                font-weight: 600;
+                font-size: var(--text-base);
+                color: var(--text-primary);
+            }
 
-        .border-left-green {
-            border-left: 4px solid var(--success);
-            padding-left: var(--space-4);
-        }
+            .change-count {
+                font-size: var(--text-sm);
+                color: var(--accent);
+                background: rgba(59, 130, 246, 0.18);
+                padding: 2px 10px;
+                border-radius: var(--radius-sm);
+            }
 
-        /* ==========================================================================
-           Секция комментария инициатора
-           ========================================================================== */
+            .accordion-icon {
+                font-size: var(--text-lg);
+                color: var(--text-muted);
+                transition: transform 0.3s ease;
+            }
 
-        .initiator-comment-section {
-            background: rgba(59, 130, 246, 0.12);
-            border-left: 4px solid var(--accent);
-            padding: var(--space-5);
-            margin: var(--space-5) 0;
-            border-radius: var(--radius-lg);
-            backdrop-filter: blur(8px);
-        }
+            .accordion-group.expanded .accordion-icon {
+                transform: rotate(180deg);
+            }
 
-        .initiator-comment-section h4 {
-            margin: 0 0 var(--space-3) 0;
-            color: var(--accent);
-            font-size: var(--text-lg);
-            font-weight: 600;
-        }
+            .accordion-content {
+                padding: var(--space-5);
+                background: rgba(30, 41, 59, 0.25);
+            }
 
-        .comment-content {
-            color: var(--text-secondary);
-            line-height: var(--line-height-loose);
-            white-space: pre-line;
-        }
-    `;
+            /* ==========================================================================
+            Diff-таблица
+            ========================================================================== */
 
-    // Удаляем старые стили, если они уже есть
-    const oldStyle = document.getElementById('notification-modal-styles');
-    if (oldStyle) oldStyle.remove();
+            .changed-row {
+                background: rgba(59, 130, 246, 0.12) !important;
+            }
 
-    document.head.appendChild(style);
-}
+            .strikethrough.red {
+                text-decoration: line-through;
+                color: var(--error) !important;
+            }
 
-    generateAccordionGroups(proposedChanges) {
-        // ПРОВЕРЯЕМ: для информационных уведомлений аккордеон не нужен
-        if (!proposedChanges || Object.keys(proposedChanges).length === 0) {
-            return '<p class="no-changes"><em>Нет детальной информации об изменениях</em></p>';
-        }
-        
-        // Группируем изменения
-        const groups = {
-            'Основная информация': [
-                'Status', 'TotalPrice', 'OrderDate', 'MonumentType', 
-                'MonumentSize', 'AdditionalInfo'
-            ],
-            'Клиент и место': [
-                'CustomerFullName', 'CustomerEmail', 'Phone', 'Address', 
-                'Place', 'InspectionPlace', 'DeceasedFullName'
-            ],
-            'Работы': ['WorkItems'],
-            'Платежи': ['Payments'],
-            'Фотографии': ['Photos']
-        };
-        
-        let accordionHtml = '<div class="notification-accordion">';
-        let hasVisibleGroups = false;
-        
-        Object.entries(groups).forEach(([groupName, fields]) => {
-            // Фильтруем только те поля, которые есть в изменениях
-            const changedFields = fields.filter(field => proposedChanges[field]);
-            if (changedFields.length === 0) return;
-            
-            hasVisibleGroups = true;
-            const changeCount = this.countChangesInGroup(proposedChanges, changedFields);
-            
-            accordionHtml += `
-                <div class="accordion-group" data-group="${groupName}">
-                    <div class="accordion-header">
-                        <div class="accordion-title">
-                            <span>${groupName}</span>
-                            <span class="change-count">(${changeCount} ${this.getChangeWord(changeCount)})</span>
-                        </div>
-                        <span class="accordion-icon">▼</span>
-                    </div>
-                    <div class="accordion-content">
-                        ${this.generateGroupContent(proposedChanges, changedFields)}
-                    </div>
-                </div>
-            `;
-        });
-        
-        accordionHtml += '</div>';
-        
-        // Если нет видимых групп
-        if (!hasVisibleGroups) {
-            return '<p class="no-changes"><em>Нет детальной информации об изменениях</em></p>';
-        }
-        
-        return accordionHtml;
+            .bold.green {
+                font-weight: 700;
+                color: var(--success) !important;
+            }
+
+            .border-left-red {
+                border-left: 4px solid var(--error);
+                padding-left: var(--space-4);
+            }
+
+            .border-left-green {
+                border-left: 4px solid var(--success);
+                padding-left: var(--space-4);
+            }
+
+            /* ==========================================================================
+            Секция комментария инициатора
+            ========================================================================== */
+
+            .initiator-comment-section {
+                background: rgba(59, 130, 246, 0.12);
+                border-left: 4px solid var(--accent);
+                padding: var(--space-5);
+                margin: var(--space-5) 0;
+                border-radius: var(--radius-lg);
+                backdrop-filter: blur(8px);
+            }
+
+            .initiator-comment-section h4 {
+                margin: 0 0 var(--space-3) 0;
+                color: var(--accent);
+                font-size: var(--text-lg);
+                font-weight: 600;
+            }
+
+            .comment-content {
+                color: var(--text-secondary);
+                line-height: var(--line-height-loose);
+                white-space: pre-line;
+            }
+        `;
+
+        // Удаляем старые стили, если они уже есть
+        const oldStyle = document.getElementById('notification-modal-styles');
+        if (oldStyle) oldStyle.remove();
+
+        document.head.appendChild(style);
     }
 
     countChangesInGroup(proposedChanges, fields) {
         let count = 0;
         fields.forEach(field => {
             const change = proposedChanges[field];
-            if (Array.isArray(change.old) && Array.isArray(change.new)) {
+            
+            // ОСОБАЯ ОБРАБОТКА ДЛЯ ФОТОГРАФИЙ
+            if (field === 'Photos') {
+                if (change.addedTempIds !== undefined || change.removedPhotoIds !== undefined) {
+                    // Новый формат: считаем по ID
+                    const addedCount = change.addedTempIds?.length || 0;
+                    const removedCount = change.removedPhotoIds?.length || 0;
+                    count += (addedCount + removedCount);
+                } else if (Array.isArray(change.old) && Array.isArray(change.new)) {
+                    // Старый формат: сравниваем массивы
+                    const oldJson = JSON.stringify(change.old);
+                    const newJson = JSON.stringify(change.new);
+                    if (oldJson !== newJson) count++;
+                }
+            } 
+            // СТАНДАРТНАЯ ЛОГИКА ДЛЯ ДРУГИХ ПОЛЕЙ
+            else if (Array.isArray(change.old) && Array.isArray(change.new)) {
                 const oldJson = JSON.stringify(change.old);
                 const newJson = JSON.stringify(change.new);
                 if (oldJson !== newJson) count++;
@@ -703,26 +993,32 @@ addButtonStyles() {
         });
         return count;
     }
-
+    
     getChangeWord(count) {
         if (count % 10 === 1 && count % 100 !== 11) return 'изменение';
         if (count % 10 >= 2 && count % 10 <= 4 && (count % 100 < 10 || count % 100 >= 20)) return 'изменения';
         return 'изменений';
     }
 
-    generateGroupContent(proposedChanges, fields) {
+    async generateGroupContent(proposedChanges, fields) {
         let content = '';
-        fields.forEach(field => {
+        
+        for (const field of fields) {
             const change = proposedChanges[field];
-            if (['WorkItems', 'Payments', 'Photos'].includes(field)) {
+            
+            // ОСОБАЯ ОБРАБОТКА ДЛЯ ФОТОГРАФИЙ
+            if (field === 'Photos' && (change.addedTempIds !== undefined || change.removedPhotoIds !== undefined)) {
+                content += await this.generatePhotosDiff(change);
+            } else if (['WorkItems', 'Payments', 'Photos'].includes(field)) {
                 content += this.generateCollectionDiff(field, change);
             } else {
                 content += this.generateSimpleFieldDiff(field, change);
             }
-        });
+        }
+        
         return content;
     }
-
+    
     initAccordion() {
         const accordionHeaders = this.contentElement.querySelectorAll('.accordion-header');
         
@@ -969,7 +1265,6 @@ addButtonStyles() {
         `;
     }
 
-    // В методе generateCollectionDiff тоже упрощаем
     generateCollectionDiff(fieldName, change) {
         const collectionLabels = {
             'WorkItems': 'Виды работ',
@@ -980,6 +1275,17 @@ addButtonStyles() {
         const label = collectionLabels[fieldName] || fieldName;
 
         try {
+            // ОСОБАЯ ОБРАБОТКА ДЛЯ ФОТОГРАФИЙ
+            if (fieldName === 'Photos') {
+                // Проверяем, это старый формат {old, new} или новый {addedTempIds, removedPhotoIds}
+                if (change.addedTempIds !== undefined || change.removedPhotoIds !== undefined) {
+                    // Это новый diff-формат от backend
+                    return this.generatePhotosDiff(change);
+                }
+                // Иначе старый формат - обрабатываем как обычно
+            }
+
+            // СТАНДАРТНАЯ ЛОГИКА ДЛЯ WorkItems и Payments
             const oldItems = Array.isArray(change.old) ? change.old : [];
             const newItems = Array.isArray(change.new) ? change.new : [];
 
@@ -1026,6 +1332,121 @@ addButtonStyles() {
         }
     }
 
+    /**
+     * Генерирует diff для фотографий в новом формате {addedTempIds, removedPhotoIds}
+     * @param {Object} photosChange - изменения фотографий {addedTempIds: [], removedPhotoIds: []}
+     * @returns {string} HTML для отображения diff фотографий
+     */
+    async generatePhotosDiff(photosChange) {
+        const addedIds = photosChange.addedTempIds || [];
+        const removedIds = photosChange.removedPhotoIds || [];
+        
+        const addedCount = addedIds.length;
+        const removedCount = removedIds.length;
+        const totalChanges = addedCount + removedCount;
+        
+        // ЕСЛИ НЕТ ИЗМЕНЕНИЙ - показываем "Нет изменений"
+        if (totalChanges === 0) {
+            return `
+                <div class="collection-diff no-changes">
+                    <div class="collection-header">
+                        <h5>Фотографии</h5>
+                        <span class="collection-count">Нет изменений</span>
+                    </div>
+                </div>
+            `;
+        }
+        
+        // Загружаем фото асинхронно
+        const [addedPhotosHtml, removedPhotosHtml] = await Promise.all([
+            addedCount > 0 ? this.renderPhotoItems(addedIds, 'added') : '',
+            removedCount > 0 ? this.renderPhotoItems(removedIds, 'removed') : ''
+        ]);
+        
+        // ФОРМИРУЕМ ЗАГОЛОВОК С ПРАВИЛЬНЫМ СЧЕТЧИКОМ
+        let changeText = '';
+        if (addedCount > 0 && removedCount > 0) {
+            changeText = `(${totalChanges} изменений: +${addedCount}, -${removedCount})`;
+        } else if (addedCount > 0) {
+            changeText = `(${addedCount} ${this.getPhotoWord(addedCount)} добавлено)`;
+        } else if (removedCount > 0) {
+            changeText = `(${removedCount} ${this.getPhotoWord(removedCount)} удалено)`;
+        }
+        
+        return `
+            <div class="collection-diff">
+                <div class="collection-header">
+                    <h5>Фотографии</h5>
+                    <div class="collection-stats">
+                        <span class="stat-old">Удалено: ${removedCount}</span>
+                        <span class="stat-new">Добавлено: ${addedCount}</span>
+                    </div>
+                </div>
+                <div class="photos-diff-container">
+                    ${removedCount > 0 ? `
+                    <div class="photos-section photos-removed">
+                        <div class="photos-section-header">
+                            <h6 class="text-error">Удалено (${removedCount})</h6>
+                            <span class="photos-hint">Эти фотографии будут удалены</span>
+                        </div>
+                        <div class="photos-list removed-list">
+                            ${removedPhotosHtml}
+                        </div>
+                    </div>` : ''}
+                    
+                    ${addedCount > 0 ? `
+                    <div class="photos-section photos-added">
+                        <div class="photos-section-header">
+                            <h6 class="text-success">Добавлено (${addedCount})</h6>
+                            <span class="photos-hint">Эти фотографии будут добавлены</span>
+                        </div>
+                        <div class="photos-list added-list">
+                            ${addedPhotosHtml}
+                        </div>
+                    </div>` : ''}
+                </div>
+            </div>
+        `;
+    }
+
+    /**
+     * Генерирует секцию удаленных фотографий
+     */
+    generateRemovedPhotosSection(removedIds) {
+        if (removedIds.length === 0) return '';
+        
+        return `
+            <div class="photos-section photos-removed">
+                <div class="photos-section-header">
+                    <h6 class="text-error">Удалено (${removedIds.length})</h6>
+                    <span class="photos-hint">Эти фотографии будут удалены</span>
+                </div>
+                <div class="photos-list removed-list">
+                    ${this.renderPhotoItems(removedIds, 'removed')}
+                </div>
+            </div>
+        `;
+    }
+
+    /**
+     * Генерирует секцию добавленных фотографий
+     */
+    generateAddedPhotosSection(addedIds) {
+        if (addedIds.length === 0) return '';
+        
+        return `
+            <div class="photos-section photos-added">
+                <div class="photos-section-header">
+                    <h6 class="text-success">Добавлено (${addedIds.length})</h6>
+                    <span class="photos-hint">Эти фотографии будут добавлены</span>
+                </div>
+                <div class="photos-list added-list">
+                    ${this.renderPhotoItems(addedIds, 'added')}
+                </div>
+            </div>
+        `;
+    }
+
     renderCollectionItems(items, collectionType, version) {
         if (!items || items.length === 0) {
             return '<div class="no-items text-muted">Нет элементов</div>';
@@ -1034,7 +1455,9 @@ addButtonStyles() {
         switch(collectionType) {
             case 'WorkItems': return this.renderWorkItems(items, version);
             case 'Payments': return this.renderPayments(items, version);
-            case 'Photos': return this.renderPhotos(items, version);
+            case 'Photos': 
+                // Для обратной совместимости со старым форматом
+                return this.renderPhotos(items, version);
             default: return `<pre>${JSON.stringify(items, null, 2)}</pre>`;
         }
     }
@@ -1115,6 +1538,15 @@ addButtonStyles() {
         </div>`;
 
         return html;
+    }
+
+    /**
+     * Возвращает правильное склонение для слова "фото"
+     */
+    getPhotoWord(count) {
+        if (count % 10 === 1 && count % 100 !== 11) return 'фото';
+        if (count % 10 >= 2 && count % 10 <= 4 && (count % 100 < 10 || count % 100 >= 20)) return 'фото';
+        return 'фотографий';
     }
 
     renderPhotos(items) {

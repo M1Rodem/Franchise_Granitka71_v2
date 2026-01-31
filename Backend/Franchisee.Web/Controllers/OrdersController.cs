@@ -166,6 +166,7 @@ namespace Franchisee.Web.Controllers
                 var order = await _context.Orders
                     .Include(o => o.WorkItems)
                     .Include(o => o.Payments)
+                    .Include(o => o.Photos)
                     .Include(o => o.Manager)
                     .FirstOrDefaultAsync(o => o.Id == id);
 
@@ -412,15 +413,44 @@ namespace Franchisee.Web.Controllers
         {
             var changes = new Dictionary<string, object>();
 
-            // Сравниваем основные поля
+            CollectFieldChanges(order, request, changes);
+
+            if (request.WorkItems != null)
+            {
+                CollectWorkItemsChanges(order, request, changes);
+            }
+
+            if (request.Payments != null)
+            {
+                CollectPaymentsChanges(order, request, changes);
+            }
+
+            CollectPhotoChanges(order, request, changes);
+
+            return changes;
+        }
+        private void CollectFieldChanges(Order order, UpdateOrderRequest request, Dictionary<string, object> changes)
+        {
             if (!string.IsNullOrEmpty(request.Place) && request.Place != order.Place)
                 changes["Place"] = new { old = order.Place, @new = request.Place };
 
             if (!string.IsNullOrEmpty(request.InspectionPlace) && request.InspectionPlace != order.InspectionPlace)
                 changes["InspectionPlace"] = new { old = order.InspectionPlace, @new = request.InspectionPlace };
 
-            if (request.OrderDate.HasValue && request.OrderDate.Value != order.OrderDate)
-                changes["OrderDate"] = new { old = order.OrderDate, @new = request.OrderDate.Value };
+            if (request.OrderDate.HasValue)
+            {
+                var newDate = request.OrderDate.Value.Date;
+                var oldDate = order.OrderDate.Date;
+
+                if (newDate != oldDate)
+                {
+                    changes["OrderDate"] = new
+                    {
+                        old = order.OrderDate,
+                        @new = request.OrderDate.Value
+                    };
+                }
+            }
 
             if (!string.IsNullOrEmpty(request.DeceasedFullName) && request.DeceasedFullName != order.DeceasedFullName)
                 changes["DeceasedFullName"] = new { old = order.DeceasedFullName, @new = request.DeceasedFullName };
@@ -448,58 +478,113 @@ namespace Franchisee.Web.Controllers
 
             if (request.Status.HasValue && request.Status.Value != order.Status)
                 changes["Status"] = new { old = order.Status.ToString(), @new = request.Status.Value.ToString() };
+        }
+        private void CollectWorkItemsChanges(Order order, UpdateOrderRequest request, Dictionary<string, object> changes)
+        {
+            var oldWorkItems = order.WorkItems.Select(w => new {
+                w.WorkDescription,
+                w.Price,
+                w.Quantity,
+                w.Note
+            }).ToList();
 
-            // Сравниваем WorkItems (упрощённо)
-            if (request.WorkItems != null)
+            var newWorkItems = request.WorkItems.Select(w => new {
+                w.WorkDescription,
+                w.Price,
+                w.Quantity,
+                w.Note
+            }).ToList();
+
+            var oldWorkItemsJson = JsonSerializer.Serialize(oldWorkItems);
+            var newWorkItemsJson = JsonSerializer.Serialize(newWorkItems);
+
+            if (oldWorkItemsJson != newWorkItemsJson)
             {
-                var oldWorkItems = order.WorkItems.Select(w => new {
-                    w.WorkDescription,
-                    w.Price,
-                    w.Quantity,
-                    w.Note
-                }).ToList();
+                changes["WorkItems"] = new { old = oldWorkItems, @new = newWorkItems };
+            }
+        }
+        private void CollectPaymentsChanges(Order order, UpdateOrderRequest request, Dictionary<string, object> changes)
+        {
+            var oldPayments = order.Payments.Select(p => new {
+                p.Amount,
+                p.PaymentDate,
+                p.PaymentType,
+                p.Note
+            }).ToList();
 
-                var newWorkItems = request.WorkItems.Select(w => new {
-                    w.WorkDescription,
-                    w.Price,
-                    w.Quantity,
-                    w.Note
-                }).ToList();
+            var newPayments = request.Payments.Select(p => new {
+                p.Amount,
+                PaymentDate = p.PaymentDate,
+                p.PaymentType,
+                p.Note
+            }).ToList();
 
-                var oldWorkItemsJson = JsonSerializer.Serialize(oldWorkItems);
-                var newWorkItemsJson = JsonSerializer.Serialize(newWorkItems);
-                if (oldWorkItemsJson != newWorkItemsJson)
+            var oldPaymentsJson = JsonSerializer.Serialize(oldPayments);
+            var newPaymentsJson = JsonSerializer.Serialize(newPayments);
+
+            if (oldPaymentsJson != newPaymentsJson)
+            {
+                changes["Payments"] = new { old = oldPayments, @new = newPayments };
+            }
+        }
+        private void CollectPhotoChanges(Order order, UpdateOrderRequest request, Dictionary<string, object> changes)
+        {
+            List<int> addedTempIds = new();
+            List<int> removedPhotoIds = new();
+
+            if (order.Photos == null)
+            {
+                _logger.LogError("ERROR: order.Photos is NULL!");
+                return;
+            }
+
+            var existingPhotoIds = order.Photos.Select(p => p.Id).ToList();
+            _logger.LogError("Existing photo IDs: {@ExistingIds}", existingPhotoIds);
+
+            if (request.RemovedPhotoIds?.Any() == true)
+            {
+                _logger.LogError("Request has RemovedPhotoIds: {@Ids}", request.RemovedPhotoIds);
+
+                var validRemovedIds = request.RemovedPhotoIds
+                    .Where(pid => existingPhotoIds.Contains(pid))
+                    .ToList();
+
+                _logger.LogError("Valid removed IDs after filter: {@ValidIds}", validRemovedIds);
+
+                removedPhotoIds = validRemovedIds;
+            }
+
+            if (request.TempUploadIds?.Any() == true)
+            {
+                var userId = GetCurrentUserId();
+
+                // Проверяем, что TempUploads существуют и принадлежат текущему пользователю
+                var validTempIds = _context.TempUploads
+                    .Where(t => request.TempUploadIds.Contains(t.Id) && t.UploaderId == userId)
+                    .Select(t => t.Id)
+                    .ToList();
+
+                if (validTempIds.Any())
                 {
-                    changes["WorkItems"] = new { old = oldWorkItems, @new = newWorkItems };
+                    addedTempIds = validTempIds;
                 }
             }
 
-            // Сравниваем Payments
-            if (request.Payments != null)
+            if (addedTempIds.Any() || removedPhotoIds.Any())
             {
-                var oldPayments = order.Payments.Select(p => new {
-                    p.Amount,
-                    p.PaymentDate,
-                    p.PaymentType,
-                    p.Note
-                }).ToList();
-
-                var newPayments = request.Payments.Select(p => new {
-                    p.Amount,
-                    PaymentDate = p.PaymentDate,
-                    p.PaymentType,
-                    p.Note
-                }).ToList();
-
-                var oldPaymentsJson = JsonSerializer.Serialize(oldPayments);
-                var newPaymentsJson = JsonSerializer.Serialize(newPayments);
-                if (oldPaymentsJson != newPaymentsJson)
+                changes["Photos"] = new
                 {
-                    changes["Payments"] = new { old = oldPayments, @new = newPayments };
-                }
+                    addedTempIds = addedTempIds,
+                    removedPhotoIds = removedPhotoIds
+                };
             }
 
-            return changes;
+            if (addedTempIds.Any() || removedPhotoIds.Any())
+            {
+                _logger.LogDebug(
+                    "Собраны изменения фото. Добавлено: {AddedCount}, Удалено: {RemovedCount}",
+                    addedTempIds.Count, removedPhotoIds.Count);
+            }
         }
 
         private OrderResponseDto MapToResponseDto(Order order)

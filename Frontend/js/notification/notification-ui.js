@@ -205,7 +205,7 @@ export function renderNotifications() {
     const listContainer = document.getElementById('notificationsList');
     
     if (!listContainer) {
-        console.error('Элемент notificationsList не найден в DOM');
+        console.log('[renderNotifications] Страница уведомлений не открыта — пропускаем рендер');
         return;
     }
     

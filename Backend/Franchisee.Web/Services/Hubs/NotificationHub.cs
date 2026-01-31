@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
 using System.Security.Claims;
+using Franchisee.Web.Services;           // для INotificationService
 
 namespace Franchisee.Web.Services.Hubs
 {
@@ -8,10 +9,14 @@ namespace Franchisee.Web.Services.Hubs
     public class NotificationHub : Hub<INotificationClient>
     {
         private readonly ILogger<NotificationHub> _logger;
+        private readonly INotificationService _notificationService;
 
-        public NotificationHub(ILogger<NotificationHub> logger)
+        public NotificationHub(
+            ILogger<NotificationHub> logger,
+            INotificationService notificationService)
         {
             _logger = logger;
+            _notificationService = notificationService;
         }
 
         public override async Task OnConnectedAsync()
@@ -19,15 +24,22 @@ namespace Franchisee.Web.Services.Hubs
             try
             {
                 var userId = GetUserId();
+                if (userId <= 0)
+                {
+                    _logger.LogWarning("SignalR: Не удалось определить userId при подключении");
+                    await base.OnConnectedAsync();
+                    return;
+                }
+
                 var username = Context.User?.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "Anonymous";
 
                 _logger.LogDebug("SignalR: Пользователь {Username} (ID: {UserId}) подключился, ConnectionId: {ConnectionId}",
                     username, userId, Context.ConnectionId);
 
-                _logger.LogDebug("SignalR: Добавляем ConnectionId {ConnectionId} в группу user-{UserId}",
-                    Context.ConnectionId, userId);
-
                 await Groups.AddToGroupAsync(Context.ConnectionId, $"user-{userId}");
+
+                // Отправляем текущее состояние сразу после подключения
+                await SendInitialStateAsync(userId);
 
                 await base.OnConnectedAsync();
             }
@@ -35,6 +47,38 @@ namespace Franchisee.Web.Services.Hubs
             {
                 _logger.LogError(ex, "Ошибка при подключении к SignalR");
                 throw;
+            }
+        }
+
+        // Публичный метод — фронт может вызвать при reconnect или вручную
+        public async Task RequestCurrentState()
+        {
+            var userId = GetUserId();
+            if (userId <= 0) return;
+
+            await SendInitialStateAsync(userId);
+        }
+
+        private async Task SendInitialStateAsync(int userId)
+        {
+            try
+            {
+                var count = await _notificationService.GetPendingCountAsync(userId);
+
+                var state = new InitialNotificationStateDto
+                {
+                    UnreadCount = count
+                    // Если позже решим — добавить RecentNotifications
+                };
+
+                await Clients.Caller.InitialNotificationState(state);
+
+                _logger.LogDebug("SignalR: Отправлено начальное состояние пользователю {UserId}: {Count} непрочитанных",
+                    userId, count);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Ошибка при отправке начального состояния пользователю {UserId}", userId);
             }
         }
 
@@ -50,11 +94,9 @@ namespace Franchisee.Web.Services.Hubs
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Ошибка при отключении от SignalR");
-                throw;
             }
         }
 
-        // Метод для фронтенда: подтверждение получения уведомления
         public async Task MarkAsSeen(int notificationId)
         {
             try
@@ -63,13 +105,12 @@ namespace Franchisee.Web.Services.Hubs
                 _logger.LogDebug("SignalR: Пользователь {UserId} отметил уведомление {NotificationId} как прочитанное",
                     userId, notificationId);
 
-                // Здесь можно добавить логику отметки прочитанным в БД
+                // Здесь можно добавить логику отметки в БД, если нужно
                 await Clients.Caller.NotificationSeen(notificationId);
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Ошибка в методе MarkAsSeen");
-                throw;
             }
         }
 

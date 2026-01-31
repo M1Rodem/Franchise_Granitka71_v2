@@ -23,7 +23,6 @@ export class SidebarManager {
      * Инициализация sidebar на странице
      */
     init() {
-        // Если уже инициализирован на этой странице, пропускаем
         if (this.pageInitialized) {
             return;
         }
@@ -36,50 +35,46 @@ export class SidebarManager {
         
         this.sidebarElement = sidebar;
         
-        // ВСЕГДА показываем сайдбар для всех пользователей
+        // ВСЕГДА показываем сайдбар
         sidebar.style.display = 'block';
         sidebar.style.visibility = 'visible';
         sidebar.style.opacity = '1';
         
-        // Настраиваем БАЗОВЫЙ UI (можно сразу)
         this.setupBurgerButton();
         this.setupSidebarClose();
         this.setupActiveNav();
         
-        
-        // Функция для отложенной инициализации админ-меню
+        // Отложенная инициализация админ-меню
         const initAdminMenuDelayed = () => {
-            // Даём время на загрузку данных пользователя
             setTimeout(() => {
                 this.setupAdminMenu();
-            }, 150); // Увеличиваем задержку для гарантии
+            }, 150);
         };
         
-        // Запускаем после полной загрузки DOM
         if (document.readyState === 'loading') {
             document.addEventListener('DOMContentLoaded', initAdminMenuDelayed);
         } else {
             initAdminMenuDelayed();
         }
         
-        // Находим или создаём элемент бейджа
-        this.findOrCreateBadgeElement();
-        
-        // Инициализируем систему уведомлений ТОЛЬКО если пользователь авторизован
+        // Инициализация уведомлений (SignalR уже сам обновит бейдж)
         const initNotificationsDelayed = () => {
             setTimeout(() => {
-                const userData = this.getUserDataWithRetry(); // Используем helper
+                const userData = this.getUserDataWithRetry();
                 if (userData?.id) {
                     this.initializeNotificationSystem();
                 } else {
-                    this.updateBadgeUI(0, false);
+                    // Если не авторизован — просто скрываем бейдж
+                    const badge = document.getElementById('notificationsBadge');
+                    if (badge) {
+                        badge.style.display = 'none';
+                    }
                 }
             }, 200);
         };
         
         initNotificationsDelayed();
         
-        // ИНИЦИАЛИЗИРУЕМ ОБРАБОТЧИКИ БЛОКИРОВКИ
         this.setupBlockingHandlers();
         
         this.pageInitialized = true;
@@ -91,10 +86,7 @@ export class SidebarManager {
      * Настройка обработчиков блокировки для навигации
      */
     setupBlockingHandlers() {
-        // Используем импортированную функцию
         initBlockingHandlers();
-        
-        // Дополнительная логика для сайдбара
         this.setupSidebarSpecificHandlers();
     }
 
@@ -199,25 +191,11 @@ export class SidebarManager {
     /**
      * Инициализация системы уведомлений (SignalR + счётчик)
      */
-    async initializeNotificationSystem() {
-        try {
-            if (!this.initializedNotifications) {
-                // Используем patched версию
-                await NotificationManager.init();
-                this.initializedNotifications = true;
-            }
-            
-            // Получаем состояние через новую функцию или старую
-            const hubState = notificationHub.getConnectionState ? 
-                            notificationHub.getConnectionState() : 
-                            { state: notificationHub.getState() };
-            
-            console.log('SidebarManager: Notification system initialized. Hub state:', hubState);
-            
-        } catch (error) {
-            console.error('SidebarManager: Failed to initialize notification system:', error);
-            // НЕ пробрасываем ошибку дальше - система должна работать без уведомлений
-        }
+    initializeNotificationSystem() {
+        console.log('[SidebarManager] Инициализация системы уведомлений');
+        NotificationManager.init().catch(err => {
+            console.error('[SidebarManager] Ошибка инициализации NotificationManager:', err);
+        });
     }
 
     updateBadgeWithStats(stats) {

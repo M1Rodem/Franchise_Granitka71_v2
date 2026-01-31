@@ -12,5 +12,13 @@ namespace Franchisee.Web.Services.Hubs
         Task NotificationSeen(int notificationId);
         Task ConnectionEstablished(string message);
         Task ConnectionLost(string message);
+
+        Task InitialNotificationState(InitialNotificationStateDto state);
+    }
+
+    public class InitialNotificationStateDto
+    {
+        public int UnreadCount { get; set; }
+        // public List<NotificationUpdateDto> RecentNotifications { get; set; } = new();  // пока закомментировано
     }
 }

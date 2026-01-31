@@ -1,6 +1,8 @@
 import { HubConnectionBuilder, HttpTransportType } from '@microsoft/signalr';
 import { secureGetToken, secureGetUserData, showTempMessage } from '../utils/utils.js';
 import { apiService } from '../api/api.js';
+import { setState } from './notification-state.js';
+import { updateNotificationBadge } from './notification-ui.js';
 
 class NotificationHub {
   constructor() {
@@ -10,7 +12,6 @@ class NotificationHub {
     this.maxReconnectAttempts = 5;
     this.reconnectDelay = 2000;
 
-    // ОБНОВЛЕННЫЕ события в соответствии с бэкендом
     this.events = {
       NOTIFICATION_RECEIVED: 'ReceiveNotification',
       NOTIFICATION_COUNT_UPDATED: 'UpdateNotificationCount',
@@ -20,7 +21,8 @@ class NotificationHub {
       NOTIFICATION_SEEN: 'NotificationSeen',
       CONNECTION_ESTABLISHED: 'ConnectionEstablished',
       CONNECTION_LOST: 'ConnectionLost',
-      CONNECTION_STATE_CHANGED: 'connection_state_changed'
+      CONNECTION_STATE_CHANGED: 'connection_state_changed',
+      INITIAL_STATE: 'InitialNotificationState'  // ← НОВОЕ событие
     };
 
     this._handlers = new Map();
@@ -28,136 +30,87 @@ class NotificationHub {
     if (typeof window !== 'undefined' && !window.notificationHub) {
       window.notificationHub = this;
     }
+
+    this.hasRequestedInitialState = false;
   }
 
-  // ПЕРЕПИСЫВАЕМ функцию connect
   async connect() {
-    if (this.isConnecting) return;
-    if (this.connection?.state === 'Connected') return;
+      if (this.isConnecting || this.connection?.state === 'Connected') {
+          console.log('[NotificationHub] Уже подключено или подключается — пропускаем повторный вызов');
+          return;
+      }
 
-    const token = secureGetToken();
-    const userData = secureGetUserData();
+      if (this.hasRequestedInitialState) {
+          console.log('[NotificationHub] Начальное состояние уже запрашивалось — пропускаем');
+      }
 
-    if (!token || !userData?.id) {
-      console.warn('[NotificationHub] Нет токена или пользователя для подключения');
+      const token = secureGetToken();
+      const userData = secureGetUserData();
+
+      if (!token || !userData?.id) {
+          console.warn('[NotificationHub] Нет токена или пользователя для подключения');
+          this._emit(this.events.CONNECTION_STATE_CHANGED, { 
+              state: 'disconnected', 
+              reason: 'no_auth',
+              canRetry: false
+          });
+          return;
+      }
+
+      this.isConnecting = true;
       this._emit(this.events.CONNECTION_STATE_CHANGED, { 
-        state: 'disconnected', 
-        reason: 'no_auth',
-        canRetry: false
+          state: 'connecting',
+          userId: userData.id
       });
-      return;
-    }
 
-    this.isConnecting = true;
-    this._emit(this.events.CONNECTION_STATE_CHANGED, { 
-      state: 'connecting',
-      userId: userData.id
-    });
+      try {
+          const connectionUrl = `${window.location.origin}/api/notificationhub`;
+          
+          this.connection = new HubConnectionBuilder()
+              .withUrl(connectionUrl, {
+                  accessTokenFactory: () => token,
+                  skipNegotiation: false,
+                  transport: HttpTransportType.WebSockets | HttpTransportType.ServerSentEvents
+              })
+              .withAutomaticReconnect({
+                  nextRetryDelayInMilliseconds: (retryContext) => {
+                      const delay = Math.min(32000, Math.pow(2, retryContext.previousRetryCount) * 1000);
+                      return delay;
+                  }
+              })
+              .configureLogging({
+                  log: (logLevel, message) => {
+                      if (logLevel >= 2) console.log(`[SignalR ${logLevel}] ${message}`);
+                  }
+              })
+              .build();
 
-    try {
-      const connectionUrl = `${window.location.origin}/api/notificationhub`;
-      
-      this.connection = new HubConnectionBuilder()
-        .withUrl(connectionUrl, {
-          accessTokenFactory: () => token,
-          skipNegotiation: false,
-          transport: HttpTransportType.WebSockets | HttpTransportType.ServerSentEvents
-        })
-        .withAutomaticReconnect({
-          nextRetryDelayInMilliseconds: (retryContext) => {
-            // Экспоненциальная задержка: 2s, 4s, 8s, 16s, 32s
-            const delay = Math.min(32000, Math.pow(2, retryContext.previousRetryCount) * 1000);
-            return delay;
+          this._setupServerEventHandlers(userData.id);
+
+          // Обработчики подключения (onclose, onreconnecting, onreconnected) — оставляем как есть
+
+          await this.connection.start();
+          console.log('[SignalR] Соединение установлено');
+
+          // Запрашиваем состояние ТОЛЬКО если ещё не запрашивали
+          if (this.connection.state === 'Connected' && !this.hasRequestedInitialState) {
+              try {
+                  await this.connection.invoke('RequestCurrentState');
+                  console.log('[NotificationHub] Запрошено начальное состояние после connect');
+                  this.hasRequestedInitialState = true;
+              } catch (err) {
+                  console.warn('[NotificationHub] Ошибка запроса начального состояния:', err);
+              }
           }
-        })
-        .configureLogging({
-          log: (logLevel, message) => {
-            // Фильтруем логи - показываем только важные
-            if (logLevel >= 2) { // Warning и выше
-              console.log(`[SignalR ${logLevel}] ${message}`);
-            }
-          }
-        })
-        .build();
 
-      // НАСТРАИВАЕМ ОБРАБОТЧИКИ СЕРВЕРНЫХ СОБЫТИЙ
-      this._setupServerEventHandlers(userData.id);
+          this.isConnecting = false;
+          this._emit(this.events.CONNECTION_STATE_CHANGED, { state: 'connected', userId: userData.id });
 
-      // ОБРАБОТЧИКИ СОБЫТИЙ ПОДКЛЮЧЕНИЯ
-      this.connection.onclose((error) => {
-        console.log('[SignalR] Соединение закрыто:', error?.message || 'Без ошибки');
-        this.connection = null;
-        this.isConnecting = false;
-        
-        this._emit(this.events.CONNECTION_STATE_CHANGED, {
-          state: 'disconnected',
-          error: error?.message,
-          canRetry: true
-        });
-
-        // Планируем переподключение если нужно
-        if (error && this.reconnectAttempts < this.maxReconnectAttempts) {
-          this._scheduleReconnect();
-        }
-      });
-
-      this.connection.onreconnecting((error) => {
-        console.log('[SignalR] Переподключение...', error?.message);
-        this._emit(this.events.CONNECTION_STATE_CHANGED, {
-          state: 'reconnecting',
-          error: error?.message
-        });
-      });
-
-      this.connection.onreconnected((connectionId) => {
-        console.log('[SignalR] Переподключение успешно:', connectionId);
-        this.reconnectAttempts = 0;
-        
-        // После переподключения присоединяемся к группе пользователя
-        this._joinUserGroup(userData.id);
-        
-        this._emit(this.events.CONNECTION_STATE_CHANGED, {
-          state: 'connected',
-          connectionId
-        });
-      });
-
-      // УСТАНАВЛИВАЕМ СОЕДИНЕНИЕ
-      await this.connection.start();
-      
-      console.log('[SignalR] Подключение установлено. Connection ID:', this.connection.connectionId);
-
-      // ПРИСОЕДИНЯЕМСЯ К ГРУППЕ ПОЛЬЗОВАТЕЛЯ
-      await this._joinUserGroup(userData.id);
-
-      this.isConnecting = false;
-      this.reconnectAttempts = 0;
-
-      this._emit(this.events.CONNECTION_STATE_CHANGED, {
-        state: 'connected',
-        connectionId: this.connection.connectionId
-      });
-
-      // Эмитим событие об успешном подключении
-      this._emit(this.events.CONNECTION_ESTABLISHED, {
-        message: 'Подключение к уведомлениям установлено',
-        timestamp: new Date().toISOString()
-      });
-
-    } catch (error) {
-      console.error('[SignalR] Ошибка подключения:', error);
-      this.isConnecting = false;
-      this.connection = null;
-
-      this._emit(this.events.CONNECTION_STATE_CHANGED, {
-        state: 'failed',
-        error: error.message,
-        canRetry: this.reconnectAttempts < this.maxReconnectAttempts
-      });
-
-      // Планируем переподключение
-      this._scheduleReconnect();
-    }
+      } catch (error) {
+          console.error('[NotificationHub] Ошибка подключения:', error);
+          this.isConnecting = false;
+          this._emit(this.events.CONNECTION_STATE_CHANGED, { state: 'error', error });
+      }
   }
 
   async _joinUserGroup(userId) {
@@ -294,6 +247,26 @@ class NotificationHub {
       this._emit(this.events.CONNECTION_LOST, {
         message: message || 'Потеряно соединение с сервером уведомлений',
         timestamp: new Date().toISOString()
+      });
+    });
+
+    this.connection.on(this.events.INITIAL_STATE, (state) => {
+      console.log('[NotificationHub] Получено начальное состояние:', state);
+      
+      // Обновляем бейдж сразу (самое главное на этом этапе)
+      updateNotificationBadge(state.unreadCount || 0);
+      
+      // Сохраняем количество в глобальное состояние (чтобы другие компоненты видели)
+      // Если у тебя в notification-state.js есть поле для unreadCount — обнови его
+      setState({
+        // unreadCount: state.unreadCount,     // раскомментируй, если есть такое поле
+        // lastSync: new Date().toISOString()   // полезно для отладки
+      });
+
+      // Эмит события, чтобы другие части приложения знали, что синхронизация прошла
+      this._emit(this.events.CONNECTION_STATE_CHANGED, { 
+        state: 'synced',
+        unreadCount: state.unreadCount || 0
       });
     });
   }

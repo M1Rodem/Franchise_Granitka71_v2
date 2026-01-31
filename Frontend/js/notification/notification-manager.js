@@ -29,69 +29,51 @@ export class NotificationManager {
         const instance = NotificationManager.getInstance();
         
         if (instance.isInitialized) {
-            // Проверяем состояние соединения
             const hubState = notificationHub.getState();
             if (!notificationHub.connection || hubState !== 'Connected') {
                 await notificationHub.connect();
             }
-            
-            // ПЕРЕДОБНОВЛЯЕМ БЕЙДЖ даже если уже инициализирован
-            await instance.updateBadgeCount();
+            // УБРАЛИ: await instance.updateBadgeCount();
             return instance;
         }
 
-        // ИНИЦИАЛИЗАЦИЯ ЗАГОЛОВКА
-        await HeaderManager.init();
+        await HeaderManager.init?.();
         
-        // ЗАГРУЖАЕМ ДАННЫЕ ПОЛЬЗОВАТЕЛЯ ПРАВИЛЬНО
         const userData = secureGetUserData();
         if (!userData?.id) {
             console.warn('NotificationManager: User not authenticated, skipping initialization');
-            
-            // ДАЖЕ ЕСЛИ ПОЛЬЗОВАТЕЛЬ НЕ АВТОРИЗОВАН - СКРЫВАЕМ БЕЙДЖ
             updateNotificationBadge(0);
             return instance;
         }
 
         instance.currentUserId = userData.id;
         
-        // Подключаем SignalR с обработкой ошибок
         try {
             await notificationHub.connect();
             
-            // Пробуем присоединиться к группе, но не падаем если метода нет
             if (notificationHub.connection && notificationHub.connection.state === 'Connected') {
                 try {
                     await notificationHub.connection.invoke('JoinUserGroup', userData.id.toString());
                     console.log(`[NotificationManager] Присоединен к группе пользователя ${userData.id}`);
                 } catch (groupError) {
-                    // Игнорируем ошибку "Method does not exist"
                     if (!groupError.message.includes('Method does not exist')) {
                         console.error('[NotificationManager] Ошибка присоединения к группе:', groupError);
                     }
                 }
             }
-            
         } catch (error) {
             console.error('NotificationManager: SignalR connection failed:', error);
-            // НЕ прерываем инициализацию при ошибке подключения
         }
         
-        // Устанавливаем обработчики ОДИН РАЗ
         if (!instance._signalRHandlersSetup) {
             instance.setupSignalRHandlers();
             instance._signalRHandlersSetup = true;
         }
         
-        // ОБНОВЛЯЕМ БЕЙДЖ ПЕРЕД ТЕМ КАК ПОМЕТИТЬ КАК ИНИЦИАЛИЗИРОВАННЫЙ
-        await instance.updateBadgeCount();
+        // УБРАЛИ все вызовы updateBadgeCount()
+        // Бейдж заполняется из InitialNotificationState
         
         instance.isInitialized = true;
-        
-        // ДОПОЛНИТЕЛЬНАЯ ПРОВЕРКА: обновляем бейдж еще раз после инициализации
-
-        instance.updateBadgeCount().catch(console.error);
-
         
         return instance;
     }
@@ -173,39 +155,44 @@ export class NotificationManager {
     setupSignalRHandlers() {
         notificationHub.on(notificationHub.events.NOTIFICATION_RECEIVED, async (notification) => {
             await this.handleNewNotification(notification);
+            // Счётчик обновится отдельно через UpdateNotificationCount или InitialState
         });
 
         notificationHub.on(notificationHub.events.NOTIFICATION_UPDATED, (notification) => {
             this.handleNotificationUpdated(notification);
         });
 
-        notificationHub.on(notificationHub.events.NOTIFICATION_COUNT_UPDATED, (count) => {
-            updateNotificationBadge(count);
-        });
-
         notificationHub.on(notificationHub.events.NOTIFICATION_RESOLVED, (data) => {
             this.handleNotificationResolved(data);
-        });
-
-        notificationHub.on(notificationHub.events.CONNECTION_STATE_CHANGED, (state) => {
-            this.handleConnectionState(state);
         });
 
         notificationHub.on('NotificationPostponed', (data) => {
             this.handleNotificationPostponed(data);
         });
 
+        // САМОЕ ВАЖНОЕ: счётчик обновляем ТОЛЬКО здесь
         notificationHub.on(notificationHub.events.NOTIFICATION_COUNT_UPDATED, (data) => {
-            // data может быть числом или объектом
+            console.log('[NotificationManager] Получено обновление счётчика по SignalR:', data);
+            
             const count = typeof data === 'object' ? data.count : data;
             updateNotificationBadge(count);
             
-            // Обновляем цвет если нужно
+            // Если в data есть дополнительные флаги (hasActive, hasGrayIndicator) — используем их
             if (typeof data === 'object' && (data.hasActive || data.hasGrayIndicator)) {
                 const stats = getNotificationStats();
                 updateBadgeColor(stats);
             }
+            
+            // Можно обновить глобальное состояние
+            setState({ /* unreadCount: count */ });
         });
+
+        notificationHub.on(notificationHub.events.CONNECTION_STATE_CHANGED, (state) => {
+            this.handleConnectionState(state);
+            // Здесь можно реагировать на 'synced' если нужно
+        });
+
+        console.log('[NotificationManager] SignalR handlers настроены (без дублей и без лишних запросов)');
     }
 
     updateIndicators() {
@@ -428,75 +415,127 @@ export class NotificationManager {
         }
     }
 
-    handleNotificationPostponed(data) {
-        if (!data || !data.notificationId) return;
+    handleNotificationPostponed(postponementData) {
+        console.log('[NotificationManager] Обработка откладывания уведомления:', postponementData.notificationId);
         
-        const notificationId = data.notificationId;
-        
-        // ПРОВЕРЯЕМ: игнорируем наши собственные действия
-        const cachedAction = this.findCachedAction(notificationId, 'postpone');
-        if (cachedAction) {
-            this.clearCachedAction(cachedAction.key);
-            return;
-        }
-        
-        // ОБРАБАТЫВАЕМ откладывание от другого пользователя
-        const state = getState();
-        const index = state.notifications.findIndex(n => n.id === notificationId);
-        
-        if (index !== -1) {
-            const notification = state.notifications[index];
-            
-            // ПРОВЕРЯЕМ: только влияющие уведомления можно отложить
-            if (!notification.isInfluencing) {
-                console.warn('[handleNotificationPostponed] Попытка отложить информационное уведомление:', notificationId);
-                return;
+        const current = getState().notifications || [];
+        const updated = current.map(n => {
+            if (n.id === postponementData.notificationId) {
+                return {
+                    ...n,
+                    status: NOTIFICATION_STATUS.POSTPONED,
+                    returnsAt: postponementData.returnsAt,
+                    minutesUntilReturn: postponementData.minutes || 0,
+                    _eventType: 'postponed',
+                    _timestamp: new Date().toISOString()
+                };
             }
-            
-            // Используем единый метод обновления
-            this.handleSignalREvent('postpone', {
-                id: notificationId,
-                returnsAt: data.returnsAt || new Date(Date.now() + (data.minutes || 30) * 60000).toISOString()
-            });
-        }
+            return n;
+        });
         
-        // ОБНОВЛЯЕМ ИНДИКАТОРЫ
-        this.updateIndicators();
+        setState({ notifications: updated });
+        renderNotifications?.();
+        updateFilterCounts?.();
+        this.updateIndicators?.();
+        
+        console.log('[NotificationManager] Уведомление обновлено после откладывания');
     }
 
     async handleNewNotification(notificationData) {
-        // Обогащаем уведомление флагами
-        const enrichedNotification = {
+        console.log('[NotificationManager] Обработка нового уведомления по SignalR:', notificationData.id);
+
+        // 1. Обогащаем базовыми флагами и метаданными
+        const enriched = {
             ...notificationData,
             isInformation: notificationData.type === NOTIFICATION_TYPES.SYSTEM,
             isInfluencing: notificationData.type === NOTIFICATION_TYPES.ORDER_UPDATE_REQUEST,
             userId: this.currentUserId,
-            status: notificationData.status,
-            statusCode: notificationData.status
+            status: notificationData.status || 0,
+            statusCode: notificationData.status || 0,
+            _timestamp: new Date().toISOString(),
+            _eventType: 'receive'
         };
 
-        // ПРОВЕРЯЕМ ДУБЛИКАТЫ по ID
+        // 2. Получаем текущее состояние ОДИН РАЗ
         const currentState = getState();
-        const isDuplicate = currentState.notifications.some(n => n.id === enrichedNotification.id);
-        
-        if (isDuplicate) {
-            console.warn('[NotificationManager] Пропускаем дубликат уведомления:', enrichedNotification.id);
-            return;
+        const currentNotifications = currentState.notifications || [];
+
+        // 3. Проверяем, есть ли уже такое уведомление
+        const existingIndex = currentNotifications.findIndex(n => n.id === enriched.id);
+        let updatedNotifications = [...currentNotifications];
+
+        if (existingIndex !== -1) {
+            console.log('[NotificationManager] Обновляем существующее уведомление:', enriched.id);
+            updatedNotifications[existingIndex] = {
+                ...updatedNotifications[existingIndex],
+                ...enriched
+            };
+        } else {
+            console.log('[NotificationManager] Добавляем новое уведомление:', enriched.id);
+            updatedNotifications = [enriched, ...currentNotifications];
         }
 
-        // ИСПОЛЬЗУЕМ ЕДИНЫЙ МЕТОД ОБРАБОТКИ
-        if (enrichedNotification.isInformation) {
-            // Информационные уведомления показываем сразу
-            this.handleSignalREvent('receive', enrichedNotification);
+        // 4. Мгновенно обновляем состояние → UI сразу увидит уведомление
+        setState({ notifications: updatedNotifications });
+        renderNotifications?.();
+        updateFilterCounts?.();
+        this.updateIndicators?.();
+
+        // 5. Вызываем твою текущую логику (информационные / браузерные уведомления)
+        if (enriched.isInformation) {
+            this.handleSignalREvent?.('receive', enriched);
             
-            // Показываем браузерное уведомление
             if (Notification.permission === 'granted') {
-                this.showBrowserNotification(enrichedNotification);
+                this.showBrowserNotification?.(enriched);
             }
         } else {
-            // Для влияющих уведомлений загружаем детали
-            await this.handleNotificationWithDetails(enrichedNotification, currentState);
+            // Для влияющих — запускаем подгрузку деталей
+            await this.handleNotificationWithDetails?.(enriched, currentState);
         }
+
+        // 6. Асинхронно подгружаем ПОЛНЫЕ данные по API (самое важное для деталей изменений)
+        try {
+            // Запрашиваем свежие pending уведомления (их мало, запрос быстрый)
+            const recentResponse = await apiService.getNotifications({ 
+                status: 'pending', 
+                page: 1, 
+                pageSize: 5,  // берём последние 5 — хватит с запасом
+                userId: this.currentUserId
+            });
+
+            if (recentResponse?.items?.length > 0) {
+                // Ищем наше уведомление по id
+                const fullNotification = recentResponse.items.find(item => item.id === enriched.id);
+                
+                if (fullNotification) {
+                    const fullyEnriched = {
+                        ...enriched,
+                        data: fullNotification.data || enriched.data,
+                        proposedChanges: fullNotification.proposedChanges || enriched.proposedChanges || {},
+                        // Добавь сюда ВСЕ нужные поля из полного DTO
+                        // Например:
+                        // photos: fullNotification.photos,
+                        // comment: fullNotification.comment,
+                        // orderDetails: fullNotification.orderDetails,
+                        // initiator: fullNotification.initiator,
+                    };
+
+                    // Финальное обновление
+                    const finalUpdated = updatedNotifications.map(n => 
+                        n.id === enriched.id ? fullyEnriched : n
+                    );
+
+                    setState({ notifications: finalUpdated });
+                    renderNotifications?.();
+                    console.log('[NotificationManager] Полные детали подгружены для уведомления', enriched.id);
+                }
+            }
+        } catch (err) {
+            console.warn('[NotificationManager] Не удалось подгрузить детали (fallback):', err);
+            // Ничего страшного — базовая версия уже показана
+        }
+
+        console.log('[NotificationManager] Состояние обновлено. Всего уведомлений:', updatedNotifications.length);
     }
 
     /**
@@ -709,50 +748,30 @@ export class NotificationManager {
         }
     }
 
-    handleNotificationResolved(data) {
-        if (!data || !data.notificationId) return;
+    handleNotificationResolved(resolutionData) {
+        console.log('[NotificationManager] Обработка разрешения уведомления:', resolutionData.notificationId);
         
-        const notificationId = data.notificationId;
+        const current = getState().notifications || [];
+        const updated = current.map(n => {
+            if (n.id === resolutionData.notificationId) {
+                return {
+                    ...n,
+                    status: resolutionData.status,
+                    resolvedAt: resolutionData.resolvedAt,
+                    resolutionNote: resolutionData.note || n.resolutionNote,
+                    _eventType: 'resolved',
+                    _timestamp: new Date().toISOString()
+                };
+            }
+            return n;
+        });
         
-        // ПРОВЕРЯЕМ КЭШ действий
-        const cachedAction = this.findCachedAction(notificationId, 'resolve');
-        if (cachedAction) {
-            // Это наше собственное действие - просто очищаем кэш
-            this.clearCachedAction(cachedAction.key);
-            return;
-        }
+        setState({ notifications: updated });
+        renderNotifications?.();
+        updateFilterCounts?.();
+        this.updateIndicators?.();
         
-        // Это действие другого пользователя или синхронизация
-        const state = getState();
-        const index = state.notifications.findIndex(n => n.id === notificationId);
-        
-        if (index !== -1) {
-            const newNotifications = [...state.notifications];
-            const notification = newNotifications[index];
-            
-            // ОБНОВЛЯЕМ статус
-            newNotifications[index] = {
-                ...notification,
-                status: data.status,
-                statusCode: data.status,
-                resolvedAt: data.resolvedAt || new Date().toISOString(),
-                resolvedBy: data.resolvedBy || '',
-                resolutionNote: data.note || ''
-            };
-            
-            setState({ notifications: newNotifications });
-            
-            // Перерисовываем элемент
-            this.rerenderNotificationItem(notificationId);
-        }
-        
-        // ОБНОВЛЯЕМ ИНДИКАТОРЫ
-        this.updateIndicators();
-        
-        // Обновляем счетчики фильтров
-        if (typeof updateFilterCounts === 'function') {
-            updateFilterCounts();
-        }
+        console.log('[NotificationManager] Уведомление обновлено после разрешения');
     }
 
     // Вспомогательный метод для обновления статуса без toast
@@ -792,80 +811,53 @@ export class NotificationManager {
         this.emit('connection_state_changed', state);
     }
 
-    async updateBadgeCount() {
+    async updateBadgeCount(force = false) {
+        // force = true — только когда пользователь явно нажал "Обновить" или открыл страницу уведомлений
+        if (!force) {
+            console.log('[NotificationManager] Автоматический updateBadgeCount заблокирован — используем SignalR');
+            return 0;
+        }
+
+        console.log('[NotificationManager] Ручное обновление бейджа по API (force = true)');
+        
         try {
             const userData = secureGetUserData();
             
             if (!userData?.id) {
-                const result = { totalCount: 0, hasActive: false };
-                this.emit('notification_count_updated', result.totalCount);
-                this.emit('notification_state_updated', result);
-                
-                // ВАЖНО: НЕПОСРЕДСТВЕННО ОБНОВЛЯЕМ БЕЙДЖ
                 updateNotificationBadge(0);
                 return 0;
             }
             
-            // Устанавливаем currentUserId перед запросом
             this.currentUserId = userData.id;
             
-            // Запрашиваем оба типа уведомлений
             const [activeRes, postponedRes] = await Promise.all([
                 apiService.getNotifications({ 
                     status: 'pending', 
                     page: 1, 
                     pageSize: 1,
                     userId: userData.id 
-                }).catch(err => {
-                    console.warn('[NotificationManager] Active count error:', err);
-                    return { totalCount: 0 };
-                }),
+                }).catch(() => ({ totalCount: 0 })),
+                
                 apiService.getNotifications({ 
                     status: 'postponed', 
                     page: 1, 
                     pageSize: 1,
                     userId: userData.id 
-                }).catch(err => {
-                    console.warn('[NotificationManager] Postponed count error:', err);
-                    return { totalCount: 0 };
-                })
+                }).catch(() => ({ totalCount: 0 }))
             ]);
             
             const activeCount = activeRes.totalCount || 0;
             const postponedCount = postponedRes.totalCount || 0;
             const totalCount = activeCount + postponedCount;
-            const hasActive = activeCount > 0;
             
-            const result = {
-                totalCount: totalCount,
-                hasActive: hasActive
-            };
-            
-            this.emit('notification_count_updated', totalCount);
-            this.emit('notification_state_updated', result);
-            
-            // ВАЖНО: НЕПОСРЕДСТВЕННО ОБНОВЛЯЕМ БЕЙДЖ
             updateNotificationBadge(totalCount);
             
             return totalCount;
             
         } catch (error) {
-            console.error('[NotificationManager] Error in updateBadgeCount:', error);
-            
-            // Fallback: используем локальные данные
-            const stats = getNotificationStats();
-            const result = {
-                totalCount: stats.totalCount,
-                hasActive: stats.hasActiveNotifications
-            };
-            
-            this.emit('notification_count_updated', result.totalCount);
-            this.emit('notification_state_updated', result);
-            
-            // ВАЖНО: ВСЕГДА ОБНОВЛЯЕМ БЕЙДЖ ДАЖЕ ПРИ ОШИБКЕ
-            updateNotificationBadge(result.totalCount);
-            
-            return result.totalCount;
+            console.error('[NotificationManager] Ошибка ручного обновления бейджа:', error);
+            updateNotificationBadge(0); // fallback
+            return 0;
         }
     }
 
@@ -1087,7 +1079,6 @@ export class NotificationManager {
             return;
         }
         
-        // ПОКАЗЫВАЕМ ЗАГРУЗКУ
         loadingContainer.style.display = 'flex';
         listContainer.innerHTML = '';
         if (noNotifications) noNotifications.style.display = 'none';
@@ -1095,51 +1086,42 @@ export class NotificationManager {
         try {
             const state = getState();
             
-            // ОТЛАДКА
             console.log('[DEBUG] loadNotifications start:', {
                 currentFilter: state.currentFilter,
                 currentPage: state.currentPage,
                 currentUserId: this.currentUserId
             });
             
-            // КОНВЕРТИРУЕМ ФИЛЬТР В ПАРАМЕТРЫ API
             const apiParams = this.convertFilterToApiParams(state.currentFilter);
             apiParams.userId = this.currentUserId;
             
-            // ОТЛАДКА параметров запроса
             console.log('[DEBUG] API params:', apiParams);
             
-            // ЗАПРАШИВАЕМ УВЕДОМЛЕНИЯ
             const response = await apiService.getNotifications(apiParams);
             
-            // ОТЛАДКА ответа
             console.log('[DEBUG] API response:', {
                 totalCount: response.totalCount,
                 itemsCount: response.items?.length || 0,
                 items: response.items?.map(i => ({ id: i.id, type: i.type, status: i.status, title: i.title }))
             });
             
-            // ОБОГАЩАЕМ УВЕДОМЛЕНИЯ ФЛАГАМИ
             const enrichedNotifications = (response.items || []).map(item => ({
                 ...item,
                 isInformation: item.type === 2,
                 isInfluencing: item.type === 0,
                 userId: this.currentUserId,
-                status: item.status, // Сохраняем как есть (число)
+                status: item.status,
                 statusCode: item.status
             }));
             
-            // ОТЛАДКА обогащенных данных
             console.log('[DEBUG] Enriched notifications:', enrichedNotifications);
             
-            // ОБНОВЛЯЕМ СОСТОЯНИЕ - ВАЖНО: заменяем ВСЕ уведомления
             setState({
-                notifications: enrichedNotifications, // Полностью заменяем массив
+                notifications: enrichedNotifications,
                 totalCount: response.totalCount || 0,
                 totalPages: response.totalPages || 1
             });
             
-            // ОТЛАДКА состояния после обновления
             console.log('[DEBUG] State after setState:', {
                 notificationsCount: getState().notifications.length,
                 notifications: getState().notifications.map(n => ({ 
@@ -1147,32 +1129,20 @@ export class NotificationManager {
                 }))
             });
             
-            // РЕНДЕРИМ
-            if (typeof renderNotifications === 'function') {
-                renderNotifications();
-            }
+            renderNotifications?.();
+            updatePagination?.();
             
-            if (typeof updatePagination === 'function') {
-                updatePagination();
-            }
-            
-            // СКРЫВАЕМ ЗАГРУЗКУ
             loadingContainer.style.display = 'none';
             
-            // ПОКАЗЫВАЕМ СОСТОЯНИЕ "НЕТ УВЕДОМЛЕНИЙ"
             if (enrichedNotifications.length === 0 && noNotifications) {
                 noNotifications.style.display = 'block';
-                if (typeof updateEmptyStateText === 'function') {
-                    updateEmptyStateText(noNotifications);
-                }
+                updateEmptyStateText?.(noNotifications);
             }
             
-            // ОБНОВЛЯЕМ СЧЕТЧИКИ И ИНДИКАТОРЫ
-            if (typeof updateFilterCounts === 'function') {
-                await updateFilterCounts();
-            }
+            // УБРАЛИ: updateFilterCounts() и updateBadgeCount()
+            // Счётчик теперь только из SignalR
             
-            this.updateIndicators();
+            this.updateIndicators?.();
             
         } catch (error) {
             console.error('Ошибка загрузки уведомлений:', error);
@@ -1180,7 +1150,6 @@ export class NotificationManager {
             
             showTempMessage(`Ошибка загрузки: ${error.message}`, 'error');
             
-            // ПОКАЗЫВАЕМ СОСТОЯНИЕ ОШИБКИ
             if (listContainer) {
                 listContainer.innerHTML = `
                     <div class="error-state">
@@ -1228,7 +1197,69 @@ export class NotificationManager {
         console.log('[DEBUG] convertFilterToApiParams:', { filter, apiParams });
         return apiParams;
     }
+
+    async syncBadgeOnInit() {
+        console.log('[NotificationManager] Лёгкая синхронизация бейджа при старте');
+
+        try {
+            const userData = secureGetUserData();
+            if (!userData?.id) {
+                updateNotificationBadge(0);
+                return;
+            }
+
+            // Запросы с pageSize=1 — очень быстро, только для счётчиков и типа
+            const [pendingRes, postponedRes] = await Promise.all([
+                apiService.getNotifications({ 
+                    status: 'pending', 
+                    page: 1, 
+                    pageSize: 1,
+                    userId: userData.id 
+                }).catch(() => ({ totalCount: 0, items: [] })),
+
+                apiService.getNotifications({ 
+                    status: 'postponed', 
+                    page: 1, 
+                    pageSize: 1,
+                    userId: userData.id 
+                }).catch(() => ({ totalCount: 0, items: [] }))
+            ]);
+
+            const pendingCount = pendingRes.totalCount || 0;
+            const postponedCount = postponedRes.totalCount || 0;
+            const total = pendingCount + postponedCount;
+
+            // Считаем флаги цвета — ТОЧНО как в getNotificationStats
+            const hasActive = pendingRes.items?.some(item => 
+                item.isInfluencing || item.type === 0  // OrderUpdateRequest
+            ) || false;
+
+            const hasGray = !hasActive && (pendingCount > 0 || postponedCount > 0);
+
+            // Сохраняем в состояние (чтобы updateBadgeColor видел актуальные флаги)
+            setState({
+                unreadCount: total,
+                hasActiveNotifications: hasActive,
+                hasGrayIndicator: hasGray,
+                // можно ещё totalPending: pendingCount, totalPostponed: postponedCount
+            });
+
+            updateNotificationBadge(total);
+            updateBadgeColor();
+
+            console.log('[NotificationManager] Бейдж синхронизирован при старте:', {
+                count: total,
+                red: hasActive,
+                gray: hasGray
+            });
+
+        } catch (err) {
+            console.warn('[NotificationManager] Ошибка синхронизации бейджа при старте:', err);
+            updateNotificationBadge(0);
+        }
+    }
 }
+
 
 if (typeof window !== 'undefined') {
     window.NotificationManager = NotificationManager;

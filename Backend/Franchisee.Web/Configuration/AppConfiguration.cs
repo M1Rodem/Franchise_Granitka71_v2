@@ -13,7 +13,6 @@ using Serilog;
 using Swashbuckle.AspNetCore.SwaggerGen;
 using System.Text;
 
-
 namespace Franchisee.Web.Configuration
 {
     public static class AppConfiguration

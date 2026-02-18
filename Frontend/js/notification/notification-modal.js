@@ -86,7 +86,7 @@ export class NotificationViewModal {
             return `
                 <div class="photo-item photo-error">
                     <div class="photo-preview" style="background: var(--glass-background);">
-                        <span class="photo-icon">❌</span>
+                        <span class="photo-icon"></span>
                     </div>
                     <div class="photo-info">
                         <div class="photo-name">${label}</div>

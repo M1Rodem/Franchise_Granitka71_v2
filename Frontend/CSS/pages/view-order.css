@@ -332,8 +332,6 @@
     border: 1px dashed var(--glass-border);
 }
 
-/* Мобильные стили для таблиц внутри аккордеонов */
-/* Мобильные стили для кнопок действий в заголовке */
 @media (max-width: 768px) {
     .page-header {
         flex-direction: column;
@@ -729,4 +727,154 @@
 
 .accordion-section .view-order-table tfoot {
     background: rgba(30, 41, 59, 0.4);
+}
+
+.order-section-large {
+    grid-column: span 2;
+}
+
+.mini-map-container {
+    width: 100%;
+    height: 200px;
+    border-radius: 8px;
+    overflow: hidden;
+    margin: 15px 0;
+    border: 1px solid #e0e0e0;
+    background: #f5f5f5; /* фон пока карта грузится */
+}
+
+.distance-info {
+    padding: 10px;
+    background: rgba(16, 185, 129, 0.1);
+    border: 1px solid rgba(16, 185, 129, 0.3);
+    border-radius: 8px;
+    font-size: 14px;
+}
+
+.navigator-link {
+    display: inline-block !important;
+    margin-top: 12px !important;
+    padding: 12px 24px !important;
+    background: linear-gradient(135deg, var(--accent) 0%, #2563eb 100%) !important;  /* Градиент в стиле сайта */
+    border: 1px solid rgba(59, 130, 246, 0.3) !important;
+    border-radius: var(--radius-lg) !important;
+    color: white !important;
+    font-weight: 600 !important;
+    font-size: var(--text-base) !important;
+    text-decoration: none !important;
+    text-align: center !important;
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.25) !important;
+    transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94) !important;
+    letter-spacing: 0.3px !important;
+    width: auto !important;
+    cursor: pointer !important;
+}
+
+/* Эффект при наведении */
+.navigator-link:hover {
+    background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%) !important;
+    transform: translateY(-2px) scale(1.02) !important;
+    box-shadow: 0 8px 20px rgba(59, 130, 246, 0.4) !important;
+    border-color: var(--accent) !important;
+    color: white !important;
+}
+
+/* Эффект при нажатии */
+.navigator-link:active {
+    transform: translateY(0) scale(0.98) !important;
+    box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3) !important;
+}
+
+/* Мобильные стили */
+@media (max-width: 768px) {
+    .navigator-link {
+        width: 100% !important;
+        padding: 14px 20px !important;
+        font-size: var(--text-base) !important;
+        margin-top: 16px !important;
+        border-radius: var(--radius-lg) !important;
+        box-sizing: border-box !important;
+    }
+}
+
+/* Для очень маленьких экранов */
+@media (max-width: 480px) {
+    .navigator-link {
+        padding: 12px 16px !important;
+        font-size: var(--text-sm) !important;
+        white-space: normal !important;
+        word-wrap: break-word !important;
+        line-height: 1.4 !important;
+    }
+}
+
+/* Альтернативный вариант - если нужна прозрачная кнопка как на других страницах */
+.navigator-link-outline {
+    background: transparent !important;
+    border: 2px solid var(--accent) !important;
+    color: var(--accent) !important;
+    box-shadow: none !important;
+}
+
+.navigator-link-outline:hover {
+    background: var(--accent) !important;
+    color: white !important;
+    border-color: var(--accent) !important;
+}
+
+/* ===== FIX: Карта и блок "Место установки" на мобильных ===== */
+
+/* 1. Убираем span 2 на мобильных */
+@media (max-width: 768px) {
+    .order-section-large {
+        grid-column: span 1 !important;  /* Становится обычной колонкой */
+    }
+    
+    /* 2. Исправляем контейнер карты */
+    .order-section-large .mini-map-container,
+    .order-section-large #orderMiniMap,
+    .order-section-large [id*="map"] {
+        width: 100% !important;
+        max-width: 100% !important;
+        margin-left: 0 !important;
+        margin-right: 0 !important;
+        box-sizing: border-box !important;
+    }
+    
+    /* 3. Убираем лишние отступы у родителя */
+    .order-section-large {
+        padding-left: var(--space-4) !important;
+        padding-right: var(--space-4) !important;
+        overflow: hidden !important;
+    }
+    
+    /* 4. Фиксим ссылку навигатора */
+    .order-section-large .navigator-link {
+        display: block !important;
+        width: 100% !important;
+        text-align: center !important;
+        box-sizing: border-box !important;
+        white-space: normal !important;
+        word-wrap: break-word !important;
+    }
+    
+    /* 5. Фиксим блок с расстоянием */
+    .order-section-large .distance-info {
+        width: 100% !important;
+        box-sizing: border-box !important;
+        margin-left: 0 !important;
+        margin-right: 0 !important;
+    }
+}
+
+/* 6. Для очень маленьких экранов */
+@media (max-width: 480px) {
+    .order-section-large {
+        padding-left: var(--space-3) !important;
+        padding-right: var(--space-3) !important;
+    }
+    
+    .order-section-large .mini-map-container {
+        height: 180px !important;  /* Чуть меньше на телефонах */
+    }
 }

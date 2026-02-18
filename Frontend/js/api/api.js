@@ -103,6 +103,13 @@ class ApiService {
         throw lastError;
     }
 
+    async cleanupTempMedia(tempIds) {
+        return this.request('/media/cleanup', {
+            method: 'POST',
+            body: JSON.stringify({ tempIds })
+        });
+    }
+    
     // Helpers
         async parseResponse(response) {
         const contentType = response.headers.get('content-type') || '';
@@ -468,6 +475,153 @@ class ApiService {
     async deleteOrderPhoto(photoId) {
         return this.request(`/Photos/edit/${photoId}`, { method: 'DELETE' });
     }
+    // ====== МЕДИА (обновленные методы) ======
+
+    /**
+     * Загрузка временного медиафайла
+     */
+    async uploadTempMedia(file, type = 'photo') {
+        // Валидация размера файла (макс 500MB)
+        const MAX_SIZE = 500 * 1024 * 1024;
+        if (file.size > MAX_SIZE) {
+            throw new Error(`Файл слишком большой (макс: ${MAX_SIZE / 1024 / 1024}MB)`);
+        }
+        
+        // Получаем лимиты для валидации
+        const limits = await this.getMediaLimits();
+        const typeLimits = limits[type];
+        
+        if (!typeLimits) {
+            throw new Error(`Тип медиа "${type}" не поддерживается`);
+        }
+        
+        // Валидация MIME-типа
+        if (!typeLimits.allowedMimeTypes.includes(file.type)) {
+            throw new Error(`Неподдерживаемый формат файла. Разрешены: ${typeLimits.allowedMimeTypes.join(', ')}`);
+        }
+        
+        // Загрузка файла
+        const formData = new FormData();
+        formData.append('file', file);
+        
+        const response = await fetch(`${API_BASE_URL}/media/upload-temp?type=${type}`, {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${this.token}` },
+            body: formData,
+            signal: new AbortController().signal
+        });
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            console.error('Upload failed:', response.status, errorText);
+            throw new Error(`Upload failed: ${response.status} - ${errorText}`);
+        }
+        return await response.json();
+    }
+
+    /**
+     * Получение URL превью временного медиа
+     */
+    async getTempMediaPreview(tempId) {
+        try {
+            const response = await fetch(`${API_BASE_URL}/media/temp-preview/${tempId}`, {
+                headers: {
+                    'Authorization': `Bearer ${this.token}`
+                }
+            });
+
+            if (!response.ok) {
+                throw new Error(`Temp preview failed: ${response.status}`);
+            }
+
+            const blob = await response.blob();
+            return URL.createObjectURL(blob);
+        } catch (error) {
+            console.error('getTempMediaPreview error:', error);
+            throw error;
+        }
+    }
+
+    /**
+     * Удаление временного медиа
+     */
+    async deleteTempMedia(tempId) {
+        return this.request(`/media/temp/${tempId}`, { method: 'DELETE' });
+    }
+
+    /**
+     * Получение URL медиа файла
+     */
+    async getMediaUrl(mediaId) {
+        try {
+            const response = await fetch(`${API_BASE_URL}/media/${mediaId}/file`, {
+                headers: {
+                    'Authorization': `Bearer ${this.token}`
+                }
+            });
+
+            if (!response.ok) {
+                throw new Error(`Media load failed: ${response.status}`);
+            }
+
+            const blob = await response.blob();
+            return URL.createObjectURL(blob);
+        } catch (error) {
+            console.error('getMediaUrl error:', error);
+            throw error;
+        }
+    }
+
+    /**
+     * Для обратной совместимости оставляем старый метод, но перенаправляем на новый
+     */
+    async uploadTempPhoto(file) {
+        return this.uploadTempMedia(file, 'photo');
+    }
+
+    /**
+     * Для обратной совместимости
+     */
+    async getTempPreview(tempId) {
+        // Перенаправляем на новый метод
+        console.warn('getTempPreview is deprecated, use getTempMediaPreview instead');
+        return this.getTempMediaPreview(tempId);
+    }
+
+    /**
+     * Для обратной совместимости
+     */
+    async getPhotoUrl(photoId) {
+        // Перенаправляем на новый метод
+        console.warn('getPhotoUrl is deprecated, use getMediaUrl instead');
+        return this.getMediaUrl(photoId);
+    }
+
+    /**
+     * Для обратной совместимости
+     */
+    async deleteTempPhoto(tempId) {
+        // Перенаправляем на новый метод
+        console.warn('deleteTempPhoto is deprecated, use deleteTempMedia instead');
+        return this.deleteTempMedia(tempId);
+    }
+
+    /**
+     * Обновляем setupImageAuth для поддержки media
+     */
+    setupImageAuth() {
+        const originalFetch = window.fetch;
+        window.fetch = (...args) => {
+            const [url, options = {}] = args;
+            // ОБНОВЛЕНО: добавляем поддержку media
+            if (typeof url === 'string' && 
+                (url.includes(`${API_BASE_URL}/Photos/`) || url.includes(`${API_BASE_URL}/media/`))) {
+                options.headers = { ...options.headers, 'Authorization': `Bearer ${this.token}` };
+                args[1] = options;
+            }
+            return originalFetch(...args);
+        };
+    }
 
     // Users
     async getUsers() { return this.request('/Users'); }
@@ -631,6 +785,56 @@ class ApiService {
         }
         
         return this.request(`/Users/paged?${params}`);
+    }
+
+    // ====== УЧАСТКИ (PLOTS) ======
+    async getPlots(includeInactive = false) {
+        return this.request(`/plots?includeInactive=${includeInactive}`);
+    }
+
+    // ====== МЕДИА (расширение для видео) ======
+    async getMediaLimits() {
+        return this.request('/media/types');
+    }
+
+    async uploadTempFile(file, type = 'photo') {
+        // Валидация размера файла (макс 500MB)
+        const MAX_SIZE = 500 * 1024 * 1024;
+        if (file.size > MAX_SIZE) {
+            throw new Error(`Файл слишком большой (макс: ${MAX_SIZE / 1024 / 1024}MB)`);
+        }
+        
+        // Получаем лимиты для валидации
+        const limits = await this.getMediaLimits();
+        const typeLimits = limits[type];
+        
+        if (!typeLimits) {
+            throw new Error(`Тип медиа "${type}" не поддерживается`);
+        }
+        
+        // Валидация MIME-типа
+        if (!typeLimits.allowedMimeTypes.includes(file.type)) {
+            throw new Error(`Неподдерживаемый формат файла. Разрешены: ${typeLimits.allowedMimeTypes.join(', ')}`);
+        }
+        
+        // Загрузка файла
+        const formData = new FormData();
+        formData.append('file', file);
+        
+        const response = await fetch(`${API_BASE_URL}/media/upload-temp?type=${type}`, {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${this.token}` },
+            body: formData,
+            signal: new AbortController().signal
+        });
+
+        if (!response.ok) throw new Error(`Upload failed: ${response.status}`);
+        return await response.json();
+    }
+
+    // Для обратной совместимости оставляем старый метод
+    async uploadTempPhoto(file) {
+        return this.uploadTempFile(file, 'photo');
     }
 }
 

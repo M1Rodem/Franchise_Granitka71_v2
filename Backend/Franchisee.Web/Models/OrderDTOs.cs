@@ -10,6 +10,7 @@ namespace Franchisee.Web.Models
         public int PageSize { get; set; }
         public int TotalPages => (int)Math.Ceiling((double)TotalCount / PageSize);
     }
+
     public class OrderResponseDto
     {
         public int Id { get; set; }
@@ -19,6 +20,12 @@ namespace Franchisee.Web.Models
         public bool IsDeleted { get; set; }
         public DateTime? DeletedAt { get; set; }
         public string InspectionPlace { get; set; } = string.Empty;
+
+        public double? Latitude { get; set; }
+        public double? Longitude { get; set; }
+        public int? PlotId { get; set; }
+        public string? PlotName { get; set; }
+
         public string DeceasedFullName { get; set; } = string.Empty;
         public string CustomerFullName { get; set; } = string.Empty;
         public string? CustomerEmail { get; set; }
@@ -28,13 +35,13 @@ namespace Franchisee.Web.Models
         public string MonumentSize { get; set; } = string.Empty;
         public string AdditionalInfo { get; set; } = string.Empty;
         public OrderStatus Status { get; set; }
-        public decimal TotalPrice { get; set; } 
+        public decimal TotalPrice { get; set; }
         public DateTime CreatedAt { get; set; }
         public DateTime UpdatedAt { get; set; }
         public int ManagerId { get; set; }
-        public string ManagerFullName { get; set; } = string.Empty; 
+        public string ManagerFullName { get; set; } = string.Empty;
         public List<OrderWorkItem> WorkItems { get; set; } = new();
         public List<OrderPayment> Payments { get; set; } = new();
-        public List<OrderPhotoDto> Photos { get; set; } = new(); 
+        public List<OrderMediaDto> Photos { get; set; } = new();
     }
 }

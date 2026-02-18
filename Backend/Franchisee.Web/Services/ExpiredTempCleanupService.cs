@@ -82,8 +82,8 @@ namespace Franchisee.Web.Services
                 if (System.IO.File.Exists(temp.FilePath))
                 {
                     System.IO.File.Delete(temp.FilePath);
-                    _logger.LogInformation("Удален временный файл: {FilePath} (NotificationId: {NotificationId})",
-                        temp.FilePath, temp.NotificationId);
+                    _logger.LogInformation("Удален временный файл: {FilePath} (NotificationId: {NotificationId}, MediaType: {MediaType})",
+                        temp.FilePath, temp.NotificationId, temp.MediaType);
                 }
                 context.TempUploads.Remove(temp);
             }
@@ -112,8 +112,8 @@ namespace Franchisee.Web.Services
                 if (System.IO.File.Exists(temp.FilePath))
                 {
                     System.IO.File.Delete(temp.FilePath);
-                    _logger.LogWarning("Удален 'осиротевший' временный файл: {FilePath} (NotificationId: {NotificationId} не существует)",
-                        temp.FilePath, temp.NotificationId);
+                    _logger.LogWarning("Удален 'осиротевший' временный файл: {FilePath} (NotificationId: {NotificationId} не существует, MediaType: {MediaType})",
+                        temp.FilePath, temp.NotificationId, temp.MediaType);
                 }
                 context.TempUploads.Remove(temp);
             }
@@ -138,17 +138,17 @@ namespace Franchisee.Web.Services
 
             foreach (var order in expiredArchivedOrders)
             {
-                var photos = await context.OrderPhotos
+                var media = await context.OrderPhotos
                     .Where(p => p.OrderId == order.Id)
                     .ToListAsync();
 
-                foreach (var photo in photos)
+                foreach (var mediaItem in media)
                 {
-                    if (System.IO.File.Exists(photo.FilePath))
+                    if (System.IO.File.Exists(mediaItem.FilePath))
                     {
-                        System.IO.File.Delete(photo.FilePath);
+                        System.IO.File.Delete(mediaItem.FilePath);
                     }
-                    context.OrderPhotos.Remove(photo);
+                    context.OrderPhotos.Remove(mediaItem);
                 }
 
                 var workItems = await context.OrderWorkItems

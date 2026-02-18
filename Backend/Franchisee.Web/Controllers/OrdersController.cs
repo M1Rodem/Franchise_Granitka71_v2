@@ -8,6 +8,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 
 namespace Franchisee.Web.Controllers
 {
@@ -18,22 +19,25 @@ namespace Franchisee.Web.Controllers
     {
         private readonly ApplicationDbContext _context;
         private readonly IOrderRepository _orderRepository;
-        private readonly IPhotoService _photoService;
+        private readonly IMediaService _mediaService; // Изменено с IPhotoService
         private readonly INotificationService _notificationService;
         private readonly ILogger<OrdersController> _logger;
+        private readonly IPlotRepository _plotRepository; // Новая зависимость
 
         public OrdersController(
             ApplicationDbContext context,
             IOrderRepository orderRepository,
-            IPhotoService photoService,
+            IMediaService mediaService, // Изменено
             INotificationService notificationService,
-            ILogger<OrdersController> logger)
+            ILogger<OrdersController> logger,
+            IPlotRepository plotRepository)
         {
             _context = context;
             _orderRepository = orderRepository;
-            _photoService = photoService;
+            _mediaService = mediaService;
             _notificationService = notificationService;
             _logger = logger;
+            _plotRepository = plotRepository;
         }
 
         [HttpGet]
@@ -86,16 +90,25 @@ namespace Franchisee.Web.Controllers
                 var orderNumber = await _orderRepository.GenerateOrderNumberAsync();
                 _logger.LogInformation("Сгенерирован номер заказа: {OrderNumber}", orderNumber);
 
+                // 1. Нормализация телефона
+                var normalizedPhone = NormalizePhone(request.Phone);
+
                 var order = new Order
                 {
                     OrderNumber = orderNumber,
                     Place = request.Place,
                     InspectionPlace = request.InspectionPlace ?? string.Empty,
                     OrderDate = request.OrderDate.ToUniversalTime(),
+
+                    // Новые поля для геоданных
+                    Latitude = request.Latitude,
+                    Longitude = request.Longitude,
+                    PlotId = request.PlotId,
+
                     DeceasedFullName = request.DeceasedFullName,
                     CustomerFullName = request.CustomerFullName,
                     CustomerEmail = request.CustomerEmail,
-                    Phone = request.Phone,
+                    Phone = normalizedPhone,
                     Address = request.Address,
                     MonumentType = request.MonumentType,
                     MonumentSize = request.MonumentSize,
@@ -107,6 +120,10 @@ namespace Franchisee.Web.Controllers
                     WorkItems = request.WorkItems ?? new List<OrderWorkItem>(),
                     Payments = request.Payments ?? new List<OrderPayment>()
                 };
+
+                // ИСПРАВЛЕНИЕ: НЕ вызываем CalculateAndAddDistanceWorkItem
+                // Расстояние приходит с фронта в request.WorkItems
+                // Бэк НЕ ДОЛЖЕН пересчитывать расстояние!
 
                 // Set FK
                 foreach (var wi in order.WorkItems) wi.OrderId = 0;
@@ -121,16 +138,34 @@ namespace Franchisee.Web.Controllers
 
                 _logger.LogInformation("Заказ сохранен с ID: {OrderId}, номером: {OrderNumber}", order.Id, order.OrderNumber);
 
-                // Фото
-                if (request.TempUploadIds?.Any() == true)
+                // 3. Фото
+                if (request.TempPhotoIds?.Any() == true)
                 {
-                    var committedCount = await _photoService.CommitTempToOrderAsync(order.Id, request.TempUploadIds, userId);
+                    var committedCount = await _mediaService.CommitTempToOrderAsync(
+                        order.Id, request.TempPhotoIds, userId, MediaType.Photo);
                     _logger.LogInformation("Коммитнуто {Count} фото для заказа {OrderId}", committedCount, order.Id);
+                }
+
+                // 4. Видео (новое)
+                if (request.TempVideoIds?.Any() == true)
+                {
+                    var committedCount = await _mediaService.CommitTempToOrderAsync(
+                        order.Id, request.TempVideoIds, userId, MediaType.Video);
+                    _logger.LogInformation("Коммитнуто {Count} видео для заказа {OrderId}", committedCount, order.Id);
                 }
 
                 await transaction.CommitAsync();
 
-                var dto = MapToResponseDto(order);
+                // Перезагружаем заказ с медиа
+                var fullOrder = await _context.Orders
+                    .Include(o => o.WorkItems)
+                    .Include(o => o.Payments)
+                    .Include(o => o.Photos)
+                    .Include(o => o.Manager)
+                    .Include(o => o.Plot)
+                    .FirstOrDefaultAsync(o => o.Id == order.Id);
+
+                var dto = MapToResponseDto(fullOrder ?? order);
                 _logger.LogInformation("Заказ успешно создан: {OrderId}, {OrderNumber}", order.Id, order.OrderNumber);
 
                 return CreatedAtAction(nameof(GetOrder), new { id = order.Id }, dto);
@@ -141,12 +176,38 @@ namespace Franchisee.Web.Controllers
                 _logger.LogError(ex, "Ошибка БД при создании заказа для {UserId}", userId);
                 return StatusCode(500, "Ошибка сохранения заказа");
             }
+            catch (ArgumentException ex) when (ex.Message.Contains("Phone"))
+            {
+                await transaction.RollbackAsync();
+                _logger.LogWarning("Неверный формат телефона: {Phone}", request.Phone);
+                return BadRequest(new { message = "Неверный формат телефона" });
+            }
             catch (Exception ex)
             {
                 await transaction.RollbackAsync();
                 _logger.LogError(ex, "Неожиданная ошибка создания заказа для {UserId}", userId);
                 return StatusCode(500, "Внутренняя ошибка");
             }
+        }
+
+        // Добавляю вспомогательные методы
+        private string NormalizePhone(string phone)
+        {
+            if (string.IsNullOrWhiteSpace(phone))
+                throw new ArgumentException("Телефон обязателен");
+
+            // Удаляем все нецифровые символы
+            var digits = Regex.Replace(phone, @"\D", "");
+
+            // Заменяем ведущую 8 на 7
+            if (digits.StartsWith("8") && digits.Length == 11)
+                digits = "7" + digits.Substring(1);
+
+            // Проверяем формат (должно быть 11 цифр, начинаться с 7)
+            if (!Regex.IsMatch(digits, @"^7\d{10}$"))
+                throw new ArgumentException("Неверный формат телефона. Ожидается: 11 цифр, начинается с 7");
+
+            return digits;
         }
 
         [HttpPut("{id}")]
@@ -157,12 +218,8 @@ namespace Franchisee.Web.Controllers
             var userId = GetCurrentUserId();
             _logger.LogInformation("Обновление заказа {OrderId} для {UserId}", id, userId);
 
-            // УДАЛЕНО: проверка блокирующих уведомлений
-            // Фронтенд управляет блокировкой через /api/notifications/check-blocking
-
             try
             {
-                // Загружаем заказ
                 var order = await _context.Orders
                     .Include(o => o.WorkItems)
                     .Include(o => o.Payments)
@@ -172,22 +229,17 @@ namespace Franchisee.Web.Controllers
 
                 if (order == null) return NotFound();
 
-                // Проверяем права
+                // Проверка прав
                 if (!IsAdminOrHigher() && order.ManagerId != userId)
                 {
-                    // Менеджер пытается изменить чужой заказ → создаём уведомление через NotificationService
                     _logger.LogInformation("Менеджер {UserId} запрашивает изменения чужого заказа {OrderId}", userId, id);
 
-                    // 1. Собираем предлагаемые изменения
                     var proposedChanges = CollectProposedChanges(order, request);
-
-                    // Если нет изменений - возвращаем ошибку
                     if (!proposedChanges.Any())
                     {
                         return BadRequest(new { success = false, message = "Нет изменений для отправки" });
                     }
 
-                    // 2. Создаём уведомление через NotificationService (БЕЗ ТРАНЗАКЦИИ контроллера!)
                     var notificationId = await _notificationService.CreateOrderUpdateRequestAsync(
                         orderId: id,
                         initiatorId: userId,
@@ -195,26 +247,18 @@ namespace Franchisee.Web.Controllers
                         comment: "Запрос на изменение заказа"
                     );
 
-                    _logger.LogInformation("Создано уведомление {NotificationId} для заказа {OrderId}", notificationId, id);
-
-                    // 3. Возвращаем успех, но БЕЗ применения изменений
                     return Ok(new
                     {
                         success = true,
-                        message = "Запрос на изменение отправлен владельцу заказа и администраторам",
+                        message = "Запрос на изменение отправлен",
                         notificationId = notificationId
                     });
                 }
 
-                // Если Admin/SuperAdmin или менеджер редактирует свой заказ - продолжаем стандартное обновление
-                // ДЛЯ РЕАЛЬНОГО ОБНОВЛЕНИЯ - ИСПОЛЬЗУЕМ ТРАНЗАКЦИЮ
                 using var transaction = await _context.Database.BeginTransactionAsync();
 
                 try
                 {
-                    _logger.LogDebug("ДО обновления: WorkItems count = {WorkItemsCount}, Payments count = {PaymentsCount}",
-                        order.WorkItems.Count, order.Payments.Count);
-
                     // Обновляем основные поля
                     if (!string.IsNullOrEmpty(request.Place)) order.Place = request.Place;
                     if (!string.IsNullOrEmpty(request.InspectionPlace)) order.InspectionPlace = request.InspectionPlace;
@@ -231,72 +275,81 @@ namespace Franchisee.Web.Controllers
                     if (request.Status.HasValue) order.Status = request.Status.Value;
                     order.UpdatedAt = DateTime.UtcNow;
 
-                    // WorkItems: полная замена
+                    // WorkItems - полная замена
                     if (request.WorkItems != null)
                     {
-                        _logger.LogDebug("Обновление WorkItems: удаляем {OldCount} старых, добавляем {NewCount} новых",
-                            order.WorkItems.Count, request.WorkItems.Count);
-
-                        // Удаляем старые WorkItems через отдельный запрос
                         var existingWorkItems = await _context.OrderWorkItems
                             .Where(w => w.OrderId == id)
                             .ToListAsync();
                         _context.OrderWorkItems.RemoveRange(existingWorkItems);
 
-                        // Добавляем новые WorkItems
                         foreach (var wi in request.WorkItems)
                         {
-                            var newWorkItem = new OrderWorkItem
-                            {
-                                OrderId = id,
-                                WorkDescription = wi.WorkDescription,
-                                Price = wi.Price,
-                                Quantity = wi.Quantity,
-                                Note = wi.Note
-                            };
-                            _context.OrderWorkItems.Add(newWorkItem);
+                            wi.OrderId = id;
+                            _context.OrderWorkItems.Add(wi);
                         }
                     }
 
-                    // Payments: полная замена
+                    // Payments - полная замена
                     if (request.Payments != null)
                     {
-                        _logger.LogDebug("Обновление Payments: удаляем {OldCount} старых, добавляем {NewCount} новых",
-                            order.Payments.Count, request.Payments.Count);
-
-                        // Удаляем старые Payments через отдельный запрос
                         var existingPayments = await _context.OrderPayments
                             .Where(p => p.OrderId == id)
                             .ToListAsync();
                         _context.OrderPayments.RemoveRange(existingPayments);
 
-                        // Добавляем новые Payments
                         foreach (var payment in request.Payments)
                         {
-                            var newPayment = new OrderPayment
-                            {
-                                OrderId = id,
-                                Amount = payment.Amount,
-                                PaymentDate = payment.PaymentDate.ToUniversalTime(),
-                                PaymentType = payment.PaymentType,
-                                Note = payment.Note
-                            };
-                            _context.OrderPayments.Add(newPayment);
+                            payment.OrderId = id;
+                            payment.PaymentDate = payment.PaymentDate.ToUniversalTime();
+                            _context.OrderPayments.Add(payment);
                         }
                     }
 
-                    // Сохраняем все изменения
                     await _context.SaveChangesAsync();
 
-                    // Обрабатываем новые фото
-                    if (request.TempUploadIds?.Any() == true)
+                    if (request.RemovedPhotoIds?.Any() == true)
                     {
-                        await _photoService.CommitTempToOrderAsync(id, request.TempUploadIds, userId);
+                        var photosToRemove = await _context.OrderPhotos
+                            .Where(p => request.RemovedPhotoIds.Contains(p.Id) && p.MediaType == MediaType.Photo)
+                            .ToListAsync();
+
+                        foreach (var photo in photosToRemove)
+                        {
+                            if (System.IO.File.Exists(photo.FilePath))
+                                System.IO.File.Delete(photo.FilePath);
+                            _context.OrderPhotos.Remove(photo);
+                        }
                     }
 
+                    if (request.RemovedVideoIds?.Any() == true)
+                    {
+                        var videosToRemove = await _context.OrderPhotos
+                            .Where(p => request.RemovedVideoIds.Contains(p.Id) && p.MediaType == MediaType.Video)
+                            .ToListAsync();
+
+                        foreach (var video in videosToRemove)
+                        {
+                            if (System.IO.File.Exists(video.FilePath))
+                                System.IO.File.Delete(video.FilePath);
+                            _context.OrderPhotos.Remove(video);
+                        }
+                    }
+
+                    if (request.TempPhotoIds?.Any() == true)
+                    {
+                        await _mediaService.CommitTempToOrderAsync(id, request.TempPhotoIds, userId, MediaType.Photo);
+                    }
+
+                    if (request.TempVideoIds?.Any() == true)
+                    {
+                        await _mediaService.CommitTempToOrderAsync(id, request.TempVideoIds, userId, MediaType.Video);
+                    }
+
+                    await _context.SaveChangesAsync();
                     await transaction.CommitAsync();
 
-                    // Перезагружаем заказ для DTO
+                    // Перезагружаем заказ
                     var updatedOrder = await _context.Orders
                         .Include(o => o.WorkItems)
                         .Include(o => o.Payments)
@@ -305,17 +358,7 @@ namespace Franchisee.Web.Controllers
                         .AsNoTracking()
                         .FirstOrDefaultAsync(o => o.Id == id);
 
-                    if (updatedOrder == null)
-                    {
-                        _logger.LogWarning("Заказ {OrderId} не найден после обновления", id);
-                        return StatusCode(500, "Ошибка при получении обновленного заказа");
-                    }
-
-                    var dto = MapToResponseDto(updatedOrder);
-
-                    _logger.LogInformation("Заказ {OrderId} успешно обновлен. WorkItems: {WorkItemsCount}, Payments: {PaymentsCount}",
-                        id, updatedOrder.WorkItems.Count, updatedOrder.Payments.Count);
-
+                    var dto = MapToResponseDto(updatedOrder ?? order);
                     return Ok(dto);
                 }
                 catch (Exception ex)
@@ -327,7 +370,7 @@ namespace Franchisee.Web.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Неожиданная ошибка в методе UpdateOrder {OrderId}", id);
+                _logger.LogError(ex, "Неожиданная ошибка в UpdateOrder {OrderId}", id);
                 return StatusCode(500, "Внутренняя ошибка сервера");
             }
         }
@@ -481,6 +524,8 @@ namespace Franchisee.Web.Controllers
         }
         private void CollectWorkItemsChanges(Order order, UpdateOrderRequest request, Dictionary<string, object> changes)
         {
+            if (request.WorkItems == null) return;
+
             var oldWorkItems = order.WorkItems.Select(w => new {
                 w.WorkDescription,
                 w.Price,
@@ -503,8 +548,11 @@ namespace Franchisee.Web.Controllers
                 changes["WorkItems"] = new { old = oldWorkItems, @new = newWorkItems };
             }
         }
+
         private void CollectPaymentsChanges(Order order, UpdateOrderRequest request, Dictionary<string, object> changes)
         {
+            if (request.Payments == null) return;
+
             var oldPayments = order.Payments.Select(p => new {
                 p.Amount,
                 p.PaymentDate,
@@ -532,35 +580,11 @@ namespace Franchisee.Web.Controllers
             List<int> addedTempIds = new();
             List<int> removedPhotoIds = new();
 
-            if (order.Photos == null)
-            {
-                _logger.LogError("ERROR: order.Photos is NULL!");
-                return;
-            }
-
-            var existingPhotoIds = order.Photos.Select(p => p.Id).ToList();
-            _logger.LogError("Existing photo IDs: {@ExistingIds}", existingPhotoIds);
-
-            if (request.RemovedPhotoIds?.Any() == true)
-            {
-                _logger.LogError("Request has RemovedPhotoIds: {@Ids}", request.RemovedPhotoIds);
-
-                var validRemovedIds = request.RemovedPhotoIds
-                    .Where(pid => existingPhotoIds.Contains(pid))
-                    .ToList();
-
-                _logger.LogError("Valid removed IDs after filter: {@ValidIds}", validRemovedIds);
-
-                removedPhotoIds = validRemovedIds;
-            }
-
-            if (request.TempUploadIds?.Any() == true)
+            if (request.TempPhotoIds?.Any() == true)
             {
                 var userId = GetCurrentUserId();
-
-                // Проверяем, что TempUploads существуют и принадлежат текущему пользователю
                 var validTempIds = _context.TempUploads
-                    .Where(t => request.TempUploadIds.Contains(t.Id) && t.UploaderId == userId)
+                    .Where(t => request.TempPhotoIds.Contains(t.Id) && t.UploaderId == userId)
                     .Select(t => t.Id)
                     .ToList();
 
@@ -570,20 +594,52 @@ namespace Franchisee.Web.Controllers
                 }
             }
 
-            if (addedTempIds.Any() || removedPhotoIds.Any())
+            List<int> addedVideoTempIds = new();
+            if (request.TempVideoIds?.Any() == true)
+            {
+                var userId = GetCurrentUserId();
+                var validTempIds = _context.TempUploads
+                    .Where(t => request.TempVideoIds.Contains(t.Id) && t.UploaderId == userId)
+                    .Select(t => t.Id)
+                    .ToList();
+
+                if (validTempIds.Any())
+                {
+                    addedVideoTempIds = validTempIds;
+                }
+            }
+
+            if (request.RemovedPhotoIds?.Any() == true)
+            {
+                var existingPhotoIds = order.Photos.Select(p => p.Id).ToList();
+                removedPhotoIds = request.RemovedPhotoIds
+                    .Where(pid => existingPhotoIds.Contains(pid))
+                    .ToList();
+            }
+
+            // Добавляем удаление видео
+            List<int> removedVideoIds = new();
+            if (request.RemovedVideoIds?.Any() == true)
+            {
+                var existingVideoIds = order.Photos
+                    .Where(p => p.MediaType == MediaType.Video)
+                    .Select(p => p.Id)
+                    .ToList();
+                removedVideoIds = request.RemovedVideoIds
+                    .Where(pid => existingVideoIds.Contains(pid))
+                    .ToList();
+            }
+
+            if (addedTempIds.Any() || removedPhotoIds.Any() ||
+                addedVideoTempIds.Any() || removedVideoIds.Any())
             {
                 changes["Photos"] = new
                 {
-                    addedTempIds = addedTempIds,
-                    removedPhotoIds = removedPhotoIds
+                    addedPhotoTempIds = addedTempIds,
+                    removedPhotoIds = removedPhotoIds,
+                    addedVideoTempIds = addedVideoTempIds,
+                    removedVideoIds = removedVideoIds
                 };
-            }
-
-            if (addedTempIds.Any() || removedPhotoIds.Any())
-            {
-                _logger.LogDebug(
-                    "Собраны изменения фото. Добавлено: {AddedCount}, Удалено: {RemovedCount}",
-                    addedTempIds.Count, removedPhotoIds.Count);
             }
         }
 
@@ -599,6 +655,12 @@ namespace Franchisee.Web.Controllers
                 Place = order.Place,
                 InspectionPlace = order.InspectionPlace,
                 OrderDate = order.OrderDate,
+
+                Latitude = order.Latitude,
+                Longitude = order.Longitude,
+                PlotId = order.PlotId,
+                PlotName = order.Plot?.Name,
+
                 DeceasedFullName = order.DeceasedFullName,
                 CustomerFullName = order.CustomerFullName,
                 CustomerEmail = order.CustomerEmail,
@@ -615,15 +677,16 @@ namespace Franchisee.Web.Controllers
                 ManagerFullName = order.Manager?.FullName ?? string.Empty,
                 WorkItems = order.WorkItems,
                 Payments = order.Payments,
-                Photos = order.Photos.Select(p => new OrderPhotoDto
+                Photos = order.Photos.Select(p => new OrderMediaDto // Изменено с OrderPhotoDto
                 {
                     Id = p.Id,
-                    Url = $"/api/photos/{p.Id}/file",
+                    Url = $"/api/media/{p.Id}/file",
                     OriginalFileName = p.OriginalFileName,
                     Size = p.Size,
                     UploadedAt = p.UploadedAt,
                     Width = p.Width ?? 0,
-                    Height = p.Height ?? 0
+                    Height = p.Height ?? 0,
+                    MediaType = p.MediaType
                 }).ToList(),
                 IsDeleted = order.IsDeleted,
                 DeletedAt = order.DeletedAt

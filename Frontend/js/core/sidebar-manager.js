@@ -635,7 +635,6 @@ export class SidebarManager {
             const usersLink = document.querySelector('a[href="users.html"]');
             
             if (!usersLink) {
-                console.error('SidebarManager: Users link not found!');
                 return;
             }
             

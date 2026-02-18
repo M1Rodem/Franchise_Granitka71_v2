@@ -510,9 +510,7 @@ export function isValidEmail(email) {
     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 }
 
-export function isValidPhone(phone) {
-    return /^\+?[\d\s\-\(\)]{10,}$/.test(phone);
-}
+export { isValidPhone } from './phone-mask.js';
 
 export function getOrderStatusText(status) {
     const map = {

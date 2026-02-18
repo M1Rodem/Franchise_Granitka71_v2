@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Управление участками - Granitka71</title>
+    
+    <!-- Base Styles -->
+    <link rel="stylesheet" href="../CSS/base/reset.css">
+    <link rel="stylesheet" href="../CSS/base/variables.css">
+    <link rel="stylesheet" href="../CSS/base/utilities.css">
+    <link rel="stylesheet" href="../CSS/base/typography.css">
+    
+    <!-- Layout -->
+    <link rel="stylesheet" href="../CSS/layout/header.css">
+    <link rel="stylesheet" href="../CSS/layout/sidebar.css">
+    <link rel="stylesheet" href="../CSS/layout/main-content.css">
+    
+    <!-- Components -->
+    <link rel="stylesheet" href="../CSS/components/buttons.css">
+    <link rel="stylesheet" href="../CSS/components/forms.css">
+    <link rel="stylesheet" href="../CSS/components/tables.css">
+    <link rel="stylesheet" href="../CSS/components/cards.css">
+    <link rel="stylesheet" href="../CSS/components/modals.css">
+    <link rel="stylesheet" href="../CSS/components/toasts.css">
+    <link rel="stylesheet" href="../CSS/components/loading.css">
+    <link rel="stylesheet" href="../CSS/components/map.css">
+    
+    <!-- Pages -->
+    <link rel="stylesheet" href="../CSS/pages/plot.css">
+    
+    <!-- Leaflet -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+</head>
+<body>
+    <header class="header" role="banner">
+        <div class="container">
+            <div class="header-content">
+                <button id="burgerBtn" class="burger-btn" aria-label="Открыть меню" aria-expanded="false">☰</button>
+                <a href="../dashboard.html"><h1>Granitka71</h1></a>
+                <div class="user-info">
+                    <a href="../profile.html" id="userName" class="user-profile-link">Пользователь</a>
+                    <button id="logoutBtn" class="btn btn-outline">Выйти</button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <nav class="sidebar" id="sidebar" role="navigation">
+        <div class="nav-menu">
+            <a href="../dashboard.html" class="nav-item" data-page="dashboard">Дашборд</a>
+            <a href="../orders.html" class="nav-item" data-page="orders">Заказы</a>
+            <a href="../create-order.html" class="nav-item" data-page="create">Создать заказ</a>
+            <a href="../archived-orders.html" class="nav-item" data-page="archived">Архив</a>
+            <a href="../notifications.html" class="nav-item" data-page="notifications">
+                Уведомления&nbsp;
+                <span id="notificationsBadge" class="badge" style="display: none;">0</span>
+            </a>
+            <a href="../admin.html" class="nav-item admin-only" data-page="admin" style="display: none;">Админ-панель</a>
+        </div>
+    </nav>
+    
+    <main class="main-content" id="mainContent" role="main">
+        <div class="container">
+            <div class="page-header">
+                <h1>Управление участками</h1>
+                <div class="page-header-actions">
+                    <button id="createPlotBtn" class="btn btn-primary">+ Добавить участок</button>
+                    <a href="../admin.html" class="btn btn-outline">← Назад в админ-панель</a>
+                </div>
+            </div>
+
+            <!-- Фильтры -->
+            <div class="filters">
+                <div class="search-group">
+                    <input type="text" id="searchInput" class="search-input" 
+                           placeholder="Поиск по названию, адресу...">
+                </div>
+                <button id="resetFilters" class="btn btn-outline">Сбросить</button>
+            </div>
+
+            <!-- Таблица -->
+            <div class="plots-table-container">
+                <table class="orders-table plots-table">
+                    <thead>
+                        <tr>
+                            <th>Название</th>
+                            <th>Статус</th>
+                            <th>Действия</th>
+                        </tr>
+                    </thead>
+                    <tbody id="plotsTableBody">
+                        <!-- JS -->
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Пагинация -->
+            <div class="pagination">
+                <button id="prevPage" class="btn btn-outline">← Назад</button>
+                <span id="pageInfo">Страница 1 из 1</span>
+                <button id="nextPage" class="btn btn-outline">Вперед →</button>
+            </div>
+        </div>
+    </main>
+
+    <!-- Модальное окно создания/редактирования участка -->
+    <div id="plotModal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="plotModalTitle" tabindex="-1">
+        <div class="modal-content glass-modal">            
+            <div class="modal-header">
+                <h3 id="plotModalTitle" class="modal-title">Добавить участок</h3>
+            </div>
+            
+            <div class="modal-body">
+                <form id="plotForm" class="modal-form">
+                    <div class="form-group">
+                        <label for="plotName">Название участка *</label>
+                        <input type="text" id="plotName" required 
+                            placeholder="Например: Центральная площадь" 
+                            maxlength="100" autocomplete="off">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="plotAddress">Адрес</label>
+                        <input type="text" id="plotAddress" 
+                            placeholder="Определится автоматически после выбора на карте" 
+                            autocomplete="off" readonly>
+                        <small>Адрес заполняется автоматически при выборе точки</small>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Местоположение на карте *</label>
+                        <div class="map-search-container">
+                            <div id="mapContainer" class="map-container"></div>
+                            <div class="map-coordinates">
+                                Координаты: <span id="coordinatesDisplay">не выбраны</span>
+                            </div>
+                            <small>Кликните по карте или перетащите метку. Можно использовать встроенный поиск.</small>
+                        </div>
+                    </div>
+                    
+                    <div class="modal-actions">
+                        <button type="submit" id="savePlotBtn" class="btn btn-primary" disabled>
+                            Сохранить
+                        </button>
+                        <button type="button" data-close-modal class="btn btn-outline">
+                            Отмена
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Модальное окно подтверждения удаления -->
+    <div id="deleteConfirmModal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="deleteConfirmTitle" tabindex="-1">
+        <div class="modal-content glass-modal" style="max-width: 420px;">
+            
+            <div class="modal-header">
+                <h3 id="deleteConfirmTitle" class="modal-title">Удалить участок?</h3>
+            </div>
+            
+            <div class="modal-body">
+                <p id="deleteConfirmMessage">Вы действительно хотите удалить участок?</p>
+                <p class="text-warning"><small>Действие нельзя отменить.</small></p>
+            </div>
+            
+            <div class="modal-actions">
+                <button type="button" id="confirmDeleteBtn" class="btn btn-danger">
+                    Удалить
+                </button>
+                <button type="button" data-close-modal class="btn btn-outline">
+                    Отмена
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { SidebarManager } from '../js/core/sidebar-manager.js';
+        import { PageManager } from '../js/core/page-manager.js';
+        
+        document.addEventListener('DOMContentLoaded', () => {
+            SidebarManager.init();
+            PageManager.initialize('plots');
+        });
+    </script>
+    
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    
+    <!-- Наши скрипты -->
+    <script type="module" src="../js/pages/admin-plots.js"></script>
+</body>
+</html>

@@ -20,7 +20,8 @@ namespace Franchisee.Web.Services
                 .Include(o => o.WorkItems)
                 .Include(o => o.Payments)
                 .Include(o => o.Photos)
-                .Include(o => o.Manager) // ДОБАВЛЯЕМ ПРОЕКЦИЮ
+                .Include(o => o.Manager)
+                .Include(o => o.Plot)  // ДОБАВЛЯЕМ ПОДГРУЗКУ УЧАСТКА
                 .Select(o => new Order
                 {
                     Id = o.Id,
@@ -28,6 +29,12 @@ namespace Franchisee.Web.Services
                     Place = o.Place,
                     InspectionPlace = o.InspectionPlace,
                     OrderDate = o.OrderDate,
+
+                    // ГЕОДАННЫЕ - ДОБАВЛЯЕМ!
+                    Latitude = o.Latitude,
+                    Longitude = o.Longitude,
+                    PlotId = o.PlotId,
+
                     DeceasedFullName = o.DeceasedFullName,
                     CustomerFullName = o.CustomerFullName,
                     CustomerEmail = o.CustomerEmail,
@@ -41,10 +48,23 @@ namespace Franchisee.Web.Services
                     CreatedAt = o.CreatedAt,
                     UpdatedAt = o.UpdatedAt,
                     ManagerId = o.ManagerId,
-                    Manager = o.Manager == null ? null : new Manager // ПРОЕКЦИЯ МЕНЕДЖЕРА
+
+                    // ПРОЕКЦИЯ МЕНЕДЖЕРА
+                    Manager = o.Manager == null ? null : new Manager
                     {
                         FullName = o.Manager.FullName,
                     },
+
+                    // ПРОЕКЦИЯ УЧАСТКА - ДОБАВЛЯЕМ!
+                    Plot = o.Plot == null ? null : new Plot
+                    {
+                        Id = o.Plot.Id,
+                        Name = o.Plot.Name,
+                        Latitude = o.Plot.Latitude,
+                        Longitude = o.Plot.Longitude,
+                        IsActive = o.Plot.IsActive
+                    },
+
                     WorkItems = o.WorkItems,
                     Payments = o.Payments,
                     Photos = o.Photos,
@@ -58,7 +78,6 @@ namespace Franchisee.Web.Services
         {
             return await _context.Orders.AnyAsync(o => o.Id == id);
         }
-
         public async Task<Order?> GetByIdAsync(int id)
         {
             return await BaseQuery().FirstOrDefaultAsync(o => o.Id == id);

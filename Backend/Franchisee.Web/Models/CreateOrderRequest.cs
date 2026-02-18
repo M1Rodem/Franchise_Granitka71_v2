@@ -6,19 +6,32 @@ namespace Franchisee.Web.Models
     {
         public string? OrderNumber { get; set; }
         [Required] public string Place { get; set; } = string.Empty;
+
+        [Required]
         public string InspectionPlace { get; set; } = string.Empty;
-        public DateTime OrderDate { get; set; } = DateTime.UtcNow; 
+
+        public DateTime OrderDate { get; set; } = DateTime.UtcNow;
+
+        public double? Latitude { get; set; }
+        public double? Longitude { get; set; }
+        public int? PlotId { get; set; }
+
         [Required] public string DeceasedFullName { get; set; } = string.Empty;
         [Required] public string CustomerFullName { get; set; } = string.Empty;
         public string? CustomerEmail { get; set; }
         [Required] public string Address { get; set; } = string.Empty;
-        [Required] public string Phone { get; set; } = string.Empty;
-        public string MonumentType { get; set; } = string.Empty;        // ← УБРАЛ [Required]
-        public string MonumentSize { get; set; } = string.Empty;        // ← УБРАЛ [Required]
-        public string? AdditionalInfo { get; set; } 
+
+        public string Phone { get; set; } = string.Empty;
+
+        public string MonumentType { get; set; } = string.Empty;
+        public string MonumentSize { get; set; } = string.Empty;
+        public string? AdditionalInfo { get; set; }
         public decimal TotalPrice { get; set; } = 0;
+
         public List<OrderWorkItem>? WorkItems { get; set; } = new();
         public List<OrderPayment>? Payments { get; set; } = new();
-        public List<int> TempUploadIds { get; set; } = new();
+
+        public List<int> TempPhotoIds { get; set; } = new();
+        public List<int> TempVideoIds { get; set; } = new();
     }
 }

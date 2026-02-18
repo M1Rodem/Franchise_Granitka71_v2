@@ -5,6 +5,7 @@ using Franchisee.Web.Services.Hubs;
 using Franchisee.Web.Services.Repositories;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Http.Features;
+using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.FileProviders;
 using Microsoft.IdentityModel.Tokens;
@@ -64,10 +65,24 @@ namespace Franchisee.Web.Configuration
 
             services.AddScoped<IPrintService, PrintService>();
 
-            // Поддержка больших файлов
+            // Поддержка больших файлов - УВЕЛИЧИВАЕМ ДО 500 МБ
             services.Configure<FormOptions>(options =>
             {
-                options.MultipartBodyLengthLimit = 100_000_000; // 100 MB
+                options.MultipartBodyLengthLimit = 500_000_000; // 500 MB
+                options.ValueLengthLimit = int.MaxValue;
+                options.MultipartBoundaryLengthLimit = int.MaxValue;
+                options.MemoryBufferThreshold = int.MaxValue;
+            });
+
+            // Поддержка больших файлов для Kestrel
+            services.Configure<IISServerOptions>(options =>
+            {
+                options.MaxRequestBodySize = 500_000_000; // 500 MB
+            });
+
+            services.Configure<KestrelServerOptions>(options =>
+            {
+                options.Limits.MaxRequestBodySize = 500_000_000; // 500 MB
             });
 
             // Основные сервисы MVC
@@ -108,6 +123,9 @@ namespace Franchisee.Web.Configuration
 
                 // загрузки файлов в Swagger
                 c.OperationFilter<FileUploadOperationFilter>();
+
+                // Добавляем поддержку enum как строк
+                c.UseInlineDefinitionsForEnums();
             });
 
             // JWT Authentication
@@ -170,7 +188,7 @@ namespace Franchisee.Web.Configuration
                 options.UseNpgsql(configuration.GetConnectionString("DefaultConnection")));
 
             // Репозитории и сервисы
-            services.AddScoped<IPhotoService, PhotoService>();
+            // УБИРАЕМ: services.AddScoped<IPhotoService, PhotoService>(); - заменено на IMediaService в Program.cs
             services.AddScoped<IManagerRepository, ManagerRepository>();
             services.AddScoped<IOrderRepository, OrderRepository>();
             services.AddScoped<INotificationService, NotificationService>();
@@ -178,6 +196,8 @@ namespace Franchisee.Web.Configuration
             // Фоновые сервисы
             services.AddHostedService<OldNotificationsCleanupService>();
             services.AddHostedService<PostponedNotificationCleanupService>();
+
+            // Обновляем сервис очистки временных файлов для работы с MediaService
             services.AddHostedService<ExpiredTempCleanupService>();
         }
 
@@ -200,7 +220,11 @@ namespace Franchisee.Web.Configuration
             {
                 FileProvider = new PhysicalFileProvider(
                 Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "uploads")),
-                RequestPath = "/uploads"
+                RequestPath = "/uploads",
+
+                // Увеличиваем лимиты для статических файлов
+                ServeUnknownFileTypes = true,
+                DefaultContentType = "application/octet-stream"
             });
 
             app.UseRouting();
@@ -230,6 +254,7 @@ namespace Franchisee.Web.Configuration
         {
             var uploadsPath = Path.Combine(env.WebRootPath, "uploads");
             var tempPath = Path.Combine(uploadsPath, "temp");
+            var tempVideosPath = Path.Combine(tempPath, "videos");
             var ordersPath = Path.Combine(uploadsPath, "orders");
 
             if (!Directory.Exists(uploadsPath))
@@ -241,6 +266,11 @@ namespace Franchisee.Web.Configuration
             {
                 Directory.CreateDirectory(tempPath);
                 Log.Information("Создана папка для временных файлов: {TempPath}", tempPath);
+            }
+            if (!Directory.Exists(tempVideosPath))
+            {
+                Directory.CreateDirectory(tempVideosPath);
+                Log.Information("Создана папка для временных видео: {TempVideosPath}", tempVideosPath);
             }
             if (!Directory.Exists(ordersPath))
             {
@@ -262,22 +292,22 @@ namespace Franchisee.Web.Configuration
                 operation.RequestBody = new OpenApiRequestBody
                 {
                     Content = {
-                    ["multipart/form-data"] = new OpenApiMediaType
-                    {
-                        Schema = new OpenApiSchema
+                        ["multipart/form-data"] = new OpenApiMediaType
                         {
-                            Type = "object",
-                            Properties = {
-                                ["file"] = new OpenApiSchema {
-                                    Type = "string",
-                                    Format = "binary",
-                                    Description = "Выберите файл для загрузки"
-                                }
-                            },
-                            Required = new HashSet<string> { "file" }
+                            Schema = new OpenApiSchema
+                            {
+                                Type = "object",
+                                Properties = {
+                                    ["file"] = new OpenApiSchema {
+                                        Type = "string",
+                                        Format = "binary",
+                                        Description = "Выберите файл для загрузки"
+                                    }
+                                },
+                                Required = new HashSet<string> { "file" }
+                            }
                         }
                     }
-                }
                 };
             }
         }

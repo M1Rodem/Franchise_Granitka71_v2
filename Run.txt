@@ -1,3 +1,8 @@
+Бэк
+dotnet build
+dotnet run
+
+Фронт
 dev run - 
 npm run dev
 

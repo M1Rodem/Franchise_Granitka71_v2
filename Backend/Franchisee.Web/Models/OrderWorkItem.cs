@@ -11,5 +11,6 @@ namespace Franchisee.Web.Models
         public decimal Price { get; set; }
         public int Quantity { get; set; } = 1;
         public string Note { get; set; } = string.Empty;
+        public double? DistanceKm { get; set; }
     }
 }

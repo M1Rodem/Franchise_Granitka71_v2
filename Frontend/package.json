@@ -4,7 +4,9 @@
     "description": "Frontend for Granitka71",
     "type": "module",
     "scripts": {
-        "dev": "vite",
+        "dev": "concurrently \"npm run dev:vite\" \"npm run dev:server\"",
+        "dev:vite": "vite",
+        "dev:server": "node server.js",
         "build": "vite build",
         "build:prod": "vite build --mode production",
         "preview": "vite preview",
@@ -19,6 +21,7 @@
         "http-proxy-middleware": "^3.0.5"
     },
     "devDependencies": {
+        "concurrently": "^9.2.1",
         "javascript-obfuscator": "^4.1.0",
         "terser": "^5.31.6",
         "vite": "^7.2.2"

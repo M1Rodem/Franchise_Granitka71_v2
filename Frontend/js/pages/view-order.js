@@ -5,7 +5,13 @@ import {
     getPaymentStatus, getPaymentStatusText, getUserNameFromOrder, getStatusBadgeClass, 
     formatPaymentType, formatFileSize 
 } from '../utils/utils.js';
-import { renderPhotoGrid, attachPhotoEvents, cleanupPhotoBlobs, openPhotoPreview } from '../utils/photo-utils.js';
+import { 
+    renderPhotoGrid, 
+    attachMediaEvents, 
+    cleanupPhotoBlobs, 
+    openPhotoPreview,
+    openVideoPreview  // ДОБАВИТЬ ЭТОТ ИМПОРТ
+} from '../utils/photo-utils.js';
 import { ModalUtils } from '../utils/modal-utils.js';
 import { printOrder, downloadOrderExcel } from '../utils/print-utils.js';
 import { checkBlocking, handleNavigationWithBlockingCheck } from '../notification/notification-blocking.js';
@@ -129,7 +135,18 @@ export class ViewOrderManager {
             }
 
             this.orderData = order;
-            this.renderOrderDetails(order);
+            
+            // Загружаем данные участка если есть plotId
+            if (order.plotId) {
+                try {
+                    const plots = await apiService.getPlots(true); // true = includeInactive
+                    this.selectedPlot = plots.find(p => p.id === order.plotId);
+                } catch (error) {
+                    console.warn('Could not load plot details:', error);
+                }
+            }
+            
+            this.renderOrderDetails(order); // Теперь рендерит с картой
             this.renderWorkItems(order.workItems || []);
             this.renderPayments(order.payments || []);
             await this.renderOrderPhotos(order.photos || []);
@@ -153,6 +170,24 @@ export class ViewOrderManager {
         const statusText = getPaymentStatusText(order);
         const statusClass = getStatusBadgeClass(paymentStatus);
         const totalPrice = order.totalPrice || 0;
+        
+        // Форматируем телефон
+        const formattedPhone = this.formatPhoneNumber(order.phone);
+
+        // Данные для карты - используем this.selectedPlot
+        const hasMapData = order.latitude && order.longitude && this.selectedPlot;
+        const plotCoords = hasMapData ? { 
+            lat: this.selectedPlot.latitude, 
+            lng: this.selectedPlot.longitude 
+        } : null;
+        const clientCoords = hasMapData ? { 
+            lat: order.latitude, 
+            lng: order.longitude 
+        } : null;
+        
+        // Находим работу "Расстояние" для получения времени
+        const distanceWork = order.workItems?.find(w => w.workDescription === 'Расстояние');
+        const distanceText = distanceWork?.note || '';
 
         this.orderView.innerHTML = `
             <header class="order-header">
@@ -165,36 +200,61 @@ export class ViewOrderManager {
                 <div class="order-section">
                     <h3>Клиент</h3>
                     <p><strong>ФИО:</strong> ${escapeHtml(order.customerFullName || '')}</p>
-                    <p><strong>Email:</strong> ${escapeHtml(order.customerEmail || '')}</p>
-                    <p><strong>Телефон:</strong> ${escapeHtml(order.phone || '')}</p>
+                    <p><strong>Email:</strong> ${order.customerEmail ? escapeHtml(order.customerEmail) : '—'}</p>
+                    <p><strong>Телефон:</strong> 
+                        <a href="tel:${order.phone}" text-decoration: none;">
+                            ${this.formatPhoneNumber(order.phone)}
+                        </a>
+                    </p>
                     <p><strong>Адрес:</strong> ${escapeHtml(order.address || '')}</p>
                 </div>
                 <div class="order-section">
                     <h3>Покойный</h3>
-                    <p><strong>ФИО:</strong> ${escapeHtml(order.deceasedFullName || '')}</p>
-                </div>
-                <div class="order-section">
-                    <h3>Место установки</h3>
-                    <p><strong>Участок:</strong> ${escapeHtml(order.place || '')}</p>
-                    <p><strong>Место осмотра:</strong> ${escapeHtml(order.inspectionPlace || '')}</p>
-                    <p><strong>Дата заказа:</strong> ${formatDate(order.orderDate)}</p>
-                </div>
+                    <p><strong>ФИО и Даты:</strong> ${escapeHtml(order.deceasedFullName || '')}</p>
+                </div>                
                 <div class="order-section">
                     <h3>Монумент</h3>
-                    <p><strong>Тип:</strong> ${escapeHtml(order.monumentType || '')}</p>
-                    <p><strong>Размер:</strong> ${escapeHtml(order.monumentSize || '')}</p>
+                    <p><strong>Тип:</strong> ${escapeHtml(order.monumentType || '—')}</p>
+                    <p><strong>Размер:</strong> ${escapeHtml(order.monumentSize || '—')}</p>
                     <p><strong>Дополнительно:</strong> ${escapeHtml(order.additionalInfo || '—')}</p>
                 </div>
                 <div class="order-section">
                     <h3>Метаданные</h3>
                     <p><strong>Менеджер:</strong> ${escapeHtml(getUserNameFromOrder(order))}</p>
-                    <p><strong>Создана:</strong> ${formatDate(order.createdAt)}</p>
+                    <p><strong>Дата заказа:</strong> ${formatDate(order.orderDate)}</p>
                     <p><strong>Обновлена:</strong> ${formatDate(order.updatedAt)}</p>
-                    <p><strong>Сумма:</strong> ${formatCurrency(totalPrice)}</p>
+                </div>
+                <div class="order-section order-section-large">
+                    <h3>Место установки</h3>
+                    <p><strong>Участок:</strong> ${escapeHtml(order.place || '')}</p>
+                    <p><strong>Место смотрел:</strong> ${escapeHtml(order.inspectionPlace || '')}</p>
+                    
+                    ${hasMapData ? `
+                        <div class="mini-map-container" id="orderMiniMap" style="height: 200px; margin: 15px 0; border-radius: 8px; border: 1px solid var(--glass-border);"></div>
+                        <div class="distance-info" style="margin: 10px 0; padding: 8px; background: rgba(16, 185, 129, 0.1); border-radius: 4px;">
+                            <strong>Расстояние до участка:</strong> ${escapeHtml(distanceText)}
+                        </div>
+                        <a href="${this.buildNavigatorUrl(plotCoords.lat, plotCoords.lng, clientCoords.lat, clientCoords.lng)}" 
+                        target="_blank" 
+                        class="navigator-link" 
+                        style="display: inline-block; margin-top: 5px; padding: 8px 15px; background: #f0f0f0; border-radius: 4px; text-decoration: none; color: #333;">
+                            Открыть в Яндекс.Навигаторе
+                        </a>
+                    ` : '<p><em>Координаты не указаны</em></p>'}
                 </div>
             </div>
         `;
+
+        // Инициализируем мини-карту если есть координаты
+        if (hasMapData) {
+            this.orderMapContainer = document.getElementById('orderMiniMap');
+            // Небольшая задержка, чтобы DOM успел отрисоваться
+            setTimeout(() => {
+                this.initMiniMap(plotCoords, clientCoords);
+            }, 100);
+        }
     }
+
 
     renderWorkItems(workItems) {
         if (!this.workItemsContainer) return;
@@ -299,25 +359,194 @@ export class ViewOrderManager {
         }
 
         try {
-            if (typeof renderPhotoGrid === 'function') {
-                await renderPhotoGrid(photos, 'orderPhotos', { 
-                    mode: 'view',
-                    orderNumber: this.orderData.orderNumber
-                });
+            // Очищаем контейнер
+            this.orderPhotos.innerHTML = '';
+            
+            // Загружаем каждое медиа и создаем для него элемент
+            for (const media of photos) {
+                const isVideo = media.mediaType === 1;
+                const mediaType = isVideo ? 'video' : 'photo';
                 
-                if (typeof attachPhotoEvents === 'function') {
-                    attachPhotoEvents('orderPhotos', { 
-                        mode: 'view',
-                        orderNumber: this.orderData.orderNumber
-                    });
+                const item = document.createElement('div');
+                item.className = 'media-item';
+                item.dataset.mediaId = media.id;
+                item.dataset.mediaType = mediaType;
+                item.dataset.mediaTypeCode = media.mediaType;
+                item.dataset.photoIndex = photos.indexOf(media) + 1;
+                item.dataset.orderNumber = this.orderData?.orderNumber;
+                
+                const container = document.createElement('div');
+                container.className = 'media-container';
+                
+                if (isVideo) {
+                    // Для видео пытаемся извлечь кадр
+                    try {
+                        // Получаем URL видео
+                        const videoUrl = `/api/media/${media.id}/file`;
+                        
+                        // Создаем video элемент для извлечения кадра
+                        const video = document.createElement('video');
+                        video.src = videoUrl;
+                        video.crossOrigin = 'anonymous';
+                        video.preload = 'metadata';
+                        
+                        // Добавляем заголовок авторизации
+                        const headers = new Headers();
+                        headers.append('Authorization', `Bearer ${apiService.token}`);
+                        
+                        // Загружаем видео через fetch для получения blob
+                        const response = await fetch(videoUrl, {
+                            headers: { 'Authorization': `Bearer ${apiService.token}` }
+                        });
+                        const blob = await response.blob();
+                        video.src = URL.createObjectURL(blob);
+                        
+                        // Создаем canvas для извлечения кадра
+                        const canvas = document.createElement('canvas');
+                        canvas.className = 'media-canvas';
+                        
+                        // Ждем загрузки метаданных
+                        await new Promise((resolve, reject) => {
+                            video.onloadedmetadata = () => {
+                                // Устанавливаем время для извлечения кадра (0.5 секунды)
+                                video.currentTime = Math.min(0.5, video.duration || 0.5);
+                            };
+                            
+                            video.onseeked = () => {
+                                // Рисуем кадр на canvas
+                                canvas.width = video.videoWidth || 300;
+                                canvas.height = video.videoHeight || 200;
+                                const ctx = canvas.getContext('2d');
+                                ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                                
+                                // Очищаем URL
+                                URL.revokeObjectURL(video.src);
+                                video.remove();
+                                resolve();
+                            };
+                            
+                            video.onerror = () => {
+                                console.warn(`Failed to load video ${media.id}`);
+                                reject(new Error('Video load failed'));
+                            };
+                            
+                            video.onstalled = () => reject(new Error('Video stalled'));
+                        });
+                        
+                        container.appendChild(canvas);
+                        
+                    } catch (error) {
+                        console.warn(`Could not extract frame from video ${media.id}:`, error);
+                        
+                        // Fallback - показываем иконку
+                        const videoPlaceholder = document.createElement('div');
+                        videoPlaceholder.className = 'video-placeholder';
+                        videoPlaceholder.innerHTML = `
+                            <div class="video-label">Видео</div>
+                        `;
+                        container.appendChild(videoPlaceholder);
+                    }
+                    
+                    // Добавляем оверлей с play-кнопкой
+                    const overlay = document.createElement('div');
+                    overlay.className = 'video-play-overlay';
+                    overlay.innerHTML = '<div class="video-play-icon">▶</div>';
+                    container.appendChild(overlay);
+                    
+                } else {
+                    // Для фото используем прямой URL
+                    const img = document.createElement('img');
+                    img.src = `/api/media/${media.id}/file`;
+                    img.className = 'media-img';
+                    img.alt = escapeHtml(media.originalFileName || 'Фото');
+                    img.loading = 'lazy';
+                    
+                    // Добавляем заголовок авторизации через fetch
+                    img.onerror = () => {
+                        console.warn(`Failed to load image ${media.id}, trying with auth header`);
+                        fetch(`/api/media/${media.id}/file`, {
+                            headers: { 'Authorization': `Bearer ${apiService.token}` }
+                        })
+                        .then(response => response.blob())
+                        .then(blob => {
+                            const url = URL.createObjectURL(blob);
+                            img.src = url;
+                        })
+                        .catch(err => {
+                            console.error(`Error loading image ${media.id}:`, err);
+                            img.style.display = 'none';
+                            const errorDiv = document.createElement('div');
+                            errorDiv.className = 'media-error';
+                            errorDiv.textContent = 'Ошибка загрузки';
+                            container.appendChild(errorDiv);
+                        });
+                    };
+                    
+                    container.appendChild(img);
                 }
-            } else {
-                // Fallback render
-                this.renderPhotosFallback(photos);
+                
+                // Бейдж типа
+                const badge = document.createElement('div');
+                badge.className = `media-type-badge ${mediaType}`;
+                badge.textContent = isVideo ? 'Видео' : 'Фото';
+                container.appendChild(badge);
+                
+                item.appendChild(container);
+                
+                // Информация
+                const info = document.createElement('div');
+                info.className = 'media-info';
+                info.innerHTML = `
+                    <div class="media-name" title="${escapeHtml(media.originalFileName || '')}">
+                        ${escapeHtml(media.originalFileName || (isVideo ? 'Видео' : 'Фото'))}
+                    </div>
+                    <div class="media-meta">
+                        <span>${formatFileSize(media.size)}</span>
+                        <span>${formatDate(media.uploadedAt)}</span>
+                    </div>
+                `;
+                item.appendChild(info);
+                
+                this.orderPhotos.appendChild(item);
             }
+            
+            // Навешиваем обработчики для просмотра
+            this.orderPhotos.addEventListener('click', (e) => {
+                const item = e.target.closest('.media-item');
+                if (!item) return;
+                
+                const mediaId = item.dataset.mediaId;
+                const mediaType = item.dataset.mediaType;
+                const fileName = item.querySelector('.media-name')?.textContent || 'Файл';
+                const orderNumber = item.dataset.orderNumber;
+                const photoIndex = item.dataset.photoIndex;
+                
+                if (mediaType === 'video') {
+                    if (typeof openVideoPreview === 'function') {
+                        openVideoPreview(mediaId, fileName, orderNumber, false);
+                    } else {
+                        console.error('openVideoPreview is not defined');
+                        showTempMessage('Функция просмотра видео недоступна', 'error');
+                    }
+                } else {
+                    const img = item.querySelector('img');
+                    if (img) {
+                        openPhotoPreview(
+                            img.src,
+                            fileName,
+                            mediaId,
+                            orderNumber,
+                            photoIndex
+                        );
+                    }
+                }
+            });
+            
+            console.log('[ViewOrder] Медиа отображено, элементов:', this.orderPhotos.children.length);
+            
         } catch (error) {
             console.error('Error rendering photos:', error);
-            this.renderPhotosFallback(photos);
+            this.orderPhotos.innerHTML = '<div class="no-photos">Ошибка загрузки фото</div>';
         }
     }
 
@@ -430,6 +659,191 @@ export class ViewOrderManager {
     // Cleanup при уничтожении
     destroy() {
         cleanupPhotoBlobs();
+    }
+
+    /**
+     * Форматирует телефон в нужный формат
+     */
+    formatPhoneNumber(phone) {
+        if (!phone) return '';
+        
+        // Очищаем от всего кроме цифр
+        let digits = phone.replace(/\D/g, '');
+        
+        // Если номер начинается с 8, меняем на 7
+        if (digits.length === 11 && digits[0] === '8') {
+            digits = '7' + digits.substring(1);
+        }
+        
+        // Если номер уже с 7 и 11 цифр
+        if (digits.length === 11 && digits[0] === '7') {
+            return `+7 (${digits.substring(1, 4)}) ${digits.substring(4, 7)}-${digits.substring(7, 9)}-${digits.substring(9, 11)}`;
+        }
+        
+        // Если 10 цифр без 7
+        if (digits.length === 10) {
+            return `+7 (${digits.substring(0, 3)}) ${digits.substring(3, 6)}-${digits.substring(6, 8)}-${digits.substring(8, 10)}`;
+        }
+        
+        // Если что-то другое - возвращаем как есть
+        return phone;
+    }
+
+    /**
+     * Инициализация мини-карты для просмотра заказа
+     */
+    async initMiniMap(plotCoords, clientCoords) {
+        if (!plotCoords || !clientCoords || !this.orderMapContainer) {
+            return;
+        }
+        
+        try {            
+            // Загружаем API если еще не загружен
+            if (!window.ymaps) {
+                await this.loadYandexMaps();
+            }
+            
+            await new Promise(resolve => ymaps.ready(resolve));
+            
+            // Очищаем контейнер
+            this.orderMapContainer.innerHTML = '';
+            
+            // Создаем мини-карту
+            this.miniMap = new ymaps.Map(this.orderMapContainer, {
+                center: [
+                    (plotCoords.lat + clientCoords.lat) / 2,
+                    (plotCoords.lng + clientCoords.lng) / 2
+                ],
+                zoom: 11,
+                controls: ['zoomControl']
+            });
+            
+            // Маркер участка (зеленый)
+            const plotMarker = new ymaps.Placemark(
+                [plotCoords.lat, plotCoords.lng],
+                { 
+                    hintContent: 'Участок',
+                    balloonContent: 'Участок: ' + (this.orderData?.place || '')
+                },
+                { preset: 'islands#greenIcon' }
+            );
+            
+            // Маркер захоронения (красный)
+            const clientMarker = new ymaps.Placemark(
+                [clientCoords.lat, clientCoords.lng],
+                { 
+                    hintContent: 'Место захоронения',
+                    balloonContent: 'Место захоронения'
+                },
+                { preset: 'islands#redIcon' }
+            );
+            
+            this.miniMap.geoObjects.add(plotMarker);
+            this.miniMap.geoObjects.add(clientMarker);
+            
+            // ===== ДОБАВЛЯЕМ МАРШРУТ =====
+            try {
+                // Создаем мультимаршрут
+                const multiRoute = new ymaps.multiRouter.MultiRoute({
+                    referencePoints: [
+                        [plotCoords.lat, plotCoords.lng],
+                        [clientCoords.lat, clientCoords.lng]
+                    ],
+                    params: {
+                        routingMode: 'auto',
+                        avoidTrafficJams: true,
+                        results: 1
+                    }
+                }, {
+                    boundsAutoApply: false,
+                    
+                    // ОТКЛЮЧАЕМ ВСТРОЕННЫЕ МАРКЕРЫ
+                    wayPointStartIconColor: '',           // Убираем цвет
+                    wayPointStartIconFillColor: '',       // Убираем заливку
+                    wayPointEndIconColor: '',             // Убираем цвет
+                    wayPointEndIconFillColor: '',         // Убираем заливку
+                    wayPointVisible: false,                // Скрываем точки маршрута
+                    
+                    // Оставляем только линию
+                    activeRouteStrokeColor: '#0066ff',
+                    activeRouteStrokeWidth: 4,
+                    activeRouteStrokeStyle: 'solid',
+                    
+                    // Отключаем всё лишнее
+                    balloonContentLayout: null,
+                    iconColor: 'transparent',
+                    pinVisible: false
+                });
+                
+                this.miniMap.geoObjects.add(multiRoute);
+                
+            } catch (routeError) {
+                console.error('Error creating route:', routeError);
+            }
+            
+            // Принудительно обновляем размер карты
+            this.miniMap.container.fitToViewport();            
+        } catch (error) {
+            console.error('Ошибка инициализации мини-карты:', error);
+            this.orderMapContainer.innerHTML = '<div style="padding: 20px; text-align: center; color: red;">Ошибка загрузки карты</div>';
+        }
+    }
+
+    /**
+     * Загрузка Яндекс.Карт
+     */
+    loadYandexMaps() {
+        return new Promise((resolve, reject) => {
+            if (window.ymaps) {
+                resolve();
+                return;
+            }
+            
+            // Получаем ключ из конфига
+            this.loadYandexConfig().then(config => {
+                const script = document.createElement('script');
+                script.src = `https://api-maps.yandex.ru/2.1/?apikey=${config.yandexMapsKey}&lang=ru_RU&load=package.full`;
+                script.onload = () => {
+                    resolve();
+                };
+                script.onerror = (error) => {
+                    console.error('Failed to load Yandex Maps:', error);
+                    reject(error);
+                };
+                document.head.appendChild(script);
+            }).catch(reject);
+        });
+    }
+
+    /**
+     * Загрузка конфига для Яндекс.Карт
+     */
+    async loadYandexConfig() {
+        try {
+            const response = await fetch('/api/config', {
+                headers: { 'Authorization': `Bearer ${apiService.token}` }
+            });
+            return await response.json();
+        } catch (error) {
+            console.error('Error loading Yandex config:', error);
+            return { yandexMapsKey: '2789b7ef-c9eb-49a8-ba22-9711e05ad7f0' };
+        }
+    }
+
+    /**
+     * Построение ссылки для Яндекс.Навигатора
+     */
+    buildNavigatorUrl(fromLat, fromLng, toLat, toLng) {
+        // Яндекс.Навигатор для мобильных устройств
+        const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+        
+        if (isMobile) {
+            // Для мобильных - открываем в приложении Навигатора
+            return `yandexnavi://build_route_on_map?lat_to=${toLat}&lon_to=${toLng}&lat_from=${fromLat}&lon_from=${fromLng}`;
+        } else {
+            // Для ПК - открываем в Яндекс.Картах с маршрутом
+            return `https://yandex.ru/maps/?rtext=${fromLat},${fromLng}~${toLat},${toLng}&rtt=auto`;
+        }
     }
 }
 

@@ -207,6 +207,17 @@
     background: var(--secondary);
 }
 
+/* SuperAdmin role styles */
+.role-superadmin {
+    background: rgba(245, 158, 11, 0.15);
+    color: #fbbf24;
+    border-color: rgba(245, 158, 11, 0.3);
+}
+
+.role-superadmin::before {
+    background: #fbbf24;
+}
+
 /* Действия в таблице */
 .actions {
     display: flex;

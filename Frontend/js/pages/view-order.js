@@ -166,10 +166,11 @@ export class ViewOrderManager {
     renderOrderDetails(order) {
         if (!this.orderView) return;
 
-        const paymentStatus = getPaymentStatus(order);
+        // ИСПОЛЬЗУЕМ paymentStatus С СЕРВЕРА!
+        const paymentStatus = order.paymentStatus; // Число: 1, 2, 3
         const statusText = getPaymentStatusText(order);
         const statusClass = getStatusBadgeClass(paymentStatus);
-        const totalPrice = order.totalPrice || 0;
+        const totalPrice = order.totalPrice || 0; // ИСПОЛЬЗУЕМ totalPrice С СЕРВЕРА!
         
         // Форматируем телефон
         const formattedPhone = this.formatPhoneNumber(order.phone);
@@ -255,6 +256,137 @@ export class ViewOrderManager {
         }
     }
 
+    /**
+     * НОВАЯ ФУНКЦИЯ: Валидация суммы платежа по правилу 30%
+     */
+    validatePaymentAmount(amount) {
+        if (!this.orderData) return { valid: false, error: 'Данные заказа не загружены' };
+        
+        const totalPrice = this.orderData.totalPrice || 0;
+        if (totalPrice === 0) {
+            return { valid: false, error: 'Нулевая сумма заказа' };
+        }
+        
+        const existingPayments = this.orderData.payments || [];
+        const totalPaid = existingPayments.reduce((sum, p) => sum + Number(p.amount || 0), 0);
+        
+        const amountNum = parseFloat(amount);
+        if (isNaN(amountNum) || amountNum <= 0) {
+            return { valid: false, error: 'Введите корректную сумму' };
+        }
+        
+        const minPayment = totalPrice * 0.3; // 30% от общей суммы
+        
+        // Первый платеж
+        if (totalPaid === 0) {
+            if (amountNum < minPayment) {
+                return { 
+                    valid: false, 
+                    error: `Минимальный первый платеж должен быть не менее 30% (${formatCurrency(minPayment)})` 
+                };
+            }
+        } 
+        // Последующие платежи - проверяем итоговую сумму
+        else {
+            const newTotalPaid = totalPaid + amountNum;
+            if (newTotalPaid < minPayment) {
+                const neededAmount = Math.ceil(minPayment - totalPaid);
+                return { 
+                    valid: false, 
+                    error: `Общая сумма платежей не может быть меньше 30% (нужно еще ${formatCurrency(neededAmount)})` 
+                };
+            }
+        }
+        
+        return { valid: true };
+    }
+
+    /**
+     * НОВАЯ ФУНКЦИЯ: Открытие модального окна для добавления платежа
+     */
+    async openAddPaymentModal() {
+        const { ModalUtils } = await import('../utils/modal-utils.js');
+        
+        const content = `
+            <div class="payment-form">
+                <div class="form-group">
+                    <label for="paymentAmount">Сумма платежа (₽)</label>
+                    <input type="number" id="paymentAmount" class="form-control" min="0" step="0.01" required>
+                </div>
+                <div class="form-group">
+                    <label for="paymentDate">Дата платежа</label>
+                    <input type="date" id="paymentDate" class="form-control" value="${getTodayDate()}">
+                </div>
+                <div class="form-group">
+                    <label for="paymentNote">Примечание</label>
+                    <input type="text" id="paymentNote" class="form-control" placeholder="Назначение платежа">
+                </div>
+                <div id="paymentValidationMessage" class="validation-message" style="color: var(--error); margin-top: 10px; display: none;"></div>
+            </div>
+        `;
+        
+        const result = await ModalUtils.prompt({
+            title: 'Добавить платеж',
+            content: content,
+            confirmText: 'Добавить',
+            validate: () => {
+                const amount = document.getElementById('paymentAmount')?.value;
+                const validation = this.validatePaymentAmount(amount);
+                
+                const messageEl = document.getElementById('paymentValidationMessage');
+                if (!validation.valid) {
+                    if (messageEl) {
+                        messageEl.textContent = validation.error;
+                        messageEl.style.display = 'block';
+                    }
+                    return false;
+                }
+                
+                if (messageEl) messageEl.style.display = 'none';
+                return true;
+            }
+        });
+        
+        if (result) {
+            const amount = document.getElementById('paymentAmount').value;
+            const date = document.getElementById('paymentDate').value;
+            const note = document.getElementById('paymentNote').value;
+            
+            await this.addPayment(amount, date, note);
+        }
+    }
+
+    /**
+     * НОВАЯ ФУНКЦИЯ: Отправка платежа на сервер
+     */
+    async addPayment(amount, date, note) {
+        try {
+            const paymentData = {
+                amount: parseFloat(amount),
+                paymentDate: date ? new Date(date).toISOString() : new Date().toISOString(),
+                note: note || ''
+            };
+            
+            const result = await apiService.addPayment(this.orderId, paymentData);
+            
+            showTempMessage('Платеж успешно добавлен', 'success');
+            
+            // Перезагружаем данные заказа
+            await this.loadOrderData();
+            
+            return result;
+        } catch (error) {
+            console.error('Error adding payment:', error);
+            
+            // Показываем ошибку от сервера
+            if (error.data?.message) {
+                showTempMessage(error.data.message, 'error');
+            } else {
+                handleApiError(error);
+            }
+            throw error;
+        }
+    }
 
     renderWorkItems(workItems) {
         if (!this.workItemsContainer) return;

@@ -22,62 +22,72 @@ class ApiService {
 
     // Основной request с timeout (5s)
     async request(endpoint, options = {}) {
-    
-    const url = `${API_BASE_URL}${endpoint}`;
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 5000);
-
-    // СОЗДАЕМ HEADERS ОДИН РАЗ
-    const headers = { 
-        'Content-Type': 'application/json', 
-        ...options.headers 
-    };
-
-    // ДОБАВЛЯЕМ AUTHORIZATION
-    if (this.token) {
-        headers['Authorization'] = `Bearer ${this.token}`;
-    }
-
-    const config = {
-        signal: controller.signal,
-        headers: headers,
-        ...options
-    }
-
-    try {
-        const response = await fetch(url, config);
         
-        clearTimeout(timeoutId);
+        const url = `${API_BASE_URL}${endpoint}`;
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 5000);
 
-        if (response.status === 429) {
-            const retryAfter = response.headers.get('Retry-After');
-            showTempMessage(`Слишком много запросов. Попробуйте через ${retryAfter || 60} секунд`, 'error');
-            throw new Error('Rate limit exceeded');
+        // СОЗДАЕМ HEADERS ОДИН РАЗ
+        const headers = { 
+            'Content-Type': 'application/json', 
+            ...options.headers 
+        };
+
+        // ДОБАВЛЯЕМ AUTHORIZATION
+        if (this.token) {
+            headers['Authorization'] = `Bearer ${this.token}`;
         }
 
-        const data = await this.parseResponse(response);
-        
-        if (!response.ok) {
-            if (response.status === 401) {
-                this.handleUnauthorized();
+        const config = {
+            signal: controller.signal,
+            headers: headers,
+            ...options
+        }
+
+        try {
+            const response = await fetch(url, config);
+            
+            clearTimeout(timeoutId);
+
+            if (response.status === 429) {
+                const retryAfter = response.headers.get('Retry-After');
+                showTempMessage(`Слишком много запросов. Попробуйте через ${retryAfter || 60} секунд`, 'error');
+                throw new Error('Rate limit exceeded');
+            }
+
+            const data = await this.parseResponse(response);
+            
+            if (!response.ok) {
+                if (response.status === 401) {
+                    this.handleUnauthorized();
+                    throw this.createError(response, data);
+                }
                 throw this.createError(response, data);
             }
-            throw this.createError(response, data);
-        }
 
-        return data;
-    } catch (error) {
-        clearTimeout(timeoutId);
-        
-        if (!navigator.onLine) {
-            showTempMessage('Нет подключения к интернету', 'error');
-            throw new Error('Offline mode');
+            return data;
+        } catch (error) {
+            clearTimeout(timeoutId);
+            
+            if (!navigator.onLine) {
+                showTempMessage('Нет подключения к интернету', 'error');
+                throw new Error('Offline mode');
+            }
+            
+            if (error.name === 'AbortError') throw new Error('Запрос прерван (timeout)');
+            throw error;
         }
-        
-        if (error.name === 'AbortError') throw new Error('Запрос прерван (timeout)');
-        throw error;
     }
-}
+    
+    /**
+     * НОВЫЙ МЕТОД: Добавление платежа к заказу
+     */
+    async addPayment(orderId, paymentData) {
+        return this.request(`/Orders/${orderId}/payments`, {
+            method: 'POST',
+            body: JSON.stringify(paymentData)
+        });
+    }
 
     async requestWithRetry(endpoint, options = {}, maxRetries = 2) {
         let lastError;
@@ -334,17 +344,15 @@ class ApiService {
 
     async getUnpaidOrdersStats() {
         try {
-            const response = await this.request('/Orders?page=1&pageSize=1000');
+            // Используем фильтр по PaymentStatus=1 (Аванс)
+            const response = await this.request('/Orders?page=1&pageSize=1000&PaymentStatus=1');
             
-            if (response && Array.isArray(response.items)) {
-                const unpaidOrders = response.items.filter(order => {
-                    const totalPaid = order.payments?.reduce((sum, p) => sum + (Number(p.amount) || 0), 0) || 0;
-                    const orderTotal = Number(order.totalAmount) || 0;
-                    // Неоплаченные - где сумма платежей равна 0
-                    return totalPaid === 0;
-                });
-                
-                return unpaidOrders.length;
+            if (response && response.totalCount !== undefined) {
+                // Сервер возвращает totalCount - общее количество с учетом фильтра
+                return response.totalCount;
+            } else if (response && Array.isArray(response.items)) {
+                // Fallback если сервер не поддерживает totalCount
+                return response.items.length;
             }
             return 0;
         } catch (error) {

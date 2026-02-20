@@ -43,5 +43,8 @@ namespace Franchisee.Web.Models
         public List<OrderWorkItem> WorkItems { get; set; } = new();
         public List<OrderPayment> Payments { get; set; } = new();
         public List<OrderMediaDto> Photos { get; set; } = new();
+
+        // НОВОЕ ПОЛЕ - статус оплаты
+        public PaymentStatus PaymentStatus { get; set; }
     }
 }

@@ -147,7 +147,7 @@
 }
 
 .stat-card[data-type="unpaid"] {
-    border-left: 4px solid var(--error);
+    border-left: 4px solid rgba(139, 92, 246, 0.4) !important;
 }
 
 .stat-card[data-type="today"] {
@@ -363,6 +363,7 @@
     transition: all 0.4s var(--ease-out-smooth);
     position: relative;
     overflow: hidden;
+    border: 1px solid rgba(16, 185, 129, 0.4);
 }
 
 .order-status::before {

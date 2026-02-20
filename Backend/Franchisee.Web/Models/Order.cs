@@ -40,7 +40,7 @@ namespace Franchisee.Web.Models
         public string AdditionalInfo { get; set; } = string.Empty;
         public OrderStatus Status { get; set; } = OrderStatus.Новый;
 
-        [NotMapped] public decimal TotalPrice { get; set; } = 0;
+        public decimal TotalPrice { get; set; } = 0;
 
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
         public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;

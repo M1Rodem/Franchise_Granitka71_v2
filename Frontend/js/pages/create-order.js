@@ -42,6 +42,19 @@ export class CreateOrderManager {
 
         this.isUpdatingDistance = false;
         this.lastDistanceUpdate = null;
+
+        this.updatingTotal = false;      // Флаг для предотвращения рекурсии в calculateTotalPrice
+        this.updatingPayment = false;    // Флаг для предотвращения рекурсии в updateFirstPaymentAmount
+    }
+
+    /**
+     * НОВЫЙ МЕТОД: Рассчитать 30% от общей суммы
+     * ИЗМЕНЕНО: Используем this.totalPriceInput.value вместо вызова calculateTotalPrice()
+     */
+    calculateThirtyPercent() {
+        // Берем значение из поля, которое уже обновлено
+        const total = parseFloat(this.totalPriceInput?.value) || 0;
+        return Math.round(total * 0.3 * 100) / 100; // Округляем до копеек
     }
     
     collectFormData() {
@@ -68,12 +81,12 @@ export class CreateOrderManager {
         const workItems = this.collectWorkItems();
         const payments = this.collectPayments();
         
-        // 4. ВЫЧИСЛЯЕМ ОБЩУЮ СУММУ
+        // 4. ВЫЧИСЛЯЕМ ОБЩУЮ СУММУ (только для создания/редактирования)
         const totalPrice = workItems.reduce((sum, item) => {
             return sum + (Number(item.price) || 0) * (Number(item.quantity) || 1);
         }, 0);
         
-        // 5. ОСНОВНОЙ ОБЪЕКТ ДАННЫХ (ВСЕ ПОЛЯ ВСЕГДА ПРИСУТСТВУЮТ)
+        // 5. ОСНОВНОЙ ОБЪЕКТ ДАННЫХ
         const data = {
             // Обязательные поля
             place: this.selectedPlot?.name || getFormValue('place') || '',
@@ -91,26 +104,23 @@ export class CreateOrderManager {
             monumentSize: getFormValue('monumentSize') || '',
             additionalInfo: getFormValue('additionalInfo') || '',
             status: 0, // По умолчанию "Новый"
-            totalPrice: totalPrice,
+            totalPrice: Math.round(totalPrice * 100) / 100, // Округляем до копеек
             
-            // Работы и платежи (ВСЕГДА массивы)
+            // Работы и платежи
             workItems: workItems,
             payments: payments,
             
-            // ===== КРИТИЧЕСКИ ВАЖНО: МЕДИА В ПРАВИЛЬНОМ ФОРМАТЕ =====
-            // Новые временные медиа
-            tempPhotoIds: this.draftChanges.tempPhotoIds || [], // Всегда массив
-            tempVideoIds: this.draftChanges.tempVideoIds || [], // Всегда массив
+            // Медиа
+            tempPhotoIds: this.draftChanges.tempPhotoIds || [],
+            tempVideoIds: this.draftChanges.tempVideoIds || [],
+            removedPhotoIds: this.draftChanges.removedPhotoIds || [],
+            removedVideoIds: this.draftChanges.removedVideoIds || [],
             
-            // ID на удаление (только существующих)
-            removedPhotoIds: this.draftChanges.removedPhotoIds || [], // Всегда массив
-            removedVideoIds: this.draftChanges.removedVideoIds || [], // Всегда массив
-            
-            // Для обратной совместимости (скоро удалим)
+            // Для обратной совместимости
             tempUploadIds: [...(this.draftChanges.tempPhotoIds || []), ...(this.draftChanges.tempVideoIds || [])]
         };
         
-        // 7. ПРОВЕРКА НА НАЛИЧИЕ МАССИВОВ (НИКОГДА НЕ NULL!)
+        // 6. ПРОВЕРКА НА НАЛИЧИЕ МАССИВОВ
         if (!data.tempPhotoIds) data.tempPhotoIds = [];
         if (!data.tempVideoIds) data.tempVideoIds = [];
         if (!data.removedPhotoIds) data.removedPhotoIds = [];
@@ -1499,6 +1509,9 @@ export class CreateOrderManager {
 
             // 11. ПЕРЕСЧИТЫВАЕМ ИТОГ
             this.calculateTotalPrice();
+            if (!this.editingOrderId) {
+                this.updateFirstPaymentAmount();
+            }
 
             // 12. НАСТРАИВАЕМ ОБРАБОТЧИКИ СОБЫТИЙ ДЛЯ МЕДИА
             await this.setupMediaPreviewEvents();
@@ -1868,7 +1881,7 @@ export class CreateOrderManager {
         cell1.appendChild(hiddenInput);
         cell1.appendChild(descInput);
         
-        // Ячейка 2: Цена
+        // Ячейка 2: Цена (ИЗМЕНЕНО: теперь просто "Цена")
         const cell2 = row.insertCell();
         const priceInput = document.createElement('input');
         priceInput.type = 'number';
@@ -1876,7 +1889,7 @@ export class CreateOrderManager {
         priceInput.value = data.price || '';
         priceInput.min = '0';
         priceInput.step = '0.01';
-        priceInput.placeholder = 'Цена за метр';
+        priceInput.placeholder = 'Цена'; // ИЗМЕНЕНО
         priceInput.className = 'no-spinners price-input';
         cell2.appendChild(priceInput);
         
@@ -1888,7 +1901,7 @@ export class CreateOrderManager {
         quantityInput.value = data.quantity || 1;
         quantityInput.min = '0';
         quantityInput.step = '1';
-        quantityInput.placeholder = 'Метры';
+        quantityInput.placeholder = 'Кол-во';
         quantityInput.className = 'quantity-input';
         cell3.appendChild(quantityInput);
         
@@ -1934,6 +1947,38 @@ export class CreateOrderManager {
         });
 
         this.calculateTotalPrice();
+    }
+
+    /**
+     * НОВЫЙ МЕТОД: Обновить сумму в первом платеже
+     */
+    updateFirstPaymentAmount() {
+        // Защита от рекурсии
+        if (this.updatingPayment) return;
+        this.updatingPayment = true;
+        
+        try {
+            if (!this.paymentsTable) return;
+            
+            const firstRow = this.paymentsTable.querySelector('tr:first-child');
+            if (!firstRow) return;
+            
+            const amountInput = firstRow.querySelector('input[name="amount"]');
+            if (!amountInput) return;
+            
+            const thirtyPercent = this.calculateThirtyPercent();
+            amountInput.value = thirtyPercent;
+            
+            // Обновляем примечание
+            const noteInput = firstRow.querySelector('input[name="note"]');
+            if (noteInput && !noteInput.value) {
+                noteInput.value = '30% предоплата';
+            }
+            
+            console.log(`[CreateOrder] Первый платеж обновлен: ${thirtyPercent} (30%)`);
+        } finally {
+            this.updatingPayment = false;
+        }
     }
 
     renderWorkItemsTable(items) {
@@ -2151,7 +2196,16 @@ export class CreateOrderManager {
         if (!this.paymentsTable) return;
         
         this.paymentsTable.innerHTML = '';
+        
+        // Создаем первый платеж с типом "Аванс"
         this.addPaymentRow({}, false);
+        
+        // Устанавливаем 30% от общей суммы (только если нет существующих платежей)
+        if (!this.editingOrderId) {
+            setTimeout(() => {
+                this.updateFirstPaymentAmount();
+            }, 100);
+        }
         
         if (this.addPaymentBtn) {
             this.addPaymentBtn.textContent = 'Добавить доплату';
@@ -2201,42 +2255,50 @@ export class CreateOrderManager {
     // ===== UTILITY METHODS =====
 
     calculateTotalPrice() {
-        const items = this.collectWorkItems() || [];
+        // Защита от рекурсии
+        if (this.updatingTotal) return 0;
+        this.updatingTotal = true;
         
-        // Считаем общую сумму
-        let total = items.reduce((sum, wi) => {
-            const price = wi.price || 0;        // цена за метр
-            const quantity = wi.quantity || 1;   // количество метров
+        try {
+            const items = this.collectWorkItems() || [];
             
-            // Для расстояния: цена за метр × количество метров
-            // Для других работ: цена × количество
-            const itemTotal = price * quantity;
+            // Считаем общую сумму
+            let total = items.reduce((sum, wi) => {
+                const price = wi.price || 0;
+                const quantity = wi.quantity || 1;
+                const itemTotal = price * quantity;
+                return sum + itemTotal;
+            }, 0);
             
-            return sum + itemTotal;
-        }, 0);
-        
-        // Округляем до копеек
-        total = Math.round(total * 100) / 100;
-        
-        if (isNaN(total)) total = 0;
-        
-        
-        // Обновляем скрытое поле
-        if (this.totalPriceInput) {
-            this.totalPriceInput.value = total.toFixed(2);
+            // Округляем до копеек
+            total = Math.round(total * 100) / 100;
+            
+            if (isNaN(total)) total = 0;
+            
+            // Обновляем скрытое поле
+            if (this.totalPriceInput) {
+                this.totalPriceInput.value = total.toFixed(2);
+            }
+            
+            // Обновляем отображение
+            if (this.totalPriceDisplay) {
+                this.totalPriceDisplay.textContent = new Intl.NumberFormat('ru-RU', {
+                    style: 'currency',
+                    currency: 'RUB',
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2
+                }).format(total);
+            }
+            
+            // Обновляем первый платеж (используем setTimeout чтобы избежать синхронной рекурсии)
+            setTimeout(() => {
+                this.updateFirstPaymentAmount();
+            }, 0);
+            
+            return total;
+        } finally {
+            this.updatingTotal = false;
         }
-        
-        // Обновляем отображение
-        if (this.totalPriceDisplay) {
-            this.totalPriceDisplay.textContent = new Intl.NumberFormat('ru-RU', {
-                style: 'currency',
-                currency: 'RUB',
-                minimumFractionDigits: 2,
-                maximumFractionDigits: 2
-            }).format(total);
-        }
-        
-        return total;
     }
 
     validateWorkItems(items) {

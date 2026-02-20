@@ -143,7 +143,7 @@ export class ModalUtils {
                     <div class="header-content">
                         <h2>Архивный заказ №${escapeHtml(order.orderNumber)}</h2>
                         <div class="order-meta">
-                            <span class="status-badge ${paymentStatus}">${escapeHtml(statusText)}</span>
+                            <span class="status-badge status-${paymentStatus}">${escapeHtml(statusText)}</span>
                             <span class="deleted-date">Удалён: ${formatDate(order.deletedAt)}</span>
                         </div>
                     </div>

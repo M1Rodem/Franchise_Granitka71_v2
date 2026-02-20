@@ -434,17 +434,6 @@
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
 }
 
-/* Не оплачено - красный */
-.status-not_paid {
-    background: rgba(239, 68, 68, 0.2) !important;
-    color: var(--error) !important;
-    border-color: rgba(239, 68, 68, 0.4) !important;
-}
-
-.status-not_paid::before {
-    background: var(--error) !important;
-}
-
 /* Частично оплачено - желтый */
 .status-partial {
     background: rgba(245, 158, 11, 0.2) !important;
@@ -468,13 +457,13 @@
 }
 
 /* Переплачено - фиолетовый */
-.status-overpaid {
+.status-advance {
     background: rgba(139, 92, 246, 0.2) !important;
     color: #8b5cf6 !important;
     border-color: rgba(139, 92, 246, 0.4) !important;
 }
 
-.status-overpaid::before {
+.status-advance::before {
     background: #8b5cf6 !important;
 }
 

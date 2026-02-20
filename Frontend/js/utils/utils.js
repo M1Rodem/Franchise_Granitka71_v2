@@ -1,3 +1,24 @@
+// ====== НОВЫЕ КОНСТАНТЫ СТАТУСОВ ОПЛАТЫ ======
+export const PAYMENT_STATUS = {
+    ALL: 0,
+    ADVANCE: 1,
+    PARTIALLY_PAID: 2,
+    FULLY_PAID: 3
+};
+
+export const PAYMENT_STATUS_TEXT = {
+    [PAYMENT_STATUS.ALL]: 'Все',
+    [PAYMENT_STATUS.ADVANCE]: 'Аванс',
+    [PAYMENT_STATUS.PARTIALLY_PAID]: 'Частично оплачен',
+    [PAYMENT_STATUS.FULLY_PAID]: 'Оплачен'
+};
+
+export const PAYMENT_STATUS_BADGE_CLASS = {
+    [PAYMENT_STATUS.ADVANCE]: 'status-advance',
+    [PAYMENT_STATUS.PARTIALLY_PAID]: 'status-partial',
+    [PAYMENT_STATUS.FULLY_PAID]: 'status-paid'
+};
+
 // ====== ФОРМАТИРОВАНИЕ ======
 export function formatDate(dateString) {
     if (!dateString) return '—';
@@ -123,6 +144,18 @@ export function setElementText(elementId, text) {
 
 // ====== СТАТУСЫ ЗАКАЗОВ ======
 export function getPaymentStatus(order) {
+    // Если есть поле paymentStatus от сервера - используем его
+    if (order?.paymentStatus !== undefined && order?.paymentStatus !== null) {
+        // Конвертируем число в строковый статус для обратной совместимости
+        const statusMap = {
+            1: 'advance',
+            2: 'partial',
+            3: 'paid'
+        };
+        return statusMap[order.paymentStatus] || 'not_paid';
+    }
+    
+    // Fallback на старую логику для старых заказов
     if (!order?.payments) return 'not_paid';
     const payments = Array.isArray(order.payments) ? order.payments : [];
     const totalPaid = payments.reduce((sum, p) => sum + Number(p.amount || 0), 0);
@@ -136,11 +169,17 @@ export function getPaymentStatus(order) {
 }
 
 export function getPaymentStatusText(order) {
+    if (order?.paymentStatus !== undefined && order?.paymentStatus !== null) {
+        return PAYMENT_STATUS_TEXT[order.paymentStatus] || 'Не оплачено';
+    }
+    
+    // Fallback на старую логику
     const statusMap = {
         'not_paid': 'Не оплачено',
         'partial': 'Частично оплачено', 
         'paid': 'Оплачено',
-        'overpaid': 'Переплачено'
+        'overpaid': 'Переплачено',
+        'advance': 'Аванс (0–30%)'
     };
     return statusMap[getPaymentStatus(order)] || 'Не оплачено';
 }
@@ -151,7 +190,12 @@ export function getStatusBadgeClass(status) {
         'partial': 'status-partial', 
         'paid': 'status-paid',
         'overpaid': 'status-overpaid',
-        'Новый': 'status-new'
+        'advance': 'status-advance',
+        'Новый': 'status-new',
+        // Числовые статусы
+        1: 'status-advance',
+        2: 'status-partial',
+        3: 'status-paid'
     };
     return classMap[status] || 'status-not_paid';
 }
@@ -402,11 +446,13 @@ export function handleApiError(error) {
 // ====== МАППЕР ДЛЯ ENUM БЭКА ======
 export function mapStatusToEnum(status) {
     const map = {
-        'all': 0,      // All
-        'not_paid': 1, // NotPaid
-        'partial': 2,  // Partial  
-        'paid': 3,     // Paid
-        'overpaid': 4  // Overpaid
+        'all': 0,           // Все
+        'advance': 1,       // Аванс (было not_paid)
+        'partial': 2,       // Частично
+        'paid': 3,          // Оплачен
+        // Для обратной совместимости со старыми значениями
+        'not_paid': 1,      // NotPaid теперь маппится в Advance
+        'overpaid': 3       // Overpaid теперь маппится в FullyPaid
     };
     return map[status] ?? null;
 }
@@ -437,51 +483,6 @@ export function initLayout(userData, pageType = 'default') {
         });
     }
 }
-
-// export function toggleNav(open = null) {
-//     const sidebar = document.getElementById('sidebar') || document.querySelector('.sidebar');
-//     const main = document.getElementById('mainContent') || document.querySelector('.main-content');
-//     const burger = document.getElementById('burgerBtn') || document.querySelector('.burger-btn');
-//     const isOpen = sidebar?.classList.contains('open') || false;
-
-//     if (open !== null) {
-//         if (open && !isOpen) {
-//             sidebar?.classList.add('open');
-//             main?.classList.add('shifted');
-//             burger?.setAttribute('aria-expanded', 'true');
-//             createBackdrop();
-//         } else if (!open && isOpen) {
-//             sidebar?.classList.remove('open');
-//             main?.classList.remove('shifted');
-//             burger?.setAttribute('aria-expanded', 'false');
-//             removeBackdrop();
-//         }
-//         return;
-//     }
-
-//     // Toggle
-//     sidebar?.classList.toggle('open');
-//     main?.classList.toggle('shifted');
-//     burger?.setAttribute('aria-expanded', !isOpen);
-//     if (sidebar?.classList.contains('open')) createBackdrop();
-//     else removeBackdrop();
-// }
-
-// function createBackdrop() {
-//     let backdrop = document.querySelector('.sidebar-backdrop');
-//     if (!backdrop) {
-//         backdrop = document.createElement('div');
-//         backdrop.className = 'sidebar-backdrop';
-//         backdrop.style.cssText = 'position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1001;';
-//         backdrop.addEventListener('click', () => toggleNav(false));
-//         document.body.appendChild(backdrop);
-//     }
-// }
-
-// function removeBackdrop() {
-//     const backdrop = document.querySelector('.sidebar-backdrop');
-//     if (backdrop) backdrop.remove();
-// }
 
 // ====== УТИЛИТЫ ======
 
@@ -673,3 +674,13 @@ export function setupMobileUserName() {
         }
     }
 }
+
+// ====== ГЛОБАЛЬНЫЙ ДОСТУП ДЛЯ ТЕСТИРОВАНИЯ ======
+// Временно, пока не обновим все страницы
+window.PAYMENT_STATUS = PAYMENT_STATUS;
+window.PAYMENT_STATUS_TEXT = PAYMENT_STATUS_TEXT;
+window.PAYMENT_STATUS_BADGE_CLASS = PAYMENT_STATUS_BADGE_CLASS;
+window.getPaymentStatus = getPaymentStatus;
+window.getPaymentStatusText = getPaymentStatusText;
+window.getStatusBadgeClass = getStatusBadgeClass;
+window.mapStatusToEnum = mapStatusToEnum;

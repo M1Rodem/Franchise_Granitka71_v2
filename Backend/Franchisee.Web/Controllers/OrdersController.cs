@@ -255,6 +255,49 @@ namespace Franchisee.Web.Controllers
                     });
                 }
 
+                if (request.Payments != null)
+                {
+                    var currentTotalPaid = order.Payments.Sum(p => p.Amount);
+                    var newPaymentsSum = request.Payments.Sum(p => p.Amount);
+
+                    // Получаем актуальную сумму заказа (из order, т.к. WorkItems еще не обновлены)
+                    var orderTotal = order.TotalPrice;
+
+                    // Если сумма заказа 0, пропускаем валидацию (невозможно определить процент)
+                    if (orderTotal > 0)
+                    {
+                        // Случай 1: Первый платеж (текущая оплата была 0)
+                        if (currentTotalPaid == 0 && newPaymentsSum > 0)
+                        {
+                            if (newPaymentsSum < orderTotal * 0.3m)
+                            {
+                                return BadRequest(new
+                                {
+                                    message = $"Минимальный первый платеж должен быть не менее 30% от суммы заказа. " +
+                                             $"Текущая сумма: {newPaymentsSum}, требуется минимум: {orderTotal * 0.3m:F2}"
+                                });
+                            }
+                        }
+                        // Случай 2: Добавление платежей к существующим (сумма увеличивается)
+                        else if (newPaymentsSum > currentTotalPaid)
+                        {
+                            var newPercent = (newPaymentsSum / orderTotal) * 100;
+
+                            // Если после добавления сумма все еще меньше 30% - ошибка
+                            if (newPercent < 30)
+                            {
+                                return BadRequest(new
+                                {
+                                    message = $"Сумма платежей не может быть меньше 30% от стоимости заказа. " +
+                                             $"Текущий процент: {newPercent:F1}%"
+                                });
+                            }
+                        }
+                        // Случай 3: Уменьшение суммы платежей - разрешаем (это может быть исправление ошибки)
+                        // Не блокируем
+                    }
+                }
+
                 using var transaction = await _context.Database.BeginTransactionAsync();
 
                 try
@@ -648,6 +691,21 @@ namespace Franchisee.Web.Controllers
             // Computed TotalPrice
             var total = order.WorkItems.Sum(w => w.Price * w.Quantity);
 
+            // Вычисление нового статуса оплаты - ИСПРАВЛЕНО
+            var paid = order.Payments.Sum(p => p.Amount);
+            var paymentStatus = PaymentStatus.Advance; // По умолчанию
+
+            if (total > 0)
+            {
+                if (paid >= total)
+                    paymentStatus = PaymentStatus.FullyPaid;
+                else if (paid > total * 0.3m)  // ИСПРАВЛЕНО: строго больше 30%
+                    paymentStatus = PaymentStatus.PartiallyPaid;
+                else if (paid > 0)  // от 0% до 30% включительно
+                    paymentStatus = PaymentStatus.Advance;
+                // else paid == 0 - остается Advance (по умолчанию)
+            }
+
             return new OrderResponseDto
             {
                 Id = order.Id,
@@ -677,7 +735,7 @@ namespace Franchisee.Web.Controllers
                 ManagerFullName = order.Manager?.FullName ?? string.Empty,
                 WorkItems = order.WorkItems,
                 Payments = order.Payments,
-                Photos = order.Photos.Select(p => new OrderMediaDto // Изменено с OrderPhotoDto
+                Photos = order.Photos.Select(p => new OrderMediaDto
                 {
                     Id = p.Id,
                     Url = $"/api/media/{p.Id}/file",
@@ -689,7 +747,8 @@ namespace Franchisee.Web.Controllers
                     MediaType = p.MediaType
                 }).ToList(),
                 IsDeleted = order.IsDeleted,
-                DeletedAt = order.DeletedAt
+                DeletedAt = order.DeletedAt,
+                PaymentStatus = paymentStatus
             };
         }
 

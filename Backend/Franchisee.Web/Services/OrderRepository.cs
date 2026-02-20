@@ -154,6 +154,8 @@ namespace Franchisee.Web.Services
 
         public async Task AddAsync(Order order)
         {
+            RecalculateTotalPrice(order);
+
             _context.Orders.Add(order);
             await _context.SaveChangesAsync();
         }
@@ -162,8 +164,8 @@ namespace Franchisee.Web.Services
         {
             // ЗАГРУЖАЕМ заказ ВМЕСТЕ с WorkItems и Payments
             var existingOrder = await _context.Orders
-                .Include(o => o.WorkItems)    // ← ДОБАВИТЬ эту строку
-                .Include(o => o.Payments)     // ← ДОБАВИТЬ эту строку
+                .Include(o => o.WorkItems)
+                .Include(o => o.Payments)
                 .Include(o => o.Manager)
                 .FirstOrDefaultAsync(o => o.Id == order.Id);
 
@@ -186,14 +188,21 @@ namespace Franchisee.Web.Services
                 existingOrder.MonumentSize = order.MonumentSize;
                 existingOrder.AdditionalInfo = order.AdditionalInfo;
                 existingOrder.Status = order.Status;
-                existingOrder.TotalPrice = order.TotalPrice;
                 existingOrder.UpdatedAt = DateTime.UtcNow;
+
+                // Пересчет итоговой суммы на основе актуальных WorkItems
+                // Используем WorkItems из переданного order, так как они уже обновлены в контроллере
+                if (order.WorkItems != null)
+                {
+                    existingOrder.WorkItems = order.WorkItems;
+                    RecalculateTotalPrice(existingOrder);
+                }
 
                 // ВОССТАНАВЛИВАЕМ менеджера (не меняем его)
                 existingOrder.Manager = originalManager;
                 existingOrder.ManagerId = originalManagerId;
 
-                // НЕ трогаем WorkItems, Payments, Photos - они уже обработаны в контроллере
+                // Payments обрабатываются отдельно в контроллере, здесь не трогаем
 
                 await _context.SaveChangesAsync();
             }
@@ -221,17 +230,42 @@ namespace Franchisee.Web.Services
         }
         private IQueryable<Order> ApplyPaymentStatusFilter(IQueryable<Order> query, PaymentStatus status)
         {
+            if (status == PaymentStatus.All)
+                return query;
+
             return status switch
             {
-                PaymentStatus.NotPaid => query.Where(o => o.Payments.Sum(p => p.Amount) == 0),
-                PaymentStatus.Partial => query.Where(o => o.Payments.Sum(p => p.Amount) > 0
-                                                       && o.Payments.Sum(p => p.Amount) < o.WorkItems.Sum(w => w.Price * w.Quantity)),
-                PaymentStatus.Paid => query.Where(o => o.Payments.Sum(p => p.Amount) == o.WorkItems.Sum(w => w.Price * w.Quantity) // ИСПРАВЛЕНО: == вместо >=
-                                                        && o.WorkItems.Sum(w => w.Price * w.Quantity) > 0),
-                PaymentStatus.Overpaid => query.Where(o => o.Payments.Sum(p => p.Amount) > o.WorkItems.Sum(w => w.Price * w.Quantity)),
+                PaymentStatus.Advance => query.Where(o =>
+                    o.Payments.Sum(p => p.Amount) > 0
+                    && o.Payments.Sum(p => p.Amount) <= o.TotalPrice * 0.3m
+                ),
+
+                PaymentStatus.PartiallyPaid => query.Where(o =>
+                    o.Payments.Sum(p => p.Amount) > o.TotalPrice * 0.3m
+                    && o.Payments.Sum(p => p.Amount) < o.TotalPrice
+                ),
+
+                PaymentStatus.FullyPaid => query.Where(o =>
+                    o.Payments.Sum(p => p.Amount) >= o.TotalPrice
+                    && o.TotalPrice > 0
+                ),
+
                 _ => query
             };
         }
+
+        private void RecalculateTotalPrice(Order order)
+        {
+            if (order.WorkItems != null && order.WorkItems.Any())
+            {
+                order.TotalPrice = order.WorkItems.Sum(w => w.Price * w.Quantity);
+            }
+            else
+            {
+                order.TotalPrice = 0;
+            }
+        }
+
         public async Task<string> GenerateOrderNumberAsync()
         {
             try

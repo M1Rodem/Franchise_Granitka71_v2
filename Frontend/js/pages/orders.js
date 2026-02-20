@@ -87,22 +87,21 @@ async function applyDashboardFilter() {
             break;
             
         case 'unpaid':
-            // Неоплаченные заказы - используем правильное значение для select
-            // Проверяем какие значения используются в select
+            // Неоплаченные заказы (теперь это статус 1 - Аванс)
             const statusFilter = document.getElementById('statusFilter');
-            // Ищем option со значением, соответствующим статусу 1 (Не оплачен)
-            const unpaidOption = Array.from(statusFilter.options).find(opt => 
-                mapStatusToEnum(opt.value) === 1
+            // Ищем option со значением 'advance'
+            const advanceOption = Array.from(statusFilter.options).find(opt => 
+                opt.value === 'advance'
             );
             
-            if (unpaidOption) {
-                statusFilter.value = unpaidOption.value;
+            if (advanceOption) {
+                statusFilter.value = advanceOption.value;
             } else {
-                // Fallback: используем значение, которое соответствует статусу 1
-                statusFilter.value = 'unpaid';
+                // Fallback
+                statusFilter.value = 'advance';
             }
             
-            // Обновляем URL параметр
+            // Обновляем URL параметр с числовым значением
             updateUrlParam('Status', '1');
             // Загружаем заказы с фильтром
             await loadOrdersWithFilters({
@@ -112,18 +111,16 @@ async function applyDashboardFilter() {
                 sortDesc: true,
                 PaymentStatus: 1
             });
-            showTempMessage('Показаны неоплаченные заказы', 'info');
+            showTempMessage('Показаны заказы с авансом', 'info');
             break;
             
         case 'today':
-            // Заказы за сегодня
+            // Заказы за сегодня (без изменений)
             const today = new Date().toISOString().split('T')[0];
             document.getElementById('dateFrom').value = today;
             document.getElementById('dateTo').value = today;
-            // Обновляем URL параметры
             updateUrlParam('dateFrom', today);
             updateUrlParam('dateTo', today);
-            // Загружаем заказы с фильтром
             await loadOrdersWithFilters({
                 page: 1,
                 pageSize: pageSize,
@@ -144,12 +141,24 @@ function handleSearchInput() {
 function loadFiltersFromUrl() {
     const search = getUrlParam('search') || '';
     const statusStr = getUrlParam('Status');
-    const status = statusStr ? Object.keys(mapStatusToEnum).find(key => mapStatusToEnum[key] == statusStr) || 'all' : 'all';
+    
+    // Конвертируем числовой статус обратно в строку для select
+    let statusValue = 'all';
+    if (statusStr) {
+        const statusNum = parseInt(statusStr);
+        const statusMap = {
+            1: 'advance',    // Изменено с 'not_paid' на 'advance'
+            2: 'partial',
+            3: 'paid'
+        };
+        statusValue = statusMap[statusNum] || 'all';
+    }
+    
     const dateFrom = getUrlParam('dateFrom') || '';
     const dateTo = getUrlParam('dateTo') || '';
     
     document.getElementById('searchInput').value = search;
-    document.getElementById('statusFilter').value = status;
+    document.getElementById('statusFilter').value = statusValue;
     document.getElementById('dateFrom').value = dateFrom;
     document.getElementById('dateTo').value = dateTo;
 }
@@ -283,13 +292,13 @@ function renderOrders(orders) {
         return;
     }
 
-    // Убраны inline обработчики onclick - используем делегирование событий
     tbody.innerHTML = orders.map(order => {
-        const status = getPaymentStatus(order);
+        // ИСПОЛЬЗУЕМ paymentStatus С СЕРВЕРА!
+        const status = order.paymentStatus; // Число: 1, 2, 3
         const statusText = getPaymentStatusText(order);
         const statusClass = getStatusBadgeClass(status);
         const managerName = getUserNameFromOrder(order);
-        const totalPrice = order.workItems?.reduce((sum, i) => sum + (Number(i.price || 0) * Number(i.quantity || 1)), 0) || 0;
+        const totalPrice = order.totalPrice || 0;
         return `
             <tr data-order-id="${order.id}">
                 <td data-label="№ Заказа">${escapeHtml(order.orderNumber || 'N/A')}</td>

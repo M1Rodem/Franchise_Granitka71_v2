@@ -624,47 +624,40 @@ export class SidebarManager {
                 }
             }
             
-            const userRole = userData?.role;
+             const userRole = userData?.role;
             
-            // ЕСЛИ данные еще не готовы - откладываем и пробуем снова
+            // ЕСЛИ данные еще не готовы - используем данные из localStorage СРАЗУ
             if (!userRole) {
-                setTimeout(() => this.setupAdminMenu(), 100);
-                return;
+                try {
+                    const stored = localStorage.getItem('userData');
+                    if (stored) {
+                        userData = JSON.parse(stored);
+                    }
+                } catch (e) {}
             }
             
             const usersLink = document.querySelector('a[href="users.html"]');
-            
-            if (!usersLink) {
-                return;
-            }
+            const adminLink = document.querySelector('a[href="admin.html"]');
             
             if (userRole === 'Admin' || userRole === 'SuperAdmin') {
                 document.body.classList.add('user-is-admin');
                 
-                // 1. Удаляем inline-style который скрывает (display: none)
-                usersLink.removeAttribute('style');
-                
-                // 2. НЕ удаляем класс admin-only! Вместо этого добавляем его обратно
-                usersLink.classList.add('admin-only');
-                
-                // 3. Явно устанавливаем display
-                usersLink.style.display = 'block';
-                
-                // 4. Добавляем специальный класс для золотой обводки
-                usersLink.classList.add('admin-gold-border'); // если нужно
-                
-                
+                // Принудительно показываем оба админских пункта
+                if (usersLink) {
+                    usersLink.style.display = 'block';
+                    usersLink.classList.add('admin-only');
+                }
+                if (adminLink) {
+                    adminLink.style.display = 'block';
+                    adminLink.classList.add('admin-only');
+                }
             } else {
-                // Для Manager
-                // 1. Скрываем
-                usersLink.style.display = 'none';
-                
-                // 2. Удаляем класс admin-only (чтобы не было золотой обводки у менеджера)
-                usersLink.classList.remove('admin-only');
+                // Для не-админов скрываем
+                if (usersLink) usersLink.style.display = 'none';
+                if (adminLink) adminLink.style.display = 'none';
             }
             
-            // Добавляем класс роли для CSS
-            document.body.classList.add(`user-role-${userRole.toLowerCase()}`);
+            document.body.classList.add(`user-role-${(userRole || 'unknown').toLowerCase()}`);
             
         } catch (error) {
             console.warn('SidebarManager: Error in setupAdminMenu:', error);

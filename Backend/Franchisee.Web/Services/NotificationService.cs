@@ -508,7 +508,7 @@ namespace Franchisee.Web.Services
                 var order = await _context.Orders
                     .Include(o => o.WorkItems)
                     .Include(o => o.Payments)
-                    .Include(o => o.Photos) // Оставляем старый Photos для обратной совместимости
+                    .Include(o => o.Photos)
                     .FirstOrDefaultAsync(o => o.Id == notification.OrderId.Value);
 
                 if (order == null)
@@ -546,7 +546,8 @@ namespace Franchisee.Web.Services
                             _logger.LogDebug("Найден 'new' в поле {FieldName}, newValue ValueKind: {NewValueKind}",
                                 fieldName, newValue.ValueKind);
 
-                            if (fieldName == "WorkItems" || fieldName == "Payments" || fieldName == "Photos")
+                            if (fieldName == "WorkItems" || fieldName == "Payments" ||
+                                fieldName == "Photos" || fieldName == "Videos") // Добавили Videos
                             {
                                 _logger.LogDebug("Пропускаем {FieldName} для отдельной обработки", fieldName);
                                 continue;
@@ -597,6 +598,7 @@ namespace Franchisee.Web.Services
                     }
                 }
 
+                // Обработка Photos (обратная совместимость)
                 if (changesDict.TryGetValue("Photos", out var photosProp))
                 {
                     _logger.LogDebug("Обработка Photos, ValueKind: {ValueKind}", photosProp.ValueKind);
@@ -605,12 +607,43 @@ namespace Franchisee.Web.Services
                         order.Id,
                         notification.Id,
                         notification.InitiatorId ?? 0,
-                        photosProp);
+                        photosProp,
+                        MediaType.Photo); // Явно указываем, что это фото
+                }
+
+                // НОВОЕ: Обработка Videos
+                if (changesDict.TryGetValue("Videos", out var videosProp))
+                {
+                    _logger.LogDebug("Обработка Videos, ValueKind: {ValueKind}", videosProp.ValueKind);
+
+                    hasChanges |= await ApplyMediaChangesAsync(
+                        order.Id,
+                        notification.Id,
+                        notification.InitiatorId ?? 0,
+                        videosProp,
+                        MediaType.Video); // Явно указываем, что это видео
+                }
+
+                // Обработка TotalPrice если оно есть в changes (но не как отдельный объект)
+                if (changesDict.TryGetValue("TotalPrice", out var totalPriceProp))
+                {
+                    if (totalPriceProp.ValueKind == JsonValueKind.Object &&
+                        totalPriceProp.TryGetProperty("new", out var newTotalValue))
+                    {
+                        _logger.LogDebug("Найдено изменение TotalPrice");
+                        hasChanges |= ApplyFieldChange(order, "TotalPrice", newTotalValue);
+                    }
                 }
 
                 if (hasChanges)
                 {
-                    order.TotalPrice = order.WorkItems.Sum(w => w.Price * w.Quantity);
+                    // Пересчитываем TotalPrice на всякий случай, но оставляем возможность
+                    // ручного изменения через поле TotalPrice в changes
+                    if (!changesDict.ContainsKey("TotalPrice"))
+                    {
+                        order.TotalPrice = order.WorkItems.Sum(w => w.Price * w.Quantity);
+                    }
+
                     order.UpdatedAt = DateTime.UtcNow;
                     await _context.SaveChangesAsync();
 
@@ -637,7 +670,8 @@ namespace Franchisee.Web.Services
             int orderId,
             int notificationId,
             int initiatorId,
-            JsonElement photosProp)
+            JsonElement mediaProp,
+            MediaType? expectedMediaType = null) // Необязательный параметр для фильтрации по типу
         {
             try
             {
@@ -652,7 +686,8 @@ namespace Franchisee.Web.Services
 
                 bool hasChanges = false;
 
-                if (photosProp.TryGetProperty("addedTempIds", out var addedTempIdsElement))
+                // Обработка добавленных медиафайлов
+                if (mediaProp.TryGetProperty("addedTempIds", out var addedTempIdsElement))
                 {
                     var addedTempIds = addedTempIdsElement.Deserialize<List<int>>();
 
@@ -661,7 +696,7 @@ namespace Franchisee.Web.Services
                         _logger.LogDebug("Добавление {Count} медиафайлов из временных файлов", addedTempIds.Count);
 
                         var order = await _context.Orders
-                            .Include(o => o.Photos) // Оставляем старый Photos для обратной совместимости
+                            .Include(o => o.Photos)
                             .FirstOrDefaultAsync(o => o.Id == orderId);
 
                         if (order == null)
@@ -670,18 +705,50 @@ namespace Franchisee.Web.Services
                             return false;
                         }
 
-                        // Для обратной совместимости используем order.Photos
-                        if (order.Photos.Count + addedTempIds.Count > 10) // MaxPhotosPerOrder = 10
-                        {
-                            _logger.LogError("Превышен лимит фото в заказе {OrderId}. Текущее: {Current}, хотим добавить: {ToAdd}",
-                                orderId, order.Photos.Count, addedTempIds.Count);
-                            throw new InvalidOperationException(
-                                $"Превышен лимит фото в заказе. Максимум: 10, текущее: {order.Photos.Count}, хотите добавить: {addedTempIds.Count}");
-                        }
-
+                        // Получаем временные файлы
                         var tempUploads = await _context.TempUploads
                             .Where(t => addedTempIds.Contains(t.Id))
                             .ToListAsync();
+
+                        // Если ожидается конкретный тип медиа, фильтруем
+                        if (expectedMediaType.HasValue)
+                        {
+                            tempUploads = tempUploads.Where(t => t.MediaType == expectedMediaType.Value).ToList();
+                        }
+
+                        // Группируем по типу для проверки лимитов
+                        var photoTempIds = tempUploads.Where(t => t.MediaType == MediaType.Photo).Select(t => t.Id).ToList();
+                        var videoTempIds = tempUploads.Where(t => t.MediaType == MediaType.Video).Select(t => t.Id).ToList();
+
+                        // Проверка лимитов для фото
+                        if (photoTempIds.Any())
+                        {
+                            int currentPhotoCount = order.Photos.Count(p => p.MediaType == MediaType.Photo);
+                            int maxPhotos = 10; // MaxPhotosPerOrder
+
+                            if (currentPhotoCount + photoTempIds.Count > maxPhotos)
+                            {
+                                _logger.LogError("Превышен лимит фото в заказе {OrderId}. Текущее: {Current}, хотим добавить: {ToAdd}",
+                                    orderId, currentPhotoCount, photoTempIds.Count);
+                                throw new InvalidOperationException(
+                                    $"Превышен лимит фото в заказе. Максимум: {maxPhotos}, текущее: {currentPhotoCount}, хотите добавить: {photoTempIds.Count}");
+                            }
+                        }
+
+                        // Проверка лимитов для видео
+                        if (videoTempIds.Any())
+                        {
+                            int currentVideoCount = order.Photos.Count(p => p.MediaType == MediaType.Video);
+                            int maxVideos = 5; // MaxVideosPerOrder
+
+                            if (currentVideoCount + videoTempIds.Count > maxVideos)
+                            {
+                                _logger.LogError("Превышен лимит видео в заказе {OrderId}. Текущее: {Current}, хотим добавить: {ToAdd}",
+                                    orderId, currentVideoCount, videoTempIds.Count);
+                                throw new InvalidOperationException(
+                                    $"Превышен лимит видео в заказе. Максимум: {maxVideos}, текущее: {currentVideoCount}, хотите добавить: {videoTempIds.Count}");
+                            }
+                        }
 
                         var committedCount = 0;
 
@@ -689,20 +756,15 @@ namespace Franchisee.Web.Services
                         {
                             try
                             {
-                                // Используем значение из БД или по умолчанию Photo
-                                var mediaType = tempUpload.MediaType != null
-                                    ? (MediaType)tempUpload.MediaType
-                                    : MediaType.Photo;
-
                                 await _mediaService.CommitTempToOrderAsync(
                                     orderId,
                                     new List<int> { tempUpload.Id },
                                     initiatorId,
-                                    mediaType);
+                                    tempUpload.MediaType);
 
                                 committedCount++;
                                 _logger.LogDebug("Добавлен медиафайл {TempId} (Type: {MediaType}) в заказ {OrderId}",
-                                    tempUpload.Id, mediaType, orderId);
+                                    tempUpload.Id, tempUpload.MediaType, orderId);
                             }
                             catch (Exception ex)
                             {
@@ -716,6 +778,7 @@ namespace Franchisee.Web.Services
                             _logger.LogDebug("Добавлено {Count} медиафайлов в заказ {OrderId}", committedCount, orderId);
                         }
 
+                        // Очищаем привязку к уведомлению
                         var remainingTempUploads = await _context.TempUploads
                             .Where(t => addedTempIds.Contains(t.Id))
                             .ToListAsync();
@@ -729,28 +792,65 @@ namespace Franchisee.Web.Services
                     }
                 }
 
-                if (photosProp.TryGetProperty("removedPhotoIds", out var removedPhotoIdsElement))
+                // Обработка удаленных медиафайлов
+                if (mediaProp.TryGetProperty("removedIds", out var removedIdsElement) ||
+                    mediaProp.TryGetProperty("removedPhotoIds", out removedIdsElement) ||
+                    mediaProp.TryGetProperty("removedMediaIds", out removedIdsElement))
                 {
-                    var removedPhotoIds = removedPhotoIdsElement.Deserialize<List<int>>();
+                    var removedIds = removedIdsElement.Deserialize<List<int>>();
 
-                    if (removedPhotoIds?.Any() == true)
+                    if (removedIds?.Any() == true)
                     {
-                        _logger.LogDebug("Удаление {Count} медиафайлов", removedPhotoIds.Count);
+                        _logger.LogDebug("Удаление {Count} медиафайлов", removedIds.Count);
 
-                        foreach (var mediaId in removedPhotoIds)
+                        // Если ожидается конкретный тип, фильтруем ID
+                        if (expectedMediaType.HasValue)
                         {
-                            try
+                            var mediaToDelete = await _context.OrderPhotos
+                                .Where(m => removedIds.Contains(m.Id) && m.MediaType == expectedMediaType.Value)
+                                .Select(m => m.Id)
+                                .ToListAsync();
+
+                            foreach (var mediaId in mediaToDelete)
                             {
-                                await _mediaService.DeleteMediaFilesAsync(mediaId);
-                                hasChanges = true;
-                                _logger.LogDebug("Удален медиафайл {MediaId} из заказа {OrderId}", mediaId, orderId);
+                                try
+                                {
+                                    await _mediaService.DeleteMediaFilesAsync(mediaId);
+                                    hasChanges = true;
+                                    _logger.LogDebug("Удален медиафайл {MediaId} (Type: {ExpectedType}) из заказа {OrderId}",
+                                        mediaId, expectedMediaType.Value, orderId);
+                                }
+                                catch (Exception ex)
+                                {
+                                    _logger.LogError(ex, "Ошибка удаления медиафайла {MediaId}", mediaId);
+                                }
                             }
-                            catch (Exception ex)
+                        }
+                        else
+                        {
+                            // Нет фильтрации по типу - удаляем все
+                            foreach (var mediaId in removedIds)
                             {
-                                _logger.LogError(ex, "Ошибка удаления медиафайла {MediaId}", mediaId);
+                                try
+                                {
+                                    await _mediaService.DeleteMediaFilesAsync(mediaId);
+                                    hasChanges = true;
+                                    _logger.LogDebug("Удален медиафайл {MediaId} из заказа {OrderId}", mediaId, orderId);
+                                }
+                                catch (Exception ex)
+                                {
+                                    _logger.LogError(ex, "Ошибка удаления медиафайла {MediaId}", mediaId);
+                                }
                             }
                         }
                     }
+                }
+
+                // Обработка обратной совместимости - ищем поля mediaType
+                if (mediaProp.TryGetProperty("mediaType", out var mediaTypeElement) && !expectedMediaType.HasValue)
+                {
+                    _logger.LogDebug("Найден mediaType в уведомлении: {MediaType}", mediaTypeElement.GetString());
+                    // Это просто логирование, тип уже мог быть использован выше
                 }
 
                 _logger.LogDebug("=== ApplyMediaChangesAsync УСПЕШНО для заказа {OrderId} ===", orderId);
@@ -779,6 +879,28 @@ namespace Franchisee.Web.Services
                         if (newValue.TryGetDateTime(out var date))
                         {
                             order.OrderDate = date.ToUniversalTime();
+                            return true;
+                        }
+                        break;
+                    // НОВОЕ: Обработка геоданных
+                    case "Latitude":
+                        if (newValue.TryGetDouble(out var lat))
+                        {
+                            order.Latitude = lat;
+                            return true;
+                        }
+                        break;
+                    case "Longitude":
+                        if (newValue.TryGetDouble(out var lng))
+                        {
+                            order.Longitude = lng;
+                            return true;
+                        }
+                        break;
+                    case "PlotId":
+                        if (newValue.TryGetInt32(out var plotId))
+                        {
+                            order.PlotId = plotId;
                             return true;
                         }
                         break;
@@ -811,6 +933,13 @@ namespace Franchisee.Web.Services
                             Enum.TryParse<OrderStatus>(newValue.GetString(), out var status))
                         {
                             order.Status = status;
+                            return true;
+                        }
+                        break;
+                    case "TotalPrice":
+                        if (newValue.TryGetDecimal(out var total))
+                        {
+                            order.TotalPrice = total;
                             return true;
                         }
                         break;

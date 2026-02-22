@@ -37,6 +37,9 @@ export class CreateOrderManager {
             tempVideoIds: []
         };
         
+        this.markExistingMediaForRemoval = this.markExistingMediaForRemoval.bind(this);
+        this.handleTempMediaRemoval = this.handleTempMediaRemoval.bind(this);
+
         this.initElements();
         this.bindEvents();
 
@@ -45,6 +48,7 @@ export class CreateOrderManager {
 
         this.updatingTotal = false;      // Флаг для предотвращения рекурсии в calculateTotalPrice
         this.updatingPayment = false;    // Флаг для предотвращения рекурсии в updateFirstPaymentAmount
+
     }
 
     /**
@@ -126,6 +130,11 @@ export class CreateOrderManager {
         if (!data.removedPhotoIds) data.removedPhotoIds = [];
         if (!data.removedVideoIds) data.removedVideoIds = [];
         
+        if (!this.draftChanges.tempPhotoIds) this.draftChanges.tempPhotoIds = [];
+        if (!this.draftChanges.tempVideoIds) this.draftChanges.tempVideoIds = [];
+        if (!this.draftChanges.removedPhotoIds) this.draftChanges.removedPhotoIds = [];
+        if (!this.draftChanges.removedVideoIds) this.draftChanges.removedVideoIds = [];
+
         return data;
     }
 
@@ -420,6 +429,23 @@ export class CreateOrderManager {
      */
     async markExistingMediaForRemoval(mediaId, mediaType, mediaTypeCode, mediaItem) {
         try {
+            console.log('[DEBUG] markExistingMediaForRemoval called with:', { mediaId, mediaType, mediaTypeCode });
+            console.log('[DEBUG] Current draftChanges:', this.draftChanges);
+            
+            // ===== КРИТИЧЕСКИ ВАЖНО: СОХРАНЯЕМ ССЫЛКИ ЛОКАЛЬНО =====
+            // Создаем локальные переменные, чтобы защититься от асинхронных изменений
+            const draftChanges = this.draftChanges || {};
+            const removedPhotoIds = draftChanges.removedPhotoIds || [];
+            const removedVideoIds = draftChanges.removedVideoIds || [];
+            // ===== КОНЕЦ ЛОКАЛЬНЫХ ССЫЛОК =====
+            
+            // Валидация входных данных
+            if (mediaId === undefined || mediaId === null) {
+                console.error('mediaId is undefined or null');
+                showTempMessage('Ошибка: идентификатор медиа не определен', 'error');
+                return;
+            }
+            
             const confirmed = await ModalUtils.confirm({
                 title: 'Удаление медиа',
                 message: `Пометить этот файл для удаления? Он будет удален после сохранения заказа.`,
@@ -428,33 +454,60 @@ export class CreateOrderManager {
             });
             
             if (confirmed) {
-                // Визуально помечаем
-                mediaItem.style.opacity = '0.5';
-                mediaItem.style.filter = 'grayscale(100%)';
-                mediaItem.classList.add('marked-for-deletion');
+                // ===== ПОВТОРНАЯ ПРОВЕРКА ПОСЛЕ АСИНХРОННОГО ОКНА =====
+                // После await контекст мог измениться, поэтому пересоздаем ссылки
+                const currentDraft = this.draftChanges || {};
+                if (!currentDraft.removedPhotoIds) currentDraft.removedPhotoIds = [];
+                if (!currentDraft.removedVideoIds) currentDraft.removedVideoIds = [];
+                // ===== КОНЕЦ ПОВТОРНОЙ ПРОВЕРКИ =====
                 
-                // Меняем кнопку
-                const removeBtn = mediaItem.querySelector('.media-remove-existing');
-                if (removeBtn) {
-                    removeBtn.textContent = '✓';
-                    removeBtn.title = 'Будет удалено';
-                    removeBtn.disabled = true;
+                // Визуально помечаем
+                if (mediaItem) {
+                    mediaItem.style.opacity = '0.5';
+                    mediaItem.style.filter = 'grayscale(100%)';
+                    mediaItem.classList.add('marked-for-deletion');
+                    
+                    // Меняем кнопку
+                    const removeBtn = mediaItem.querySelector('.media-remove-existing');
+                    if (removeBtn) {
+                        removeBtn.textContent = '✓';
+                        removeBtn.title = 'Будет удалено';
+                        removeBtn.disabled = true;
+                    }
                 }
                 
                 // Добавляем в соответствующий массив
-                if (mediaTypeCode === 0 || mediaType === 'photo') {
-                    if (!this.draftChanges.removedPhotoIds.includes(parseInt(mediaId))) {
-                        this.draftChanges.removedPhotoIds.push(parseInt(mediaId));
+                const mediaIdNum = parseInt(mediaId);
+                if (!isNaN(mediaIdNum)) {
+                    if (mediaTypeCode === 0 || mediaType === 'photo') {
+                        if (!currentDraft.removedPhotoIds.includes(mediaIdNum)) {
+                            currentDraft.removedPhotoIds.push(mediaIdNum);
+                            console.log('[DEBUG] Added to removedPhotoIds:', currentDraft.removedPhotoIds);
+                        }
+                    } else {
+                        if (!currentDraft.removedVideoIds.includes(mediaIdNum)) {
+                            currentDraft.removedVideoIds.push(mediaIdNum);
+                            console.log('[DEBUG] Added to removedVideoIds:', currentDraft.removedVideoIds);
+                        }
                     }
+                    
+                    // Обновляем this.draftChanges
+                    this.draftChanges = currentDraft;
+                    
+                    showTempMessage('Файл будет удален после сохранения', 'info');
                 } else {
-                    if (!this.draftChanges.removedVideoIds.includes(parseInt(mediaId))) {
-                        this.draftChanges.removedVideoIds.push(parseInt(mediaId));
-                    }
+                    console.error('Invalid mediaId after parsing:', mediaId);
+                    showTempMessage('Ошибка: некорректный идентификатор медиа', 'error');
                 }
-                showTempMessage('Файл будет удален после сохранения', 'info');
             }
         } catch (error) {
             console.error('Error marking media for removal:', error);
+            console.error('Error details:', {
+                mediaId,
+                mediaType,
+                mediaTypeCode,
+                draftChanges: this.draftChanges
+            });
             showTempMessage('Ошибка при пометке файла', 'error');
         }
     }
@@ -743,6 +796,18 @@ export class CreateOrderManager {
      */
     async handleTempMediaRemoval(tempId, mediaType) {
         try {
+            console.log('[DEBUG] handleTempMediaRemoval called with:', { tempId, mediaType });
+            
+            if (tempId === undefined || tempId === null) {
+                console.error('tempId is undefined or null');
+                return;
+            }
+            
+            // Создаем локальные ссылки
+            const draftChanges = this.draftChanges || {};
+            if (!draftChanges.tempPhotoIds) draftChanges.tempPhotoIds = [];
+            if (!draftChanges.tempVideoIds) draftChanges.tempVideoIds = [];
+            
             await removeTempMedia(tempId, this, mediaType);
             
         } catch (error) {
@@ -1365,6 +1430,27 @@ export class CreateOrderManager {
                 orderDate: order.orderDate ? new Date(order.orderDate).toISOString().slice(0, 10) : getTodayDate()
             };
             populateForm('createOrderForm', displayData);
+
+            // Специальная обработка для телефона (исправление двойной 7)
+            const phoneInput = document.getElementById('phone');
+            if (phoneInput && order.phone) {
+                // Получаем "чистый" номер без форматирования
+                let cleanPhone = order.phone.replace(/\D/g, '');
+                
+                // Если номер начинается с 7 или 8 - удаляем первую цифру
+                // потому что маска сама добавит +7
+                if (cleanPhone.length === 11) {
+                    if (cleanPhone[0] === '7' || cleanPhone[0] === '8') {
+                        cleanPhone = cleanPhone.substring(1); // Оставляем только 10 цифр
+                    }
+                }
+                
+                // Устанавливаем значение напрямую (populateForm уже сделал, но перезаписываем)
+                phoneInput.value = cleanPhone;
+                
+                // Триггерим событие input, чтобы маска применилась правильно
+                phoneInput.dispatchEvent(new Event('input', { bubbles: true }));
+            }
 
             // 4. ИНИЦИАЛИЗИРУЕМ DRAFT CHANGES (ОЧЕНЬ ВАЖНО!)
             this.draftChanges = {

@@ -361,6 +361,34 @@ class ApiService {
         }
     }
 
+    async getTempMediaUrl(tempId) {
+        return `/api/media/temp-preview/${tempId}`;
+    }
+
+    // Улучшаем существующий метод getTempMediaPreview
+    async getTempMediaPreview(tempId) {
+        try {
+            const response = await fetch(`/api/media/temp-preview/${tempId}`, {
+                headers: {
+                    'Authorization': `Bearer ${this.token}`
+                }
+            });
+
+            if (!response.ok) {
+                if (response.status === 404) {
+                    throw new Error('Временный файл не найден (возможно, истек срок хранения)');
+                }
+                throw new Error(`Temp preview failed: ${response.status}`);
+            }
+
+            const blob = await response.blob();
+            return URL.createObjectURL(blob);
+        } catch (error) {
+            console.error('getTempMediaPreview error:', error);
+            throw error;
+        }
+    }
+
     // Photos
     async uploadTempPhoto(file) {
         // Валидация размера файла (макс 20MB)

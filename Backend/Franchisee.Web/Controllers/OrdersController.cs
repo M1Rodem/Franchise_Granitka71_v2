@@ -9,6 +9,7 @@ using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
 using System.Text.Json;
 using System.Text.RegularExpressions;
+using Microsoft.AspNetCore.Hosting;
 
 namespace Franchisee.Web.Controllers
 {
@@ -23,14 +24,16 @@ namespace Franchisee.Web.Controllers
         private readonly INotificationService _notificationService;
         private readonly ILogger<OrdersController> _logger;
         private readonly IPlotRepository _plotRepository; // Новая зависимость
+        private readonly IWebHostEnvironment _env;
 
         public OrdersController(
             ApplicationDbContext context,
             IOrderRepository orderRepository,
-            IMediaService mediaService, // Изменено
+            IMediaService mediaService,
             INotificationService notificationService,
             ILogger<OrdersController> logger,
-            IPlotRepository plotRepository)
+            IPlotRepository plotRepository,
+            IWebHostEnvironment env) // ← Добавь этот параметр
         {
             _context = context;
             _orderRepository = orderRepository;
@@ -38,6 +41,7 @@ namespace Franchisee.Web.Controllers
             _notificationService = notificationService;
             _logger = logger;
             _plotRepository = plotRepository;
+            _env = env; // ← Добавь эту строку
         }
 
         [HttpGet]
@@ -422,15 +426,90 @@ namespace Franchisee.Web.Controllers
         public async Task<IActionResult> DeleteOrder(int id)
         {
             var userId = GetCurrentUserId();
-            _logger.LogInformation("Удаление заказа {OrderId} для {UserId}", id, userId);
+            _logger.LogInformation("Мягкое удаление заказа {OrderId} пользователем {UserId}", id, userId);
 
-            var order = await _orderRepository.GetByIdAsync(id);
-            if (order == null) return NotFound();
+            // Загружаем заказ (без фильтра удаленных)
+            var order = await _context.Orders
+                .Include(o => o.WorkItems)
+                .Include(o => o.Payments)
+                .Include(o => o.Photos)
+                .FirstOrDefaultAsync(o => o.Id == id);
 
-            if (!IsAdminOrHigher() && order.ManagerId != userId) return Forbid();
+            if (order == null)
+            {
+                _logger.LogWarning("Заказ {OrderId} не найден", id);
+                return NotFound("Заказ не найден");
+            }
 
-            await _orderRepository.SoftDeleteAsync(id);
-            return NoContent();
+            // Проверка прав
+            if (!IsAdminOrHigher() && order.ManagerId != userId)
+            {
+                _logger.LogWarning("Пользователь {UserId} пытается удалить чужой заказ {OrderId}", userId, id);
+                return Forbid("Нет прав на удаление этого заказа");
+            }
+
+            // Если заказ уже в архиве, не даем повторно мягко удалять
+            if (order.IsDeleted)
+            {
+                _logger.LogWarning("Заказ {OrderId} уже находится в архиве", id);
+                return BadRequest(new
+                {
+                    success = false,
+                    message = "Заказ уже в архиве. Используйте полное удаление если нужно удалить навсегда."
+                });
+            }
+
+            using var transaction = await _context.Database.BeginTransactionAsync();
+
+            try
+            {
+                // 1. Удаляем ВСЕ уведомления, связанные с заказом (ПОЛНОСТЬЮ)
+                var notifications = await _context.Notifications
+                    .Where(n => n.OrderId == id)
+                    .Include(n => n.Recipients)  // Загружаем получателей для удаления
+                    .ToListAsync();
+
+                if (notifications.Any())
+                {
+                    _logger.LogInformation("Удаляем {Count} уведомлений, связанных с заказом {OrderId}",
+                        notifications.Count, id);
+
+                    // Recipients удалятся каскадно благодаря настройкам в БД
+                    _context.Notifications.RemoveRange(notifications);
+                    await _context.SaveChangesAsync();
+                }
+
+                // 2. Помечаем заказ как удаленный (мягкое удаление)
+                order.IsDeleted = true;
+                order.DeletedAt = DateTime.UtcNow;
+                order.UpdatedAt = DateTime.UtcNow;
+
+                await _context.SaveChangesAsync();
+                await transaction.CommitAsync();
+
+                _logger.LogInformation("Заказ {OrderId} перемещен в архив. Удалено уведомлений: {NotifCount}",
+                    id, notifications.Count);
+
+                return Ok(new
+                {
+                    success = true,
+                    message = "Заказ перемещен в архив",
+                    deletedNotifications = notifications.Count,
+                    orderId = id,
+                    orderNumber = order.OrderNumber
+                });
+            }
+            catch (Exception ex)
+            {
+                await transaction.RollbackAsync();
+                _logger.LogError(ex, "Ошибка при мягком удалении заказа {OrderId}", id);
+                return StatusCode(500, new
+                {
+                    success = false,
+                    message = "Ошибка при удалении заказа",
+                    error = ex.Message
+                });
+            }
         }
 
         [HttpPost("{id}/restore")]
@@ -538,6 +617,16 @@ namespace Franchisee.Web.Controllers
                 }
             }
 
+            // НОВОЕ: Геоданные
+            if (request.Latitude.HasValue && request.Latitude != order.Latitude)
+                changes["Latitude"] = new { old = order.Latitude, @new = request.Latitude };
+
+            if (request.Longitude.HasValue && request.Longitude != order.Longitude)
+                changes["Longitude"] = new { old = order.Longitude, @new = request.Longitude };
+
+            if (request.PlotId.HasValue && request.PlotId != order.PlotId)
+                changes["PlotId"] = new { old = order.PlotId, @new = request.PlotId };
+
             if (!string.IsNullOrEmpty(request.DeceasedFullName) && request.DeceasedFullName != order.DeceasedFullName)
                 changes["DeceasedFullName"] = new { old = order.DeceasedFullName, @new = request.DeceasedFullName };
 
@@ -589,6 +678,22 @@ namespace Franchisee.Web.Controllers
             if (oldWorkItemsJson != newWorkItemsJson)
             {
                 changes["WorkItems"] = new { old = oldWorkItems, @new = newWorkItems };
+
+                // НОВОЕ: Отслеживаем изменение общей суммы
+                var oldTotal = order.WorkItems.Sum(w => w.Price * w.Quantity);
+                var newTotal = request.WorkItems.Sum(w => w.Price * w.Quantity);
+
+                if (oldTotal != newTotal)
+                {
+                    changes["TotalPrice"] = new
+                    {
+                        old = oldTotal,
+                        @new = newTotal
+                    };
+
+                    _logger.LogDebug("Обнаружено изменение суммы заказа: {OldTotal} -> {NewTotal}",
+                        oldTotal, newTotal);
+                }
             }
         }
 
@@ -620,29 +725,33 @@ namespace Franchisee.Web.Controllers
         }
         private void CollectPhotoChanges(Order order, UpdateOrderRequest request, Dictionary<string, object> changes)
         {
-            List<int> addedTempIds = new();
-            List<int> removedPhotoIds = new();
-
+            // Собираем фото для добавления
+            List<int> addedPhotoTempIds = new();
             if (request.TempPhotoIds?.Any() == true)
             {
                 var userId = GetCurrentUserId();
                 var validTempIds = _context.TempUploads
-                    .Where(t => request.TempPhotoIds.Contains(t.Id) && t.UploaderId == userId)
+                    .Where(t => request.TempPhotoIds.Contains(t.Id) &&
+                               t.UploaderId == userId &&
+                               t.MediaType == MediaType.Photo)
                     .Select(t => t.Id)
                     .ToList();
 
                 if (validTempIds.Any())
                 {
-                    addedTempIds = validTempIds;
+                    addedPhotoTempIds = validTempIds;
                 }
             }
 
+            // Собираем видео для добавления
             List<int> addedVideoTempIds = new();
             if (request.TempVideoIds?.Any() == true)
             {
                 var userId = GetCurrentUserId();
                 var validTempIds = _context.TempUploads
-                    .Where(t => request.TempVideoIds.Contains(t.Id) && t.UploaderId == userId)
+                    .Where(t => request.TempVideoIds.Contains(t.Id) &&
+                               t.UploaderId == userId &&
+                               t.MediaType == MediaType.Video)
                     .Select(t => t.Id)
                     .ToList();
 
@@ -652,15 +761,21 @@ namespace Franchisee.Web.Controllers
                 }
             }
 
+            // Собираем ID фото для удаления
+            List<int> removedPhotoIds = new();
             if (request.RemovedPhotoIds?.Any() == true)
             {
-                var existingPhotoIds = order.Photos.Select(p => p.Id).ToList();
+                var existingPhotoIds = order.Photos
+                    .Where(p => p.MediaType == MediaType.Photo)
+                    .Select(p => p.Id)
+                    .ToList();
+
                 removedPhotoIds = request.RemovedPhotoIds
                     .Where(pid => existingPhotoIds.Contains(pid))
                     .ToList();
             }
 
-            // Добавляем удаление видео
+            // Собираем ID видео для удаления
             List<int> removedVideoIds = new();
             if (request.RemovedVideoIds?.Any() == true)
             {
@@ -668,21 +783,40 @@ namespace Franchisee.Web.Controllers
                     .Where(p => p.MediaType == MediaType.Video)
                     .Select(p => p.Id)
                     .ToList();
+
                 removedVideoIds = request.RemovedVideoIds
                     .Where(pid => existingVideoIds.Contains(pid))
                     .ToList();
             }
 
-            if (addedTempIds.Any() || removedPhotoIds.Any() ||
-                addedVideoTempIds.Any() || removedVideoIds.Any())
+            // Добавляем изменения фото в уведомление (отдельным ключом)
+            if (addedPhotoTempIds.Any() || removedPhotoIds.Any())
             {
                 changes["Photos"] = new
                 {
-                    addedPhotoTempIds = addedTempIds,
-                    removedPhotoIds = removedPhotoIds,
-                    addedVideoTempIds = addedVideoTempIds,
-                    removedVideoIds = removedVideoIds
+                    addedTempIds = addedPhotoTempIds,
+                    removedIds = removedPhotoIds
                 };
+            }
+
+            // Добавляем изменения видео в уведомление (отдельным ключом)
+            if (addedVideoTempIds.Any() || removedVideoIds.Any())
+            {
+                changes["Videos"] = new
+                {
+                    addedTempIds = addedVideoTempIds,
+                    removedIds = removedVideoIds
+                };
+            }
+
+            // Логируем для отладки
+            if (addedPhotoTempIds.Any() || removedPhotoIds.Any() ||
+                addedVideoTempIds.Any() || removedVideoIds.Any())
+            {
+                _logger.LogDebug(
+                    "CollectPhotoChanges: Фото: +{PhotoAdd} -{PhotoRemove}, Видео: +{VideoAdd} -{VideoRemove}",
+                    addedPhotoTempIds.Count, removedPhotoIds.Count,
+                    addedVideoTempIds.Count, removedVideoIds.Count);
             }
         }
 
@@ -854,6 +988,7 @@ namespace Franchisee.Web.Controllers
                 // Ищем заказ в архиве
                 var order = await _context.Orders
                     .IgnoreQueryFilters()
+                    .Include(o => o.Photos)  // ← Добавил Include для фото
                     .FirstOrDefaultAsync(o => o.Id == id && o.IsDeleted);
 
                 if (order == null)
@@ -863,18 +998,35 @@ namespace Franchisee.Web.Controllers
 
                 try
                 {
+                    // Путь к папке заказа
+                    var orderFolderPath = Path.Combine(_env.WebRootPath, "uploads", "orders", id.ToString());
+
                     // Удаляем фото и файлы
-                    var photos = await _context.OrderPhotos
-                        .Where(p => p.OrderId == id)
-                        .ToListAsync();
+                    var photos = order.Photos;  // ← Теперь используем order.Photos
 
                     foreach (var photo in photos)
                     {
                         if (System.IO.File.Exists(photo.FilePath))
                         {
                             await Task.Run(() => System.IO.File.Delete(photo.FilePath));
+                            _logger.LogDebug("Удален файл: {FilePath}", photo.FilePath);
                         }
                         _context.OrderPhotos.Remove(photo);
+                    }
+
+                    // НОВОЕ: Удаляем пустую папку заказа
+                    if (Directory.Exists(orderFolderPath))
+                    {
+                        // Проверяем, остались ли еще файлы в папке (на всякий случай)
+                        if (!Directory.EnumerateFileSystemEntries(orderFolderPath).Any())
+                        {
+                            Directory.Delete(orderFolderPath);
+                            _logger.LogInformation("Удалена пустая папка заказа: {FolderPath}", orderFolderPath);
+                        }
+                        else
+                        {
+                            _logger.LogWarning("Папка заказа {OrderId} не пуста, удаление отменено", id);
+                        }
                     }
 
                     // Удаляем work items
@@ -896,7 +1048,11 @@ namespace Franchisee.Web.Controllers
                     await transaction.CommitAsync();
 
                     _logger.LogInformation("Заказ {OrderId} полностью удален из архива пользователем {UserId}", id, userId);
-                    return Ok(new { message = "Заказ полностью удален из архива" });
+                    return Ok(new
+                    {
+                        message = "Заказ полностью удален из архива",
+                        folderDeleted = true
+                    });
                 }
                 catch (Exception ex)
                 {

@@ -159,17 +159,38 @@ export async function openVideoPreview(mediaId, fileName, orderNumber = null, is
     try {        
         let videoUrl;
         
+        // ИСПРАВЛЕНО: получаем токен из apiService
+        const { apiService } = await import('../api/api.js');
+        const token = apiService.token;
+        
         if (isTemp) {
-            // Для временного видео используем специальный эндпоинт
+            // Для временного видео используем специальный эндпоинт temp-preview
             console.log('[VideoPreview] Загрузка временного видео:', mediaId);
-            videoUrl = await apiService.getTempMediaPreview(mediaId);
+            
+            try {
+                // Способ 1: через apiService
+                videoUrl = await apiService.getTempMediaPreview(mediaId);
+            } catch (error) {
+                console.warn('[VideoPreview] getTempMediaPreview failed, trying direct fetch:', error);
+                
+                // Способ 2: прямой fetch
+                const response = await fetch(`/api/media/temp-preview/${mediaId}`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`Failed to load temp video: ${response.status}`);
+                }
+                
+                const blob = await response.blob();
+                videoUrl = URL.createObjectURL(blob);
+            }
         } else {
-            // Для существующего видео используем прямой URL
+            // Для существующего видео используем прямой URL с авторизацией
             console.log('[VideoPreview] Загрузка существующего видео:', mediaId);
             
-            // Получаем blob через fetch с авторизацией
             const response = await fetch(`/api/media/${mediaId}/file`, {
-                headers: { 'Authorization': `Bearer ${apiService.token}` }
+                headers: { 'Authorization': `Bearer ${token}` }
             });
             
             if (!response.ok) {
@@ -180,7 +201,7 @@ export async function openVideoPreview(mediaId, fileName, orderNumber = null, is
             videoUrl = URL.createObjectURL(blob);
         }
         
-        // Создаем модальное окно
+        // Создаем модальное окно (код остается без изменений)
         const modal = document.createElement('div');
         modal.className = 'video-modal-overlay';
         modal.style.cssText = `
@@ -302,7 +323,8 @@ export async function openVideoPreview(mediaId, fileName, orderNumber = null, is
             
             setTimeout(() => {
                 document.body.removeChild(modal);
-                if (!isTemp) {
+                // Очищаем blob URL если он был создан
+                if (videoUrl && videoUrl.startsWith('blob:')) {
                     URL.revokeObjectURL(videoUrl);
                 }
             }, 300);
@@ -325,7 +347,18 @@ export async function openVideoPreview(mediaId, fileName, orderNumber = null, is
         
     } catch (error) {
         console.error('[VideoPreview] Error loading video:', error);
-        showTempMessage('Ошибка загрузки видео: ' + error.message, 'error');
+        
+        // Показываем понятную ошибку пользователю
+        let errorMessage = 'Ошибка загрузки видео';
+        if (error.message.includes('404')) {
+            errorMessage = 'Видео не найдено. Возможно, временный файл истек.';
+        } else if (error.message.includes('401')) {
+            errorMessage = 'Нет доступа к видео. Требуется авторизация.';
+        } else {
+            errorMessage = error.message;
+        }
+        
+        showTempMessage(errorMessage, 'error', 5000);
     }
 }
 
@@ -584,6 +617,14 @@ export async function removeTempPhoto(tempId, draftManager = null) {
  * Открытие фото в улучшенном модальном окне
  */
 export function openPhotoPreview(imageSrc, fileName, photoId = null, orderNumber = null, photoIndex = null) {
+    // Если imageSrc не передан или это невалидный blob, используем photoId
+    if ((!imageSrc || (imageSrc.startsWith('blob:') && !URL.canParse?.(imageSrc))) && photoId) {
+        // Загружаем фото через API
+        loadPhotoById(photoId, fileName, orderNumber, photoIndex);
+        return;
+    }
+    
+    // Нормальный случай - показываем модалку с переданным URL
     const modal = document.createElement('div');
     modal.className = 'photo-modal-overlay';
     
@@ -630,7 +671,6 @@ export function openPhotoPreview(imageSrc, fileName, photoId = null, orderNumber
     });
     document.addEventListener('keydown', handleKeydown);
     
-    // ИСПРАВЛЕННЫЙ ОБРАБОТЧИК СКАЧИВАНИЯ - передаем все параметры
     modal.querySelector('.photo-modal-download').addEventListener('click', async (e) => {
         e.stopPropagation();
         try {
@@ -645,7 +685,6 @@ export function openPhotoPreview(imageSrc, fileName, photoId = null, orderNumber
                 return;
             }
             
-            // ПЕРЕДАЕМ ВСЕ ПАРАМЕТРЫ как в старом коде
             await downloadPhoto(actualPhotoId, fileName, orderNumber, photoIndex);
         } catch (error) {
             console.error('Download error in modal:', error);
@@ -654,13 +693,27 @@ export function openPhotoPreview(imageSrc, fileName, photoId = null, orderNumber
     });
 }
 
+// Новая вспомогательная функция
+async function loadPhotoById(photoId, fileName, orderNumber, photoIndex) {
+    try {
+        const { apiService } = await import('../api/api.js');
+        const imageUrl = await apiService.getMediaUrl(photoId);
+        
+        // Вызываем себя же с правильным URL
+        openPhotoPreview(imageUrl, fileName, photoId, orderNumber, photoIndex);
+    } catch (error) {
+        console.error('Error loading photo by ID:', error);
+        showTempMessage('Ошибка загрузки фото', 'error');
+    }
+}
+
 export async function renderPhotoGrid(mediaItems, containerId, options = {}) {
     const container = document.getElementById(containerId);
     if (!container) return;
     
     container.innerHTML = '';
     
-    const { mode = 'view', orderNumber, orderManager } = options;
+    const { mode = 'view', orderNumber, orderManager, onMediaClick } = options;
     
     for (let i = 0; i < mediaItems.length; i++) {
         const media = mediaItems[i];
@@ -672,6 +725,11 @@ export async function renderPhotoGrid(mediaItems, containerId, options = {}) {
             const item = document.createElement('div');
             item.className = 'media-item';
             
+            // Добавляем класс для режима diff если нужно
+            if (mode === 'diff' && media._actionType) {
+                item.classList.add(media._actionType === 'added' ? 'photo-added' : 'photo-removed');
+            }
+            
             // data-атрибуты
             if (media.id) item.dataset.mediaId = media.id;
             if (media.tempId) item.dataset.tempId = media.tempId;
@@ -681,61 +739,77 @@ export async function renderPhotoGrid(mediaItems, containerId, options = {}) {
             item.dataset.photoIndex = i + 1;
             
             // ===== КОНТЕЙНЕР ПРЕВЬЮ =====
-            const previewContainer = document.createElement('div'); // ← ИСПРАВЛЕНО: другое имя
+            const previewContainer = document.createElement('div');
             previewContainer.className = 'media-container';
             
             if (isVideo) {
-                // ВИДЕО: канвас с кадром
-                try {
-                    const videoUrl = `/api/media/${media.id}/file`;
-                    const response = await fetch(videoUrl, {
-                        headers: { 'Authorization': `Bearer ${apiService.token}` }
-                    });
-                    const blob = await response.blob();
-                    
-                    const video = document.createElement('video');
-                    video.src = URL.createObjectURL(blob);
-                    video.preload = 'metadata';
-                    video.crossOrigin = 'anonymous';
-                    
-                    const canvas = document.createElement('canvas');
-                    canvas.className = 'media-canvas';
-                    
-                    await new Promise((resolve, reject) => {
-                        video.onloadedmetadata = () => {
-                            video.currentTime = Math.min(0.5, video.duration || 0.5);
-                        };
-                        video.onseeked = () => {
-                            canvas.width = video.videoWidth || 300;
-                            canvas.height = video.videoHeight || 200;
-                            const ctx = canvas.getContext('2d');
-                            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-                            URL.revokeObjectURL(video.src);
-                            video.remove();
-                            resolve();
-                        };
-                        video.onerror = reject;
-                    });
-                    
-                    previewContainer.appendChild(canvas);
-                } catch (error) {
-                    console.warn(`Failed to extract frame from video ${media.id}:`, error);
+                // Для видео в режиме diff показываем плейсхолдер (не грузим видео)
+                if (mode === 'diff') {
                     const placeholder = document.createElement('div');
                     placeholder.className = 'video-placeholder';
                     placeholder.innerHTML = '<div class="video-label">Видео</div>';
                     previewContainer.appendChild(placeholder);
+                } else {
+                    // Стандартная логика для видео
+                    try {
+                        const videoUrl = `/api/media/${media.id}/file`;
+                        const response = await fetch(videoUrl, {
+                            headers: { 'Authorization': `Bearer ${apiService.token}` }
+                        });
+                        const blob = await response.blob();
+                        
+                        const video = document.createElement('video');
+                        video.src = URL.createObjectURL(blob);
+                        video.preload = 'metadata';
+                        video.crossOrigin = 'anonymous';
+                        
+                        const canvas = document.createElement('canvas');
+                        canvas.className = 'media-canvas';
+                        
+                        await new Promise((resolve, reject) => {
+                            video.onloadedmetadata = () => {
+                                video.currentTime = Math.min(0.5, video.duration || 0.5);
+                            };
+                            video.onseeked = () => {
+                                canvas.width = video.videoWidth || 300;
+                                canvas.height = video.videoHeight || 200;
+                                const ctx = canvas.getContext('2d');
+                                ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                                URL.revokeObjectURL(video.src);
+                                video.remove();
+                                resolve();
+                            };
+                            video.onerror = reject;
+                        });
+                        
+                        previewContainer.appendChild(canvas);
+                    } catch (error) {
+                        console.warn(`Failed to extract frame from video ${media.id}:`, error);
+                        const placeholder = document.createElement('div');
+                        placeholder.className = 'video-placeholder';
+                        placeholder.innerHTML = '<div class="video-label">Видео</div>';
+                        previewContainer.appendChild(placeholder);
+                    }
                 }
                 
-                // Оверлей с play-кнопкой
-                const overlay = document.createElement('div');
-                overlay.className = 'video-play-overlay';
-                overlay.innerHTML = '<div class="video-play-icon">▶</div>';
-                previewContainer.appendChild(overlay);
+                // Оверлей с play-кнопкой (кроме режима diff)
+                if (mode !== 'diff') {
+                    const overlay = document.createElement('div');
+                    overlay.className = 'video-play-overlay';
+                    overlay.innerHTML = '<div class="video-play-icon">▶</div>';
+                    previewContainer.appendChild(overlay);
+                }
                 
             } else {
-                // ФОТО: изображение
+                // ФОТО
                 try {
-                    const imageUrl = await apiService.getMediaUrl(media.id);
+                    let imageUrl;
+                    if (media.tempId) {
+                        imageUrl = await apiService.getTempMediaPreview(media.tempId);
+                    } else {
+                        imageUrl = await apiService.getMediaUrl(media.id);
+                    }
+                    
                     const img = document.createElement('img');
                     img.src = imageUrl;
                     img.alt = media.originalFileName || 'Фото';
@@ -748,15 +822,15 @@ export async function renderPhotoGrid(mediaItems, containerId, options = {}) {
                 }
             }
             
-            // Бейдж типа
+            // Бейдж типа (всегда)
             const badge = document.createElement('div');
             badge.className = `media-type-badge ${mediaType}`;
             badge.textContent = isVideo ? 'Видео' : 'Фото';
-            previewContainer.appendChild(badge); // ВАЖНО: previewContainer, а не item
+            previewContainer.appendChild(badge);
             
             item.appendChild(previewContainer);
             
-            // ===== КНОПКА УДАЛЕНИЯ =====
+            // ===== КНОПКА УДАЛЕНИЯ (только для режимов edit/create) =====
             if (mode === 'edit' || mode === 'create') {
                 const removeBtn = document.createElement('button');
                 removeBtn.className = media.tempId ? 'media-remove' : 'media-remove-existing';
@@ -764,6 +838,7 @@ export async function renderPhotoGrid(mediaItems, containerId, options = {}) {
                 removeBtn.title = media.tempId ? 'Удалить' : 'Пометить на удаление';
                 
                 removeBtn.addEventListener('click', async (e) => {
+                    e.preventDefault();
                     e.stopPropagation();
                     
                     if (media.tempId && orderManager?.handleTempMediaRemoval) {
@@ -779,18 +854,58 @@ export async function renderPhotoGrid(mediaItems, containerId, options = {}) {
             // ===== ИНФОРМАЦИЯ ПОД ПРЕВЬЮ =====
             const info = document.createElement('div');
             info.className = 'media-info';
-            info.innerHTML = `
-                <div class="media-name" title="${escapeHtml(media.originalFileName || (isVideo ? 'Видео' : 'Фото'))}">
-                    ${escapeHtml(media.originalFileName || (isVideo ? 'Видео' : 'Фото'))}
-                </div>
-                <div class="media-meta">
-                    <span>${formatFileSize(media.size || 0)}</span>
-                    <span>${media.uploadedAt ? formatDate(media.uploadedAt) : ''}</span>
-                </div>
-            `;
+            
+            // Для режима diff добавляем информацию о действии
+            if (mode === 'diff' && media._actionLabel) {
+                info.innerHTML = `
+                    <div class="media-name" title="${escapeHtml(media.originalFileName || (isVideo ? 'Видео' : 'Фото'))}">
+                        ${escapeHtml(media.originalFileName || (isVideo ? 'Видео' : 'Фото'))}
+                    </div>
+                    <div class="media-meta">
+                        <span class="media-status ${media._actionType}">${media._actionLabel}</span>
+                    </div>
+                `;
+            } else {
+                info.innerHTML = `
+                    <div class="media-name" title="${escapeHtml(media.originalFileName || (isVideo ? 'Видео' : 'Фото'))}">
+                        ${escapeHtml(media.originalFileName || (isVideo ? 'Видео' : 'Фото'))}
+                    </div>
+                    <div class="media-meta">
+                        <span>${formatFileSize(media.size || 0)}</span>
+                        <span>${media.uploadedAt ? formatDate(media.uploadedAt) : ''}</span>
+                    </div>
+                `;
+            }
+            
             item.appendChild(info);
             
-            container.appendChild(item); // ← добавляем в правильный контейнер
+            // ===== ОБРАБОТЧИК КЛИКА ДЛЯ ПРОСМОТРА =====
+            item.addEventListener('click', (e) => {
+                // Не открываем просмотр при клике на кнопку
+                if (e.target.closest('button')) return;
+                
+                const mediaId = media.id || media.tempId;
+                if (!mediaId) return;
+                
+                const fileName = media.originalFileName || (isVideo ? 'Видео' : 'Фото');
+                
+                if (onMediaClick) {
+                    // Используем переданный колбэк
+                    onMediaClick(mediaId, mediaType, fileName, orderNumber, i + 1);
+                } else {
+                    // Стандартное поведение
+                    if (isVideo) {
+                        openVideoPreview(mediaId, fileName, orderNumber, !!media.tempId);
+                    } else {
+                        const img = item.querySelector('img');
+                        if (img) {
+                            openPhotoPreview(img.src, fileName, mediaId, orderNumber, i + 1);
+                        }
+                    }
+                }
+            });
+            
+            container.appendChild(item);
             
         } catch (error) {
             console.error(`Error creating media item:`, error);
@@ -874,8 +989,19 @@ function createFallbackMediaItem(media, mediaType, mode) {
  */
 function attachMediaViewHandlers(container) {
     container.addEventListener('click', (e) => {
+        // ===== КРИТИЧЕСКИ ВАЖНО: ПРОВЕРЯЕМ, НЕ КЛИКНУЛИ ЛИ ПО КНОПКЕ =====
+        if (e.target.closest('button')) {
+            console.log('[MediaView] Клик по кнопке, игнорируем просмотр');
+            return; // Не открываем просмотр, если кликнули по любой кнопке
+        }
+        
         const item = e.target.closest('.media-item');
         if (!item) return;
+        
+        // Дополнительная проверка: если элемент помечен на удаление, не открываем
+        if (item.classList.contains('marked-for-deletion')) {
+            return;
+        }
         
         const mediaId = item.dataset.mediaId;
         const mediaType = item.dataset.mediaType;
@@ -883,13 +1009,31 @@ function attachMediaViewHandlers(container) {
         const orderNumber = item.dataset.orderNumber;
         const photoIndex = item.dataset.photoIndex;
         
+        // Проверяем, есть ли у элемента временный ID (значит это новое, незагруженное медиа)
+        if (item.dataset.tempId) {
+            console.log('[MediaView] Временное медиа, возможно не готово к просмотру');
+            // Для временных видео показываем превью, если оно есть
+            if (mediaType === 'video') {
+                // Пробуем найти canvas или video элемент
+                const canvas = item.querySelector('canvas');
+                if (canvas) {
+                    const dataUrl = canvas.toDataURL('image/jpeg');
+                    openPhotoPreview(dataUrl, fileName, null, orderNumber, photoIndex);
+                }
+            }
+            return;
+        }
+        
+        // Открываем просмотр для постоянных медиа
         if (mediaType === 'video') {
             if (typeof openVideoPreview === 'function') {
+                console.log('[MediaView] Открываем видео:', mediaId);
                 openVideoPreview(mediaId, fileName, orderNumber, false);
             }
         } else {
             const img = item.querySelector('img');
             if (img) {
+                console.log('[MediaView] Открываем фото:', mediaId);
                 openPhotoPreview(
                     img.src,
                     fileName,
@@ -1211,6 +1355,35 @@ async function handleMediaFiles(files, uploadCallback) {
         }
         
         await uploadCallback(file);
+    }
+}
+
+/**
+ * Открывает фото по ID (для удаляемых/постоянных фото)
+ */
+export async function openPhotoPreviewById(photoId, fileName, orderNumber = null, photoIndex = null) {
+    try {
+        console.log('[PhotoPreviewById] Загрузка фото по ID:', photoId);
+        
+        const { apiService } = await import('../api/api.js');
+        const imageUrl = await apiService.getMediaUrl(photoId);
+        
+        // Используем существующую функцию с полученным URL
+        openPhotoPreview(imageUrl, fileName, photoId, orderNumber, photoIndex);
+        
+    } catch (error) {
+        console.error('[PhotoPreviewById] Error loading photo by ID:', error);
+        
+        let errorMessage = 'Ошибка загрузки фото';
+        if (error.message.includes('404')) {
+            errorMessage = 'Фото не найдено';
+        } else if (error.message.includes('401')) {
+            errorMessage = 'Нет доступа к фото';
+        }
+        
+        // Импортируем showTempMessage если нужно
+        const { showTempMessage } = await import('../utils/utils.js');
+        showTempMessage(errorMessage, 'error');
     }
 }
 

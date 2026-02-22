@@ -2,7 +2,7 @@ import { escapeHtml, formatValue, formatFileSize } from './notification-utils.js
 import { NOTIFICATION_STATUS, NOTIFICATION_TYPES } from './notification-types.js';
 import { showTempMessage, formatDate } from '../utils/utils.js';
 import { getState } from './notification-state.js';
-import { openPhotoPreview } from '../utils/photo-utils.js';
+import { openPhotoPreview, openVideoPreview } from '../utils/photo-utils.js';
 
 export class NotificationViewModal {
     constructor(manager) {
@@ -11,109 +11,106 @@ export class NotificationViewModal {
         this.currentNotificationId = null;
         this.currentNotificationData = null;
         
-        this.photoPreviewCache = new Map();
+        this.mediaPreviewCache = new Map();
     }
 
-    async getPhotoPreviewUrl(id, type) {
-        const cacheKey = `${type}_${id}`;
-        
-        if (this.photoPreviewCache.has(cacheKey)) {
-            return this.photoPreviewCache.get(cacheKey);
-        }
-        
-        try {
-            const { apiService } = await import('../api/api.js');
-            let photoUrl;
-            
-            if (type === 'added') {
-                // Загружаем временное фото
-                photoUrl = await apiService.getTempPreview(id);
-            } else {
-                // Загружаем постоянное фото
-                photoUrl = await apiService.getPhotoUrl(id);
-            }
-            
-            this.photoPreviewCache.set(cacheKey, photoUrl);
-            return photoUrl;
-            
-        } catch (error) {
-            console.warn(`Не удалось загрузить фото ${id}:`, error.message);
-            
-            // Fallback только при ошибке
-            const fallbackUrl = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgZmlsbD0iI2VlZSIvPjx0ZXh0IHg9IjUwIiB5PSI1MCIgZm9udC1mYW1pbHk9IkFyaWFsIiBmb250LXNpemU9IjEyIiBmaWxsPSIjNjY2IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBkeT0iLjNlbSI+0J/RgNC+0LTRg9C60YI8L3RleHQ+PC9zdmc+';
-            this.photoPreviewCache.set(cacheKey, fallbackUrl);
-            return fallbackUrl;
-        }
-    }
-
-    async generatePhotoItem(id, type, index) {
-        const isAdded = type === 'added';
-        const label = isAdded ? `Новое фото #${id}` : `Удаляем фото #${id}`;
-        const statusText = isAdded ? 'Будет добавлено' : 'Будет удалено';
-        
-        try {
-            const previewUrl = await this.getPhotoPreviewUrl(id, type);
-            
-            // СОЗДАЕМ УНИКАЛЬНЫЙ ID ДЛЯ УВЕДОМЛЕНИЯ
-            const uniquePhotoId = `${type}_${id}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-            
-            return `
-                <div class="photo-item ${isAdded ? 'photo-added' : 'photo-removed'}" 
-                    data-photo-id="${id}"
-                    data-photo-type="${type}"
-                    data-photo-index="${index + 1}"
-                    data-unique-id="${uniquePhotoId}"
-                    ${this.currentNotificationData?.orderNumber ? `data-order-number="${this.currentNotificationData.orderNumber}"` : ''}>
-                    <div class="photo-preview" role="button" tabindex="0" aria-label="Открыть фото ${label}" data-open-photo>
-                        <img src="${previewUrl}" 
-                            alt="${label}"
-                            class="photo-img"
-                            loading="lazy"
-                            data-src="${previewUrl}"
-                            data-filename="${label}">
-                        <div class="photo-overlay"></div>
-                    </div>
-                    <div class="photo-info">
-                        <div class="photo-name" title="${label}">${label}</div>
-                        <div class="photo-meta">
-                            <span class="photo-status">${statusText}</span>
-                        </div>
-                    </div>
-                </div>
-            `;
-            
-        } catch (error) {
-            return `
-                <div class="photo-item photo-error">
-                    <div class="photo-preview" style="background: var(--glass-background);">
-                        <span class="photo-icon"></span>
-                    </div>
-                    <div class="photo-info">
-                        <div class="photo-name">${label}</div>
-                        <div class="photo-meta">Ошибка загрузки</div>
-                    </div>
-                </div>
-            `;
-        }
+    async generateMediaItem(id, type, mediaType, index) {
+        console.warn('[Media] generateMediaItem устарел, используйте createMediaElement');
+        return this.createMediaElement(id, type, mediaType, index);
     }
 
     /**
      * Инициализирует обработчики кликов для фото в модалке
      */
     initPhotoClickHandlers() {
-        // Используем делегирование событий
-        if (this.contentElement) {
-            this.contentElement.addEventListener('click', (e) => {
-                this.handlePhotoClick(e);
-            });
-            
-            // Также обрабатываем нажатие Enter для accessibility
-            this.contentElement.addEventListener('keydown', (e) => {
-                if (e.key === 'Enter' || e.key === ' ') {
-                    this.handlePhotoClick(e);
-                }
-            });
+        if (!this.contentElement) return;
+        
+        // Убираем все старые обработчики, чтобы не было дублей
+        const oldHandler = this.contentElement._photoClickHandler;
+        if (oldHandler) {
+            this.contentElement.removeEventListener('click', oldHandler);
         }
+        
+        // Создаем новый обработчик (теперь с async)
+        const handler = async (e) => {
+            // Не обрабатываем клики по кнопкам
+            if (e.target.closest('button')) return;
+            
+            const mediaItem = e.target.closest('.media-item');
+            if (!mediaItem) return;
+            
+            const mediaId = mediaItem.dataset.mediaId;
+            const mediaType = mediaItem.dataset.mediaType;
+            const fileName = mediaItem.querySelector('.media-name')?.textContent || 'Файл';
+            const orderNumber = mediaItem.dataset.orderNumber;
+            const photoIndex = mediaItem.dataset.mediaIndex;
+            const isTemp = mediaItem.dataset.mediaAction === 'added';
+            
+            e.preventDefault();
+            e.stopPropagation();
+            
+            console.log('[Media] Открываем медиа:', { mediaId, mediaType, isTemp });
+            
+            if (mediaType === 'Videos') {
+                // Для видео всегда используем openVideoPreview с флагом isTemp
+                import('../utils/photo-utils.js').then(module => {
+                    if (module.openVideoPreview) {
+                        module.openVideoPreview(mediaId, fileName, orderNumber, isTemp);
+                    }
+                });
+                
+            } else {
+                // Для фото - разделяем логику
+                if (!isTemp) {
+                    // УДАЛЯЕМЫЕ ФОТО (permanent) - всегда открываем по ID
+                    console.log('[Media] Открываем удаляемое фото по ID:', mediaId);
+                    const photoModule = await import('../utils/photo-utils.js');
+                    if (photoModule.openPhotoPreviewById) {
+                        await photoModule.openPhotoPreviewById(mediaId, fileName, orderNumber, photoIndex);
+                    } else {
+                        const { showTempMessage } = await import('../utils/utils.js');
+                        showTempMessage('Ошибка открытия фото', 'error');
+                    }
+                    return;
+                }
+                
+                // ДОБАВЛЯЕМЫЕ ФОТО (temp) - используем img.src
+                const img = mediaItem.querySelector('img');
+                if (img && img.src) {
+                    import('../utils/photo-utils.js').then(module => {
+                        if (module.openPhotoPreview) {
+                            module.openPhotoPreview(
+                                img.src,
+                                fileName,
+                                mediaId,
+                                orderNumber,
+                                photoIndex
+                            );
+                        }
+                    });
+                } else {
+                    const canvas = mediaItem.querySelector('canvas');
+                    if (canvas) {
+                        const dataUrl = canvas.toDataURL('image/jpeg');
+                        import('../utils/photo-utils.js').then(module => {
+                            if (module.openPhotoPreview) {
+                                module.openPhotoPreview(
+                                    dataUrl,
+                                    fileName,
+                                    mediaId,
+                                    orderNumber,
+                                    photoIndex
+                                );
+                            }
+                        });
+                    }
+                }
+            }
+        };
+        
+        // Сохраняем ссылку на обработчик и добавляем новый
+        this.contentElement._photoClickHandler = handler;
+        this.contentElement.addEventListener('click', handler);
     }
 
     /**
@@ -209,26 +206,47 @@ export class NotificationViewModal {
         document.addEventListener('keydown', handleKeydown);
     }
 
-    async renderPhotoItems(photoIds, type) {
-        if (!photoIds || photoIds.length === 0) {
-            return '<div class="no-photos">Нет фотографий</div>';
+    async renderMediaItems(ids, type, mediaType) {
+        if (!ids || ids.length === 0) {
+            const emptyDiv = document.createElement('div');
+            emptyDiv.className = 'no-photos';
+            emptyDiv.textContent = 'Нет элементов';
+            return emptyDiv.outerHTML;
         }
         
-        const photoPromises = photoIds.map((id, index) => 
-            this.generatePhotoItem(id, type, index)
-        );
+        // Создаем контейнер
+        const container = document.createElement('div');
+        container.className = 'photos-grid';
         
-        try {
-            const photoElements = await Promise.all(photoPromises);
-            return `<div class="photos-grid">${photoElements.join('')}</div>`;
-            
-        } catch (error) {
-            console.error('Ошибка при рендеринге фото:', error);
-            return '<div class="photo-error-container">Ошибка загрузки фотографий</div>';
+        // Загружаем каждый элемент последовательно
+        for (let i = 0; i < ids.length; i++) {
+            const id = ids[i];
+            try {
+                console.log(`[Media] Загружаем элемент ${i+1}/${ids.length}:`, { id, type, mediaType });
+                
+                // Используем новый единый метод
+                const mediaItem = await this.createMediaElement(id, type, mediaType, i);
+                
+                if (mediaItem) {
+                    container.appendChild(mediaItem);
+                }
+                
+                // Небольшая задержка между загрузками
+                await new Promise(resolve => setTimeout(resolve, 50));
+                
+            } catch (error) {
+                console.error(`[Media] Ошибка при создании элемента для ${id}:`, error);
+                
+                // Создаем fallback элемент
+                const fallbackItem = this.createFallbackMediaElement(id, type, mediaType, i);
+                container.appendChild(fallbackItem);
+            }
         }
+        
+        return container.outerHTML;
     }
 
-    async generatePhotosDiff(photosChange) {
+    async generateMediaDiff(photosChange) {
         const addedIds = photosChange.addedTempIds || [];
         const removedIds = photosChange.removedPhotoIds || [];
         
@@ -240,8 +258,8 @@ export class NotificationViewModal {
         }
         
         const [addedPhotosHtml, removedPhotosHtml] = await Promise.all([
-            addedCount > 0 ? this.renderPhotoItems(addedIds, 'added') : '',
-            removedCount > 0 ? this.renderPhotoItems(removedIds, 'removed') : ''
+            addedCount > 0 ? this.generateMediaItem(addedIds, 'added') : '',
+            removedCount > 0 ? this.generateMediaItem(removedIds, 'removed') : ''
         ]);
         
         return `
@@ -270,7 +288,7 @@ export class NotificationViewModal {
             const change = proposedChanges[field];
             
             if (field === 'Photos' && (change.addedTempIds !== undefined || change.removedPhotoIds !== undefined)) {
-                content += await this.generatePhotosDiff(change);
+                content += await this.generateMediaDiff(change);
             } else if (['WorkItems', 'Payments', 'Photos'].includes(field)) {
                 content += this.generateCollectionDiff(field, change);
             } else {
@@ -287,11 +305,17 @@ export class NotificationViewModal {
         }
         
         const groups = {
-            'Основная информация': ['Status', 'TotalPrice', 'OrderDate', 'MonumentType', 'MonumentSize', 'AdditionalInfo'],
-            'Клиент и место': ['CustomerFullName', 'CustomerEmail', 'Phone', 'Address', 'Place', 'InspectionPlace', 'DeceasedFullName'],
+            'Основная информация': [
+                'Status', 'TotalPrice', 'OrderDate', 'MonumentType', 
+                'MonumentSize', 'AdditionalInfo', 'Latitude', 'Longitude', 'PlotId'
+            ],
+            'Клиент и место': [
+                'CustomerFullName', 'CustomerEmail', 'Phone', 'Address', 
+                'Place', 'InspectionPlace', 'DeceasedFullName'
+            ],
             'Работы': ['WorkItems'],
             'Платежи': ['Payments'],
-            'Фотографии': ['Photos']
+            'Медиа': ['Photos', 'Videos'] // Переименовано и добавлено Videos
         };
         
         let accordionHtml = '<div class="notification-accordion">';
@@ -386,7 +410,7 @@ export class NotificationViewModal {
         this.currentNotificationId = notification.id;
         this.currentNotificationData = notification;
         
-        // ЗАГОЛОВОК
+        // ЗАГОЛОВОК (без изменений)
         let title = 'Детали уведомления';
         if (notification.orderNumber) {
             title = `Просмотр: Заказ #${notification.orderNumber}`;
@@ -398,115 +422,199 @@ export class NotificationViewModal {
             this.titleElement.textContent = title;
         }
         
-        // ПРОСТАЯ СТРУКТУРА - без лишних оберток
-        let html = '';
+        // ПОКАЗЫВАЕМ МОДАЛКУ (НО БЛОКИРУЕМ РЕНДЕР КОНТЕНТА)
+        this.modalElement.style.display = 'flex';
+        document.body.style.overflow = 'hidden';
         
-        // КОММЕНТАРИЙ ИНИЦИАТОРА
-        if (!notification.isInformation && notification.data?.comment) {
-            html += `
-                <div class="details-section glass-card">
-                    <div class="details-section-header">
-                        <h4 class="details-section-title">Комментарий инициатора</h4>
-                    </div>
-                    <div class="details-section-body">
-                        <div class="text-muted">${escapeHtml(notification.data.comment)}</div>
-                    </div>
-                </div>
-            `;
-        }
-        
-        // ОСНОВНАЯ ИНФОРМАЦИЯ - таблица как в users.html
-        html += `
-            <div class="details-section glass-card">
-                <div class="details-section-header">
-                    <h4 class="details-section-title">Основная информация</h4>
-                </div>
-                <div class="details-section-body p-0">
-                    <div class="details-table">
-                        <div class="details-row">
-                            <div class="details-label text-muted">Тип уведомления</div>
-                            <div class="details-value ${notification.isInformation ? 'text-info' : 'text-warning'}">
-                                ${notification.isInformation ? 'Информационное' : 'Влияющее на заказ'}
-                            </div>
-                        </div>
-                        
-                        <div class="details-row">
-                            <div class="details-label text-muted">Дата создания</div>
-                            <div class="details-value">${formatDate(notification.createdAt)}</div>
-                        </div>
-        `;
-        
-        if (notification.orderNumber) {
-            html += `
-                        <div class="details-row">
-                            <div class="details-label text-muted">Заказ</div>
-                            <div class="details-value text-accent font-semibold">#${notification.orderNumber}</div>
-                        </div>
-            `;
-        }
-        
-        if (notification.initiator) {
-            html += `
-                        <div class="details-row">
-                            <div class="details-label text-muted">Инициатор</div>
-                            <div class="details-value">${escapeHtml(notification.initiator)}</div>
-                        </div>
-            `;
-        }
-        
-        html += `
-                    </div>
-                </div>
+        // ОЧИЩАЕМ КОНТЕНТ И ПОКАЗЫВАЕМ ЗАГРУЗКУ
+        this.contentElement.innerHTML = `
+            <div class="modal-loading-state" style="padding: 40px; text-align: center;">
+                <div class="spinner"></div>
+                <p style="margin-top: 16px; color: var(--text-muted);">Загрузка данных...</p>
             </div>
         `;
         
-        // СООБЩЕНИЕ
-        if (notification.message) {
+        try {
+            // 1. ОЖИДАНИЕ ЗАВЕРШЕНИЯ АНИМАЦИИ МОДАЛКИ
+            await this.waitForModalOpen();
+            
+            console.log('[NotificationModal] Анимация открытия завершена, начинаем рендер контента');
+            
+            // 2. ГЕНЕРАЦИЯ КОНТЕНТА (теперь с гарантией, что layout готов)
+            let html = '';
+            
+            // Комментарий инициатора
+            if (!notification.isInformation && notification.data?.comment) {
+                html += `
+                    <div class="details-section glass-card">
+                        <div class="details-section-header">
+                            <h4 class="details-section-title">Комментарий инициатора</h4>
+                        </div>
+                        <div class="details-section-body">
+                            <div class="text-muted">${escapeHtml(notification.data.comment)}</div>
+                        </div>
+                    </div>
+                `;
+            }
+            
+            // Основная информация
             html += `
                 <div class="details-section glass-card">
                     <div class="details-section-header">
-                        <h4 class="details-section-title">Сообщение</h4>
+                        <h4 class="details-section-title">Основная информация</h4>
                     </div>
-                    <div class="details-section-body">
-                        <div class="text-secondary">${escapeHtml(notification.message)}</div>
-                    </div>
-                </div>
+                    <div class="details-section-body p-0">
+                        <div class="details-table">
+                            <div class="details-row">
+                                <div class="details-label text-muted">Тип уведомления</div>
+                                <div class="details-value ${notification.isInformation ? 'text-info' : 'text-warning'}">
+                                    ${notification.isInformation ? 'Информационное' : 'Влияющее'}
+                                </div>
+                            </div>
+                            
+                            <div class="details-row">
+                                <div class="details-label text-muted">Дата создания</div>
+                                <div class="details-value">${formatDate(notification.createdAt)}</div>
+                            </div>
             `;
-        }
-        
-        // АККОРДЕОН С ИЗМЕНЕНИЯМИ (асинхронный рендеринг)
-        if (!notification.isInformation && notification.data?.proposedChanges) {
-            html += await this.generateAccordionGroups(notification.data.proposedChanges);
-        }
-        
-        // ИНФОРМАЦИОННЫЕ УВЕДОМЛЕНИЯ
-        if (notification.isInformation && !notification.data?.proposedChanges) {
+            
+            if (notification.orderNumber) {
+                html += `
+                            <div class="details-row">
+                                <div class="details-label text-muted">Заказ</div>
+                                <div class="details-value text-accent font-semibold">#${notification.orderNumber}</div>
+                            </div>
+                `;
+            }
+            
+            if (notification.initiator) {
+                html += `
+                            <div class="details-row">
+                                <div class="details-label text-muted">Инициатор</div>
+                                <div class="details-value">${escapeHtml(notification.initiator)}</div>
+                            </div>
+                `;
+            }
+            
             html += `
-                <div class="details-section glass-card">
-                    <div class="details-section-body text-center text-muted">
-                        <p><em>Это информационное уведомление. Для его закрытия нажмите кнопку "Убрать".</em></p>
+                        </div>
                     </div>
                 </div>
             `;
+            
+            // Сообщение
+            if (notification.message) {
+                html += `
+                    <div class="details-section glass-card">
+                        <div class="details-section-header">
+                            <h4 class="details-section-title">Сообщение</h4>
+                        </div>
+                        <div class="details-section-body">
+                            <div class="text-secondary">${escapeHtml(notification.message)}</div>
+                        </div>
+                    </div>
+                `;
+            }
+            
+            // Аккордеон с изменениями
+            if (!notification.isInformation && notification.data?.proposedChanges) {
+                html += await this.generateAccordionGroups(notification.data.proposedChanges);
+            }
+            
+            // Информационные уведомления
+            if (notification.isInformation && !notification.data?.proposedChanges) {
+                html += `
+                    <div class="details-section glass-card">
+                        <div class="details-section-body text-center text-muted">
+                            <p><em>Это информационное уведомление. Для его закрытия нажмите кнопку "Убрать".</em></p>
+                        </div>
+                    </div>
+                `;
+            }
+            
+            // 3. ОБНОВЛЯЕМ КОНТЕНТ
+            this.contentElement.innerHTML = html;
+            
+            // 4. ИНИЦИАЛИЗИРУЕМ ОБРАБОТЧИКИ
+            this.initPhotoClickHandlers();
+            
+            if (!notification.isInformation) {
+                this.initAccordion();
+            }
+            
+            // 5. СОЗДАЕМ КНОПКИ ДЕЙСТВИЙ
+            this.createActionButtons(notification);
+            
+        } catch (error) {
+            console.error('[NotificationModal] Ошибка при рендере:', error);
+            this.contentElement.innerHTML = `
+                <div class="modal-error-state" style="padding: 40px; text-align: center; color: var(--error);">
+                    <p>Ошибка загрузки данных</p>
+                    <button class="btn btn-primary" onclick="this.closest('.modal').style.display='none'">Закрыть</button>
+                </div>
+            `;
         }
-        
-        // ОБНОВЛЯЕМ КОНТЕНТ
-        this.contentElement.innerHTML = html;
+    }
 
-        // ИНИЦИАЛИЗИРУЕМ ОБРАБОТЧИКИ ДЛЯ ФОТО
-        this.initPhotoClickHandlers();
-
-        // ИНИЦИАЛИЗИРУЕМ АККОРДЕОН
-        if (!notification.isInformation) {
-            this.initAccordion();
-        }
-        
-        // СОЗДАЕМ КНОПКИ ДЕЙСТВИЙ
-        this.createActionButtons(notification);
-        
-        // ПОКАЗЫВАЕМ МОДАЛКУ
-        this.modalElement.style.display = 'flex';
-        document.body.style.overflow = 'hidden';
+    /**
+     * НОВЫЙ МЕТОД: Ожидание завершения анимации открытия модалки
+     */
+    waitForModalOpen() {
+        return new Promise((resolve) => {
+            if (!this.modalElement) {
+                resolve();
+                return;
+            }
+            
+            // Проверяем, есть ли анимация на модалке
+            const computedStyle = window.getComputedStyle(this.modalElement);
+            const transition = computedStyle.transition;
+            const animation = computedStyle.animation;
+            
+            // Если нет анимации, разрешаем сразу
+            if ((!transition || transition === 'none 0s ease 0s') && 
+                (!animation || animation === 'none 0s ease 0s')) {
+                resolve();
+                return;
+            }
+            
+            console.log('[NotificationModal] Ожидание завершения анимации...');
+            
+            let animationEnded = false;
+            let timeoutId = null;
+            
+            const onAnimationEnd = () => {
+                if (animationEnded) return;
+                animationEnded = true;
+                
+                this.modalElement.removeEventListener('transitionend', onAnimationEnd);
+                this.modalElement.removeEventListener('animationend', onAnimationEnd);
+                
+                if (timeoutId) {
+                    clearTimeout(timeoutId);
+                }
+                
+                // Даем еще один кадр для стабилизации layout
+                requestAnimationFrame(() => {
+                    resolve();
+                });
+            };
+            
+            // Слушаем окончание transition и animation
+            this.modalElement.addEventListener('transitionend', onAnimationEnd);
+            this.modalElement.addEventListener('animationend', onAnimationEnd);
+            
+            // Безопасный таймаут на случай, если событие не сработало
+            timeoutId = setTimeout(() => {
+                if (!animationEnded) {
+                    console.log('[NotificationModal] Таймаут ожидания анимации');
+                    onAnimationEnd();
+                }
+            }, 300);
+            
+            // Принудительный reflow для гарантии запуска анимации
+            void this.modalElement.offsetHeight;
+        });
     }
 
     createActionButtons(notification) {
@@ -1006,10 +1114,10 @@ export class NotificationViewModal {
         for (const field of fields) {
             const change = proposedChanges[field];
             
-            // ОСОБАЯ ОБРАБОТКА ДЛЯ ФОТОГРАФИЙ
-            if (field === 'Photos' && (change.addedTempIds !== undefined || change.removedPhotoIds !== undefined)) {
-                content += await this.generatePhotosDiff(change);
-            } else if (['WorkItems', 'Payments', 'Photos'].includes(field)) {
+            // Новая универсальная обработка для медиа (фото и видео)
+            if (field === 'Photos' || field === 'Videos') {
+                content += await this.generateMediaDiff(field, change);
+            } else if (['WorkItems', 'Payments'].includes(field)) {
                 content += this.generateCollectionDiff(field, change);
             } else {
                 content += this.generateSimpleFieldDiff(field, change);
@@ -1209,9 +1317,57 @@ export class NotificationViewModal {
             this.modalElement.style.display = 'none';
             document.body.style.overflow = '';
         }
+        
+        // Останавливаем все видео при закрытии
+        if (this.contentElement) {
+            const videos = this.contentElement.querySelectorAll('video');
+            videos.forEach(video => {
+                video.pause();
+                video.removeAttribute('src');
+                video.load();
+            });
+        }
+        
         this.contentElement.innerHTML = '';
         this.currentNotificationId = null;
         this.currentNotificationData = null;
+        
+        // Очищаем кэш preview
+        if (this.mediaPreviewCache) {
+            this.mediaPreviewCache.forEach((url, key) => {
+                if (url && url.startsWith('blob:')) {
+                    try {
+                        URL.revokeObjectURL(url);
+                    } catch (e) {
+                        console.warn(`Error revoking URL ${key}:`, e);
+                    }
+                }
+            });
+            this.mediaPreviewCache.clear();
+        }
+        
+        // Дополнительная очистка всех blob URL в DOM
+        if (this.contentElement) {
+            // Очищаем img с blob src
+            const blobImages = this.contentElement.querySelectorAll('img[src^="blob:"]');
+            blobImages.forEach(img => {
+                try {
+                    URL.revokeObjectURL(img.src);
+                } catch (e) {}
+            });
+            
+            // Очищаем canvas с blob data
+            const blobCanvases = this.contentElement.querySelectorAll('canvas[data-blob-url]');
+            blobCanvases.forEach(canvas => {
+                const blobUrl = canvas.dataset.blobUrl;
+                if (blobUrl && blobUrl.startsWith('blob:')) {
+                    try {
+                        URL.revokeObjectURL(blobUrl);
+                    } catch (e) {}
+                }
+                delete canvas.dataset.blobUrl;
+            });
+        }
     }
 
     getTypeName(type) {
@@ -1280,7 +1436,7 @@ export class NotificationViewModal {
                 // Проверяем, это старый формат {old, new} или новый {addedTempIds, removedPhotoIds}
                 if (change.addedTempIds !== undefined || change.removedPhotoIds !== undefined) {
                     // Это новый diff-формат от backend
-                    return this.generatePhotosDiff(change);
+                    return this.generateMediaDiff(change);
                 }
                 // Иначе старый формат - обрабатываем как обычно
             }
@@ -1337,46 +1493,49 @@ export class NotificationViewModal {
      * @param {Object} photosChange - изменения фотографий {addedTempIds: [], removedPhotoIds: []}
      * @returns {string} HTML для отображения diff фотографий
      */
-    async generatePhotosDiff(photosChange) {
-        const addedIds = photosChange.addedTempIds || [];
-        const removedIds = photosChange.removedPhotoIds || [];
+    async generateMediaDiff(mediaType, mediaChange) {
+        // ИСПРАВЛЕНО: removedIds вместо removedPhotoIds
+        const addedIds = mediaChange.addedTempIds || [];
+        const removedIds = mediaChange.removedIds || []; // <-- ИСПРАВЛЕНО
         
         const addedCount = addedIds.length;
         const removedCount = removedIds.length;
         const totalChanges = addedCount + removedCount;
         
-        // ЕСЛИ НЕТ ИЗМЕНЕНИЙ - показываем "Нет изменений"
+        // Русские названия для отображения
+        const typeLabels = {
+            'Photos': { single: 'фото', plural: 'фотографий', title: 'Фотографии' },
+            'Videos': { single: 'видео', plural: 'видео', title: 'Видео' }
+        };
+        
+        const label = typeLabels[mediaType] || { 
+            single: 'файл', 
+            plural: 'файлов', 
+            title: mediaType 
+        };
+        
+        // Если нет изменений
         if (totalChanges === 0) {
             return `
                 <div class="collection-diff no-changes">
                     <div class="collection-header">
-                        <h5>Фотографии</h5>
+                        <h5>${label.title}</h5>
                         <span class="collection-count">Нет изменений</span>
                     </div>
                 </div>
             `;
         }
         
-        // Загружаем фото асинхронно
-        const [addedPhotosHtml, removedPhotosHtml] = await Promise.all([
-            addedCount > 0 ? this.renderPhotoItems(addedIds, 'added') : '',
-            removedCount > 0 ? this.renderPhotoItems(removedIds, 'removed') : ''
+        // Загружаем медиа асинхронно
+        const [addedMediaHtml, removedMediaHtml] = await Promise.all([
+            addedCount > 0 ? this.renderMediaItems(addedIds, 'added', mediaType) : '',
+            removedCount > 0 ? this.renderMediaItems(removedIds, 'removed', mediaType) : '' 
         ]);
-        
-        // ФОРМИРУЕМ ЗАГОЛОВОК С ПРАВИЛЬНЫМ СЧЕТЧИКОМ
-        let changeText = '';
-        if (addedCount > 0 && removedCount > 0) {
-            changeText = `(${totalChanges} изменений: +${addedCount}, -${removedCount})`;
-        } else if (addedCount > 0) {
-            changeText = `(${addedCount} ${this.getPhotoWord(addedCount)} добавлено)`;
-        } else if (removedCount > 0) {
-            changeText = `(${removedCount} ${this.getPhotoWord(removedCount)} удалено)`;
-        }
         
         return `
             <div class="collection-diff">
                 <div class="collection-header">
-                    <h5>Фотографии</h5>
+                    <h5>${label.title}</h5>
                     <div class="collection-stats">
                         <span class="stat-old">Удалено: ${removedCount}</span>
                         <span class="stat-new">Добавлено: ${addedCount}</span>
@@ -1387,10 +1546,10 @@ export class NotificationViewModal {
                     <div class="photos-section photos-removed">
                         <div class="photos-section-header">
                             <h6 class="text-error">Удалено (${removedCount})</h6>
-                            <span class="photos-hint">Эти фотографии будут удалены</span>
+                            <span class="photos-hint">Эти ${label.plural} будут удалены</span>
                         </div>
                         <div class="photos-list removed-list">
-                            ${removedPhotosHtml}
+                            ${removedMediaHtml}
                         </div>
                     </div>` : ''}
                     
@@ -1398,10 +1557,10 @@ export class NotificationViewModal {
                     <div class="photos-section photos-added">
                         <div class="photos-section-header">
                             <h6 class="text-success">Добавлено (${addedCount})</h6>
-                            <span class="photos-hint">Эти фотографии будут добавлены</span>
+                            <span class="photos-hint">Эти ${label.plural} будут добавлены</span>
                         </div>
                         <div class="photos-list added-list">
-                            ${addedPhotosHtml}
+                            ${addedMediaHtml}
                         </div>
                     </div>` : ''}
                 </div>
@@ -1422,7 +1581,7 @@ export class NotificationViewModal {
                     <span class="photos-hint">Эти фотографии будут удалены</span>
                 </div>
                 <div class="photos-list removed-list">
-                    ${this.renderPhotoItems(removedIds, 'removed')}
+                    ${this.generateMediaItem(removedIds, 'removed')}
                 </div>
             </div>
         `;
@@ -1441,7 +1600,7 @@ export class NotificationViewModal {
                     <span class="photos-hint">Эти фотографии будут добавлены</span>
                 </div>
                 <div class="photos-list added-list">
-                    ${this.renderPhotoItems(addedIds, 'added')}
+                    ${this.generateMediaItem(addedIds, 'added')}
                 </div>
             </div>
         `;
@@ -1462,7 +1621,7 @@ export class NotificationViewModal {
         }
     }
 
-   renderWorkItems(items, version) {
+    renderWorkItems(items, version) {
         let html = '<div class="work-items-list">';
         
         items.forEach((item, index) => {
@@ -1480,10 +1639,10 @@ export class NotificationViewModal {
                         <span class="work-item-label">Цена:</span>
                         <span class="work-item-value">${formatValue(item.price, 'TotalPrice')}</span>
                     </div>
-                    ${item.notes ? `
+                    ${item.note ? ` <!-- ИСПРАВЛЕНО: было item.notes, стало item.note -->
                     <div class="work-item-row">
                         <span class="work-item-label">Примечания:</span>
-                        <span class="work-item-value small-text">${escapeHtml(item.notes)}</span>
+                        <span class="work-item-value small-text">${escapeHtml(item.note)}</span>
                     </div>` : ''}
                 </div>
             `;
@@ -1520,10 +1679,10 @@ export class NotificationViewModal {
                         <span class="payment-label">Дата:</span>
                         <span class="payment-value">${formatValue(payment.paymentDate, 'OrderDate')}</span>
                     </div>
-                    ${payment.notes ? `
+                    ${payment.note ? ` <!-- ИСПРАВЛЕНО: было payment.notes, стало payment.note -->
                     <div class="payment-item-row">
                         <span class="payment-label">Примечания:</span>
-                        <span class="payment-value small-text">${escapeHtml(payment.notes)}</span>
+                        <span class="payment-value small-text">${escapeHtml(payment.note)}</span>
                     </div>` : ''}
                 </div>
             `;
@@ -1538,6 +1697,535 @@ export class NotificationViewModal {
         </div>`;
 
         return html;
+    }
+
+    /**
+     * Единая функция для рендеринга медиа (фото и видео)
+     * ИСПРАВЛЕНО: Гарантированный вызов createVideoPreviewElement для видео
+     */
+    async createMediaElement(id, type, mediaType, index) {
+        console.log(`[Media] Создание элемента:`, { id, type, mediaType, index });
+        
+        const isAdded = type === 'added';
+        const isVideo = mediaType === 'Videos';
+        const uniqueId = `${mediaType}_${type}_${id}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+        
+        // Создаем элемент
+        const item = document.createElement('div');
+        item.className = `media-item ${isAdded ? 'photo-added' : 'photo-removed'}`;
+        item.dataset.mediaId = id;
+        item.dataset.mediaType = mediaType;
+        item.dataset.mediaAction = type;
+        item.dataset.mediaIndex = index + 1;
+        item.dataset.uniqueId = uniqueId;
+        if (this.currentNotificationData?.orderNumber) {
+            item.dataset.orderNumber = this.currentNotificationData.orderNumber;
+        }
+        
+        // Контейнер для превью
+        const container = document.createElement('div');
+        container.className = 'media-container';
+        
+        try {
+            if (isVideo) {
+                await this.createVideoPreviewElement(id, type, container); // type = 'added' или 'removed'
+            } else {
+                // ФОТО - используем существующую логику
+                await this.createPhotoPreviewElement(id, type, container);
+            }
+            
+            // Бейдж типа (всегда добавляем)
+            const badge = document.createElement('div');
+            badge.className = `media-type-badge ${isVideo ? 'video' : 'photo'}`;
+            badge.textContent = isVideo ? 'Видео' : 'Фото';
+            container.appendChild(badge);
+            
+            item.appendChild(container);
+            
+            // Информация под превью
+            const info = document.createElement('div');
+            info.className = 'media-info';
+            info.innerHTML = `
+                <div class="media-name" title="${isVideo ? 'Видео' : 'Фото'} #${id}">
+                    ${isVideo ? 'Видео' : 'Фото'} #${id}
+                </div>
+                <div class="media-meta">
+                    <span class="media-status">${isAdded ? 'Будет добавлено' : 'Будет удалено'}</span>
+                </div>
+            `;
+            item.appendChild(info);
+            
+        } catch (error) {
+            console.error(`[Media] Ошибка создания элемента для ${id}:`, error);
+            return this.createFallbackMediaElement(id, type, mediaType, index);
+        }
+        
+        return item;
+    }
+
+    /**
+     * Создание превью для видео (ФИНАЛЬНАЯ РАБОЧАЯ ВЕРСИЯ)
+     * @param {string|number} id - ID видео
+     * @param {string} type - 'added' или 'removed'
+     * @param {HTMLElement} container - контейнер для вставки canvas
+    */
+    async createVideoPreviewElement(id, type, container) {
+        const isAdded = type === 'added';
+        const videoId = id;
+        
+        console.log(`[Video][${videoId}] Начало создания превью (type: ${type})`);
+        
+        // 1. ПОЛУЧЕНИЕ ТОКЕНА
+        let token = null;
+        try {
+            const tokenData = localStorage.getItem('token');
+            const tokenObj = JSON.parse(tokenData);
+            token = tokenObj.value;
+        } catch (e) {
+            console.error(`[Video][${videoId}] Ошибка токена:`, e);
+        }
+        
+        // 2. ПОДГОТОВКА КОНТЕЙНЕРА
+        container.style.position = 'relative';
+        container.style.width = '100%';
+        container.style.minHeight = '120px';
+        container.style.height = '120px';
+        container.style.overflow = 'hidden';
+        container.style.background = '#1e1e1e';
+        
+        // 3. ОЧИЩАЕМ КОНТЕЙНЕР
+        container.innerHTML = '';
+        
+        // 4. ПОКАЗЫВАЕМ ИНДИКАТОР ЗАГРУЗКИ
+        const loadingIndicator = document.createElement('div');
+        loadingIndicator.style.cssText = `
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(30, 41, 59, 0.8);
+            color: white;
+            z-index: 100;
+        `;
+        loadingIndicator.innerHTML = '<div class="spinner-small"></div><span style="margin-left: 8px;">Загрузка кадра...</span>';
+        container.appendChild(loadingIndicator);
+        
+        try {
+            if (isAdded) {
+                // ===== ДЛЯ ВРЕМЕННЫХ ФАЙЛОВ (added) =====
+                console.log(`[Video][${videoId}] Загрузка временного видео через fetch`);
+                
+                // Загружаем через fetch с заголовками
+                const response = await fetch(`/api/media/temp-preview/${videoId}`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status} - видео не найдено`);
+                }
+                
+                const blob = await response.blob();
+                const blobUrl = URL.createObjectURL(blob);
+                
+                // Создаем видео элемент с blob URL
+                const video = document.createElement('video');
+                video.src = blobUrl;
+                video.preload = 'metadata';
+                video.muted = true;
+                video.crossOrigin = 'anonymous';
+                video.style.cssText = `
+                    width: 100%;
+                    height: 100%;
+                    object-fit: cover;
+                    display: block;
+                    position: relative;
+                    z-index: 1;
+                `;
+                
+                // Ждем метаданные для создания постера
+                await new Promise((resolve) => {
+                    video.onloadedmetadata = () => {
+                        video.currentTime = Math.min(1.0, video.duration / 2);
+                        video.onseeked = () => {
+                            // Создаем canvas для постера
+                            const canvas = document.createElement('canvas');
+                            canvas.width = video.videoWidth || 160;
+                            canvas.height = video.videoHeight || 120;
+                            const ctx = canvas.getContext('2d');
+                            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                            
+                            try {
+                                video.poster = canvas.toDataURL('image/jpeg', 0.7);
+                                console.log(`[Video][${videoId}] Poster создан для временного видео`);
+                            } catch (e) {
+                                console.warn(`[Video][${videoId}] Не удалось создать poster:`, e);
+                            }
+                            resolve();
+                        };
+                    };
+                    
+                    video.onerror = () => resolve();
+                    
+                    // Таймаут на случай зависания
+                    setTimeout(() => resolve(), 5000);
+                });
+                
+                // Удаляем индикатор
+                if (loadingIndicator.parentNode === container) {
+                    container.removeChild(loadingIndicator);
+                }
+                
+                // Добавляем видео
+                container.appendChild(video);
+                
+                // Сохраняем blob URL для очистки
+                setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
+                
+            } else {
+                // ===== ДЛЯ ПОСТОЯННЫХ ФАЙЛОВ (removed) =====
+                console.log(`[Video][${videoId}] Использование прямого URL с авторизацией через заголовки`);
+                
+                const video = document.createElement('video');
+                
+                // Для постоянных файлов можно использовать прямую загрузку
+                // но нужно добавить заголовки через fetch для постера
+                video.crossOrigin = 'use-credentials';
+                
+                // Сначала загружаем метаданные через fetch для создания постера
+                const response = await fetch(`/api/media/${videoId}/file`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status} - видео не найдено`);
+                }
+                
+                const blob = await response.blob();
+                const blobUrl = URL.createObjectURL(blob);
+                
+                // Используем blob URL для видео (чтобы избежать проблем с авторизацией)
+                video.src = blobUrl;
+                video.preload = 'metadata';
+                video.muted = true;
+                video.style.cssText = `
+                    width: 100%;
+                    height: 100%;
+                    object-fit: cover;
+                    display: block;
+                    position: relative;
+                    z-index: 1;
+                `;
+                
+                // Ждем метаданные для создания постера
+                await new Promise((resolve) => {
+                    video.onloadedmetadata = () => {
+                        video.currentTime = Math.min(1.0, video.duration / 2);
+                        video.onseeked = () => {
+                            const canvas = document.createElement('canvas');
+                            canvas.width = video.videoWidth || 160;
+                            canvas.height = video.videoHeight || 120;
+                            const ctx = canvas.getContext('2d');
+                            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                            
+                            try {
+                                video.poster = canvas.toDataURL('image/jpeg', 0.7);
+                                console.log(`[Video][${videoId}] Poster создан для постоянного видео`);
+                            } catch (e) {
+                                console.warn(`[Video][${videoId}] Не удалось создать poster:`, e);
+                            }
+                            resolve();
+                        };
+                    };
+                    
+                    video.onerror = () => resolve();
+                    setTimeout(() => resolve(), 5000);
+                });
+                
+                // Удаляем индикатор
+                if (loadingIndicator.parentNode === container) {
+                    container.removeChild(loadingIndicator);
+                }
+                
+                // Добавляем видео
+                container.appendChild(video);
+                
+                // Сохраняем blob URL для очистки
+                setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
+            }
+            
+            // 5. СОЗДАЕМ ОВЕРЛЕЙ (общий для обоих случаев)
+            const overlay = document.createElement('div');
+            overlay.style.cssText = `
+                position: absolute;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                background: rgba(0,0,0,0.3);
+                cursor: pointer;
+                z-index: 10;
+                pointer-events: none;
+            `;
+            overlay.innerHTML = '<div style="width:40px;height:40px;background:white;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:20px;opacity:0.9;">▶</div>';
+            container.appendChild(overlay);
+            
+            // 6. СОЗДАЕМ БЕЙДЖ ТИПА
+            const badge = document.createElement('div');
+            badge.style.cssText = `
+                position: absolute;
+                bottom: 4px;
+                left: 4px;
+                background: rgba(0,0,0,0.6);
+                color: white;
+                padding: 2px 6px;
+                border-radius: 4px;
+                font-size: 10px;
+                z-index: 15;
+            `;
+            badge.textContent = 'Видео';
+            container.appendChild(badge);
+            
+            console.log(`[Video][${videoId}] ✅ Видео-превью создано`);
+            
+            // 7. ФИНАЛЬНАЯ ПРОВЕРКА
+            requestAnimationFrame(() => {
+                const videoEl = container.querySelector('video');
+                if (videoEl) {
+                    const rect = videoEl.getBoundingClientRect();
+                    console.log(`[Video][${videoId}] Видео на странице:`, {
+                        width: rect.width,
+                        height: rect.height,
+                        visible: rect.width > 0 && rect.height > 0,
+                        hasPoster: !!videoEl.poster,
+                        posterUrl: videoEl.poster ? 'есть' : 'нет'
+                    });
+                }
+            });
+            
+        } catch (error) {
+            console.error(`[Video][${videoId}] ❌ Ошибка:`, error);
+            
+            // Удаляем индикатор если есть
+            if (loadingIndicator.parentNode === container) {
+                container.removeChild(loadingIndicator);
+            }
+            
+            // FALLBACK
+            container.innerHTML = `
+                <div style="
+                    width: 100%;
+                    height: 100%;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                    color: white;
+                    font-size: 48px;
+                ">
+                    🎥
+                </div>
+            `;
+        }
+    }
+
+    /**
+     * НОВЫЙ МЕТОД: Ожидание реальных размеров контейнера
+     * Использует комбинацию:
+     * - Ожидание завершения анимации модалки
+     * - ResizeObserver для отслеживания изменений размеров
+     * - Таймаут для безопасности
+     */
+    waitForContainerSize(container) {
+        return new Promise((resolve) => {
+            // Если контейнер уже имеет размеры > 0, используем их
+            if (container.offsetWidth > 0 && container.offsetHeight > 0) {
+                resolve({
+                    width: container.offsetWidth,
+                    height: container.offsetHeight
+                });
+                return;
+            }
+            
+            // Упрощенная проверка в requestAnimationFrame
+            let attempts = 0;
+            const maxAttempts = 10;
+            
+            const checkSize = () => {
+                attempts++;
+                
+                if (container.offsetWidth > 0 && container.offsetHeight > 0) {
+                    resolve({
+                        width: container.offsetWidth,
+                        height: container.offsetHeight
+                    });
+                    return;
+                }
+                
+                if (attempts >= maxAttempts) {
+                    // Таймаут - возвращаем минимальные размеры
+                    container.style.minHeight = '120px';
+                    container.style.height = '120px';
+                    
+                    resolve({
+                        width: container.offsetWidth || 160,
+                        height: 120
+                    });
+                    return;
+                }
+                
+                requestAnimationFrame(checkSize);
+            };
+            
+            requestAnimationFrame(checkSize);
+            
+            // Безопасный таймаут
+            setTimeout(() => {
+                resolve({
+                    width: container.offsetWidth || 160,
+                    height: container.offsetHeight || 120
+                });
+            }, 1000);
+        });
+    }
+    /**
+     * НОВЫЙ МЕТОД: Показать fallback при ошибке с гарантированными размерами
+     */
+    showVideoFallback(container, error) {
+        // Устанавливаем гарантированные размеры
+        container.style.width = '100%';
+        container.style.height = '120px';
+        container.style.minHeight = '120px';
+        container.style.background = 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)';
+        container.style.display = 'flex';
+        container.style.alignItems = 'center';
+        container.style.justifyContent = 'center';
+        
+        // Определяем понятное сообщение для пользователя
+        let errorMessage = 'Ошибка загрузки';
+        if (error.message.includes('404')) {
+            errorMessage = 'Видео не найдено';
+        } else if (error.message.includes('401')) {
+            errorMessage = 'Нет доступа';
+        } else if (error.message.includes('Timeout')) {
+            errorMessage = 'Таймаут загрузки';
+        }
+        
+        container.innerHTML = `
+            <div style="text-align:center;color:white;">
+                <div style="font-size:48px;margin-bottom:8px;">🎥</div>
+                <div style="font-size:12px;background:rgba(255,255,255,0.2);padding:4px 12px;border-radius:20px;">
+                    ${errorMessage}
+                </div>
+            </div>
+        `;
+    }
+
+    /**
+     * Создание превью для фото (существующая логика, вынесенная в отдельный метод)
+     */
+    async createPhotoPreviewElement(id, type, container) {
+        const isAdded = type === 'added';
+        const { apiService } = await import('../api/api.js');
+        const token = apiService.token;
+        
+        try {
+            let imgUrl;
+            
+            if (isAdded) {
+                // Временное фото
+                console.log(`[Photo] Загрузка временного фото: ${id}`);
+                imgUrl = await apiService.getTempMediaPreview(id);
+            } else {
+                // Постоянное фото
+                console.log(`[Photo] Загрузка постоянного фото: ${id}`);
+                const response = await fetch(`/api/media/${id}/file`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`Failed to load image: ${response.status}`);
+                }
+                
+                const blob = await response.blob();
+                imgUrl = URL.createObjectURL(blob);
+            }
+            
+            const img = document.createElement('img');
+            img.src = imgUrl;
+            img.className = 'media-img';
+            img.alt = `Фото #${id}`;
+            img.loading = 'lazy';
+            
+            img.onload = () => {
+                // Для постоянных фото очищаем blob URL после загрузки
+                if (!isAdded && imgUrl.startsWith('blob:')) {
+                    URL.revokeObjectURL(imgUrl);
+                }
+            };
+            
+            container.appendChild(img);
+            
+            // Сохраняем URL для очистки
+            if (!this.mediaPreviewCache) {
+                this.mediaPreviewCache = new Map();
+            }
+            if (imgUrl.startsWith('blob:')) {
+                this.mediaPreviewCache.set(`photo_${id}`, imgUrl);
+            }
+            
+        } catch (error) {
+            console.error(`[Photo] Ошибка загрузки фото ${id}:`, error);
+            
+            // Fallback
+            const fallbackDiv = document.createElement('div');
+            fallbackDiv.className = 'media-fallback';
+            fallbackDiv.innerHTML = `
+                <div class="media-fallback-icon">📷</div>
+                <div class="media-fallback-text">Фото недоступно</div>
+            `;
+            container.appendChild(fallbackDiv);
+        }
+    }
+
+    /**
+     * Создание fallback элемента при полной ошибке
+     */
+    createFallbackMediaElement(id, type, mediaType, index) {
+        const isAdded = type === 'added';
+        const isVideo = mediaType === 'Videos';
+        const icon = isVideo ? '🎥' : '📷';
+        const label = isVideo ? 'Видео' : 'Фото';
+        
+        const item = document.createElement('div');
+        item.className = `media-item ${isAdded ? 'photo-added' : 'photo-removed'}`;
+        item.dataset.mediaId = id;
+        item.dataset.mediaType = mediaType;
+        item.dataset.mediaAction = type;
+        item.dataset.mediaIndex = index + 1;
+        
+        item.innerHTML = `
+            <div class="media-container">
+                <div class="media-fallback">
+                    <div class="media-fallback-icon">${icon}</div>
+                    <div class="media-fallback-text">${label} недоступно</div>
+                </div>
+            </div>
+            <div class="media-info">
+                <div class="media-name">${label} #${id}</div>
+                <div class="media-meta">
+                    <span class="media-status">${isAdded ? 'Будет добавлено' : 'Будет удалено'}</span>
+                </div>
+            </div>
+        `;
+        
+        return item;
     }
 
     /**

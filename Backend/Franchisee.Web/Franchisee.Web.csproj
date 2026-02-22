@@ -50,4 +50,8 @@
 		<Folder Include="wwwroot\uploads\temp\" />
 		
 	</ItemGroup>
+
+	<ItemGroup>
+		<InternalsVisibleTo Include="Franchisee.Web.Tests" />
+	</ItemGroup>
 </Project>

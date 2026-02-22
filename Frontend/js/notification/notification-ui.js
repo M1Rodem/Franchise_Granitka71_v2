@@ -307,6 +307,11 @@ function getNotificationCardClass(notification) {
         classes.push('notification-pending', 'border-accent');
     }
     
+    // ДОБАВЛЕНО: класс для блокирующих уведомлений
+    if (notification.isBlocking) {
+        classes.push('notification-blocking', 'border-error');
+    }
+    
     if (notification.status === NOTIFICATION_STATUS.POSTPONED) {
         classes.push('notification-postponed', 'border-muted');
     }
@@ -330,6 +335,7 @@ function getNotificationItemClass(notification) {
         classes.push('notification-pending');
     }
     
+    // ДОБАВЛЕНО: класс для блокирующих уведомлений
     if (notification.isBlocking) {
         classes.push('notification-blocking');
     }

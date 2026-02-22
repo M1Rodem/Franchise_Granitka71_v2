@@ -13,8 +13,8 @@ export function enrichSignalRNotification(signalrNotification, currentUserId = n
     const baseNotification = {
         id: signalrNotification.id,
         type: signalrNotification.type,
-        status: signalrNotification.status, // СОХРАНЯЕМ ЧИСЛОВОЙ статус
-        statusCode: signalrNotification.status, // дублируем для совместимости
+        status: signalrNotification.status,
+        statusCode: signalrNotification.status,
         title: signalrNotification.title || '',
         message: signalrNotification.message || '',
         createdAt: signalrNotification.createdAt || new Date().toISOString(),
@@ -26,19 +26,27 @@ export function enrichSignalRNotification(signalrNotification, currentUserId = n
         userId: currentUserId,
         recipientUserId: signalrNotification.recipientUserId,
         
+        // НОВЫЕ поля от бэкенда
+        isInfluencing: signalrNotification.isInfluencing || signalrNotification.type === 0,
+        isBlocking: signalrNotification.isBlocking || false,
+        isInformation: signalrNotification.isInformation || signalrNotification.type === 2,
+        minutesUntilReturn: signalrNotification.minutesUntilReturn,
+        isActionRequired: signalrNotification.isActionRequired,
+        canPostpone: signalrNotification.canPostpone,
+        
         // Опциональные поля
         returnsAt: signalrNotification.returnsAt,
         resolvedAt: signalrNotification.resolvedAt,
         resolvedBy: signalrNotification.resolvedBy,
         resolutionNote: signalrNotification.resolutionNote,
         
-        // Данные для модалки (могут приходить из разных источников)
+        // Данные для модалки
         data: signalrNotification.data || {},
         comment: signalrNotification.comment || '',
         proposedChanges: signalrNotification.proposedChanges || {}
     };
     
-    // ВЫЧИСЛЯЕМ ФЛАГИ на основе типа
+    // ВЫЧИСЛЯЕМ ФЛАГИ на основе типа (обратная совместимость)
     const flags = getNotificationFlagsByType(baseNotification.type);
     
     // Добавляем вычисляемые поля для удобства
@@ -46,13 +54,24 @@ export function enrichSignalRNotification(signalrNotification, currentUserId = n
         ...baseNotification,
         ...flags,
         
-        // Вычисляемое поле: требует ли действия (status=0 и НЕ информационное)
-        isActionRequired: baseNotification.status === NOTIFICATION_STATUS.PENDING && 
-                         !flags.isInformation,
+        // Переопределяем флаги, если они пришли с сервера
+        isInformation: baseNotification.isInformation !== undefined ? baseNotification.isInformation : flags.isInformation,
+        isInfluencing: baseNotification.isInfluencing !== undefined ? baseNotification.isInfluencing : flags.isInfluencing,
         
-        // Вычисляемое поле: можно ли отложить (только влияющие в статусе Pending)
-        canPostpone: baseNotification.status === NOTIFICATION_STATUS.PENDING && 
-                    flags.isInfluencing
+        // Вычисляем isBlocking если не пришел с сервера
+        isBlocking: baseNotification.isBlocking !== undefined ? baseNotification.isBlocking : 
+                   (baseNotification.isInfluencing && 
+                    (baseNotification.status === NOTIFICATION_STATUS.PENDING || 
+                     (baseNotification.status === NOTIFICATION_STATUS.POSTPONED && 
+                      baseNotification.returnsAt && new Date(baseNotification.returnsAt) <= new Date()))),
+        
+        // Вычисляем isActionRequired если не пришел с сервера
+        isActionRequired: baseNotification.isActionRequired !== undefined ? baseNotification.isActionRequired :
+                         (baseNotification.status === NOTIFICATION_STATUS.PENDING && !baseNotification.isInformation),
+        
+        // Вычисляем canPostpone если не пришел с сервера
+        canPostpone: baseNotification.canPostpone !== undefined ? baseNotification.canPostpone :
+                    (baseNotification.status === NOTIFICATION_STATUS.PENDING && baseNotification.isInfluencing)
     };
     
     return enriched;
@@ -70,6 +89,20 @@ export function convertNotificationStatus(statusCode) {
         case NOTIFICATION_STATUS.POSTPONED: return 'postponed';
         default: return 'pending';
     }
+}
+
+/**
+ * Определяет тип медиа по ID (временный или постоянный)
+ * @param {number|string} id - ID медиа
+ * @returns {string} 'temp' или 'permanent'
+ */
+export function getMediaTypeById(id) {
+    const idStr = String(id);
+    // Временные ID обычно отрицательные или содержат префикс 'temp'
+    if (idStr.startsWith('-') || idStr.startsWith('temp_') || idStr.includes('temp')) {
+        return 'temp';
+    }
+    return 'permanent';
 }
 
 /**
@@ -94,6 +127,12 @@ export function formatValue(value, fieldName) {
                 3: 'Отменен'
             };
             return statusMap[value] || value;
+        case 'Latitude':
+        case 'Longitude':
+            // Координаты с точностью до 6 знаков
+            return Number(value).toFixed(6);
+        case 'PlotId':
+            return `Участок #${value}`;
         default:
             return value.toString();
     }

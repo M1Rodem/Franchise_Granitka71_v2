@@ -112,9 +112,9 @@ namespace Franchisee.Web.Controllers
         // POST: api/media/move-temp-to-order/{orderId}?type=photo|video
         [HttpPost("move-temp-to-order/{orderId}")]
         public async Task<ActionResult> MoveTempToOrder(
-            int orderId,
-            [FromBody] List<int> tempIds,
-            [FromQuery] MediaType type = MediaType.Photo)
+    int orderId,
+    [FromBody] List<int> tempIds,
+    [FromQuery] MediaType type = MediaType.Photo)
         {
             if (tempIds == null || !tempIds.Any())
                 return BadRequest("Нет файлов для перемещения");
@@ -130,55 +130,6 @@ namespace Franchisee.Web.Controllers
 
             try
             {
-                if (!IsAdminOrHigher() && order.ManagerId != userId)
-                {
-                    _logger.LogInformation(
-                        "Менеджер {UserId} запрашивает добавление медиа в чужой заказ {OrderId} (владелец: {ManagerId})",
-                        userId, orderId, order.ManagerId);
-
-                    // Проверяем лимиты
-                    int maxItems = type == MediaType.Photo ? 10 : 5; // 10 фото, 5 видео
-                    int currentCount = order.Photos.Count(p => p.MediaType == type);
-
-                    if (currentCount + tempIds.Count > maxItems)
-                    {
-                        var mediaTypeName = type == MediaType.Photo ? "фото" : "видео";
-                        return BadRequest($"Максимальное количество {mediaTypeName} в заказе: {maxItems}. Текущее: {currentCount}, хотите добавить: {tempIds.Count}");
-                    }
-
-                    var notificationService = HttpContext.RequestServices.GetRequiredService<INotificationService>();
-
-                    var proposedChanges = new Dictionary<string, object>
-                    {
-                        ["Media"] = new
-                        {
-                            type = type.ToString(),
-                            addedTempIds = tempIds,
-                            removedMediaIds = new List<int>() // Нет удаляемых медиа
-                        }
-                    };
-
-                    var mediaTypeNameForComment = type == MediaType.Photo ? "фото" : "видео";
-                    var notificationId = await notificationService.CreateOrderUpdateRequestAsync(
-                        orderId: orderId,
-                        initiatorId: userId,
-                        proposedChanges: proposedChanges,
-                        comment: $"Добавление {tempIds.Count} {mediaTypeNameForComment} в заказ"
-                    );
-
-                    _logger.LogInformation(
-                        "Создано уведомление {NotificationId} для добавления медиа в заказ {OrderId}",
-                        notificationId, orderId);
-
-                    return Ok(new
-                    {
-                        success = true,
-                        message = $"Запрос на добавление {tempIds.Count} {mediaTypeNameForComment} отправлен владельцу заказа и администраторам",
-                        notificationId = notificationId,
-                        requiresApproval = true
-                    });
-                }
-
                 var uploaderId = GetCurrentUserId();
                 var committedCount = await _mediaService.CommitTempToOrderAsync(orderId, tempIds, uploaderId, type);
 
@@ -189,8 +140,7 @@ namespace Franchisee.Web.Controllers
                 {
                     message = $"Перемещено {committedCount} файлов",
                     addedCount = committedCount,
-                    type = type.ToString(),
-                    requiresApproval = false
+                    type = type.ToString()
                 });
             }
             catch (Exception ex)
@@ -349,43 +299,14 @@ namespace Franchisee.Web.Controllers
 
                 var order = media.Order;
 
+                // Проверка прав: админ или владелец заказа
                 if (!IsAdminOrHigher() && order.ManagerId != userId)
                 {
-                    _logger.LogInformation(
-                        "Менеджер {UserId} запрашивает удаление медиа {MediaId} из чужого заказа {OrderId} (владелец: {ManagerId})",
+                    _logger.LogWarning(
+                        "Менеджер {UserId} пытается удалить медиа {MediaId} из чужого заказа {OrderId} (владелец: {ManagerId}) - ДОСТУП ЗАПРЕЩЕН",
                         userId, id, order.Id, order.ManagerId);
 
-                    var notificationService = HttpContext.RequestServices.GetRequiredService<INotificationService>();
-
-                    var mediaTypeName = media.MediaType == MediaType.Photo ? "фото" : "видео";
-                    var proposedChanges = new Dictionary<string, object>
-                    {
-                        ["Media"] = new
-                        {
-                            type = media.MediaType.ToString(),
-                            addedTempIds = new List<int>(),
-                            removedMediaIds = new List<int> { id }
-                        }
-                    };
-
-                    var notificationId = await notificationService.CreateOrderUpdateRequestAsync(
-                        orderId: order.Id,
-                        initiatorId: userId,
-                        proposedChanges: proposedChanges,
-                        comment: $"Удаление {mediaTypeName}: {media.OriginalFileName}"
-                    );
-
-                    _logger.LogInformation(
-                        "Создано уведомление {NotificationId} для удаления медиа {MediaId} из заказа {OrderId}",
-                        notificationId, id, order.Id);
-
-                    return Ok(new
-                    {
-                        success = true,
-                        message = "Запрос на удаление медиа файла отправлен владельцу заказа и администраторам",
-                        notificationId = notificationId,
-                        requiresApproval = true
-                    });
+                    return Forbid("Только владелец заказа или администратор может удалять медиафайлы");
                 }
 
                 if (User.Identity?.IsAuthenticated != true)

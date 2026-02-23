@@ -42,6 +42,55 @@ export function formatCurrency(amount) {
     return `${Math.abs(Number(amount)).toLocaleString('ru-RU')} ₽`;
 }
 
+/**
+ * Форматирование количества с поддержкой дробных значений до 3 знаков
+ * @param {number|string} quantity - количество
+ * @returns {string} отформатированное количество
+ */
+export function formatQuantity(quantity) {
+    if (quantity == null || isNaN(quantity)) return '0';
+    
+    const num = Number(quantity);
+    
+    // Если число целое - показываем без дробной части
+    if (Number.isInteger(num)) {
+        return num.toString();
+    }
+    
+    // Иначе показываем до 3 знаков, убирая лишние нули
+    // toFixed(3) дает "2.100", replace убирает лишние нули
+    return num.toFixed(3).replace(/\.?0+$/, '');
+}
+
+/**
+ * Валидация количества с проверкой на дробные значения
+ * @param {number|string} quantity - количество для проверки
+ * @returns {object} результат валидации { valid: boolean, error?: string }
+ */
+export function validateQuantity(quantity) {
+    const num = parseFloat(quantity);
+    
+    // Проверка на число
+    if (isNaN(num)) {
+        return { valid: false, error: 'Количество должно быть числом' };
+    }
+    
+    // Проверка на положительное значение
+    if (num <= 0) {
+        return { valid: false, error: 'Количество должно быть больше 0' };
+    }
+    
+    // Проверка на количество знаков после запятой (макс 3)
+    if (quantity.toString().includes('.')) {
+        const decimalPlaces = quantity.toString().split('.')[1].length;
+        if (decimalPlaces > 3) {
+            return { valid: false, error: 'Максимум 3 знака после запятой' };
+        }
+    }
+    
+    return { valid: true };
+}
+
 // ====== БЕЗОПАСНОСТЬ HTML ======
 export function escapeHtml(text) {
     if (!text) return '';

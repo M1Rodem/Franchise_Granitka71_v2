@@ -113,8 +113,13 @@ namespace Franchisee.Web.Configuration
                     .HasForeignKey(w => w.OrderId)
                     .OnDelete(DeleteBehavior.Cascade);
 
+                // Цена - 2 знака для копеек
                 entity.Property(w => w.Price)
                     .HasPrecision(18, 2);
+
+                // Количество - 3 знака (для 2.123)
+                entity.Property(w => w.Quantity)
+                    .HasPrecision(10, 3);  // 10 знаков всего, 3 после запятой
             });
 
             // Конфигурация для OrderPayment

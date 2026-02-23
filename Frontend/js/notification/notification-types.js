@@ -10,6 +10,12 @@ export const NOTIFICATION_STATUS = {
     POSTPONED: 3     // Отложено
 };
 
+export const MAP_RELATED_FIELDS = [
+    'Latitude',
+    'Longitude',
+    'PlotId'
+];
+
 /**
  * Вспомогательные функции для определения типа уведомления
  */

@@ -3,6 +3,8 @@ import { NOTIFICATION_STATUS, NOTIFICATION_TYPES } from './notification-types.js
 import { showTempMessage, formatDate } from '../utils/utils.js';
 import { getState } from './notification-state.js';
 import { openPhotoPreview, openVideoPreview } from '../utils/photo-utils.js';
+import { YandexMapManager } from '../map/yandex-map-manager.js';  // Путь может отличаться!
+import { apiService } from '../api/api.js';
 
 export class NotificationViewModal {
     constructor(manager) {
@@ -12,6 +14,11 @@ export class NotificationViewModal {
         this.currentNotificationData = null;
         
         this.mediaPreviewCache = new Map();
+        
+        // НОВЫЕ ПОЛЯ ДЛЯ КАРТЫ
+        this.mapManager = null;
+        this.orderData = null;
+        this.mapInitialized = false;
     }
 
     async generateMediaItem(id, type, mediaType, index) {
@@ -49,7 +56,6 @@ export class NotificationViewModal {
             e.preventDefault();
             e.stopPropagation();
             
-            console.log('[Media] Открываем медиа:', { mediaId, mediaType, isTemp });
             
             if (mediaType === 'Videos') {
                 // Для видео всегда используем openVideoPreview с флагом isTemp
@@ -63,7 +69,6 @@ export class NotificationViewModal {
                 // Для фото - разделяем логику
                 if (!isTemp) {
                     // УДАЛЯЕМЫЕ ФОТО (permanent) - всегда открываем по ID
-                    console.log('[Media] Открываем удаляемое фото по ID:', mediaId);
                     const photoModule = await import('../utils/photo-utils.js');
                     if (photoModule.openPhotoPreviewById) {
                         await photoModule.openPhotoPreviewById(mediaId, fileName, orderNumber, photoIndex);
@@ -180,13 +185,6 @@ export class NotificationViewModal {
             padding: 20px;
         `;
         
-        modal.innerHTML = `
-            <div style="max-width: 90vw; max-height: 90vh; position: relative;">
-                <img src="${imageSrc}" alt="${fileName}" style="max-width: 100%; max-height: 90vh; object-fit: contain;">
-                <button style="position: absolute; top: 10px; right: 10px; background: #fff; border: none; width: 30px; height: 30px; border-radius: 50%; cursor: pointer; font-size: 20px;">×</button>
-            </div>
-        `;
-        
         document.body.appendChild(modal);
         
         // Обработчик закрытия
@@ -221,9 +219,7 @@ export class NotificationViewModal {
         // Загружаем каждый элемент последовательно
         for (let i = 0; i < ids.length; i++) {
             const id = ids[i];
-            try {
-                console.log(`[Media] Загружаем элемент ${i+1}/${ids.length}:`, { id, type, mediaType });
-                
+            try {                
                 // Используем новый единый метод
                 const mediaItem = await this.createMediaElement(id, type, mediaType, i);
                 
@@ -304,23 +300,54 @@ export class NotificationViewModal {
             return '<p class="no-changes">Нет информации об изменениях</p>';
         }
         
+        // Обновленная структура групп с новой группой "Карта"
         const groups = {
             'Основная информация': [
                 'Status', 'TotalPrice', 'OrderDate', 'MonumentType', 
-                'MonumentSize', 'AdditionalInfo', 'Latitude', 'Longitude', 'PlotId'
+                'MonumentSize', 'AdditionalInfo', 'PlotId'
             ],
             'Клиент и место': [
                 'CustomerFullName', 'CustomerEmail', 'Phone', 'Address', 
                 'Place', 'InspectionPlace', 'DeceasedFullName'
             ],
+            'Карта': ['Latitude', 'Longitude'], // Новая группа для координат
             'Работы': ['WorkItems'],
             'Платежи': ['Payments'],
-            'Медиа': ['Photos', 'Videos'] // Переименовано и добавлено Videos
+            'Медиа': ['Photos', 'Videos']
         };
         
         let accordionHtml = '<div class="notification-accordion">';
         
         for (const [groupName, fields] of Object.entries(groups)) {
+            // Для группы "Карта" используем специальную проверку
+            if (groupName === 'Карта') {
+                const hasLatChange = proposedChanges.Latitude && 
+                                    (proposedChanges.Latitude.old !== proposedChanges.Latitude.new);
+                const hasLngChange = proposedChanges.Longitude && 
+                                    (proposedChanges.Longitude.old !== proposedChanges.Longitude.new);
+                
+                if (!hasLatChange && !hasLngChange) continue;
+                
+                const changeCount = (hasLatChange ? 1 : 0) + (hasLngChange ? 1 : 0);
+                
+                accordionHtml += `
+                    <div class="accordion-group map-accordion-group" data-map-group="true">
+                        <div class="accordion-header">
+                            <div class="accordion-title">
+                                <span>${groupName}</span>
+                                <span class="change-count">(${changeCount} ${this.getChangeWord(changeCount)})</span>
+                            </div>
+                            <span class="accordion-icon">▼</span>
+                        </div>
+                        <div class="accordion-content map-accordion-content">
+                            ${await this.generateMapDiff(proposedChanges)}
+                        </div>
+                    </div>
+                `;
+                continue;
+            }
+            
+            // Стандартная обработка для остальных групп
             const changedFields = fields.filter(field => proposedChanges[field]);
             if (changedFields.length === 0) continue;
             
@@ -344,8 +371,343 @@ export class NotificationViewModal {
         
         accordionHtml += '</div>';
         
+        // Добавляем стили для карт в группе
+        this.addMapGroupStyles();
+        
         return accordionHtml;
     }
+
+    /**
+     * НОВЫЙ МЕТОД: initMapGroup
+     * Инициализирует обе карты в группе "Карта"
+     */
+    async initMapGroup(notification) {
+        if (!this.mapContainers || !this.orderData) {
+            console.warn('[NotificationModal] Нет данных для инициализации карт');
+            return;
+        }
+        
+        try {
+            const changes = notification.data?.proposedChanges || {};
+            
+            // Получаем координаты
+            const oldCoords = {
+                lat: changes.Latitude?.old ?? this.orderData.latitude,
+                lng: changes.Longitude?.old ?? this.orderData.longitude
+            };
+            
+            const newCoords = {
+                lat: changes.Latitude?.new ?? this.orderData.latitude,
+                lng: changes.Longitude?.new ?? this.orderData.longitude
+            };
+            
+            // Координаты участка (общие для обеих карт)
+            const plotCoords = this.orderData.plotData ? {
+                lat: this.orderData.plotData.latitude,
+                lng: this.orderData.plotData.longitude
+            } : null;
+            
+            if (!plotCoords) {
+                console.warn('[NotificationModal] Нет данных участка');
+                return;
+            }
+            
+            // Загружаем API ключ
+            let apiKey = '2789b7ef-c9eb-49a8-ba22-9711e05ad7f0';
+            try {
+                const config = await this.loadYandexConfig();
+                apiKey = config.yandexMapsKey || apiKey;
+            } catch (error) {
+                console.warn('[NotificationModal] Не удалось загрузить конфиг карты');
+            }
+            
+            // Инициализируем карту "Было" (старые координаты)
+            if (this.mapContainers.old && oldCoords.lat && oldCoords.lng) {
+                await this.initSingleMap(
+                    this.mapContainers.old,
+                    plotCoords,
+                    oldCoords,
+                    apiKey,
+                    'old'
+                );
+            }
+            
+            // Инициализируем карту "Стало" (новые координаты)
+            if (this.mapContainers.new && newCoords.lat && newCoords.lng) {
+                await this.initSingleMap(
+                    this.mapContainers.new,
+                    plotCoords,
+                    newCoords,
+                    apiKey,
+                    'new'
+                );
+            }
+            
+        } catch (error) {
+            console.error('[NotificationModal] Ошибка инициализации карт:', error);
+        }
+    }
+
+    /**
+     * НОВЫЙ МЕТОД: initSingleMap
+     * Инициализирует одну карту с заданными координатами
+     */
+    async initSingleMap(containerId, plotCoords, clientCoords, apiKey, type) {
+        const container = document.getElementById(containerId);
+        if (!container) return;
+        
+        // Очищаем контейнер
+        container.innerHTML = '';
+        
+        try {
+            // Создаем менеджер карты
+            const mapManager = new YandexMapManager(containerId, {
+                center: [
+                    (plotCoords.lat + clientCoords.lat) / 2,
+                    (plotCoords.lng + clientCoords.lng) / 2
+                ],
+                zoom: 11,
+                controls: ['zoomControl'],
+                mode: 'route'
+            });
+            
+            mapManager.setApiKey(apiKey);
+            
+            // Сохраняем менеджер для последующей очистки
+            this.mapManagers = this.mapManagers || {};
+            this.mapManagers[type] = mapManager;
+            
+            await mapManager.initialize();
+            
+            // Устанавливаем маркеры
+            mapManager.setPlotMarker(plotCoords.lat, plotCoords.lng, {
+                hint: 'Участок',
+                balloon: `Участок`
+            });
+            
+            mapManager.setClientMarker(clientCoords.lat, clientCoords.lng, {
+                hint: type === 'old' ? 'Старое место' : 'Новое место',
+                balloon: type === 'old' ? 'Старые координаты захоронения' : 'Новые координаты захоронения'
+            });
+            
+        } catch (error) {
+            console.error(`[NotificationModal] Ошибка инициализации карты ${type}:`, error);
+            container.innerHTML = '<div class="map-error">Ошибка загрузки карты</div>';
+        }
+    }
+
+    /**
+     * НОВЫЙ МЕТОД: addMapGroupStyles
+     * Добавляет CSS-стили для группы карт
+     */
+    addMapGroupStyles() {
+        const styleId = 'notification-map-group-styles';
+        if (document.getElementById(styleId)) return;
+        
+        const style = document.createElement('style');
+        style.id = styleId;
+        style.textContent = `
+            /* Контейнер для двух карт */
+            .map-diff-container {
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: var(--space-4);
+                margin: var(--space-4) 0;
+            }
+            
+            /* Колонка карты */
+            .map-column {
+                background: var(--glass-background);
+                border-radius: var(--radius-lg);
+                overflow: hidden;
+                border: 1px solid var(--glass-border);
+                transition: all 0.3s ease;
+            }
+            
+            .map-column:hover {
+                box-shadow: var(--glass-shadow-hover);
+                border-color: var(--accent);
+            }
+            
+            .map-column-disabled {
+                opacity: 0.7;
+                filter: grayscale(0.5);
+            }
+            
+            /* Заголовок колонки */
+            .map-column-header {
+                padding: var(--space-3) var(--space-4);
+                background: rgba(30, 41, 59, 0.4);
+                border-bottom: 1px solid var(--glass-border);
+                display: flex;
+                align-items: center;
+                gap: var(--space-3);
+                flex-wrap: wrap;
+            }
+            
+            /* Бейджи "Было/Стало" */
+            .map-badge {
+                display: inline-block;
+                padding: 4px 10px;
+                border-radius: 20px;
+                font-size: var(--text-xs);
+                font-weight: 600;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+            }
+            
+            .map-badge-old {
+                background: rgba(239, 68, 68, 0.2);
+                color: #ef4444;
+                border: 1px solid rgba(239, 68, 68, 0.3);
+            }
+            
+            .map-badge-new {
+                background: rgba(16, 185, 129, 0.2);
+                color: #10b981;
+                border: 1px solid rgba(16, 185, 129, 0.3);
+            }
+            
+            /* Координаты */
+            .map-coordinates {
+                font-family: monospace;
+                font-size: var(--text-sm);
+                color: var(--text-secondary);
+                background: rgba(0, 0, 0, 0.2);
+                padding: 2px 8px;
+                border-radius: var(--radius-sm);
+            }
+            
+            /* Контейнер карты */
+            .map-container {
+                width: 100%;
+                height: 200px;
+                background: #1a1f2e;
+                position: relative;
+            }
+            
+            /* Плейсхолдер при отсутствии данных */
+            .map-placeholder {
+                width: 100%;
+                height: 100%;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                background: rgba(30, 41, 59, 0.5);
+                color: var(--text-muted);
+                font-style: italic;
+            }
+            
+            /* Ошибка карты */
+            .map-error {
+                width: 100%;
+                height: 100%;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                background: rgba(239, 68, 68, 0.1);
+                color: #ef4444;
+                text-align: center;
+                padding: var(--space-4);
+            }
+            
+            /* Примечание под картами */
+            .map-route-note {
+                text-align: center;
+                margin-top: var(--space-2);
+                margin-bottom: var(--space-4);
+                color: var(--text-muted);
+                font-size: var(--text-xs);
+            }
+            
+            /* Адаптивность для мобильных */
+            @media (max-width: 768px) {
+                .map-diff-container {
+                    grid-template-columns: 1fr;
+                    gap: var(--space-6);
+                }
+                
+                .map-container {
+                    height: 180px;
+                }
+            }
+        `;
+        
+        document.head.appendChild(style);
+    }
+
+    /**
+     * НОВЫЙ МЕТОД: generateMapDiff
+     * Создает две карты для сравнения "Было" и "Стало"
+     */
+    async generateMapDiff(proposedChanges) {
+        const latChange = proposedChanges.Latitude;
+        const lngChange = proposedChanges.Longitude;
+        
+        // Если нет изменений в координатах, не показываем карты
+        if (!latChange && !lngChange) {
+            return '<div class="no-changes">Нет изменений в координатах</div>';
+        }
+        
+        // Получаем старые и новые координаты
+        const oldLat = latChange?.old ?? (lngChange ? null : null);
+        const oldLng = lngChange?.old ?? (latChange ? null : null);
+        const newLat = latChange?.new ?? (lngChange ? null : null);
+        const newLng = lngChange?.new ?? (latChange ? null : null);
+        
+        // Проверяем, что у нас есть хотя бы одна полная пара координат
+        const hasOldCoords = oldLat !== undefined && oldLat !== null && 
+                            oldLng !== undefined && oldLng !== null;
+        const hasNewCoords = newLat !== undefined && newLat !== null && 
+                            newLng !== undefined && newLng !== null;
+        
+        if (!hasOldCoords && !hasNewCoords) {
+            return '<div class="no-changes">Неполные данные координат</div>';
+        }
+        
+        // Создаем уникальные ID для контейнеров карт
+        const oldMapId = `map-old-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+        const newMapId = `map-new-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+        
+        // Сохраняем ID для последующей инициализации
+        this.mapContainers = this.mapContainers || {};
+        this.mapContainers.old = oldMapId;
+        this.mapContainers.new = newMapId;
+        
+        // Создаем HTML для двух карт
+        return `
+            <div class="map-diff-container">
+                <div class="map-column ${!hasOldCoords ? 'map-column-disabled' : ''}">
+                    <div class="map-column-header">
+                        <span class="map-badge map-badge-old">Было</span>
+                        ${hasOldCoords ? 
+                            `<span class="map-coordinates">${oldLat.toFixed(6)}, ${oldLng.toFixed(6)}</span>` : 
+                            '<span class="map-coordinates text-muted">Координаты не указаны</span>'}
+                    </div>
+                    <div id="${oldMapId}" class="map-container mini-map-container" 
+                        style="height: 200px; width: 100%; border-radius: 8px; border: 1px solid var(--glass-border);">
+                        ${!hasOldCoords ? '<div class="map-placeholder">Нет данных</div>' : ''}
+                    </div>
+                </div>
+                <div class="map-column ${!hasNewCoords ? 'map-column-disabled' : ''}">
+                    <div class="map-column-header">
+                        <span class="map-badge map-badge-new">Стало</span>
+                        ${hasNewCoords ? 
+                            `<span class="map-coordinates">${newLat.toFixed(6)}, ${newLng.toFixed(6)}</span>` : 
+                            '<span class="map-coordinates text-muted">Координаты не указаны</span>'}
+                    </div>
+                    <div id="${newMapId}" class="map-container mini-map-container" 
+                        style="height: 200px; width: 100%; border-radius: 8px; border: 1px solid var(--glass-border);">
+                        ${!hasNewCoords ? '<div class="map-placeholder">Нет данных</div>' : ''}
+                    </div>
+                </div>
+            </div>
+            <div class="map-route-note">
+                <small class="text-muted">Маршруты показаны от участка до места захоронения</small>
+            </div>
+        `;
+    }
+
 
     // Проверяем, доступна ли модалка на этой странице
     isModalAvailable() {
@@ -399,6 +761,274 @@ export class NotificationViewModal {
             return false;
         }
     }
+        /**
+     * НОВЫЙ МЕТОД: Загрузка данных заказа для карты
+     */
+    async loadOrderDataForMap(notification) {
+        try {
+            // Получаем числовой ID заказа из данных уведомления
+            let orderId = null;
+            
+            // Вариант 1: прямой orderId в уведомлении
+            if (notification.orderId) {
+                orderId = notification.orderId;
+            }
+            // Вариант 2: из data.orderId
+            else if (notification.data?.orderId) {
+                orderId = notification.data.orderId;
+            }
+            // Вариант 3: парсим из orderNumber (ORD-00004 -> 4)
+            else if (notification.orderNumber) {
+                const match = notification.orderNumber.match(/\d+/);
+                if (match) {
+                    orderId = parseInt(match[0], 10);
+                }
+            }
+            
+            if (!orderId) {
+                console.warn('[NotificationModal] Не удалось определить ID заказа');
+                return null;
+            }
+            
+            // Загружаем заказ по числовому ID
+            const order = await apiService.getOrder(orderId);
+            
+            if (!order) {
+                console.warn('[NotificationModal] Заказ не найден');
+                return null;
+            }
+            
+            // Если есть plotId, загружаем данные участка
+            if (order.plotId) {
+                try {
+                    const plots = await apiService.getPlots(true);
+                    const plot = plots.find(p => p.id === order.plotId);
+                    if (plot) {
+                        order.plotData = plot;
+                    }
+                } catch (error) {
+                    console.warn('[NotificationModal] Не удалось загрузить данные участка:', error);
+                }
+            }
+            
+            return order;
+        } catch (error) {
+            console.error('[NotificationModal] Ошибка загрузки заказа:', error);
+            return null;
+        }
+    }
+
+    /**
+     * НОВЫЙ МЕТОД: Проверка, нужно ли показывать карту
+     */
+    shouldShowMap(notification) {
+        // Не показываем для информационных уведомлений
+        if (notification.isInformation) return false;
+        
+        // Проверяем наличие orderId или возможность его получить
+        const hasOrderId = notification.orderId || 
+                        notification.data?.orderId || 
+                        (notification.orderNumber && notification.orderNumber.match(/\d+/));
+        
+        if (!hasOrderId) {
+            return false;
+        }
+        
+        // Проверяем, есть ли изменения координат
+        const changes = notification.data?.proposedChanges;
+        if (!changes) return false;
+        
+        // Показываем карту, если меняются координаты
+        const hasLatChange = changes.Latitude && (changes.Latitude.old !== changes.Latitude.new);
+        const hasLngChange = changes.Longitude && (changes.Longitude.old !== changes.Longitude.new);
+        
+        return hasLatChange || hasLngChange;
+    }
+
+    /**
+     * НОВЫЙ МЕТОД: Инициализация карты
+     */
+    async initMapInNotification(notification) {
+        // Очищаем старую карту если есть
+        this.destroyMap();
+        
+        // Находим или создаем контейнер для карты
+        let mapContainer = document.getElementById('notificationMap');
+        
+        if (!mapContainer) {
+            // Создаем новый контейнер
+            mapContainer = document.createElement('div');
+            mapContainer.id = 'notificationMap';
+            mapContainer.className = 'mini-map-container';
+            mapContainer.style.height = '200px';
+            mapContainer.style.margin = '15px 0';
+            mapContainer.style.borderRadius = '8px';
+            mapContainer.style.border = '1px solid var(--glass-border)';
+            
+            // Вставляем после информации о координатах
+            const coordinatesSection = this.findCoordinatesSection();
+            if (coordinatesSection) {
+                coordinatesSection.parentNode.insertBefore(mapContainer, coordinatesSection.nextSibling);
+            } else {
+                // Если не нашли секцию, добавляем в конец контента
+                this.contentElement.appendChild(mapContainer);
+            }
+        }
+        
+        // Очищаем контейнер
+        mapContainer.innerHTML = '';
+        
+        // Ждем немного для стабилизации layout
+        await new Promise(resolve => setTimeout(resolve, 50));
+        
+        try {
+            // Загружаем данные заказа если еще не загружены
+            if (!this.orderData) {
+                this.orderData = await this.loadOrderDataForMap(notification);
+            }
+            
+            if (!this.orderData) {
+                throw new Error('Не удалось загрузить данные заказа');
+            }
+            
+            // Получаем координаты
+            const changes = notification.data?.proposedChanges || {};
+            
+            // Координаты захоронения: используем новые из изменений или существующие из заказа
+            const clientCoords = {
+                lat: changes.Latitude?.new ?? this.orderData.latitude,
+                lng: changes.Longitude?.new ?? this.orderData.longitude
+            };
+            
+            // Координаты участка: из загруженного участка
+            const plotCoords = this.orderData.plotData ? {
+                lat: this.orderData.plotData.latitude,
+                lng: this.orderData.plotData.longitude
+            } : null;
+            
+            if (!plotCoords) {
+                console.warn('[NotificationModal] Нет данных участка для отображения карты');
+                mapContainer.innerHTML = '<div style="padding: 20px; text-align: center; color: var(--text-muted);">Координаты участка не указаны</div>';
+                return;
+            }
+            
+            if (!clientCoords.lat || !clientCoords.lng) {
+                console.warn('[NotificationModal] Нет координат захоронения');
+                mapContainer.innerHTML = '<div style="padding: 20px; text-align: center; color: var(--text-muted);">Координаты захоронения не указаны</div>';
+                return;
+            }
+            
+            // Загружаем API ключ
+            let apiKey = '2789b7ef-c9eb-49a8-ba22-9711e05ad7f0'; // дефолтный ключ
+            try {
+                const config = await this.loadYandexConfig();
+                apiKey = config.yandexMapsKey || apiKey;
+            } catch (error) {
+                console.warn('[NotificationModal] Не удалось загрузить конфиг карты, использую дефолтный ключ');
+            }
+            
+            // Создаем менеджер карты в режиме route
+            this.mapManager = new YandexMapManager('notificationMap', {
+                center: [
+                    (plotCoords.lat + clientCoords.lat) / 2,
+                    (plotCoords.lng + clientCoords.lng) / 2
+                ],
+                zoom: 11,
+                controls: ['zoomControl'],
+                mode: 'route'
+            });
+            
+            this.mapManager.setApiKey(apiKey);
+            
+            // Инициализируем карту
+            await this.mapManager.initialize();
+            
+            // Устанавливаем маркеры
+            this.mapManager.setPlotMarker(plotCoords.lat, plotCoords.lng, {
+                hint: 'Участок',
+                balloon: `Участок: ${this.orderData.place || ''}`
+            });
+            
+            this.mapManager.setClientMarker(clientCoords.lat, clientCoords.lng, {
+                hint: 'Место захоронения',
+                balloon: changes.Latitude || changes.Longitude ? 
+                    'Новые координаты захоронения' : 
+                    'Место захоронения'
+            });
+            
+            this.mapInitialized = true;
+            
+        } catch (error) {
+            console.error('[NotificationModal] Ошибка инициализации карты:', error);
+            if (mapContainer) {
+                mapContainer.innerHTML = '<div style="padding: 20px; text-align: center; color: var(--error);">Ошибка загрузки карты</div>';
+            }
+        }
+    }
+
+    /**
+     * НОВЫЙ МЕТОД: Поиск секции с координатами в DOM
+     */
+    findCoordinatesSection() {
+        if (!this.contentElement) return null;
+        
+        // Ищем по тексту "Широта" или "Долгота"
+        const rows = this.contentElement.querySelectorAll('.diff-row');
+        for (const row of rows) {
+            const label = row.querySelector('.diff-label');
+            if (label && (label.textContent.includes('Широта') || label.textContent.includes('Долгота'))) {
+                return row;
+            }
+        }
+        
+        // Если не нашли, ищем по заголовкам секций
+        const sections = this.contentElement.querySelectorAll('.details-section');
+        for (const section of sections) {
+            const title = section.querySelector('.details-section-title');
+            if (title && title.textContent.includes('Основная информация')) {
+                return section;
+            }
+        }
+        
+        return null;
+    }
+
+    /**
+     * НОВЫЙ МЕТОД: Загрузка конфига Яндекс.Карт
+     */
+    async loadYandexConfig() {
+        try {
+            const response = await fetch('/api/config', {
+                headers: { 'Authorization': `Bearer ${apiService.token}` }
+            });
+            return await response.json();
+        } catch (error) {
+            console.error('[NotificationModal] Ошибка загрузки конфига:', error);
+            return { yandexMapsKey: '2789b7ef-c9eb-49a8-ba22-9711e05ad7f0' };
+        }
+    }
+
+    /**
+     * НОВЫЙ МЕТОД: Уничтожение карты
+     */
+    destroyMap() {
+        if (this.mapManager) {
+            try {
+                this.mapManager.destroy();
+            } catch (error) {
+                console.warn('[NotificationModal] Ошибка при уничтожении карты:', error);
+            }
+            this.mapManager = null;
+        }
+        this.mapInitialized = false;
+        this.orderData = null;
+        
+        // Удаляем контейнер карты из DOM
+        const oldContainer = document.getElementById('notificationMap');
+        if (oldContainer) {
+            oldContainer.remove();
+        }
+    }
 
     async show(notification) {
         // Проверяем инициализацию
@@ -410,7 +1040,10 @@ export class NotificationViewModal {
         this.currentNotificationId = notification.id;
         this.currentNotificationData = notification;
         
-        // ЗАГОЛОВОК (без изменений)
+        // Сбрасываем карты
+        this.destroyAllMaps();
+        
+        // ЗАГОЛОВОК
         let title = 'Детали уведомления';
         if (notification.orderNumber) {
             title = `Просмотр: Заказ #${notification.orderNumber}`;
@@ -422,11 +1055,11 @@ export class NotificationViewModal {
             this.titleElement.textContent = title;
         }
         
-        // ПОКАЗЫВАЕМ МОДАЛКУ (НО БЛОКИРУЕМ РЕНДЕР КОНТЕНТА)
+        // ПОКАЗЫВАЕМ МОДАЛКУ
         this.modalElement.style.display = 'flex';
         document.body.style.overflow = 'hidden';
         
-        // ОЧИЩАЕМ КОНТЕНТ И ПОКАЗЫВАЕМ ЗАГРУЗКУ
+        // ОЧИЩАЕМ КОНТЕНТ
         this.contentElement.innerHTML = `
             <div class="modal-loading-state" style="padding: 40px; text-align: center;">
                 <div class="spinner"></div>
@@ -435,12 +1068,15 @@ export class NotificationViewModal {
         `;
         
         try {
-            // 1. ОЖИДАНИЕ ЗАВЕРШЕНИЯ АНИМАЦИИ МОДАЛКИ
+            // ОЖИДАНИЕ ЗАВЕРШЕНИЯ АНИМАЦИИ
             await this.waitForModalOpen();
             
-            console.log('[NotificationModal] Анимация открытия завершена, начинаем рендер контента');
+            // ЗАГРУЖАЕМ ДАННЫЕ ЗАКАЗА ДЛЯ КАРТЫ (если нужно)
+            if (!notification.isInformation && notification.orderNumber) {
+                this.orderData = await this.loadOrderDataForMap(notification);
+            }
             
-            // 2. ГЕНЕРАЦИЯ КОНТЕНТА (теперь с гарантией, что layout готов)
+            // ГЕНЕРАЦИЯ КОНТЕНТА
             let html = '';
             
             // Комментарий инициатора
@@ -457,11 +1093,11 @@ export class NotificationViewModal {
                 `;
             }
             
-            // Основная информация
+            // Основная информация (без Latitude/Longitude - они теперь в карте)
             html += `
                 <div class="details-section glass-card">
                     <div class="details-section-header">
-                        <h4 class="details-section-title">Основная информация</h4>
+                        <h4 class="details-section-title">Информация об уведомлении</h4>
                     </div>
                     <div class="details-section-body p-0">
                         <div class="details-table">
@@ -477,7 +1113,7 @@ export class NotificationViewModal {
                                 <div class="details-value">${formatDate(notification.createdAt)}</div>
                             </div>
             `;
-            
+
             if (notification.orderNumber) {
                 html += `
                             <div class="details-row">
@@ -486,7 +1122,7 @@ export class NotificationViewModal {
                             </div>
                 `;
             }
-            
+
             if (notification.initiator) {
                 html += `
                             <div class="details-row">
@@ -495,13 +1131,13 @@ export class NotificationViewModal {
                             </div>
                 `;
             }
-            
+
             html += `
                         </div>
                     </div>
                 </div>
             `;
-            
+
             // Сообщение
             if (notification.message) {
                 html += `
@@ -515,8 +1151,8 @@ export class NotificationViewModal {
                     </div>
                 `;
             }
-            
-            // Аккордеон с изменениями
+
+            // Аккордеон с изменениями (включает ВСЕ изменения, включая Основную информацию)
             if (!notification.isInformation && notification.data?.proposedChanges) {
                 html += await this.generateAccordionGroups(notification.data.proposedChanges);
             }
@@ -532,17 +1168,24 @@ export class NotificationViewModal {
                 `;
             }
             
-            // 3. ОБНОВЛЯЕМ КОНТЕНТ
+            // ОБНОВЛЯЕМ КОНТЕНТ
             this.contentElement.innerHTML = html;
             
-            // 4. ИНИЦИАЛИЗИРУЕМ ОБРАБОТЧИКИ
+            // ИНИЦИАЛИЗИРУЕМ ОБРАБОТЧИКИ
             this.initPhotoClickHandlers();
             
             if (!notification.isInformation) {
                 this.initAccordion();
+                
+                // ИНИЦИАЛИЗИРУЕМ КАРТЫ В ГРУППЕ "КАРТА"
+                if (this.shouldShowMap(notification) && this.orderData) {
+                    setTimeout(() => {
+                        this.initMapGroup(notification);
+                    }, 200);
+                }
             }
             
-            // 5. СОЗДАЕМ КНОПКИ ДЕЙСТВИЙ
+            // СОЗДАЕМ КНОПКИ ДЕЙСТВИЙ
             this.createActionButtons(notification);
             
         } catch (error) {
@@ -554,6 +1197,24 @@ export class NotificationViewModal {
                 </div>
             `;
         }
+    }
+
+    /**
+     * НОВЫЙ МЕТОД: destroyAllMaps
+     * Уничтожает все созданные карты
+     */
+    destroyAllMaps() {
+        if (this.mapManagers) {
+            Object.values(this.mapManagers).forEach(manager => {
+                try {
+                    manager.destroy();
+                } catch (error) {
+                    console.warn('[NotificationModal] Ошибка при уничтожении карты:', error);
+                }
+            });
+            this.mapManagers = {};
+        }
+        this.mapContainers = null;
     }
 
     /**
@@ -577,8 +1238,6 @@ export class NotificationViewModal {
                 resolve();
                 return;
             }
-            
-            console.log('[NotificationModal] Ожидание завершения анимации...');
             
             let animationEnded = false;
             let timeoutId = null;
@@ -607,7 +1266,6 @@ export class NotificationViewModal {
             // Безопасный таймаут на случай, если событие не сработало
             timeoutId = setTimeout(() => {
                 if (!animationEnded) {
-                    console.log('[NotificationModal] Таймаут ожидания анимации');
                     onAnimationEnd();
                 }
             }, 300);
@@ -1313,6 +1971,10 @@ export class NotificationViewModal {
     }
 
     hide() {
+        // Уничтожаем все карты
+        this.destroyAllMaps();
+        this.orderData = null;
+        
         if (this.modalElement) {
             this.modalElement.style.display = 'none';
             document.body.style.overflow = '';
@@ -1344,29 +2006,6 @@ export class NotificationViewModal {
                 }
             });
             this.mediaPreviewCache.clear();
-        }
-        
-        // Дополнительная очистка всех blob URL в DOM
-        if (this.contentElement) {
-            // Очищаем img с blob src
-            const blobImages = this.contentElement.querySelectorAll('img[src^="blob:"]');
-            blobImages.forEach(img => {
-                try {
-                    URL.revokeObjectURL(img.src);
-                } catch (e) {}
-            });
-            
-            // Очищаем canvas с blob data
-            const blobCanvases = this.contentElement.querySelectorAll('canvas[data-blob-url]');
-            blobCanvases.forEach(canvas => {
-                const blobUrl = canvas.dataset.blobUrl;
-                if (blobUrl && blobUrl.startsWith('blob:')) {
-                    try {
-                        URL.revokeObjectURL(blobUrl);
-                    } catch (e) {}
-                }
-                delete canvas.dataset.blobUrl;
-            });
         }
     }
 
@@ -1704,7 +2343,6 @@ export class NotificationViewModal {
      * ИСПРАВЛЕНО: Гарантированный вызов createVideoPreviewElement для видео
      */
     async createMediaElement(id, type, mediaType, index) {
-        console.log(`[Media] Создание элемента:`, { id, type, mediaType, index });
         
         const isAdded = type === 'added';
         const isVideo = mediaType === 'Videos';
@@ -1749,9 +2387,6 @@ export class NotificationViewModal {
                 <div class="media-name" title="${isVideo ? 'Видео' : 'Фото'} #${id}">
                     ${isVideo ? 'Видео' : 'Фото'} #${id}
                 </div>
-                <div class="media-meta">
-                    <span class="media-status">${isAdded ? 'Будет добавлено' : 'Будет удалено'}</span>
-                </div>
             `;
             item.appendChild(info);
             
@@ -1772,8 +2407,6 @@ export class NotificationViewModal {
     async createVideoPreviewElement(id, type, container) {
         const isAdded = type === 'added';
         const videoId = id;
-        
-        console.log(`[Video][${videoId}] Начало создания превью (type: ${type})`);
         
         // 1. ПОЛУЧЕНИЕ ТОКЕНА
         let token = null;
@@ -1817,7 +2450,6 @@ export class NotificationViewModal {
         try {
             if (isAdded) {
                 // ===== ДЛЯ ВРЕМЕННЫХ ФАЙЛОВ (added) =====
-                console.log(`[Video][${videoId}] Загрузка временного видео через fetch`);
                 
                 // Загружаем через fetch с заголовками
                 const response = await fetch(`/api/media/temp-preview/${videoId}`, {
@@ -1860,7 +2492,6 @@ export class NotificationViewModal {
                             
                             try {
                                 video.poster = canvas.toDataURL('image/jpeg', 0.7);
-                                console.log(`[Video][${videoId}] Poster создан для временного видео`);
                             } catch (e) {
                                 console.warn(`[Video][${videoId}] Не удалось создать poster:`, e);
                             }
@@ -1887,7 +2518,6 @@ export class NotificationViewModal {
                 
             } else {
                 // ===== ДЛЯ ПОСТОЯННЫХ ФАЙЛОВ (removed) =====
-                console.log(`[Video][${videoId}] Использование прямого URL с авторизацией через заголовки`);
                 
                 const video = document.createElement('video');
                 
@@ -1933,7 +2563,6 @@ export class NotificationViewModal {
                             
                             try {
                                 video.poster = canvas.toDataURL('image/jpeg', 0.7);
-                                console.log(`[Video][${videoId}] Poster создан для постоянного видео`);
                             } catch (e) {
                                 console.warn(`[Video][${videoId}] Не удалось создать poster:`, e);
                             }
@@ -1968,44 +2597,18 @@ export class NotificationViewModal {
                 display: flex;
                 align-items: center;
                 justify-content: center;
-                background: rgba(0,0,0,0.3);
                 cursor: pointer;
                 z-index: 10;
                 pointer-events: none;
             `;
-            overlay.innerHTML = '<div style="width:40px;height:40px;background:white;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:20px;opacity:0.9;">▶</div>';
+           overlay.innerHTML = '<div class="video-play-icon">▶</div>';
             container.appendChild(overlay);
-            
-            // 6. СОЗДАЕМ БЕЙДЖ ТИПА
-            const badge = document.createElement('div');
-            badge.style.cssText = `
-                position: absolute;
-                bottom: 4px;
-                left: 4px;
-                background: rgba(0,0,0,0.6);
-                color: white;
-                padding: 2px 6px;
-                border-radius: 4px;
-                font-size: 10px;
-                z-index: 15;
-            `;
-            badge.textContent = 'Видео';
-            container.appendChild(badge);
-            
-            console.log(`[Video][${videoId}] ✅ Видео-превью создано`);
             
             // 7. ФИНАЛЬНАЯ ПРОВЕРКА
             requestAnimationFrame(() => {
                 const videoEl = container.querySelector('video');
                 if (videoEl) {
                     const rect = videoEl.getBoundingClientRect();
-                    console.log(`[Video][${videoId}] Видео на странице:`, {
-                        width: rect.width,
-                        height: rect.height,
-                        visible: rect.width > 0 && rect.height > 0,
-                        hasPoster: !!videoEl.poster,
-                        posterUrl: videoEl.poster ? 'есть' : 'нет'
-                    });
                 }
             });
             
@@ -2140,11 +2743,9 @@ export class NotificationViewModal {
             
             if (isAdded) {
                 // Временное фото
-                console.log(`[Photo] Загрузка временного фото: ${id}`);
                 imgUrl = await apiService.getTempMediaPreview(id);
             } else {
                 // Постоянное фото
-                console.log(`[Photo] Загрузка постоянного фото: ${id}`);
                 const response = await fetch(`/api/media/${id}/file`, {
                     headers: { 'Authorization': `Bearer ${token}` }
                 });

@@ -396,7 +396,8 @@ export class ViewOrderManager {
             return;
         }
         
-        const total = workItems.reduce((sum, item) => sum + (Number(item.price || 0) * Number(item.quantity || 1)), 0);
+        const total = workItems.reduce((sum, item) => 
+            sum + (Number(item.price || 0) * Number(item.quantity || 1)), 0);
         
         this.workItemsContainer.innerHTML = `
             <table class="orders-table work-items-table view-order-table">
@@ -410,30 +411,69 @@ export class ViewOrderManager {
                     </tr>
                 </thead>
                 <tbody>
-                    ${workItems.map(item => `
-                        <tr>
-                            <td data-label="Описание">${escapeHtml(item.workDescription || item.name || '')}</td>
-                            <td data-label="Кол-во">${item.quantity || 1}</td>
-                            <td data-label="Цена">${formatCurrency(item.price || 0)}</td>
-                            <td data-label="Итого">${formatCurrency((item.price || 0) * (item.quantity || 1))}</td>
-                            <td data-label="Примечание">${escapeHtml(item.note || '—')}</td>
-                        </tr>
-                    `).join('')}
+                    ${workItems.map(item => {
+                        const quantity = Number(item.quantity || 1);
+                        const price = Number(item.price || 0);
+                        const itemTotal = price * quantity;
+                        
+                        return `
+                            <tr>
+                                <td data-label="Описание">${escapeHtml(item.workDescription || item.name || '')}</td>
+                                <td data-label="Кол-во" class="quantity-cell">${this.formatQuantity(quantity)}</td>
+                                <td data-label="Цена" class="price-cell">${this.formatPrice(price)}</td>
+                                <td data-label="Итого" class="total-cell">${this.formatCurrency(itemTotal)}</td>
+                                <td data-label="Примечание">${escapeHtml(item.note || '—')}</td>
+                            </tr>
+                        `;
+                    }).join('')}
                 </tbody>
                 <tfoot>
                     <tr>
                         <td colspan="3"><strong>Итого по работам:</strong></td>
-                        <td colspan="2"><strong>${formatCurrency(total)}</strong></td>
+                        <td colspan="2"><strong>${this.formatCurrency(total)}</strong></td>
                     </tr>
                 </tfoot>
             </table>
             <div class="table-total-mobile">
                 <div class="total-card">
                     <div class="total-label">Итого по работам</div>
-                    <div class="total-amount">${formatCurrency(total)}</div>
+                    <div class="total-amount">${this.formatCurrency(total)}</div>
                 </div>
             </div>
         `;
+    }
+
+    // НОВАЯ функция formatQuantity
+    formatQuantity(quantity) {
+        const num = Number(quantity);
+        if (isNaN(num)) return '0';
+        
+        // Если число целое - показываем без дробной части
+        if (Number.isInteger(num)) {
+            return num.toString();
+        }
+        
+        // Иначе показываем до 3 знаков, убирая лишние нули
+        return num.toFixed(3).replace(/\.?0+$/, '');
+    }
+
+    // НОВАЯ функция formatPrice (для единообразия)
+    formatPrice(price) {
+        const num = Number(price);
+        if (isNaN(num)) return '0 ₽';
+        return num.toFixed(2) + ' ₽';
+    }
+
+    // НОВАЯ функция formatCurrency (уже есть в utils, но продублируем для надежности)
+    formatCurrency(amount) {
+        const num = Number(amount);
+        if (isNaN(num)) return '0 ₽';
+        return num.toLocaleString('ru-RU', {
+            style: 'currency',
+            currency: 'RUB',
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2
+        });
     }
 
     renderPayments(payments) {

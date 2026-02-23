@@ -8,8 +8,11 @@ namespace Franchisee.Web.Models
         [Required] public int OrderId { get; set; }
         public Order? Order { get; set; }
         [Required] public string WorkDescription { get; set; } = string.Empty;
+
         public decimal Price { get; set; }
-        public int Quantity { get; set; } = 1;
+
+        public decimal Quantity { get; set; } = 1m;
+
         public string Note { get; set; } = string.Empty;
         public double? DistanceKm { get; set; }
     }

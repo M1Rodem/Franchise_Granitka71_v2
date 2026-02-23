@@ -739,40 +739,35 @@ export class CreateOrderManager {
             return;
         }
         
-        // Конвертируем в метры
-        const distanceMeters = Math.round(distanceKm * 1000);
+        // ИСПРАВЛЕНИЕ: больше НЕ умножаем на 1000, сохраняем в км
+        const distanceValue = distanceKm; // Было: Math.round(distanceKm * 1000);
         
-        // Ищем строку с расстоянием по data-атрибуту (ЭТО ЕДИНСТВЕННЫЙ ПРАВИЛЬНЫЙ СПОСОБ)
+        // Ищем строку с расстоянием по data-атрибуту
         const distanceRow = this.workItemsTable.querySelector('tr[data-distance="true"]');
         
-        // Если строка не найдена - это критическая ошибка, но создаём новую для восстановления
+        // Если строка не найдена - создаём новую для восстановления
         if (!distanceRow) {
             console.error('КРИТИЧЕСКАЯ ОШИБКА: Строка расстояния не найдена! Создаём новую.');
             this.addWorkItemRow({
                 workDescription: 'Расстояние',
-                quantity: distanceMeters,
+                quantity: distanceValue,
                 note: `Расчетное расстояние: ${routeInfo.distance} (${routeInfo.duration})`,
                 price: 0
-            }, true); // true = isDistance
+            }, true);
             return;
         }
         
-        // Обновляем существующую строку        
+        // Обновляем существующую строку
         const quantityInput = distanceRow.querySelector('input[name="quantity"]');
         const noteInput = distanceRow.querySelector('input[name="note"]');
         const priceInput = distanceRow.querySelector('input[name="price"]');
         
         if (quantityInput) {
-            quantityInput.value = distanceMeters;
+            quantityInput.value = distanceValue; // Теперь значение в км
         }
         
         if (noteInput) {
             noteInput.value = `Расчетное расстояние: ${routeInfo.distance} (${routeInfo.duration})`;
-        }
-        
-        // Сохраняем цену, если она была (не сбрасываем)
-        if (priceInput && priceInput.value === '0') {
-            // Если цена 0, оставляем как есть - менеджер потом введёт
         }
         
         // Удаляем ВСЕ остальные строки с расстоянием (на всякий случай)
@@ -1967,28 +1962,44 @@ export class CreateOrderManager {
         cell1.appendChild(hiddenInput);
         cell1.appendChild(descInput);
         
-        // Ячейка 2: Цена (ИЗМЕНЕНО: теперь просто "Цена")
+        // Ячейка 2: Цена
         const cell2 = row.insertCell();
         const priceInput = document.createElement('input');
         priceInput.type = 'number';
         priceInput.name = 'price';
         priceInput.value = data.price || '';
         priceInput.min = '0';
-        priceInput.step = '0.01';
-        priceInput.placeholder = 'Цена'; // ИЗМЕНЕНО
+        priceInput.step = '0.01';  // Цена остается с 2 знаками
+        priceInput.placeholder = 'Цена';
         priceInput.className = 'no-spinners price-input';
         cell2.appendChild(priceInput);
         
-        // Ячейка 3: Количество (метры)
+        // Ячейка 3: Количество (ИЗМЕНЕНО: step="0.001" для поддержки дробных)
         const cell3 = row.insertCell();
         const quantityInput = document.createElement('input');
         quantityInput.type = 'number';
         quantityInput.name = 'quantity';
         quantityInput.value = data.quantity || 1;
-        quantityInput.min = '0';
-        quantityInput.step = '1';
+        quantityInput.min = '0.001';  // Минимум 0.001
+        quantityInput.step = '0.001';  // Шаг 0.001 для ввода дробных
         quantityInput.placeholder = 'Кол-во';
         quantityInput.className = 'quantity-input';
+        
+        // Добавляем обработчик для нормализации (замена запятой на точку)
+        quantityInput.addEventListener('blur', (e) => {
+            let value = e.target.value;
+            if (typeof value === 'string') {
+                // Заменяем запятую на точку
+                value = value.replace(',', '.');
+                // Ограничиваем до 3 знаков после запятой
+                const num = parseFloat(value);
+                if (!isNaN(num)) {
+                    // Округляем до 3 знаков
+                    e.target.value = Math.round(num * 1000) / 1000;
+                }
+            }
+        });
+        
         cell3.appendChild(quantityInput);
         
         // Ячейка 4: Примечание
@@ -2017,7 +2028,7 @@ export class CreateOrderManager {
         
         cell5.appendChild(deleteBtn);
 
-        // Обработчики событий
+        // Обработчики событий для пересчета
         [descInput, priceInput, quantityInput, noteInput].forEach(input => {
             input.addEventListener('input', () => this.calculateTotalPrice());
             input.addEventListener('change', () => this.calculateTotalPrice());
@@ -2132,7 +2143,7 @@ export class CreateOrderManager {
                             id: id,
                             workDescription,
                             price,
-                            quantity: Math.round(quantity),
+                            quantity: quantity, // ИСПРАВЛЕНО: убрали Math.round
                             note
                         });
                         distanceRowProcessed = true;
@@ -2143,12 +2154,12 @@ export class CreateOrderManager {
                     console.warn('Найдена строка расстояния без data-distance - игнорируем');
                 }
             } else {
-                // Для других работ используем описание как ключ (последняя побеждает)
+                // Для других работ используем описание как ключ
                 workItemsMap.set(workDescription, {
                     id: id,
                     workDescription,
                     price,
-                    quantity: Math.round(quantity),
+                    quantity: Math.round(quantity), // Для обычных работ оставляем целые
                     note
                 });
             }
@@ -2348,15 +2359,19 @@ export class CreateOrderManager {
         try {
             const items = this.collectWorkItems() || [];
             
-            // Считаем общую сумму
-            let total = items.reduce((sum, wi) => {
+            // Считаем общую сумму с повышенной точностью
+            let total = 0;
+            for (const wi of items) {
                 const price = wi.price || 0;
                 const quantity = wi.quantity || 1;
+                
+                // Используем умножение с плавающей точкой, но с округлением до 3 знаков
+                // для промежуточных результатов (как на бэке)
                 const itemTotal = price * quantity;
-                return sum + itemTotal;
-            }, 0);
+                total += itemTotal;
+            }
             
-            // Округляем до копеек
+            // Округляем до копеек (2 знака) для отображения
             total = Math.round(total * 100) / 100;
             
             if (isNaN(total)) total = 0;
@@ -2376,7 +2391,7 @@ export class CreateOrderManager {
                 }).format(total);
             }
             
-            // Обновляем первый платеж (используем setTimeout чтобы избежать синхронной рекурсии)
+            // Обновляем первый платеж
             setTimeout(() => {
                 this.updateFirstPaymentAmount();
             }, 0);
@@ -2388,21 +2403,34 @@ export class CreateOrderManager {
     }
 
     validateWorkItems(items) {
-        // ИЗМЕНЕНО: Проверяем, что items существует и это массив
         if (!items || !Array.isArray(items)) {
             return 'Некорректные данные работ';
         }
         
         for (let i = 0; i < items.length; i++) {
             const wi = items[i];
+            
+            // Описание обязательно
             if (!wi.workDescription || wi.workDescription.trim() === '') {
                 return `Работа #${i + 1}: описание обязательно`;
             }
+            
+            // Цена должна быть больше 0
             if (wi.price <= 0) {
                 return `Работа #${i + 1}: стоимость должна быть больше 0`;
             }
-            if (wi.quantity < 1) {
-                return `Работа #${i + 1}: количество должно быть не менее 1`;
+            
+            // ИЗМЕНЕНО: Количество может быть дробным, проверяем только > 0
+            if (wi.quantity <= 0) {
+                return `Работа #${i + 1}: количество должно быть больше 0`;
+            }
+            
+            // ИЗМЕНЕНО: Проверяем количество знаков после запятой (макс 3)
+            if (wi.quantity.toString().includes('.')) {
+                const decimalPlaces = wi.quantity.toString().split('.')[1].length;
+                if (decimalPlaces > 3) {
+                    return `Работа #${i + 1}: количество может содержать не более 3 знаков после запятой`;
+                }
             }
         }
         

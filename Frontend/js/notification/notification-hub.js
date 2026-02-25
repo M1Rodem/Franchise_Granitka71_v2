@@ -13,35 +13,47 @@ class NotificationHub {
     this.reconnectDelay = 2000;
 
     this.events = {
-      NOTIFICATION_RECEIVED: 'ReceiveNotification',
-      NOTIFICATION_COUNT_UPDATED: 'UpdateNotificationCount',
-      NOTIFICATION_UPDATED: 'UpdateNotification',
-      NOTIFICATION_RESOLVED: 'NotificationResolved',
-      NOTIFICATION_POSTPONED: 'NotificationPostponed',
-      NOTIFICATION_SEEN: 'NotificationSeen',
-      CONNECTION_ESTABLISHED: 'ConnectionEstablished',
-      CONNECTION_LOST: 'ConnectionLost',
-      CONNECTION_STATE_CHANGED: 'connection_state_changed',
-      INITIAL_STATE: 'InitialNotificationState'  // ← НОВОЕ событие
+        NOTIFICATION_RECEIVED: 'ReceiveNotification',
+        NOTIFICATION_COUNT_UPDATED: 'UpdateNotificationCount',
+        NOTIFICATION_UPDATED: 'UpdateNotification',
+        NOTIFICATION_RESOLVED: 'NotificationResolved',
+        NOTIFICATION_POSTPONED: 'NotificationPostponed',
+        NOTIFICATION_SEEN: 'NotificationSeen',
+        CONNECTION_ESTABLISHED: 'ConnectionEstablished',
+        CONNECTION_LOST: 'ConnectionLost',
+        CONNECTION_STATE_CHANGED: 'connection_state_changed',
+        INITIAL_STATE: 'InitialNotificationState'
     };
 
     this._handlers = new Map();
 
     if (typeof window !== 'undefined' && !window.notificationHub) {
-      window.notificationHub = this;
+        window.notificationHub = this;
     }
 
     this.hasRequestedInitialState = false;
+    this._reconnectTimeoutId = null;
+    
+    // Добавляем глобальный обработчик ошибок SignalR
+    if (typeof window !== 'undefined') {
+        window.addEventListener('unhandledrejection', (event) => {
+            if (event.reason && event.reason.message && 
+                (event.reason.message.includes('SignalR') || 
+                 event.reason.message.includes('WebSocket'))) {
+                console.error('[NotificationHub] Глобальная ошибка SignalR:', event.reason);
+            }
+        });
+    }
+  }
+
+  getState() {
+      if (!this.connection) return 'Disconnected';
+      return this.connection.state;
   }
 
   async connect() {
       if (this.isConnecting || this.connection?.state === 'Connected') {
-          console.log('[NotificationHub] Уже подключено или подключается — пропускаем повторный вызов');
           return;
-      }
-
-      if (this.hasRequestedInitialState) {
-          console.log('[NotificationHub] Начальное состояние уже запрашивалось — пропускаем');
       }
 
       const token = secureGetToken();
@@ -58,59 +70,132 @@ class NotificationHub {
       }
 
       this.isConnecting = true;
+      
       this._emit(this.events.CONNECTION_STATE_CHANGED, { 
           state: 'connecting',
           userId: userData.id
       });
 
-      try {
-          const connectionUrl = `${window.location.origin}/api/notificationhub`;
-          
-          this.connection = new HubConnectionBuilder()
-              .withUrl(connectionUrl, {
-                  accessTokenFactory: () => token,
-                  skipNegotiation: false,
-                  transport: HttpTransportType.WebSockets | HttpTransportType.ServerSentEvents
-              })
-              .withAutomaticReconnect({
-                  nextRetryDelayInMilliseconds: (retryContext) => {
-                      const delay = Math.min(32000, Math.pow(2, retryContext.previousRetryCount) * 1000);
-                      return delay;
+      // Создаем промис с таймаутом
+      const connectWithTimeout = async () => {
+          const timeoutPromise = new Promise((_, reject) => {
+              setTimeout(() => reject(new Error('Таймаут подключения SignalR (10 сек)')), 10000);
+          });
+
+          try {
+              const connectionUrl = `${window.location.origin}/api/notificationhub`;
+              
+              this.connection = new HubConnectionBuilder()
+                  .withUrl(connectionUrl, {
+                      accessTokenFactory: () => token,
+                      skipNegotiation: false,
+                      transport: HttpTransportType.LongPolling | HttpTransportType.ServerSentEvents  // Убрали WebSockets
+                  })
+                  .withAutomaticReconnect({
+                      nextRetryDelayInMilliseconds: (retryContext) => {
+                          const delay = Math.min(32000, Math.pow(2, retryContext.previousRetryCount) * 1000);
+                          return delay;
+                      }
+                  })
+                  .configureLogging({
+                      log: (logLevel, message) => {
+                          if (logLevel >= 1);
+                      }
+                  })
+                  .build();
+
+              this._setupServerEventHandlers(userData.id);
+
+              // Обработчики подключения
+              this.connection.onclose(async (error) => {
+                  this.isConnecting = false;
+                  this.hasRequestedInitialState = false;
+                  
+                  this._emit(this.events.CONNECTION_STATE_CHANGED, { 
+                      state: 'disconnected', 
+                      reason: error?.message || 'closed',
+                      canRetry: true
+                  });
+                  
+                  setTimeout(() => {
+                      if (secureGetToken() && secureGetUserData()?.id) {
+                          this.connect().catch(err => {
+                              console.warn('[SignalR] Ошибка автоматического переподключения:', err);
+                          });
+                      }
+                  }, 3000);
+              });
+
+              this.connection.onreconnecting((error) => {
+                  this._emit(this.events.CONNECTION_STATE_CHANGED, { 
+                      state: 'reconnecting', 
+                      reason: error?.message 
+                  });
+              });
+
+              this.connection.onreconnected((connectionId) => {
+                  this.reconnectAttempts = 0;
+                  this.hasRequestedInitialState = false;
+                  
+                  if (this.connection.state === 'Connected') {
+                      this.connection.invoke('RequestCurrentState')
+                          .then(() => {
+                              this.hasRequestedInitialState = true;
+                          })
+                          .catch(err => {
+                              console.warn('[SignalR] Ошибка запроса состояния после переподключения:', err);
+                          });
                   }
-              })
-              .configureLogging({
-                  log: (logLevel, message) => {
-                      if (logLevel >= 2) console.log(`[SignalR ${logLevel}] ${message}`);
+                  
+                  this._emit(this.events.CONNECTION_STATE_CHANGED, { 
+                      state: 'connected',
+                      connectionId 
+                  });
+              });
+              
+              // Запускаем соединение и ждем с таймаутом
+              await Promise.race([
+                  this.connection.start(),
+                  timeoutPromise
+              ]);
+
+              if (this.connection.state === 'Connected' && !this.hasRequestedInitialState) {
+                  try {
+                      await this.connection.invoke('RequestCurrentState');
+                      this.hasRequestedInitialState = true;
+                  } catch (err) {
+                      console.warn('[NotificationHub] Ошибка запроса начального состояния:', err);
                   }
-              })
-              .build();
-
-          this._setupServerEventHandlers(userData.id);
-
-          // Обработчики подключения (onclose, onreconnecting, onreconnected) — оставляем как есть
-
-          await this.connection.start();
-          console.log('[SignalR] Соединение установлено');
-
-          // Запрашиваем состояние ТОЛЬКО если ещё не запрашивали
-          if (this.connection.state === 'Connected' && !this.hasRequestedInitialState) {
-              try {
-                  await this.connection.invoke('RequestCurrentState');
-                  console.log('[NotificationHub] Запрошено начальное состояние после connect');
-                  this.hasRequestedInitialState = true;
-              } catch (err) {
-                  console.warn('[NotificationHub] Ошибка запроса начального состояния:', err);
               }
+
+              this.isConnecting = false;
+              this._emit(this.events.CONNECTION_STATE_CHANGED, { 
+                  state: 'connected', 
+                  userId: userData.id 
+              });
+
+          } catch (error) {
+              console.error('[NotificationHub] ОШИБКА подключения:', error);
+              console.error('[NotificationHub] Тип ошибки:', error.name);
+              console.error('[NotificationHub] Сообщение:', error.message);
+              console.error('[NotificationHub] Стек:', error.stack);
+              
+              // Проверяем специфичные ошибки
+              if (error.message.includes('negotiate')) {
+                  console.error('[NotificationHub] Ошибка negotiation - возможно проблемы с CORS или endpoint');
+              } else if (error.message.includes('WebSocket')) {
+                  console.error('[NotificationHub] Ошибка WebSocket - проверь поддержку WebSocket на сервере');
+              } else if (error.message.includes('timeout')) {
+                  console.error('[NotificationHub] Таймаут - сервер не отвечает');
+              }
+              
+              this.isConnecting = false;
+              this.connection = null;
+              this._emit(this.events.CONNECTION_STATE_CHANGED, { state: 'error', error });
           }
+      };
 
-          this.isConnecting = false;
-          this._emit(this.events.CONNECTION_STATE_CHANGED, { state: 'connected', userId: userData.id });
-
-      } catch (error) {
-          console.error('[NotificationHub] Ошибка подключения:', error);
-          this.isConnecting = false;
-          this._emit(this.events.CONNECTION_STATE_CHANGED, { state: 'error', error });
-      }
+      return connectWithTimeout();
   }
 
   async _joinUserGroup(userId) {
@@ -121,7 +206,6 @@ class NotificationHub {
       try {
           // Проверяем существует ли метод на сервере
           await this.connection.invoke('JoinUserGroup', userId.toString());
-          console.log(`[SignalR] Присоединен к группе пользователя ${userId}`);
           return true;
       } catch (err) {
           // Игнорируем ошибку "Method does not exist"
@@ -136,139 +220,130 @@ class NotificationHub {
   }
 
   _setupServerEventHandlers(currentUserId) {
-    if (!this.connection) return;
-
-    // УДАЛЯЕМ старую логику фильтрации по recipientUserId - бэкенд сам фильтрует
-
-    // 1. ReceiveNotification - новое уведомление
-    this.connection.on('ReceiveNotification', (notification) => {
-      console.log('[SignalR] Получено новое уведомление:', notification.id);
-      
-      // ОБОГАЩАЕМ уведомление флагами isInformation/isInfluencing
-      const enrichedNotification = {
-        ...notification,
-        isInformation: notification.type === 2, // System type
-        isInfluencing: notification.type === 0, // OrderUpdateRequest type
-        _eventType: 'receive',
-        _timestamp: new Date().toISOString()
-      };
-      
-      this._emit(this.events.NOTIFICATION_RECEIVED, enrichedNotification);
-    });
-
-    // 2. UpdateNotification - обновление существующего уведомления
-    this.connection.on('UpdateNotification', (notification) => {
-      console.log('[SignalR] Обновлено уведомление:', notification.id);
-      
-      // Для отложенных уведомлений - пропускаем если это действие другого пользователя
-      // (фильтрация происходит на сервере, но проверяем на всякий случай)
-      if (notification.recipientUserId && notification.recipientUserId !== currentUserId) {
-        return;
+      if (!this.connection) {
+          console.error('[NotificationHub] Нет соединения для настройки обработчиков');
+          return;
       }
-      
-      const enrichedNotification = {
-        ...notification,
-        isInformation: notification.type === 2,
-        isInfluencing: notification.type === 0,
-        _eventType: 'update',
-        _timestamp: new Date().toISOString()
-      };
-      
-      this._emit(this.events.NOTIFICATION_UPDATED, enrichedNotification);
-    });
 
-    // 3. UpdateNotificationCount - обновление счетчика
-    this.connection.on('UpdateNotificationCount', (countData) => {
-      console.log('[SignalR] Обновлен счетчик уведомлений:', countData);
-      
-      // countData может быть числом или объектом
-      const count = typeof countData === 'object' ? countData.count : countData;
-      const type = typeof countData === 'object' ? countData.type : 'total';
-      
-      this._emit(this.events.NOTIFICATION_COUNT_UPDATED, {
-        count,
-        type,
-        timestamp: new Date().toISOString()
-      });
-    });
-
-    // 4. NotificationResolved - уведомление разрешено
-    this.connection.on('NotificationResolved', (resolutionData) => {
-      console.log('[SignalR] Уведомление разрешено:', resolutionData.notificationId);
-      
-      // ОБОГАЩАЕМ данные резолюции
-      const enrichedData = {
-        ...resolutionData,
-        _eventType: 'resolved',
-        _timestamp: new Date().toISOString(),
-        // Добавляем признак информационного/влияющего если нужно
-        status: resolutionData.status // 1=Approved, 2=Rejected
-      };
-      
-      this._emit(this.events.NOTIFICATION_RESOLVED, enrichedData);
-    });
-
-    // 5. NotificationPostponed - уведомление отложено
-    this.connection.on('NotificationPostponed', (postponementData) => {
-      console.log('[SignalR] Уведомление отложено:', postponementData.notificationId);
-      
-      const enrichedData = {
-        ...postponementData,
-        _eventType: 'postponed',
-        _timestamp: new Date().toISOString(),
-        returnsAt: postponementData.returnsAt || new Date(Date.now() + (postponementData.minutes || 30) * 60000).toISOString()
-      };
-      
-      this._emit(this.events.NOTIFICATION_POSTPONED, enrichedData);
-    });
-
-    // 6. NotificationSeen - уведомление просмотрено
-    this.connection.on('NotificationSeen', (seenData) => {
-      console.log('[SignalR] Уведомление просмотрено:', seenData.notificationId);
-      
-      this._emit(this.events.NOTIFICATION_SEEN, {
-        ...seenData,
-        _timestamp: new Date().toISOString()
-      });
-    });
-
-    // 7. ConnectionEstablished - подтверждение подключения от сервера
-    this.connection.on('ConnectionEstablished', (message) => {
-      console.log('[SignalR] Сервер подтвердил подключение:', message);
-      this._emit(this.events.CONNECTION_ESTABLISHED, {
-        message: message || 'Соединение с сервером уведомлений установлено',
-        timestamp: new Date().toISOString()
-      });
-    });
-
-    // 8. ConnectionLost - уведомление о потере соединения
-    this.connection.on('ConnectionLost', (message) => {
-      console.warn('[SignalR] Сервер сообщил о потере соединения:', message);
-      this._emit(this.events.CONNECTION_LOST, {
-        message: message || 'Потеряно соединение с сервером уведомлений',
-        timestamp: new Date().toISOString()
-      });
-    });
-
-    this.connection.on(this.events.INITIAL_STATE, (state) => {
-      console.log('[NotificationHub] Получено начальное состояние:', state);
-      
-      // Обновляем бейдж сразу (самое главное на этом этапе)
-      updateNotificationBadge(state.unreadCount || 0);
-      
-      // Сохраняем количество в глобальное состояние (чтобы другие компоненты видели)
-      // Если у тебя в notification-state.js есть поле для unreadCount — обнови его
-      setState({
-        // unreadCount: state.unreadCount,     // раскомментируй, если есть такое поле
-        // lastSync: new Date().toISOString()   // полезно для отладки
+      // 1. ReceiveNotification - новое уведомление
+      this.connection.on('ReceiveNotification', (notification) => {
+          
+          const enrichedNotification = {
+              ...notification,
+              isInformation: notification.type === 2,
+              isInfluencing: notification.type === 0,
+              _eventType: 'receive',
+              _timestamp: new Date().toISOString()
+          };
+          
+          this._emit(this.events.NOTIFICATION_RECEIVED, enrichedNotification);
       });
 
-      // Эмит события, чтобы другие части приложения знали, что синхронизация прошла
-      this._emit(this.events.CONNECTION_STATE_CHANGED, { 
-        state: 'synced',
-        unreadCount: state.unreadCount || 0
+      // 2. UpdateNotification - обновление существующего уведомления
+      this.connection.on('UpdateNotification', (notification) => {
+          
+          if (notification.recipientUserId && notification.recipientUserId !== currentUserId) {
+              return;
+          }
+          
+          const enrichedNotification = {
+              ...notification,
+              isInformation: notification.type === 2,
+              isInfluencing: notification.type === 0,
+              _eventType: 'update',
+              _timestamp: new Date().toISOString()
+          };
+          
+          this._emit(this.events.NOTIFICATION_UPDATED, enrichedNotification);
       });
-    });
+
+      // 3. UpdateNotificationCount - обновление счетчика
+      this.connection.on('UpdateNotificationCount', (countData) => {
+          
+          const count = typeof countData === 'object' ? countData.count : countData;
+          const type = typeof countData === 'object' ? countData.type : 'total';
+          
+          this._emit(this.events.NOTIFICATION_COUNT_UPDATED, {
+              count,
+              type,
+              timestamp: new Date().toISOString()
+          });
+      });
+
+      // 4. NotificationResolved - уведомление разрешено
+      this.connection.on('NotificationResolved', (resolutionData) => {
+          
+          const enrichedData = {
+              ...resolutionData,
+              _eventType: 'resolved',
+              _timestamp: new Date().toISOString(),
+              status: resolutionData.status
+          };
+          
+          this._emit(this.events.NOTIFICATION_RESOLVED, enrichedData);
+      });
+
+      // 5. NotificationPostponed - уведомление отложено
+      this.connection.on('NotificationPostponed', (postponementData) => {
+          
+          const enrichedData = {
+              ...postponementData,
+              _eventType: 'postponed',
+              _timestamp: new Date().toISOString(),
+              returnsAt: postponementData.returnsAt || new Date(Date.now() + (postponementData.minutes || 30) * 60000).toISOString()
+          };
+          
+          this._emit(this.events.NOTIFICATION_POSTPONED, enrichedData);
+      });
+
+      // 6. NotificationSeen - уведомление просмотрено
+      this.connection.on('NotificationSeen', (seenData) => {
+          
+          this._emit(this.events.NOTIFICATION_SEEN, {
+              ...seenData,
+              _timestamp: new Date().toISOString()
+          });
+      });
+
+      // 7. ConnectionEstablished - подтверждение подключения от сервера
+      this.connection.on('ConnectionEstablished', (message) => {
+          this._emit(this.events.CONNECTION_ESTABLISHED, {
+              message: message || 'Соединение с сервером уведомлений установлено',
+              timestamp: new Date().toISOString()
+          });
+      });
+
+      // 8. ConnectionLost - уведомление о потере соединения
+      this.connection.on('ConnectionLost', (message) => {
+          console.warn('[SignalR] Сервер сообщил о потере соединения:', message);
+          this._emit(this.events.CONNECTION_LOST, {
+              message: message || 'Потеряно соединение с сервером уведомлений',
+              timestamp: new Date().toISOString()
+          });
+      });
+
+      // 9. InitialNotificationState - начальное состояние
+      this.connection.on(this.events.INITIAL_STATE, (state) => {          
+          updateNotificationBadge(state.unreadCount || 0);
+          
+          if (typeof setState === 'function') {
+              setState({ 
+                  unreadCount: state.unreadCount || 0,
+                  lastSync: new Date().toISOString() 
+              });
+          }
+          
+          this._emit(this.events.NOTIFICATION_COUNT_UPDATED, {
+              count: state.unreadCount || 0,
+              type: 'total',
+              timestamp: new Date().toISOString()
+          });
+
+          this._emit(this.events.CONNECTION_STATE_CHANGED, { 
+              state: 'synced',
+              unreadCount: state.unreadCount || 0
+          });
+      });
   }
 
   _scheduleReconnect() {
@@ -278,13 +353,10 @@ class NotificationHub {
     const baseDelay = this.reconnectDelay;
     const maxDelay = 30000;
     const delay = Math.min(maxDelay, baseDelay * Math.pow(1.5, this.reconnectAttempts - 1));
-    
-    console.log(`[SignalR] Планируем переподключение через ${delay}ms (попытка ${this.reconnectAttempts}/${this.maxReconnectAttempts})`);
 
     const timeoutId = setTimeout(() => {
       const token = secureGetToken();
       if (token && this.reconnectAttempts <= this.maxReconnectAttempts) {
-        console.log(`[SignalR] Выполняем переподключение (попытка ${this.reconnectAttempts})`);
         this.connect().catch(err => {
           console.error('[SignalR] Ошибка при переподключении:', err);
         });
@@ -340,7 +412,6 @@ class NotificationHub {
     if (this.connection) {
       try {
         await this.connection.stop();
-        console.log('[SignalR] Соединение остановлено');
       } catch (err) {
         console.error('[SignalR] Ошибка при остановке соединения:', err);
       } finally {

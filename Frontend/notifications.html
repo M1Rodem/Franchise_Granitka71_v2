@@ -246,13 +246,43 @@
         import { HeaderManager } from './JS/core/header-manager.js';
         import { SidebarManager } from './JS/core/sidebar-manager.js';
         import { NotificationManager } from './JS/notification/notification-manager.js';
+        import { getState, setState } from './JS/notification/notification-state.js';
 
         document.addEventListener('DOMContentLoaded', async () => {
-            await HeaderManager.init(); // Инициализация заголовка
-            SidebarManager.init();
-            const manager = NotificationManager.getInstance();
-            manager.setupEventListeners();
-            await manager.loadNotifications();
+            try {
+                // Инициализация заголовка
+                await HeaderManager.init();
+                
+                // Инициализация сайдбара (внутри вызывает NotificationManager.init())
+                SidebarManager.init();
+                
+                // Получаем менеджер (уже инициализирован через SidebarManager)
+                const manager = NotificationManager.getInstance();
+                
+                // ВАЖНО: Сначала устанавливаем фильтр
+                setState({ currentFilter: 'active', currentPage: 1 });
+                
+                // Активируем кнопку Active
+                document.querySelectorAll('.filters .btn').forEach(btn => {
+                    btn.classList.remove('active');
+                });
+                const activeBtn = document.querySelector('[data-filter="active"]');
+                if (activeBtn) {
+                    activeBtn.classList.add('active');
+                }
+                
+                // Настраиваем обработчики событий интерфейса
+                manager.setupEventListeners();
+                
+                // Загружаем уведомления
+                await manager.loadNotifications(true);
+                
+                // Проверяем какой фильтр после загрузки
+                const stateAfter = getState();
+                
+            } catch (error) {
+                console.error('[Notifications] Ошибка инициализации страницы:', error);
+            }
         });
     </script>
 </body>

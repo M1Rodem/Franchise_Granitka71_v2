@@ -15,10 +15,7 @@ export default defineConfig(({ mode }) => {
     server: {
       port: 3000,
       host: '0.0.0.0',
-      allowedHosts: [
-        '6wb01uktj.localto.net',
-        '.localto.net'
-      ],
+      allowedHosts: ['0b2a-91-148-236-96.ngrok-free.app'],
       cors: true,
       proxy: {
         // Прокси для API запросов на наш Express сервер

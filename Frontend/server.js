@@ -114,24 +114,46 @@ app.use('/print-proxy', createProxyMiddleware({
 }));
 
 // SignalR Proxy
-app.use('/api/notificationhub', createProxyMiddleware({
-    target: API_TARGET,
-    changeOrigin: true,
-    ws: true,
-    logLevel: 'debug',
-    wsUpgrade: true,
-    followRedirects: true,
-    pathRewrite: (path) => path,
-    onError: (err, req, res) => {
-        console.error('[SIGNALR PROXY ERROR]', err);
-        if (res && !res.headersSent) {
-            res.status(502).json({ 
-                error: 'SignalR proxy error',
-                details: err.message 
-            });
-        }
+app.use('/api/notificationhub', (req, res, next) => {
+    console.log('[SignalR Proxy] Запрос к /api/notificationhub:', {
+        method: req.method,
+        url: req.url,
+        headers: req.headers,
+        isWebSocket: req.headers.upgrade?.toLowerCase() === 'websocket'
+    });
+
+    // Если это запрос на negotiate или обычный HTTP - проксируем
+    if (req.url.includes('/negotiate') || !req.headers.upgrade) {
+        return createProxyMiddleware({
+            target: API_TARGET,
+            changeOrigin: true,
+            pathRewrite: {
+                '^/api/notificationhub': '/api/notificationhub'
+            },
+            onProxyReq: (proxyReq, req, res) => {
+                console.log('[SignalR HTTP Proxy] Проксирование HTTP запроса:', req.url);
+            }
+        })(req, res, next);
     }
-}));
+
+    // Если это WebSocket upgrade
+    return createProxyMiddleware({
+        target: API_TARGET,
+        changeOrigin: true,
+        ws: true,
+        logLevel: 'debug',
+        onError: (err, req, res) => {
+            console.error('[SignalR WS Proxy ERROR]', err);
+            // Пробуем переключиться на LongPolling через редирект
+            if (res.writeHead) {
+                res.writeHead(302, {
+                    'Location': req.url + '&transport=LongPolling'
+                });
+                res.end();
+            }
+        }
+    })(req, res, next);
+});
 
 // ====== СТАТИЧЕСКИЕ ФАЙЛЫ ======
 if (isProduction) {

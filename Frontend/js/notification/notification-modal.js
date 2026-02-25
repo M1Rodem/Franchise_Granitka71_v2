@@ -2613,7 +2613,7 @@ export class NotificationViewModal {
             });
             
         } catch (error) {
-            console.error(`[Video][${videoId}] ❌ Ошибка:`, error);
+            console.error(`[Video][${videoId}] Ошибка:`, error);
             
             // Удаляем индикатор если есть
             if (loadingIndicator.parentNode === container) {

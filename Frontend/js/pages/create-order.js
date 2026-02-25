@@ -428,10 +428,7 @@ export class CreateOrderManager {
      * НОВЫЙ МЕТОД: Пометить существующее медиа на удаление
      */
     async markExistingMediaForRemoval(mediaId, mediaType, mediaTypeCode, mediaItem) {
-        try {
-            console.log('[DEBUG] markExistingMediaForRemoval called with:', { mediaId, mediaType, mediaTypeCode });
-            console.log('[DEBUG] Current draftChanges:', this.draftChanges);
-            
+        try {            
             // ===== КРИТИЧЕСКИ ВАЖНО: СОХРАНЯЕМ ССЫЛКИ ЛОКАЛЬНО =====
             // Создаем локальные переменные, чтобы защититься от асинхронных изменений
             const draftChanges = this.draftChanges || {};
@@ -482,12 +479,10 @@ export class CreateOrderManager {
                     if (mediaTypeCode === 0 || mediaType === 'photo') {
                         if (!currentDraft.removedPhotoIds.includes(mediaIdNum)) {
                             currentDraft.removedPhotoIds.push(mediaIdNum);
-                            console.log('[DEBUG] Added to removedPhotoIds:', currentDraft.removedPhotoIds);
                         }
                     } else {
                         if (!currentDraft.removedVideoIds.includes(mediaIdNum)) {
                             currentDraft.removedVideoIds.push(mediaIdNum);
-                            console.log('[DEBUG] Added to removedVideoIds:', currentDraft.removedVideoIds);
                         }
                     }
                     
@@ -654,8 +649,6 @@ export class CreateOrderManager {
             const mediaData = await apiService.uploadTempMedia(file, mediaType);
             const tempId = mediaData.id;
             
-            console.log(`[CreateOrder] Файл загружен, tempId: ${tempId}, тип: ${mediaType}`);
-            
             // 5. СОЗДАЕМ ЭЛЕМЕНТ ПРЕВЬЮ С ПОМОЩЬЮ НОВОЙ ФУНКЦИИ
             const previewItem = await createMediaPreviewItem(
                 file, 
@@ -687,17 +680,6 @@ export class CreateOrderManager {
             if (!this.draftChanges.tempUploadIds.includes(tempId)) {
                 this.draftChanges.tempUploadIds.push(tempId);
             }
-            
-            console.log('[CreateOrder] Медиа загружено:', {
-                tempId,
-                type: mediaType,
-                fileName: file.name,
-                fileSize: file.size,
-                draftState: {
-                    tempPhotoIds: this.draftChanges.tempPhotoIds,
-                    tempVideoIds: this.draftChanges.tempVideoIds
-                }
-            });
             
             return { id: tempId, type: mediaType };
             
@@ -791,8 +773,6 @@ export class CreateOrderManager {
      */
     async handleTempMediaRemoval(tempId, mediaType) {
         try {
-            console.log('[DEBUG] handleTempMediaRemoval called with:', { tempId, mediaType });
-            
             if (tempId === undefined || tempId === null) {
                 console.error('tempId is undefined or null');
                 return;
@@ -1471,7 +1451,6 @@ export class CreateOrderManager {
                     
                     // Очищаем контейнер
                     this.mediaPreview.innerHTML = '';
-                    console.log('[CreateOrder] Начинаем рендер через renderPhotoGrid', this.orderPhotos.length, 'медиа');
                     
                     // Небольшая задержка для гарантии готовности DOM
                     setTimeout(async () => {
@@ -1481,8 +1460,6 @@ export class CreateOrderManager {
                                 orderNumber: this.editingOrderId,
                                 orderManager: this
                             });
-                            console.log('[CreateOrder] Медиа отображено через renderPhotoGrid, элементов:', 
-                                    this.mediaPreview?.children.length);
                         } catch (renderError) {
                             console.error('[CreateOrder] Ошибка в renderPhotoGrid:', renderError);
                         }
@@ -2071,8 +2048,6 @@ export class CreateOrderManager {
             if (noteInput && !noteInput.value) {
                 noteInput.value = '30% предоплата';
             }
-            
-            console.log(`[CreateOrder] Первый платеж обновлен: ${thirtyPercent} (30%)`);
         } finally {
             this.updatingPayment = false;
         }

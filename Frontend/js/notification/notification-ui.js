@@ -9,7 +9,13 @@ import { formatDate } from '../utils/utils.js';
  * @param {number} count - общее количество уведомлений
  */
 export function updateNotificationBadge(count) {
-    console.log('[DEBUG] updateNotificationBadge called with count:', count);
+    
+    // Игнорируем переданный count - берем из stats
+    const stats = getNotificationStats();
+    if (!stats) {
+        console.warn('[DEBUG] getNotificationStats не вернул данные');
+        return;
+    }
     
     const badge = document.getElementById('notificationsBadge');
     if (!badge) {
@@ -18,63 +24,91 @@ export function updateNotificationBadge(count) {
     }
     
     // Очищаем все классы цвета
-    badge.classList.remove('badge-danger', 'badge-secondary');
+    badge.className = 'badge';
+    badge.removeAttribute('style');
     
-    if (count > 0) {
-        badge.textContent = count > 99 ? '99+' : count.toString();
+    const totalCount = stats.totalCount;
+    
+    if (totalCount > 0) {
+        badge.textContent = totalCount > 99 ? '99+' : totalCount.toString();
         badge.style.display = 'inline-flex';
         badge.style.opacity = '1';
         badge.style.visibility = 'visible';
         
-        // Получаем статистику для определения цвета
-        const stats = getNotificationStats?.();
-        if (stats) {
-            if (stats.hasActiveNotifications) {
-                // Красный для активных влияющих уведомлений
-                badge.classList.add('badge-danger');
-                console.log('[DEBUG] Badge set to red (active)');
-            } else if (stats.hasGrayIndicator) {
-                // Серый для информационных/отложенных с темно-синим текстом
-                badge.classList.add('badge-secondary');
-                console.log('[DEBUG] Badge set to gray with dark text');
-            } else {
-                // По умолчанию (если есть уведомления но нет флагов)
-                badge.style.backgroundColor = 'var(--accent)';
-                badge.style.color = 'white';
-            }
+        // Определяем цвет бейджа по статистике
+        if (stats.hasActiveNotifications) {
+            // Красный для активных влияющих уведомлений
+            badge.classList.add('badge-danger');
+        } 
+        else if (stats.counts && stats.counts.postponed > 0 && stats.counts.activeInfluencing === 0 && stats.counts.pendingInformation === 0) {
+            // Синий для только отложенных уведомлений
+            badge.style.backgroundColor = '#3498db';
+            badge.style.color = 'white';
         }
-        
-        console.log('[DEBUG] Badge shown with count:', badge.textContent);
+        else if (stats.hasGrayIndicator) {
+            // Серый для информационных или смешанных
+            badge.classList.add('badge-secondary');
+        }
+        else {
+            // По умолчанию - акцентный цвет
+            badge.style.backgroundColor = 'var(--accent)';
+            badge.style.color = 'white';
+        }
     } else {
-        // count = 0 или count undefined/null
         badge.textContent = '';
         badge.style.display = 'none';
         badge.style.opacity = '0';
         badge.style.visibility = 'hidden';
-        // Сбрасываем inline стили
-        badge.style.backgroundColor = '';
-        badge.style.color = '';
-        
-        console.log('[DEBUG] Badge hidden (count = 0)');
     }
 }
 
 export function updateBadgeColor() {
     const badge = document.getElementById('notificationsBadge');
-    if (!badge || badge.style.display === 'none') return;
+    if (!badge) return;
     
     const stats = getNotificationStats?.();
     if (!stats) return;
     
-    // Очищаем предыдущие классы
-    badge.classList.remove('badge-danger', 'badge-secondary');
+    const count = parseInt(badge.textContent) || 0;
     
-    if (stats.hasActiveNotifications) {
+    if (count === 0) {
+        badge.style.display = 'none';
+        return;
+    }
+    
+    // Очищаем предыдущие классы и стили
+    badge.className = 'badge';
+    badge.removeAttribute('style');
+    badge.style.display = 'inline-flex';
+    
+    // Проверяем наличие активных влияющих уведомлений
+    const hasActiveInfluencing = stats.hasActiveNotifications || 
+                                (stats.counts && stats.counts.activeInfluencing > 0);
+    
+    // Проверяем наличие только отложенных уведомлений
+    const hasOnlyPostponed = stats.counts && 
+                            stats.counts.postponed > 0 && 
+                            stats.counts.activeInfluencing === 0 && 
+                            stats.counts.pendingInformation === 0;
+    
+    // Проверяем наличие только информационных уведомлений
+    const hasOnlyInformation = stats.counts && 
+                              stats.counts.pendingInformation > 0 && 
+                              stats.counts.activeInfluencing === 0 && 
+                              stats.counts.postponed === 0;
+    
+    if (hasActiveInfluencing) {
         badge.classList.add('badge-danger');
-        console.log('[DEBUG] Badge color updated to red');
-    } else if (stats.hasGrayIndicator) {
+    } 
+    else if (hasOnlyPostponed) {
+        badge.style.backgroundColor = '#3498db';
+        badge.style.color = 'white';
+    }
+    else if (hasOnlyInformation) {
         badge.classList.add('badge-secondary');
-        console.log('[DEBUG] Badge color updated to gray with dark text');
+    }
+    else if (stats.hasGrayIndicator) {
+        badge.classList.add('badge-secondary');
     }
 }
 
@@ -168,30 +202,51 @@ export async function updateFilterCounts() {
 }
 
 export function updateFilterCountsFromState() {
+    
     const state = getState();
-    const stats = getNotificationStats();
+    const notifications = state.notifications || [];
     
-    // Активные
+    // Считаем для каждого фильтра
+    let activeCount = 0;
+    let postponedCount = 0;
+    let historyCount = 0;
+    
+    notifications.forEach(notification => {
+        const status = notification.status !== undefined ? notification.status : notification.statusCode;
+        
+        // Активные (Pending)
+        if (status === NOTIFICATION_STATUS.PENDING) {
+            activeCount++;
+        }
+        
+        // Отложенные (Postponed)
+        if (status === NOTIFICATION_STATUS.POSTPONED) {
+            postponedCount++;
+        }
+        
+        // История = ВСЕ уведомления (total)
+        // Не фильтруем по статусу
+    });
+    
+    // История = общее количество всех уведомлений
+    historyCount = notifications.length;
+    
+    // Обновляем DOM элементы
     const activeCountElement = document.getElementById('activeCount');
-    if (activeCountElement) {
-        activeCountElement.textContent = stats.counts.activeInfluencing;
-        activeCountElement.style.display = stats.counts.activeInfluencing > 0 ? 'inline' : 'none';
-    }
-    
-    // Отложенные
     const postponedCountElement = document.getElementById('postponedCount');
-    if (postponedCountElement) {
-        postponedCountElement.textContent = stats.counts.postponed;
-        postponedCountElement.style.display = stats.counts.postponed > 0 ? 'inline' : 'none';
+    const historyCountElement = document.getElementById('historyCount');
+    
+    if (activeCountElement) {
+        activeCountElement.textContent = activeCount;
+        activeCountElement.style.display = activeCount > 0 ? 'inline' : 'none';
     }
     
-    // История
-    const historyCountElement = document.getElementById('historyCount');
+    if (postponedCountElement) {
+        postponedCountElement.textContent = postponedCount;
+        postponedCountElement.style.display = postponedCount > 0 ? 'inline' : 'none';
+    }
+    
     if (historyCountElement) {
-        const historyCount = state.notifications.filter(n => 
-            n.status === NOTIFICATION_STATUS.APPROVED || 
-            n.status === NOTIFICATION_STATUS.REJECTED
-        ).length;
         historyCountElement.textContent = historyCount;
         historyCountElement.style.display = historyCount > 0 ? 'inline' : 'none';
     }
@@ -205,7 +260,6 @@ export function renderNotifications() {
     const listContainer = document.getElementById('notificationsList');
     
     if (!listContainer) {
-        console.log('[renderNotifications] Страница уведомлений не открыта — пропускаем рендер');
         return;
     }
     
@@ -214,20 +268,6 @@ export function renderNotifications() {
     // Получаем отфильтрованные уведомления
     const filteredNotifications = getFilteredNotifications();
     
-    // ОТЛАДКА: выводим в консоль что фильтруется
-    console.log('[DEBUG] renderNotifications:', {
-        currentFilter: state.currentFilter,
-        allNotifications: state.notifications.length,
-        filteredNotifications: filteredNotifications.length,
-        filteredNotificationsDetails: filteredNotifications.map(n => ({
-            id: n.id,
-            type: n.type,
-            status: n.status,
-            isInformation: n.isInformation,
-            title: n.title
-        }))
-    });
-    
     if (filteredNotifications.length === 0) {
         showEmptyState();
         return;
@@ -235,7 +275,6 @@ export function renderNotifications() {
     
     // Рендерим каждое уведомление
     filteredNotifications.forEach((notification, index) => {
-        console.log(`[DEBUG] Рендерим уведомление ${index + 1}:`, notification.id, notification.title);
         const item = createNotificationElement(notification);
         listContainer.appendChild(item);
     });

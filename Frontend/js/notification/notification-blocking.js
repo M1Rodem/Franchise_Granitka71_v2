@@ -17,7 +17,6 @@ export async function checkBlocking() {
         
         const userRole = userData.role;
         if (userRole === 'Admin' || userRole === 'SuperAdmin') {
-            console.log(`[Blocking] Пользователь ${userRole} - пропуск проверки`);
             return {
                 isBlocked: false,
                 blockingCount: 0,
@@ -27,8 +26,6 @@ export async function checkBlocking() {
         
         // 2. Вызов API проверки блокировки
         const response = await apiService.request('/notifications/check-blocking');
-        
-        console.log('[Blocking] Ответ от сервера:', response);
         
         return {
             isBlocked: response.isBlocked || false,
@@ -63,8 +60,6 @@ export async function handleNavigationWithBlockingCheck(event, targetUrl, action
         event.stopPropagation();
     }
     
-    console.log(`[Blocking] Проверка блокировки для ${actionName}: ${targetUrl}`);
-    
     const blockingResult = await checkBlocking();
     
     if (!blockingResult) {
@@ -79,17 +74,12 @@ export async function handleNavigationWithBlockingCheck(event, targetUrl, action
             showTempMessage(blockingResult.message, 'error');
         }
         
-        console.log(`[Blocking] Блокировка! Редирект в уведомления. Count: ${blockingResult.blockingCount}`);
-        
         // Редирект на страницу уведомлений
         setTimeout(() => {
             window.location.href = 'notifications.html';
         }, 1500);
         
-    } else {
-        // РАЗРЕШЕНО: выполняем переход
-        console.log(`[Blocking] Разрешено. Выполняем ${actionName}`);
-        
+    } else {        
         if (targetUrl) {
             window.location.href = targetUrl;
         }
@@ -100,9 +90,7 @@ export async function handleNavigationWithBlockingCheck(event, targetUrl, action
  * Инициализация глобальных обработчиков блокировки
  * Должна вызываться на каждой странице
  */
-export function initBlockingHandlers() {
-    console.log('[Blocking] Инициализация обработчиков блокировки');
-    
+export function initBlockingHandlers() {    
     // Обработчик для ссылок в сайдбаре
     document.addEventListener('click', async (event) => {
         const link = event.target.closest('a');
@@ -119,7 +107,5 @@ export function initBlockingHandlers() {
                 `перехода на страницу ${page || href}`
             );
         }
-    });
-    
-    console.log('[Blocking] Обработчики инициализированы');
+    });  
 }

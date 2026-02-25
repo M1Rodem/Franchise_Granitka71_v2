@@ -165,7 +165,6 @@ export async function openVideoPreview(mediaId, fileName, orderNumber = null, is
         
         if (isTemp) {
             // Для временного видео используем специальный эндпоинт temp-preview
-            console.log('[VideoPreview] Загрузка временного видео:', mediaId);
             
             try {
                 // Способ 1: через apiService
@@ -187,7 +186,6 @@ export async function openVideoPreview(mediaId, fileName, orderNumber = null, is
             }
         } else {
             // Для существующего видео используем прямой URL с авторизацией
-            console.log('[VideoPreview] Загрузка существующего видео:', mediaId);
             
             const response = await fetch(`/api/media/${mediaId}/file`, {
                 headers: { 'Authorization': `Bearer ${token}` }
@@ -991,7 +989,6 @@ function attachMediaViewHandlers(container) {
     container.addEventListener('click', (e) => {
         // ===== КРИТИЧЕСКИ ВАЖНО: ПРОВЕРЯЕМ, НЕ КЛИКНУЛИ ЛИ ПО КНОПКЕ =====
         if (e.target.closest('button')) {
-            console.log('[MediaView] Клик по кнопке, игнорируем просмотр');
             return; // Не открываем просмотр, если кликнули по любой кнопке
         }
         
@@ -1011,7 +1008,6 @@ function attachMediaViewHandlers(container) {
         
         // Проверяем, есть ли у элемента временный ID (значит это новое, незагруженное медиа)
         if (item.dataset.tempId) {
-            console.log('[MediaView] Временное медиа, возможно не готово к просмотру');
             // Для временных видео показываем превью, если оно есть
             if (mediaType === 'video') {
                 // Пробуем найти canvas или video элемент
@@ -1027,13 +1023,11 @@ function attachMediaViewHandlers(container) {
         // Открываем просмотр для постоянных медиа
         if (mediaType === 'video') {
             if (typeof openVideoPreview === 'function') {
-                console.log('[MediaView] Открываем видео:', mediaId);
                 openVideoPreview(mediaId, fileName, orderNumber, false);
             }
         } else {
             const img = item.querySelector('img');
             if (img) {
-                console.log('[MediaView] Открываем фото:', mediaId);
                 openPhotoPreview(
                     img.src,
                     fileName,
@@ -1362,9 +1356,7 @@ async function handleMediaFiles(files, uploadCallback) {
  * Открывает фото по ID (для удаляемых/постоянных фото)
  */
 export async function openPhotoPreviewById(photoId, fileName, orderNumber = null, photoIndex = null) {
-    try {
-        console.log('[PhotoPreviewById] Загрузка фото по ID:', photoId);
-        
+    try {        
         const { apiService } = await import('../api/api.js');
         const imageUrl = await apiService.getMediaUrl(photoId);
         

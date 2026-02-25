@@ -11,26 +11,26 @@ import { isNotificationBlocking } from './notification-utils.js';
 
 // Исходное состояние
 const state = {
-    notifications: [],          // Массив обогащенных уведомлений
-    currentFilter: 'active',    // 'active', 'postponed', 'history', 'information'
+    notifications: [],
+    filteredNotifications: [],
+    currentFilter: 'active', // ДОЛЖНО БЫТЬ 'active'
     currentPage: 1,
     pageSize: 20,
     totalCount: 0,
     totalPages: 1,
     currentUserId: secureGetUserData()?.id || null,
     
-    // Кэшированные вычисления (обновляются при изменении notifications)
     _computed: {
-        hasRedIndicator: false,    // Есть ли влияющие Pending
-        hasGrayIndicator: false,   // Нет красных, но есть инфо Pending или Postponed
-        hasBlocking: false,        // Есть ли блокирующие уведомления
+        hasRedIndicator: false,
+        hasGrayIndicator: false,
+        hasBlocking: false,
         counts: {
             total: 0,
-            activeInfluencing: 0,  // Для красного индикатора
-            pendingInformation: 0, // Для серого индикатора (инфо)
-            postponed: 0,          // Для серого индикатора (отложенные)
-            information: 0,        // Все информационные
-            influencing: 0         // Все влияющие
+            activeInfluencing: 0,
+            pendingInformation: 0,
+            postponed: 0,
+            information: 0,
+            influencing: 0
         }
     }
 };
@@ -49,10 +49,26 @@ export function setState(newState) {
     
     // Если изменились уведомления или currentUserId - пересчитываем кэш
     if (newState.notifications !== undefined || newState.currentUserId !== undefined) {
+        // Обогащаем уведомления userId
         state.notifications = state.notifications.map(notification => ({
             ...notification,
             userId: notification.userId || state.currentUserId
         }));
+        
+        // Удаляем дубликаты по id
+        const uniqueNotifications = [];
+        const seenIds = new Set();
+        
+        state.notifications.forEach(notification => {
+            if (!seenIds.has(notification.id)) {
+                seenIds.add(notification.id);
+                uniqueNotifications.push(notification);
+            }
+        });
+        
+        if (uniqueNotifications.length !== state.notifications.length) {
+            state.notifications = uniqueNotifications;
+        }
         
         // Пересчитываем вычисляемые поля
         recalcComputed();
@@ -69,49 +85,50 @@ export function setCurrentUserId(userId) {
 
 // Пересчет вычисляемых полей
 function recalcComputed() {
-    const notifications = state.notifications;
+    const notifications = state.notifications; // ЭТОЙ СТРОКИ НЕ ХВАТАЕТ!
     const now = new Date();
     
     // Счетчики
-    let activeInfluencing = 0;  // Для красного индикатора
-    let pendingInformation = 0; // Информационные Pending
-    let postponed = 0;          // Все Postponed
-    let information = 0;        // Все информационные
-    let influencing = 0;        // Все влияющие
-    let hasBlocking = false;    // Есть ли блокирующие
+    let activeInfluencing = 0;  // Для красного индикатора (Pending + isInfluencing)
+    let pendingInformation = 0;  // Информационные Pending (для серого)
+    let postponed = 0;           // Все Postponed (для синего)
+    let information = 0;         // Все информационные
+    let influencing = 0;         // Все влияющие
+    let hasBlocking = false;     // Есть ли блокирующие
     
     notifications.forEach(notification => {
+        const status = notification.status !== undefined ? notification.status : notification.statusCode;
+        const isPending = status === NOTIFICATION_STATUS.PENDING;
+        const isPostponed = status === NOTIFICATION_STATUS.POSTPONED;
+        
         // Классификация по типам
-        if (notification.isInformation) {
+        if (notification.isInformation || notification.type === 2) {
             information++;
-            if (notification.status === NOTIFICATION_STATUS.PENDING) {
+            if (isPending) {
                 pendingInformation++;
             }
-        } else if (notification.isInfluencing) {
+            if (isPostponed) {
+                postponed++;
+            }
+        } else if (notification.isInfluencing || notification.type === 0) {
             influencing++;
-            if (notification.status === NOTIFICATION_STATUS.PENDING) {
+            if (isPending) {
                 activeInfluencing++;
             }
-        }
-        
-        // Отложенные
-        if (notification.status === NOTIFICATION_STATUS.POSTPONED) {
-            postponed++;
-        }
-        
-        // Блокирующие
-        if (isNotificationBlocking(notification)) {
-            hasBlocking = true;
+            if (isPostponed) {
+                postponed++;
+            }
         }
     });
     
     // Обновляем кэш
     state._computed = {
         hasRedIndicator: activeInfluencing > 0,
-        hasGrayIndicator: activeInfluencing === 0 && (pendingInformation > 0 || postponed > 0),
+        hasBlueIndicator: activeInfluencing === 0 && postponed > 0,
+        hasGrayIndicator: activeInfluencing === 0 && postponed === 0 && pendingInformation > 0,
         hasBlocking,
         counts: {
-            total: notifications.length,
+            total: activeInfluencing + pendingInformation + postponed, // ВСЕ актуальные уведомления!
             activeInfluencing,
             pendingInformation,
             postponed,
@@ -127,7 +144,7 @@ function recalcComputed() {
  * Получает статистику для индикаторов
  */
 export function getNotificationStats() {
-    return {
+    const stats = {
         totalCount: state._computed.counts.total,
         activeCount: state._computed.counts.activeInfluencing,
         hasActiveNotifications: state._computed.hasRedIndicator,
@@ -135,6 +152,7 @@ export function getNotificationStats() {
         hasBlocking: state._computed.hasBlocking,
         counts: { ...state._computed.counts }
     };
+    return stats;
 }
 
 /**
@@ -170,18 +188,19 @@ export function getFilteredNotifications() {
             return false;
         }
         
+        const status = notification.status !== undefined ? notification.status : notification.statusCode;
+        
         switch(filter) {
             case 'active':
-                // Только Pending (активные) - НЕ отложенные
-                return notification.status === NOTIFICATION_STATUS.PENDING;
+                // Только Pending (активные)
+                return status === NOTIFICATION_STATUS.PENDING;
             
             case 'postponed':
                 // Только Postponed (отложенные)
-                return notification.status === NOTIFICATION_STATUS.POSTPONED;
+                return status === NOTIFICATION_STATUS.POSTPONED;
             
             case 'history':
-                // ВСЕ уведомления без фильтрации
-                return true;
+                return true; 
             
             default:
                 return true;
@@ -205,24 +224,17 @@ export async function fetchNotificationStats() {
             };
         }
         
-        // Запрашиваем все уведомления для точного подсчета
-        const [pendingRes, postponedRes, allRes] = await Promise.all([
+        // Запрашиваем ТОЛЬКО активные (pending) уведомления для счетчика
+        const [pendingRes, postponedRes] = await Promise.all([
             apiService.getNotifications({ 
                 status: 'pending', 
-                page: 1, 
-                pageSize: 100, // Большой лимит для подсчета
-                userId: userData.id 
-            }).catch(() => ({ items: [], totalCount: 0 })),
-            
-            apiService.getNotifications({ 
-                status: 'postponed', 
                 page: 1, 
                 pageSize: 100,
                 userId: userData.id 
             }).catch(() => ({ items: [], totalCount: 0 })),
             
             apiService.getNotifications({ 
-                status: 'all', 
+                status: 'postponed', 
                 page: 1, 
                 pageSize: 100,
                 userId: userData.id 
@@ -232,7 +244,6 @@ export async function fetchNotificationStats() {
         // Анализируем данные
         const pendingItems = pendingRes.items || [];
         const postponedItems = postponedRes.items || [];
-        const allItems = allRes.items || [];
         
         // Подсчет по типам
         let activeInfluencing = 0;
@@ -240,11 +251,9 @@ export async function fetchNotificationStats() {
         let hasBlocking = false;
         
         pendingItems.forEach(item => {
-            // Определяем тип по значению type
             if (item.type === 0) { // OrderUpdateRequest - влияющее
                 activeInfluencing++;
-                // Проверяем блокировку
-                if (item.status === 0) { // Pending
+                if (item.status === 0) {
                     hasBlocking = true;
                 }
             } else if (item.type === 2) { // System - информационное
@@ -252,9 +261,9 @@ export async function fetchNotificationStats() {
             }
         });
         
-        // Проверяем отложенные на блокировку (возврат времени)
+        // Проверяем отложенные на блокировку
         postponedItems.forEach(item => {
-            if (item.type === 0 && item.returnsAt) { // Влияющее отложенное
+            if (item.type === 0 && item.returnsAt) {
                 const now = new Date();
                 const returnsAt = new Date(item.returnsAt);
                 if (returnsAt <= now) {
@@ -266,8 +275,10 @@ export async function fetchNotificationStats() {
         const hasRed = activeInfluencing > 0;
         const hasGray = !hasRed && (pendingInformation > 0 || postponedItems.length > 0);
         
+        // ВАЖНО: totalCount = только активные влияющие + информационные (не отложенные!)
+        const totalCount = activeInfluencing + pendingInformation;        
         return {
-            totalCount: allItems.length,
+            totalCount: totalCount,
             activeCount: activeInfluencing,
             hasActiveNotifications: hasRed,
             hasGrayIndicator: hasGray,
@@ -276,7 +287,7 @@ export async function fetchNotificationStats() {
                 activeInfluencing,
                 pendingInformation,
                 postponed: postponedItems.length,
-                total: allItems.length
+                total: totalCount
             }
         };
         

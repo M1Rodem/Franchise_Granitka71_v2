@@ -712,10 +712,7 @@ export class ViewOrderManager {
                         );
                     }
                 }
-            });
-            
-            console.log('[ViewOrder] Медиа отображено, элементов:', this.orderPhotos.children.length);
-            
+            });            
         } catch (error) {
             console.error('Error rendering photos:', error);
             this.orderPhotos.innerHTML = '<div class="no-photos">Ошибка загрузки фото</div>';

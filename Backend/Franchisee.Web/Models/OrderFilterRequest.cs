@@ -12,6 +12,7 @@
         public decimal? MinPrice { get; set; }
         public decimal? MaxPrice { get; set; }
         public int? ManagerId { get; set; }
+        public int? PlotId { get; set; }
         public string? CustomerName { get; set; }
         public string? Phone { get; set; }
         public int Page { get; set; } = 1;

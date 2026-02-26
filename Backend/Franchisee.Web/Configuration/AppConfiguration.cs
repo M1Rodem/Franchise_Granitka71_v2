@@ -30,6 +30,9 @@ namespace Franchisee.Web.Configuration
                     var allowedOrigins = new List<string>
                     {
                         "http://localhost:3000",
+                        "https://localhost:3000",
+                        "http://localhost:5173",
+                        "https://localhost:5173",
                         "http://localhost:5000",
                         "https://localhost:5001",
                     };
@@ -212,7 +215,10 @@ namespace Franchisee.Web.Configuration
                 app.UseSwaggerUI();
             }
 
-            app.UseHttpsRedirection();
+            if (env.IsProduction())
+            {
+                app.UseHttpsRedirection();
+            }
 
             // Статические файлы
             app.UseStaticFiles();

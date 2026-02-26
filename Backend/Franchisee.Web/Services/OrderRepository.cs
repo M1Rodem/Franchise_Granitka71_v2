@@ -21,57 +21,7 @@ namespace Franchisee.Web.Services
                 .Include(o => o.Payments)
                 .Include(o => o.Photos)
                 .Include(o => o.Manager)
-                .Include(o => o.Plot)  // ДОБАВЛЯЕМ ПОДГРУЗКУ УЧАСТКА
-                .Select(o => new Order
-                {
-                    Id = o.Id,
-                    OrderNumber = o.OrderNumber,
-                    Place = o.Place,
-                    InspectionPlace = o.InspectionPlace,
-                    OrderDate = o.OrderDate,
-
-                    // ГЕОДАННЫЕ - ДОБАВЛЯЕМ!
-                    Latitude = o.Latitude,
-                    Longitude = o.Longitude,
-                    PlotId = o.PlotId,
-
-                    DeceasedFullName = o.DeceasedFullName,
-                    CustomerFullName = o.CustomerFullName,
-                    CustomerEmail = o.CustomerEmail,
-                    Phone = o.Phone,
-                    Address = o.Address,
-                    MonumentType = o.MonumentType,
-                    MonumentSize = o.MonumentSize,
-                    AdditionalInfo = o.AdditionalInfo,
-                    Status = o.Status,
-                    TotalPrice = o.TotalPrice,
-                    CreatedAt = o.CreatedAt,
-                    UpdatedAt = o.UpdatedAt,
-                    ManagerId = o.ManagerId,
-
-                    // ПРОЕКЦИЯ МЕНЕДЖЕРА
-                    Manager = o.Manager == null ? null : new Manager
-                    {
-                        FullName = o.Manager.FullName,
-                    },
-
-                    // ПРОЕКЦИЯ УЧАСТКА - ДОБАВЛЯЕМ!
-                    Plot = o.Plot == null ? null : new Plot
-                    {
-                        Id = o.Plot.Id,
-                        Name = o.Plot.Name,
-                        Latitude = o.Plot.Latitude,
-                        Longitude = o.Plot.Longitude,
-                        IsActive = o.Plot.IsActive
-                    },
-
-                    WorkItems = o.WorkItems,
-                    Payments = o.Payments,
-                    Photos = o.Photos,
-                    IsDeleted = o.IsDeleted,
-                    DeletedAt = o.DeletedAt,
-                    IsArchived = o.IsArchived
-                })
+                .Include(o => o.Plot)
                 .AsNoTracking();
         }
         public async Task<bool> ExistsAsync(int id)
@@ -97,25 +47,41 @@ namespace Franchisee.Web.Services
             // Поиск
             if (!string.IsNullOrWhiteSpace(filter.SearchQuery))
             {
-                var search = filter.SearchQuery.ToLowerInvariant();
-                query = query.Where(o => o.OrderNumber.ToLower().Contains(search) ||
-                                         o.CustomerFullName.ToLower().Contains(search) ||
-                                         o.Phone.Contains(search) ||
-                                         o.DeceasedFullName.ToLower().Contains(search) ||
-                                         o.MonumentType.ToLower().Contains(search));
+                var pattern = $"%{filter.SearchQuery.Trim()}%";
+                query = query.Where(o =>
+                    EF.Functions.ILike(o.OrderNumber, pattern) ||
+                    EF.Functions.ILike(o.CustomerFullName, pattern) ||
+                    EF.Functions.ILike(o.Phone, pattern) ||
+                    EF.Functions.ILike(o.DeceasedFullName, pattern) ||
+                    EF.Functions.ILike(o.MonumentType, pattern) ||
+                    (o.Manager != null && (
+                        EF.Functions.ILike(o.Manager.FullName, pattern) ||
+                        EF.Functions.ILike(o.Manager.Username, pattern)
+                    )));
             }
 
-            // Фильтры по дате создания
+            // Date-only filtering, inclusive by day for "To" via < next day.
             if (filter.OrderDateFrom.HasValue)
-                query = query.Where(o => o.OrderDate >= filter.OrderDateFrom.Value.ToUniversalTime());
+            {
+                var orderDateFrom = ToUtcDateStart(filter.OrderDateFrom.Value);
+                query = query.Where(o => o.OrderDate >= orderDateFrom);
+            }
             if (filter.OrderDateTo.HasValue)
-                query = query.Where(o => o.OrderDate <= filter.OrderDateTo.Value.ToUniversalTime());
+            {
+                var orderDateToExclusive = ToUtcDateStart(filter.OrderDateTo.Value).AddDays(1);
+                query = query.Where(o => o.OrderDate < orderDateToExclusive);
+            }
 
-            // Также исправьте фильтры по дате создания:
             if (filter.CreatedFrom.HasValue)
-                query = query.Where(o => o.CreatedAt >= filter.CreatedFrom.Value.ToUniversalTime());
+            {
+                var createdFrom = ToUtcDateStart(filter.CreatedFrom.Value);
+                query = query.Where(o => o.CreatedAt >= createdFrom);
+            }
             if (filter.CreatedTo.HasValue)
-                query = query.Where(o => o.CreatedAt <= filter.CreatedTo.Value.ToUniversalTime());
+            {
+                var createdToExclusive = ToUtcDateStart(filter.CreatedTo.Value).AddDays(1);
+                query = query.Where(o => o.CreatedAt < createdToExclusive);
+            }
 
             // По цене
             if (filter.MinPrice.HasValue)
@@ -126,6 +92,8 @@ namespace Franchisee.Web.Services
             // Фильтр по менеджеру только если явно указан
             if (filter.ManagerId.HasValue)
                 query = query.Where(o => o.ManagerId == filter.ManagerId.Value);
+            if (filter.PlotId.HasValue)
+                query = query.Where(o => o.PlotId == filter.PlotId.Value);
 
             // По клиенту/телефону
             if (!string.IsNullOrEmpty(filter.CustomerName))
@@ -299,6 +267,14 @@ namespace Franchisee.Web.Services
                 .FirstOrDefaultAsync();
 
             return originalOrder ?? await GenerateOrderNumberAsync();
+        }
+
+        private static DateTime ToUtcDateStart(DateTime value)
+        {
+            var dateOnly = value.Date;
+            return dateOnly.Kind == DateTimeKind.Utc
+                ? dateOnly
+                : DateTime.SpecifyKind(dateOnly, DateTimeKind.Utc);
         }
     }
 }

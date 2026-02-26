@@ -1,0 +1,13 @@
+.page {
+  max-width: 840px;
+}
+
+.page h2 {
+  margin-top: 0;
+  color: #eff7ff;
+}
+
+.page p {
+  margin-bottom: 0;
+  color: #c0d6f1;
+}

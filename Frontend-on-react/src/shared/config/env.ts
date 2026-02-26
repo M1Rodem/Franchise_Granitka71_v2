@@ -1,0 +1,13 @@
+const envSource = import.meta.env as Record<string, unknown>;
+
+const getEnvString = (key: string): string | null => {
+  const value = envSource[key];
+  return typeof value === 'string' && value.trim().length > 0 ? value : null;
+};
+
+const apiBaseUrl = getEnvString('VITE_API_BASE_URL') ?? 'http://localhost:5000';
+
+export const env = {
+  apiBaseUrl,
+  signalRUrl: getEnvString('VITE_SIGNALR_URL') ?? `${apiBaseUrl}/api/notificationhub`,
+} as const;

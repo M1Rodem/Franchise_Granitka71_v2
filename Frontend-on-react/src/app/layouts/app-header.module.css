@@ -1,0 +1,74 @@
+.header {
+  margin: 12px 12px 0;
+  padding: 12px 14px;
+  min-height: 64px;
+  border-radius: 16px;
+  border: 1px solid rgba(142, 179, 236, 0.27);
+  background: linear-gradient(164deg, rgba(8, 24, 46, 0.82), rgba(11, 32, 62, 0.56));
+  backdrop-filter: blur(12px);
+  box-shadow: 0 12px 28px rgba(4, 11, 26, 0.25);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.menuButton {
+  width: 40px;
+  height: 40px;
+  border-radius: 11px;
+  border: 1px solid rgba(139, 177, 232, 0.34);
+  background: rgba(17, 43, 80, 0.72);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 4px;
+  cursor: pointer;
+}
+
+.menuButton span {
+  width: 18px;
+  height: 2px;
+  border-radius: 4px;
+  background: #dff0ff;
+}
+
+.title {
+  margin: 0;
+  font-size: 18px;
+  color: #eff7ff;
+  flex: 1;
+  text-align: center;
+}
+
+.badgeContainer {
+  min-width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  border: 1px solid rgba(137, 179, 239, 0.35);
+  background: rgba(13, 36, 67, 0.84);
+  display: grid;
+  place-items: center;
+}
+
+.badgeValue {
+  color: #dff0ff;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+@media (min-width: 961px) {
+  .header {
+    margin: 12px 12px 0 0;
+    padding-inline: 18px;
+  }
+
+  .menuButton {
+    display: none;
+  }
+
+  .title {
+    text-align: left;
+  }
+}

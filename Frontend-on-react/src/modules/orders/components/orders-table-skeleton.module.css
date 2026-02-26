@@ -1,0 +1,25 @@
+.card {
+  border-radius: 14px;
+  border: 1px solid rgba(123, 158, 214, 0.28);
+  background: rgba(9, 26, 52, 0.6);
+  padding: 14px;
+  display: grid;
+  gap: 10px;
+}
+
+.row {
+  height: 42px;
+  border-radius: 10px;
+  background: linear-gradient(90deg, rgba(43, 78, 126, 0.45), rgba(74, 117, 179, 0.3), rgba(43, 78, 126, 0.45));
+  background-size: 220% 100%;
+  animation: shimmer 1.2s linear infinite;
+}
+
+@keyframes shimmer {
+  from {
+    background-position: 0 0;
+  }
+  to {
+    background-position: 220% 0;
+  }
+}

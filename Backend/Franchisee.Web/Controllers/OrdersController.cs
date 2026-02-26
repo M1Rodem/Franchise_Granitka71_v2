@@ -48,6 +48,7 @@ namespace Franchisee.Web.Controllers
         public async Task<ActionResult<PagedResult<OrderResponseDto>>> GetOrders([FromQuery] OrderFilterRequest filter)
         {
             var userId = GetCurrentUserId();
+            _logger.LogInformation("QueryString GET /api/orders: {QueryString}", Request.QueryString.Value);
             _logger.LogInformation("Получение заказов для пользователя {UserId}, фильтр: {@Filter}", userId, filter);
 
             var (orders, total) = await _orderRepository.GetFilteredOrdersAsync(filter, null);

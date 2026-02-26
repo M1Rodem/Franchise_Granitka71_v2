@@ -1,0 +1,135 @@
+﻿.sidebar {
+  width: 272px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin: 12px;
+  padding: 14px;
+  border-radius: 18px;
+  border: 1px solid rgba(152, 181, 226, 0.24);
+  background: linear-gradient(164deg, rgba(8, 24, 46, 0.84), rgba(11, 32, 62, 0.55));
+  backdrop-filter: blur(14px);
+  box-shadow: 0 14px 30px rgba(4, 11, 26, 0.32);
+  transition: width 180ms ease, transform 220ms ease;
+  z-index: 50;
+}
+
+.collapsed {
+  width: 88px;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.branding {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.logo {
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  display: grid;
+  place-items: center;
+  background: linear-gradient(180deg, #abd5ff, #7db3ec);
+  color: #062248;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.brandText {
+  color: #eaf4ff;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.collapseBtn {
+  border: 1px solid rgba(135, 171, 224, 0.34);
+  background: rgba(15, 39, 73, 0.68);
+  color: #d8e9fd;
+  border-radius: 10px;
+  width: 30px;
+  height: 30px;
+  cursor: pointer;
+}
+
+.nav {
+  display: grid;
+  gap: 8px;
+}
+
+.navItem {
+  min-height: 44px;
+  border-radius: 12px;
+  padding: 0 12px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: #d3e6ff;
+  text-decoration: none;
+  border: 1px solid transparent;
+  transition: background-color 150ms ease, border-color 150ms ease, color 150ms ease;
+}
+
+.navItem:hover {
+  background: rgba(105, 158, 232, 0.14);
+  border-color: rgba(115, 171, 248, 0.26);
+}
+
+.active {
+  color: #eff7ff;
+  background: linear-gradient(160deg, rgba(123, 188, 255, 0.22), rgba(94, 147, 223, 0.14));
+  border-color: rgba(152, 204, 255, 0.42);
+}
+
+.icon {
+  width: 19px;
+  height: 19px;
+  flex-shrink: 0;
+}
+
+.footer {
+  margin-top: auto;
+  border-top: 1px solid rgba(120, 157, 214, 0.24);
+  padding-top: 12px;
+  display: grid;
+  gap: 8px;
+}
+
+.userName {
+  margin: 0;
+  color: #c8ddf8;
+  font-size: 13px;
+}
+
+.logoutButton {
+  min-height: 40px;
+  border-radius: 12px;
+  border: 1px solid rgba(180, 136, 136, 0.3);
+  background: rgba(77, 26, 26, 0.35);
+  color: #ffdcdc;
+  cursor: pointer;
+}
+
+@media (max-width: 960px) {
+  .sidebar {
+    position: fixed;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    margin: 0;
+    border-radius: 0 18px 18px 0;
+    transform: translateX(-105%);
+  }
+
+  .mobileOpen {
+    transform: translateX(0);
+  }
+}

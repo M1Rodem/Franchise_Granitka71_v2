@@ -1,0 +1,74 @@
+.toast {
+  position: fixed;
+  top: 24px;
+  right: 24px;
+
+  z-index: 9999;
+
+  min-width: 260px;
+  max-width: 380px;
+
+  padding: 14px 18px;
+  border-radius: 18px;
+
+  backdrop-filter: blur(20px);
+  background: rgba(255, 255, 255, 0.08);
+
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  box-shadow:
+    0 10px 30px rgba(0, 0, 0, 0.25),
+    inset 0 1px 0 rgba(255, 255, 255, 0.25);
+
+  color: #e8f3ff;
+  font-size: 14px;
+  font-weight: 500;
+
+  animation: toastIn 0.25s ease, toastOut 0.25s ease 2.25s forwards;
+
+  overflow: hidden;
+}
+
+/* Акцент через тонкую цветную полосу */
+.toast::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  border-radius: 18px 0 0 18px;
+}
+
+.success::before {
+  background: #3ddc97;
+}
+
+.error::before {
+  background: #ff5f6d;
+}
+
+.warning::before {
+  background: #ffb347;
+}
+
+.info::before {
+  background: #6bbcff;
+}
+
+@keyframes toastIn {
+  from {
+    opacity: 0;
+    transform: translateY(-12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes toastOut {
+  to {
+    opacity: 0;
+    transform: translateY(-12px);
+  }
+}

@@ -2,6 +2,8 @@ import { useEffect, useRef } from 'react';
 import { OrdersDateInput } from '@/modules/orders/components/OrdersDateInput';
 import type { OrdersFilterParams, PlotFilterOption } from '@/modules/orders/types/orders.types';
 import styles from '@/modules/orders/components/orders-filter-bar.module.css';
+import { motion } from 'framer-motion';
+import { AnimatedSelect } from '@/shared/ui/AnimatedSelect'
 
 interface OrdersFilterBarProps {
   filters: OrdersFilterParams;
@@ -91,7 +93,12 @@ export function OrdersFilterBar({
         </button>
       </div>
 
-      <div className={styles.filtersGrid}>
+      <motion.div
+        className={styles.filtersGrid}
+        initial={{ opacity: 0, y: 6 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.25 }}
+      >
         <OrdersDateInput
           label="Дата от"
           isoValue={filters.dateFrom}
@@ -106,47 +113,43 @@ export function OrdersFilterBar({
 
         <label>
           <span>Участок</span>
-          <select
-            value={filters.plotId ?? ''}
-            onChange={(event) => onFiltersChange({ plotId: parseNullableInt(event.target.value) })}
-          >
-            <option value="">Все участки</option>
-            {plots.map((plot) => (
-              <option key={plot.id} value={plot.id}>
-                {plot.name}
-              </option>
-            ))}
-          </select>
+          <AnimatedSelect
+            value={String(filters.plotId ?? '')}
+            options={[
+              { value: '', label: 'Все участки' },
+              ...plots.map(plot => ({
+                value: String(plot.id),
+                label: plot.name,
+              })),
+            ]}
+            onChange={(val) =>
+              onFiltersChange({ plotId: parseNullableInt(val) })
+            }
+          />
         </label>
 
         <label>
           <span>Статус оплаты</span>
-          <select
-            value={filters.paymentStatus ?? ''}
-            onChange={(event) => onFiltersChange({ paymentStatus: parseNullableInt(event.target.value) })}
-          >
-            {paymentOptions.map((option) => (
-              <option key={option.value || 'all'} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </select>
+          <AnimatedSelect
+            value={String(filters.paymentStatus ?? '')}
+            options={paymentOptions}
+            onChange={(val) =>
+              onFiltersChange({ paymentStatus: parseNullableInt(val) })
+            }
+          />
         </label>
 
         <label>
           <span>Статус выполнения</span>
-          <select
-            value={filters.completionStatus ?? ''}
-            onChange={(event) => onFiltersChange({ completionStatus: parseNullableInt(event.target.value) })}
-          >
-            {completionOptions.map((option) => (
-              <option key={option.value || 'all'} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </select>
+          <AnimatedSelect
+            value={String(filters.completionStatus ?? '')}
+            options={completionOptions}
+            onChange={(val) =>
+              onFiltersChange({ completionStatus: parseNullableInt(val) })
+            }
+          />
         </label>
-      </div>
+      </motion.div>
     </div>
   );
 }

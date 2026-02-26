@@ -11,6 +11,8 @@ namespace Franchisee.Web.Models
         [Required][StringLength(100)] public string FullName { get; set; } = string.Empty;
         public UserRole Role { get; set; } = UserRole.Manager;
         public bool IsBlocked { get; set; } = false;
+        public string? RefreshToken { get; set; }
+        public DateTime? RefreshTokenExpiryTime { get; set; }
         public virtual List<Order> Orders { get; set; } = new();
     }
 }

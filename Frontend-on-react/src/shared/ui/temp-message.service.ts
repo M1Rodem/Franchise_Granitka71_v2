@@ -20,6 +20,6 @@ export function registerTempMessageHandler(handler: TempMessageHandler): () => v
   };
 }
 
-export function showTempMessage(type: TempMessageType, message: string, durationMs = 4000): void {
+export function showTempMessage(type: TempMessageType, message: string, durationMs = 2500): void {
   tempMessageHandler?.({ type, message, durationMs });
 }

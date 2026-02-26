@@ -17,5 +17,6 @@ namespace Franchisee.Web.Services.Repositories
         bool VerifyPassword(string password, string passwordHash);
         string HashPassword(string password);
         void UpdateProfile(int managerId, string fullName);
+        Task<Manager?> GetByRefreshTokenAsync(string refreshToken);
     }
 }

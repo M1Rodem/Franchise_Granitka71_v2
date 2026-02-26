@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import styles from '@/modules/orders/components/orders-date-input.module.css';
+import { motion } from 'framer-motion';
 
 interface OrdersDateInputProps {
   label: string;
@@ -137,6 +139,7 @@ const monthTitle = (year: number, monthIndex: number): string => {
 export function OrdersDateInput({ label, isoValue, onCommit }: OrdersDateInputProps) {
   const inputRef = useRef<HTMLInputElement | null>(null);
   const rootRef = useRef<HTMLDivElement | null>(null);
+  const popoverRef = useRef<HTMLDivElement | null>(null);
 
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
   const [viewYear, setViewYear] = useState(() => {
@@ -154,8 +157,11 @@ export function OrdersDateInput({ label, isoValue, onCommit }: OrdersDateInputPr
       return;
     }
 
-    if (document.activeElement !== input) {
-      input.value = formatIsoToDisplay(isoValue);
+    const formatted = formatIsoToDisplay(isoValue);
+
+    // Обновляем только если реально отличается
+    if (document.activeElement !== input && input.value !== formatted) {
+      input.value = formatted;
     }
   }, [isoValue]);
 
@@ -166,7 +172,14 @@ export function OrdersDateInput({ label, isoValue, onCommit }: OrdersDateInputPr
 
     const onPointerDown = (event: PointerEvent) => {
       const target = event.target as Node;
-      if (rootRef.current && !rootRef.current.contains(target)) {
+
+      const clickedInsideInput =
+        rootRef.current && rootRef.current.contains(target);
+
+      const clickedInsidePopover =
+        popoverRef.current && popoverRef.current.contains(target);
+
+      if (!clickedInsideInput && !clickedInsidePopover) {
         setIsCalendarOpen(false);
       }
     };
@@ -271,51 +284,78 @@ export function OrdersDateInput({ label, isoValue, onCommit }: OrdersDateInputPr
           placeholder="дд.мм.гггг"
           inputMode="numeric"
           autoComplete="off"
-          onChange={(event) => applyMaskedInput(event.currentTarget)}
+          onChange={(event) => {
+            const input = event.currentTarget;
+
+            applyMaskedInput(input);
+
+            const parsed = parseDisplayToIso(input.value);
+
+            if (parsed !== null) {
+              onCommit(parsed);
+            }
+          }}
           onBlur={commitFromInput}
         />
 
-        {isCalendarOpen && (
-          <div className={styles.calendarPopover}>
-            <div className={styles.calendarHeader}>
-              <button type="button" onClick={() => goMonth(-1)} aria-label="Предыдущий месяц">
-                ‹
-              </button>
-              <strong>{monthTitle(viewYear, viewMonth)}</strong>
-              <button type="button" onClick={() => goMonth(1)} aria-label="Следующий месяц">
-                ›
-              </button>
-            </div>
+        {isCalendarOpen &&
+          createPortal(
+            <motion.div
+              key="calendar"
+              ref={popoverRef}
+              className={styles.calendarPopover}
+              initial={{ opacity: 0, scale: 0.95, y: -6 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              transition={{ duration: 0.2 }}
+              style={{
+                position: 'fixed',
+                top: rootRef.current?.getBoundingClientRect().bottom ?? 0,
+                left: rootRef.current?.getBoundingClientRect().left ?? 0,
+              }}
+            >
+              <div className={styles.calendarHeader}>
+                <button type="button" onClick={() => goMonth(-1)} aria-label="Предыдущий месяц">
+                  ‹
+                </button>
+                <strong>{monthTitle(viewYear, viewMonth)}</strong>
+                <button type="button" onClick={() => goMonth(1)} aria-label="Следующий месяц">
+                  ›
+                </button>
+              </div>
 
-            <div className={styles.calendarWeekdays}>
-              {WEEK_DAYS.map((day) => (
-                <span key={day}>{day}</span>
-              ))}
-            </div>
+              <div className={styles.calendarWeekdays}>
+                {WEEK_DAYS.map((day) => (
+                  <span key={day}>{day}</span>
+                ))}
+              </div>
 
-            <div className={styles.calendarGrid}>
-              {Array.from({ length: startOffset }).map((_, idx) => (
-                <span key={`empty-${idx}`} className={styles.emptyCell} />
-              ))}
+              <div className={styles.calendarGrid}>
+                {Array.from({ length: startOffset }).map((_, idx) => (
+                  <span key={`empty-${idx}`} className={styles.emptyCell} />
+                ))}
 
-              {days.map((day) => {
-                const isSelected =
-                  selected?.year === viewYear && selected.month - 1 === viewMonth && selected.day === day;
+                {days.map((day) => {
+                  const isSelected =
+                    selected?.year === viewYear &&
+                    selected.month - 1 === viewMonth &&
+                    selected.day === day;
 
-                return (
-                  <button
-                    key={day}
-                    type="button"
-                    className={isSelected ? styles.daySelected : styles.dayButton}
-                    onClick={() => selectDate(day)}
-                  >
-                    {day}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        )}
+                  return (
+                    <button
+                      key={day}
+                      type="button"
+                      className={isSelected ? styles.daySelected : styles.dayButton}
+                      onClick={() => selectDate(day)}
+                    >
+                      {day}
+                    </button>
+                  );
+                })}
+              </div>
+            </motion.div>,
+            document.body
+          )}
       </div>
     </label>
   );

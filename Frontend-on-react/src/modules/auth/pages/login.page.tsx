@@ -3,7 +3,7 @@ import { useLoginForm } from '@/modules/auth/hooks/use-login-form';
 import styles from '@/modules/auth/pages/login.page.module.css';
 
 export default function LoginPage() {
-  const { form, onSubmit, isSubmitting } = useLoginForm();
+  const { form, onSubmit, isSubmitting, lockRemainingMs } = useLoginForm();
   const {
     register,
     formState: { errors },
@@ -40,11 +40,20 @@ export default function LoginPage() {
           {errors.password && <small>{errors.password.message}</small>}
         </label>
 
-        {errors.root?.message && <p className={styles.formError}>{errors.root.message}</p>}
-
         <button className={styles.submit} type="submit" disabled={isSubmitting}>
           {isSubmitting ? 'Выполняется вход...' : 'Войти'}
         </button>
+        {lockRemainingMs > 0 && (() => {
+          const totalSeconds = Math.ceil(lockRemainingMs / 1000);
+          const minutes = Math.floor(totalSeconds / 60);
+          const seconds = totalSeconds % 60;
+
+          return (
+            <p className={styles.formError}>
+              Повторите попытку через {minutes} мин {seconds.toString().padStart(2, '0')} сек.
+            </p>
+          );
+        })()}
       </form>
     </motion.section>
   );

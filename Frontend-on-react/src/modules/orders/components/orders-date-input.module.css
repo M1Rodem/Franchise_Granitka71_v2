@@ -5,6 +5,7 @@
 
 .inputWrap {
   position: relative;
+  z-index: 1;
 }
 
 .inputWrap input {
@@ -14,12 +15,24 @@
   border: 1px solid rgba(126, 164, 220, 0.33);
   background: rgba(12, 31, 64, 0.72);
   color: #ecf6ff;
-  padding: 0 10px 0 40px;
+  padding: 0 40px 0 10px;
+  transition: all 0.2s ease;
+}
+
+.inputWrap input:hover {
+  border-color: rgba(150, 190, 255, 0.55);
+  box-shadow: 0 6px 18px rgba(90, 140, 220, 0.18);
+}
+
+.inputWrap input:focus {
+  outline: none;
+  border-color: rgba(150, 190, 255, 0.7);
+  box-shadow: 0 0 0 2px rgba(90, 140, 220, 0.35);
 }
 
 .iconButton {
   position: absolute;
-  left: 6px;
+  right: 6px;
   top: 50%;
   transform: translateY(-50%);
   width: 26px;
@@ -32,6 +45,17 @@
   place-items: center;
   cursor: pointer;
   z-index: 2;
+  transition: all 0.18s ease;
+}
+
+.iconButton:hover {
+  background: rgba(90, 140, 220, 0.2);
+  box-shadow: 0 4px 14px rgba(90, 140, 220, 0.25);
+  transform: translateY(-50%) scale(1.05);
+}
+
+.iconButton:active {
+  transform: translateY(-50%) scale(0.92);
 }
 
 .iconButton svg {
@@ -48,14 +72,15 @@
   position: absolute;
   top: calc(100% + 8px);
   left: 0;
-  z-index: 20;
+  z-index: 10;
   width: 280px;
-  border-radius: 12px;
-  border: 1px solid rgba(126, 164, 220, 0.33);
+  border-radius: 14px;
+  border: 1px solid rgba(126, 164, 220, 0.28);
   background: rgba(9, 25, 50, 0.97);
-  backdrop-filter: blur(10px);
-  box-shadow: 0 12px 28px rgba(3, 13, 29, 0.35);
-  padding: 10px;
+  backdrop-filter: blur(14px);
+  box-shadow: 0 20px 40px rgba(3, 13, 29, 0.45);
+  padding: 12px;
+  transition: box-shadow 0.2s ease;
 }
 
 .calendarHeader {
@@ -73,6 +98,13 @@
   background: rgba(20, 47, 82, 0.9);
   color: #d9ecff;
   cursor: pointer;
+  transition: all 0.18s ease;
+}
+
+.calendarHeader button:hover {
+  background: rgba(90, 140, 220, 0.22);
+  box-shadow: 0 4px 14px rgba(90, 140, 220, 0.2);
+  transform: scale(1.05);
 }
 
 .calendarHeader strong {
@@ -112,13 +144,21 @@
   background: transparent;
   color: #dcecff;
   cursor: pointer;
+  transition: all 0.15s ease;
 }
 
 .dayButton:hover {
   background: rgba(99, 152, 226, 0.2);
+  transform: scale(1.07);
+  box-shadow: 0 4px 12px rgba(90, 140, 220, 0.2);
 }
 
 .daySelected {
-  background: linear-gradient(160deg, rgba(123, 188, 255, 0.34), rgba(94, 147, 223, 0.2));
+  background: linear-gradient(
+    160deg,
+    rgba(123, 188, 255, 0.34),
+    rgba(94, 147, 223, 0.2)
+  );
   border-color: rgba(152, 204, 255, 0.42);
+  box-shadow: 0 6px 18px rgba(90, 140, 220, 0.3);
 }

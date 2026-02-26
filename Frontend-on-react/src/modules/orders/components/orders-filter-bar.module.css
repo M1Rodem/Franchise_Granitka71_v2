@@ -18,6 +18,18 @@
   background: rgba(12, 31, 64, 0.72);
   color: #ecf6ff;
   padding: 0 12px;
+  transition: all 0.2s ease;
+}
+
+.searchInput:hover {
+  border-color: rgba(150, 190, 255, 0.55);
+  box-shadow: 0 6px 18px rgba(90, 140, 220, 0.18);
+}
+
+.searchInput:focus {
+  outline: none;
+  border-color: rgba(150, 190, 255, 0.7);
+  box-shadow: 0 0 0 2px rgba(90, 140, 220, 0.35);
 }
 
 .clearButton {
@@ -28,6 +40,16 @@
   color: #e1efff;
   padding: 0 14px;
   cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.clearButton:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 18px rgba(90, 140, 220, 0.35);
+}
+
+.clearButton:active {
+  transform: translateY(0);
 }
 
 .clearButton:disabled {
@@ -39,6 +61,7 @@
   display: grid;
   gap: 10px;
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  overflow: visible;
 }
 
 .filtersGrid label {

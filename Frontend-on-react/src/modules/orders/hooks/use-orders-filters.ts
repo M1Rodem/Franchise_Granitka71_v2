@@ -46,7 +46,7 @@ export function useOrdersFilters() {
       paymentStatus: parseNullableInt(searchParams.get('paymentStatus')),
       completionStatus: parseNullableInt(searchParams.get('completionStatus')),
     }),
-    [searchParams],
+    [searchParams.toString()],
   );
 
   const page = parsePositiveInt(searchParams.get('page'), DEFAULT_ORDERS_PAGE);
@@ -63,42 +63,45 @@ export function useOrdersFilters() {
 
   const patchFilterParams = (patch: Partial<OrdersFilterParams>) => {
     const next = new URLSearchParams(searchParams);
-    const merged: OrdersFilterParams = { ...filters, ...patch };
 
-    if (merged.searchQuery.trim()) {
-      next.set('search', merged.searchQuery.trim());
-    } else {
-      next.delete('search');
+    const applyText = (key: string, value: string | undefined) => {
+      if (value && value.trim()) {
+        next.set(key, value.trim());
+      } else {
+        next.delete(key);
+      }
+    };
+
+    const applyNullableInt = (key: string, value: number | null | undefined) => {
+      if (value !== null && value !== undefined) {
+        next.set(key, String(value));
+      } else {
+        next.delete(key);
+      }
+    };
+
+    if ('searchQuery' in patch) {
+      applyText('search', patch.searchQuery);
     }
 
-    if (merged.dateFrom) {
-      next.set('from', merged.dateFrom);
-    } else {
-      next.delete('from');
+    if ('dateFrom' in patch) {
+      applyText('from', patch.dateFrom);
     }
 
-    if (merged.dateTo) {
-      next.set('to', merged.dateTo);
-    } else {
-      next.delete('to');
+    if ('dateTo' in patch) {
+      applyText('to', patch.dateTo);
     }
 
-    if (merged.plotId !== null) {
-      next.set('plotId', String(merged.plotId));
-    } else {
-      next.delete('plotId');
+    if ('plotId' in patch) {
+      applyNullableInt('plotId', patch.plotId);
     }
 
-    if (merged.paymentStatus !== null) {
-      next.set('paymentStatus', String(merged.paymentStatus));
-    } else {
-      next.delete('paymentStatus');
+    if ('paymentStatus' in patch) {
+      applyNullableInt('paymentStatus', patch.paymentStatus);
     }
 
-    if (merged.completionStatus !== null) {
-      next.set('completionStatus', String(merged.completionStatus));
-    } else {
-      next.delete('completionStatus');
+    if ('completionStatus' in patch) {
+      applyNullableInt('completionStatus', patch.completionStatus);
     }
 
     next.set('page', String(DEFAULT_ORDERS_PAGE));

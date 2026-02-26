@@ -4,6 +4,7 @@ import { BrowserRouter, useNavigate } from 'react-router-dom';
 import { queryClient } from '@/app/providers/query-client';
 import { UNAUTHORIZED_EVENT } from '@/shared/api/http-client';
 import { useAuthStore } from '@/shared/store/auth.store';
+import { TempMessageProvider } from '@/shared/ui/TempMessageProvider';
 
 interface AppProvidersProps {
   children: React.ReactNode;
@@ -19,7 +20,10 @@ function UnauthorizedListener({ children }: AppProvidersProps) {
     return () => window.removeEventListener(UNAUTHORIZED_EVENT, handler);
   }, [navigate]);
 
-  return <>{children}</>;
+  return <>
+    {children}
+    <TempMessageProvider />
+  </>;
 }
 
 function SessionBootstrap({ children }: AppProvidersProps) {

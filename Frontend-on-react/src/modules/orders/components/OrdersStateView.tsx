@@ -1,4 +1,5 @@
 import styles from '@/modules/orders/components/orders-state-view.module.css';
+import { motion } from 'framer-motion';
 
 interface OrdersStateViewProps {
   title: string;
@@ -9,7 +10,12 @@ interface OrdersStateViewProps {
 
 export function OrdersStateView({ title, message, actionLabel, onAction }: OrdersStateViewProps) {
   return (
-    <section className={`glass-card ${styles.state}`}>
+    <motion.section
+      className={`glass-card ${styles.state}`}
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.3 }}
+    >
       <h3>{title}</h3>
       <p>{message}</p>
       {actionLabel && onAction && (
@@ -17,6 +23,6 @@ export function OrdersStateView({ title, message, actionLabel, onAction }: Order
           {actionLabel}
         </button>
       )}
-    </section>
+    </motion.section>
   );
 }

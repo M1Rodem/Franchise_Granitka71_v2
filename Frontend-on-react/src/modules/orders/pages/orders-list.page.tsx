@@ -10,6 +10,7 @@ import { useOrdersFilters } from '@/modules/orders/hooks/use-orders-filters';
 import { useOrdersList } from '@/modules/orders/hooks/use-orders-list';
 import type { OrdersFilterParams } from '@/modules/orders/types/orders.types';
 import styles from '@/modules/orders/pages/orders-list.page.module.css';
+import { AnimatePresence, motion } from 'framer-motion';
 
 export default function OrdersListPage() {
   const navigate = useNavigate();
@@ -63,16 +64,46 @@ export default function OrdersListPage() {
       )}
 
       {!ordersQuery.isPending && !ordersQuery.isError && ordersQuery.data.items.length > 0 && (
-        <div className={styles.results}>
-          <OrdersTable orders={ordersQuery.data.items} onOpenOrder={openOrder} />
-          <OrdersPagination
-            page={ordersQuery.data.page}
-            totalPages={ordersQuery.data.totalPages}
-            totalCount={ordersQuery.data.totalCount}
-            isFetching={ordersQuery.isFetching}
-            onPageChange={setPage}
-          />
-        </div>
+        <AnimatePresence mode="wait">
+          {!ordersQuery.isPending &&
+            !ordersQuery.isError &&
+            ordersQuery.data.items.length === 0 && (
+              <motion.div
+                key="empty"
+                initial={{ opacity: 0, scale: 0.96 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.98 }}
+                transition={{ duration: 0.25 }}
+              >
+                <OrdersStateView
+                  title="Заказы не найдены"
+                  message="По текущим фильтрам нет записей. Измените параметры или сбросьте фильтр."
+                />
+              </motion.div>
+            )}
+
+          {!ordersQuery.isPending &&
+            !ordersQuery.isError &&
+            ordersQuery.data.items.length > 0 && (
+              <motion.div
+                key="table"
+                className={styles.results}
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -12 }}
+                transition={{ duration: 0.25 }}
+              >
+                <OrdersTable orders={ordersQuery.data.items} onOpenOrder={openOrder} />
+                <OrdersPagination
+                  page={ordersQuery.data.page}
+                  totalPages={ordersQuery.data.totalPages}
+                  totalCount={ordersQuery.data.totalCount}
+                  isFetching={ordersQuery.isFetching}
+                  onPageChange={setPage}
+                />
+              </motion.div>
+            )}
+        </AnimatePresence>
       )}
     </section>
   );

@@ -18,7 +18,13 @@ namespace Franchisee.Web.Services
         {
             return _context.Managers.AsNoTracking();
         }
-
+        public async Task<Manager?> GetByRefreshTokenAsync(string refreshToken)
+        {
+            return await _context.Managers
+                .FirstOrDefaultAsync(m =>
+                    m.RefreshToken == refreshToken &&
+                    m.RefreshTokenExpiryTime > DateTime.UtcNow);
+        }
         public async Task<Manager?> GetByUsernameAsync(string username)
         {
             return await _context.Managers.FirstOrDefaultAsync(m => m.Username == username);

@@ -102,3 +102,216 @@ export interface PlotFilterOption {
 
 export type OrderResponseDto = z.infer<typeof orderResponseDtoSchema>;
 export type OrdersPagedResultDto = z.infer<typeof ordersPagedResultSchema>;
+
+// =========================
+// Order Details Schemas
+// =========================
+
+const workItemCamelSchema = z.object({
+  id: z.number().int(),
+  orderId: z.number().int(),
+  workDescription: z.string(),
+  price: z.number(),
+  quantity: z.number(),
+  note: z.string().optional(),
+  distanceKm: z.number().nullable().optional(),
+}).passthrough();
+
+const workItemPascalSchema = z.object({
+  Id: z.number().int(),
+  OrderId: z.number().int(),
+  WorkDescription: z.string(),
+  Price: z.number(),
+  Quantity: z.number(),
+  Note: z.string().optional(),
+  DistanceKm: z.number().nullable().optional(),
+}).passthrough().transform((v) => ({
+  id: v.Id,
+  orderId: v.OrderId,
+  workDescription: v.WorkDescription,
+  price: v.Price,
+  quantity: v.Quantity,
+  note: v.Note,
+  distanceKm: v.DistanceKm,
+}));
+
+export const workItemSchema = z.union([workItemCamelSchema, workItemPascalSchema]);
+
+const paymentCamelSchema = z.object({
+  id: z.number().int(),
+  orderId: z.number().int(),
+  amount: z.number(),
+  paymentDate: z.string(),
+  paymentType: z.string(),
+  note: z.string().optional(),
+}).passthrough();
+
+const paymentPascalSchema = z.object({
+  Id: z.number().int(),
+  OrderId: z.number().int(),
+  Amount: z.number(),
+  PaymentDate: z.string(),
+  PaymentType: z.string(),
+  Note: z.string().optional(),
+}).passthrough().transform((v) => ({
+  id: v.Id,
+  orderId: v.OrderId,
+  amount: v.Amount,
+  paymentDate: v.PaymentDate,
+  paymentType: v.PaymentType,
+  note: v.Note,
+}));
+
+export const paymentSchema = z.union([paymentCamelSchema, paymentPascalSchema]);
+
+const mediaCamelSchema = z.object({
+  id: z.number().int(),
+  url: z.string(),
+  originalFileName: z.string(),
+  size: z.number(),
+  uploadedAt: z.string(),
+  width: z.number(),
+  height: z.number(),
+  mediaType: z.union([z.number(), z.string()]),
+}).passthrough();
+
+const mediaPascalSchema = z.object({
+  Id: z.number().int(),
+  Url: z.string(),
+  OriginalFileName: z.string(),
+  Size: z.number(),
+  UploadedAt: z.string(),
+  Width: z.number(),
+  Height: z.number(),
+  MediaType: z.union([z.number(), z.string()]),
+}).passthrough().transform((v) => ({
+  id: v.Id,
+  url: v.Url,
+  originalFileName: v.OriginalFileName,
+  size: v.Size,
+  uploadedAt: v.UploadedAt,
+  width: v.Width,
+  height: v.Height,
+  mediaType: v.MediaType,
+}));
+
+export const mediaSchema = z.union([mediaCamelSchema, mediaPascalSchema]);
+
+// =========================
+// Order Details DTO
+// =========================
+
+const orderDetailsCamelSchema = z.object({
+  id: z.number().int(),
+  orderNumber: z.string(),
+  place: z.string(),
+  inspectionPlace: z.string(),
+  orderDate: z.string(),
+  latitude: z.number().nullable().optional(),
+  longitude: z.number().nullable().optional(),
+  plotId: z.number().nullable().optional(),
+  plotName: z.string().nullable().optional(),
+
+  deceasedFullName: z.string(),
+  customerFullName: z.string(),
+  customerEmail: z.string().nullable().optional(),
+  phone: z.string(),
+  address: z.string(),
+
+  monumentType: z.string(),
+  monumentSize: z.string(),
+  additionalInfo: z.string(),
+
+  status: z.union([z.number(), z.string()]),
+  totalPrice: z.number(),
+
+  createdAt: z.string(),
+  updatedAt: z.string(),
+
+  managerId: z.number().int(),
+  managerFullName: z.string(),
+
+  workItems: z.array(workItemSchema),
+  payments: z.array(paymentSchema),
+  photos: z.array(mediaSchema),
+
+  paymentStatus: z.union([z.number(), z.string()]),
+  isDeleted: z.boolean(),
+  deletedAt: z.string().nullable().optional(),
+}).passthrough();
+
+const orderDetailsPascalSchema = z.object({
+  Id: z.number().int(),
+  OrderNumber: z.string(),
+  Place: z.string(),
+  InspectionPlace: z.string(),
+  OrderDate: z.string(),
+  Latitude: z.number().nullable().optional(),
+  Longitude: z.number().nullable().optional(),
+  PlotId: z.number().nullable().optional(),
+  PlotName: z.string().nullable().optional(),
+
+  DeceasedFullName: z.string(),
+  CustomerFullName: z.string(),
+  CustomerEmail: z.string().nullable().optional(),
+  Phone: z.string(),
+  Address: z.string(),
+
+  MonumentType: z.string(),
+  MonumentSize: z.string(),
+  AdditionalInfo: z.string(),
+
+  Status: z.union([z.number(), z.string()]),
+  TotalPrice: z.number(),
+
+  CreatedAt: z.string(),
+  UpdatedAt: z.string(),
+
+  ManagerId: z.number().int(),
+  ManagerFullName: z.string(),
+
+  WorkItems: z.array(workItemSchema),
+  Payments: z.array(paymentSchema),
+  Photos: z.array(mediaSchema),
+
+  PaymentStatus: z.union([z.number(), z.string()]),
+  IsDeleted: z.boolean(),
+  DeletedAt: z.string().nullable().optional(),
+}).passthrough().transform((v) => ({
+  id: v.Id,
+  orderNumber: v.OrderNumber,
+  place: v.Place,
+  inspectionPlace: v.InspectionPlace,
+  orderDate: v.OrderDate,
+  latitude: v.Latitude,
+  longitude: v.Longitude,
+  plotId: v.PlotId,
+  plotName: v.PlotName,
+  deceasedFullName: v.DeceasedFullName,
+  customerFullName: v.CustomerFullName,
+  customerEmail: v.CustomerEmail,
+  phone: v.Phone,
+  address: v.Address,
+  monumentType: v.MonumentType,
+  monumentSize: v.MonumentSize,
+  additionalInfo: v.AdditionalInfo,
+  status: v.Status,
+  totalPrice: v.TotalPrice,
+  createdAt: v.CreatedAt,
+  updatedAt: v.UpdatedAt,
+  managerId: v.ManagerId,
+  managerFullName: v.ManagerFullName,
+  workItems: v.WorkItems,
+  payments: v.Payments,
+  photos: v.Photos,
+  paymentStatus: v.PaymentStatus,
+  isDeleted: v.IsDeleted,
+  deletedAt: v.DeletedAt,
+}));
+
+export const orderDetailsSchema = z.union([
+  orderDetailsCamelSchema,
+  orderDetailsPascalSchema,
+]);
+
+export type OrderDetailsDto = z.infer<typeof orderDetailsSchema>;

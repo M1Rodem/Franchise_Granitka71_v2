@@ -58,6 +58,104 @@
   font-weight: 700;
 }
 
+/* ============================= */
+/* ORDER DETAILS HEADER MODE */
+/* ============================= */
+
+.detailsContainer {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  flex: 1;
+}
+
+.detailsTitle {
+  margin: 0;
+  font-size: 18px;
+  color: #eff7ff;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.detailsActions {
+  margin-left: auto;
+  display: flex;
+  gap: 12px;
+}
+
+/* Liquid Back Button */
+
+.detailsBackButton {
+  padding: 6px 14px;
+  border-radius: 12px;
+  border: 1px solid rgba(137, 179, 239, 0.35);
+  background: rgba(17, 43, 80, 0.72);
+  color: #dff0ff;
+  cursor: pointer;
+  transition:
+    background 0.2s ease,
+    transform 0.15s ease,
+    box-shadow 0.2s ease,
+    border-color 0.2s ease;
+}
+
+.detailsBackButton:hover {
+  background: rgba(90, 140, 220, 0.18);
+  border-color: rgba(152, 204, 255, 0.55);
+  box-shadow:
+    0 6px 18px rgba(90, 140, 220, 0.35),
+    inset 0 1px 0 rgba(255, 255, 255, 0.25);
+  transform: translateY(-2px);
+}
+
+.detailsBackButton:active {
+  transform: translateY(0);
+}
+
+/* Universal Glass Button */
+
+.glassButton {
+  padding: 6px 14px;
+  border-radius: 12px;
+  border: 1px solid rgba(137, 179, 239, 0.35);
+  background: rgba(17, 43, 80, 0.72);
+  color: #dff0ff;
+  cursor: pointer;
+
+  backdrop-filter: blur(12px);
+
+  transition:
+    background 0.25s ease,
+    transform 0.18s ease,
+    box-shadow 0.25s ease,
+    border-color 0.25s ease,
+    opacity 0.2s ease;
+}
+
+.glassButton:hover:not(:disabled) {
+  background: linear-gradient(
+    145deg,
+    rgba(123, 188, 255, 0.22),
+    rgba(94, 147, 223, 0.14)
+  );
+  border-color: rgba(152, 204, 255, 0.55);
+
+  box-shadow:
+    0 8px 22px rgba(90, 140, 220, 0.35),
+    inset 0 1px 0 rgba(255, 255, 255, 0.3);
+
+  transform: translateY(-2px);
+}
+
+.glassButton:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.glassButton:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
 @media (min-width: 961px) {
   .header {
     margin: 12px 12px 0 0;

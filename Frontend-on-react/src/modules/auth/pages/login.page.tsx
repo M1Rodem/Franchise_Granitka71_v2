@@ -1,6 +1,7 @@
 import { motion } from 'framer-motion';
 import { useLoginForm } from '@/modules/auth/hooks/use-login-form';
 import styles from '@/modules/auth/pages/login.page.module.css';
+import surface from '@/shared/ui/surface.module.css'
 
 export default function LoginPage() {
   const { form, onSubmit, isSubmitting, lockRemainingMs } = useLoginForm();
@@ -11,7 +12,7 @@ export default function LoginPage() {
 
   return (
     <motion.section
-      className={`glass-card ${styles.card}`}
+      className={`${surface.surface}`}
       initial={{ opacity: 0, y: 14 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.35, ease: 'easeOut' }}

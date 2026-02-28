@@ -1,4 +1,4 @@
-import { useLocation } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { routeTitles } from '@/app/router/navigation.config';
 import { resolveRouteTitle } from '@/shared/lib/navigation';
 import { useNotificationBadgeStore } from '@/modules/notifications/store/notification-badge.store';
@@ -6,11 +6,21 @@ import { useUiStore } from '@/shared/store/ui.store';
 import styles from '@/app/layouts/app-header.module.css';
 
 export function AppHeader() {
+  const navigate = useNavigate();
   const location = useLocation();
+
   const unreadCount = useNotificationBadgeStore((state) => state.unreadCount);
   const openMobileSidebar = useUiStore((state) => state.openMobileSidebar);
 
-  const title = resolveRouteTitle(location.pathname, routeTitles, 'Granitka71');
+  const header = useUiStore((state) => state.header);
+
+  const defaultTitle = resolveRouteTitle(
+    location.pathname,
+    routeTitles,
+    'Granitka71'
+  );
+
+  const isOrderDetails = header.mode === 'orderDetails';
 
   return (
     <header className={styles.header}>
@@ -25,7 +35,43 @@ export function AppHeader() {
         <span />
       </button>
 
-      <h1 className={styles.title}>{title}</h1>
+      {!isOrderDetails && (
+        <h1 className={styles.title}>{defaultTitle}</h1>
+      )}
+
+      {isOrderDetails && (
+        <div className={styles.detailsContainer}>
+          <button
+            type="button"
+            onClick={() => navigate(-1)}
+            className={styles.detailsBackButton}
+          >
+            ← Назад
+          </button>
+
+          <h1 className={styles.detailsTitle}>
+            {header.title} №{header.orderNumber}
+          </h1>
+
+          <div className={styles.detailsActions}>
+            <button
+              type="button"
+              className={styles.glassButton}
+              disabled
+            >
+              Печать
+            </button>
+
+            <button
+              type="button"
+              className={styles.glassButton}
+              disabled
+            >
+              Excel
+            </button>
+          </div>
+        </div>
+      )}
 
       <div className={styles.badgeContainer} aria-label="Notification badge">
         <span className={styles.badgeValue}>{unreadCount}</span>

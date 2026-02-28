@@ -1,6 +1,15 @@
 import { create } from 'zustand';
 
+type HeaderMode = 'default' | 'orderDetails';
+
+interface HeaderState {
+  mode: HeaderMode;
+  title: string;
+  orderNumber?: string;
+}
+
 interface UiStoreState {
+  // Sidebar
   isSidebarCollapsed: boolean;
   isMobileSidebarOpen: boolean;
   toggleSidebar: () => void;
@@ -8,14 +17,55 @@ interface UiStoreState {
   openMobileSidebar: () => void;
   closeMobileSidebar: () => void;
   setMobileSidebarOpen: (isOpen: boolean) => void;
+
+  // Header
+  header: HeaderState;
+  setDefaultHeader: (title: string) => void;
+  setOrderDetailsHeader: (orderNumber: string) => void;
+  resetHeader: () => void;
 }
 
 export const useUiStore = create<UiStoreState>((set) => ({
+  // Sidebar
   isSidebarCollapsed: false,
   isMobileSidebarOpen: false,
-  toggleSidebar: () => set((state) => ({ isSidebarCollapsed: !state.isSidebarCollapsed })),
-  setSidebarCollapsed: (isCollapsed) => set({ isSidebarCollapsed: isCollapsed }),
+  toggleSidebar: () =>
+    set((state) => ({ isSidebarCollapsed: !state.isSidebarCollapsed })),
+  setSidebarCollapsed: (isCollapsed) =>
+    set({ isSidebarCollapsed: isCollapsed }),
   openMobileSidebar: () => set({ isMobileSidebarOpen: true }),
   closeMobileSidebar: () => set({ isMobileSidebarOpen: false }),
-  setMobileSidebarOpen: (isOpen) => set({ isMobileSidebarOpen: isOpen }),
+  setMobileSidebarOpen: (isOpen) =>
+    set({ isMobileSidebarOpen: isOpen }),
+
+  // Header
+  header: {
+    mode: 'default',
+    title: 'Granitka71',
+  },
+
+  setDefaultHeader: (title) =>
+    set({
+      header: {
+        mode: 'default',
+        title,
+      },
+    }),
+
+  setOrderDetailsHeader: (orderNumber) =>
+    set({
+      header: {
+        mode: 'orderDetails',
+        title: 'Просмотр заказа',
+        orderNumber,
+      },
+    }),
+
+  resetHeader: () =>
+    set({
+      header: {
+        mode: 'default',
+        title: 'Granitka71',
+      },
+    }),
 }));

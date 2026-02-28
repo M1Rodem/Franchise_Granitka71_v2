@@ -4,6 +4,7 @@ import { AppHeader } from '@/app/layouts/AppHeader';
 import { Sidebar } from '@/app/layouts/Sidebar';
 import { useUiStore } from '@/shared/store/ui.store';
 import styles from '@/app/layouts/app-layout.module.css';
+import { ConfirmModal } from '@/shared/ui/modal/ConfirmModal';
 
 export function AppLayout() {
   const isMobileSidebarOpen = useUiStore((state) => state.isMobileSidebarOpen);
@@ -32,10 +33,6 @@ export function AppLayout() {
               initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -12 }}
-              transition={{
-                duration: 0.25,
-                ease: [0.22, 1, 0.36, 1],
-              }}
               style={{ height: '100%' }}
             >
               <Outlet />
@@ -43,6 +40,8 @@ export function AppLayout() {
           </AnimatePresence>
         </main>
       </div>
+
+      <ConfirmModal />
     </div>
   );
 }

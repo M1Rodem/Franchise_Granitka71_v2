@@ -1,0 +1,69 @@
+/* ===== BASE BUTTON ===== */
+
+.btn {
+  min-height: 42px;
+  border-radius: 12px;
+  padding: 0 18px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: 1px solid transparent;
+}
+
+.btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* ===== PRIMARY ===== */
+
+.btnPrimary {
+  background: rgba(90, 140, 220, 0.3);
+  border-color: rgba(150, 190, 255, 0.4);
+  color: #ecf6ff;
+}
+
+.btnPrimary:hover:not(:disabled) {
+  box-shadow: 0 6px 18px rgba(90, 140, 220, 0.35);
+  transform: translateY(-2px);
+}
+
+/* ===== SECONDARY ===== */
+
+.btnSecondary {
+  background: rgba(16, 42, 78, 0.75);
+  border-color: rgba(126, 164, 220, 0.33);
+  color: #e3f0ff;
+}
+
+.btnSecondary:hover:not(:disabled) {
+  box-shadow: 0 6px 18px rgba(90, 140, 220, 0.2);
+}
+
+/* ===== DANGER ===== */
+
+.btnDanger {
+  background: rgba(220, 90, 90, 0.25);
+  border-color: rgba(255, 120, 120, 0.4);
+  color: #ffecec;
+}
+
+.btnDanger:hover:not(:disabled) {
+  box-shadow: 0 6px 18px rgba(220, 90, 90, 0.35);
+}
+
+.navigatorButton {
+  display: inline-block;
+  padding: 8px 14px;
+  border-radius: 12px;
+  border: 1px solid rgba(137, 179, 239, 0.35);
+  background: rgba(17, 43, 80, 0.72);
+  color: #dff0ff;
+  text-decoration: none;
+  transition: all 0.2s ease;
+}
+
+.navigatorButton:hover {
+  background: rgba(90, 140, 220, 0.22);
+  box-shadow: 0 6px 18px rgba(90, 140, 220, 0.35);
+}

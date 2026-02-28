@@ -1,0 +1,15 @@
+.mapBlock {
+  margin-top: 16px;
+  height: 220px;
+  border-radius: 18px;
+  border: 1px solid rgba(125, 162, 219, 0.3);
+  background: linear-gradient(
+    145deg,
+    rgba(8, 24, 48, 0.7),
+    rgba(12, 36, 69, 0.6)
+  );
+  display: grid;
+  place-items: center;
+  color: #9bb8e8;
+  font-size: 14px;
+}

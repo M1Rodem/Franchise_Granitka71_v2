@@ -6,6 +6,7 @@ import { useUiStore } from '@/shared/store/ui.store';
 import { filterNavigationByRole, isNavigationItemActive } from '@/shared/lib/navigation';
 import { AppIcon } from '@/shared/ui/AppIcon';
 import styles from '@/app/layouts/sidebar.module.css';
+import logo from "@/shared/assets/g71-logo.png";
 
 export function Sidebar() {
   const user = useAuthStore((state) => state.user);
@@ -28,8 +29,10 @@ export function Sidebar() {
     >
       <div className={styles.header}>
         <div className={styles.branding}>
-          <span className={styles.logo}>G71</span>
-          {!isSidebarCollapsed && <span className={styles.brandText}>Granitka71</span>}
+          <div className={styles.logo}>
+            <img src={logo} alt="Granitka71 Logo" className={styles.logoImage} />
+            <span className={styles.brand}>Granitka71</span>
+          </div>
         </div>
         <button
           type="button"

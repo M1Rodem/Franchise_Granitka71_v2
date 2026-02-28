@@ -1,84 +1,130 @@
-import { useState, useRef, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import styles from './animated-select.module.css';
+import { useState, useRef, useEffect } from 'react'
+import { createPortal } from 'react-dom'
+import { motion, AnimatePresence } from 'framer-motion'
+import styles from './animated-select.module.css'
 
 interface Option {
-  value: string;
-  label: string;
+  value: string
+  label: string
 }
 
 interface AnimatedSelectProps {
-  value: string;
-  options: Option[];
-  onChange: (value: string) => void;
+  value: string
+  options: Option[]
+  onChange: (value: string) => void
 }
 
-export function AnimatedSelect({ value, options, onChange }: AnimatedSelectProps) {
-  const [open, setOpen] = useState(false);
-  const rootRef = useRef<HTMLDivElement>(null);
+export function AnimatedSelect({
+  value,
+  options,
+  onChange,
+}: AnimatedSelectProps) {
+  const [open, setOpen] = useState(false)
+  const [coords, setCoords] = useState({ top: 0, left: 0, width: 0 })
+
+  const rootRef = useRef<HTMLDivElement>(null)
+  const dropdownRef = useRef<HTMLDivElement>(null)
+
+  const updatePosition = () => {
+    if (!rootRef.current) return
+
+    const rect = rootRef.current.getBoundingClientRect()
+
+    setCoords({
+      top: rect.bottom + window.scrollY,
+      left: rect.left + window.scrollX,
+      width: rect.width,
+    })
+  }
+
+  useEffect(() => {
+    if (!open) return
+
+    updatePosition()
+
+    window.addEventListener('scroll', updatePosition, true)
+    window.addEventListener('resize', updatePosition)
+
+    return () => {
+      window.removeEventListener('scroll', updatePosition, true)
+      window.removeEventListener('resize', updatePosition)
+    }
+  }, [open])
 
   useEffect(() => {
     const handleClick = (e: MouseEvent) => {
-      if (!rootRef.current?.contains(e.target as Node)) {
-        setOpen(false);
+      const target = e.target as Node
+
+      if (
+        !rootRef.current?.contains(target) &&
+        !dropdownRef.current?.contains(target)
+      ) {
+        setOpen(false)
       }
-    };
+    }
 
-    window.addEventListener('mousedown', handleClick);
-    return () => window.removeEventListener('mousedown', handleClick);
-  }, []);
+    window.addEventListener('mousedown', handleClick)
+    return () => window.removeEventListener('mousedown', handleClick)
+  }, [])
 
-  const selected = options.find(o => o.value === value);
+  const selected = options.find(o => o.value === value)
 
   return (
-    <div className={styles.wrapper} ref={rootRef}>
-      <motion.button
-        type="button"
-        className={styles.trigger}
-        onClick={() => setOpen(v => !v)}
-        whileTap={{ scale: 0.98 }}
-      >
-        {selected?.label ?? 'Выбрать'}
-      </motion.button>
+    <>
+      <div className={styles.wrapper} ref={rootRef}>
+        <motion.button
+          type="button"
+          className={styles.trigger}
+          onClick={() => setOpen(v => !v)}
+          whileTap={{ scale: 0.98 }}
+        >
+          {selected?.label ?? 'Выбрать'}
+        </motion.button>
+      </div>
 
-      <AnimatePresence>
-        {open && (
-          <motion.div
-            key={value}
-            className={styles.dropdown}
-            initial={{ opacity: 0, y: -8, scale: 0.96 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -8, scale: 0.96 }}
-            transition={{
-                type: "spring",
-                stiffness: 300,
-                damping: 22
-            }}
+      {open &&
+        createPortal(
+          <AnimatePresence>
+            <motion.div
+              ref={dropdownRef}
+              className={styles.portalDropdown}
+              initial={{ opacity: 0, y: -6 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -6 }}
+              transition={{ duration: 0.15 }}
+              style={{
+                position: 'absolute',
+                top: coords.top,
+                left: coords.left,
+                width: coords.width,
+                zIndex: 9999,
+              }}
             >
-            {options.map((option) => {
-            const isSelected = option.value === value;
-                
-            return (
-                <motion.div
-                key={option.value}
-                className={`${styles.option} ${isSelected ? styles.selected : ''}`}
-                onClick={() => {
-                    onChange(option.value);
-                    setOpen(false);
-                }}
-                whileHover={{
-                    scale: 1.02,
-                    backgroundColor: "rgba(90, 140, 220, 0.18)",
-                }}
-                transition={{ duration: 0.15 }}
-                >
-                {option.label}
-                </motion.div>
-            );
-            })}
-          </motion.div>
+              {options.map(option => {
+                const isSelected = option.value === value
+
+                return (
+                  <motion.div
+                    key={option.value}
+                    className={`${styles.option} ${
+                      isSelected ? styles.selected : ''
+                    }`}
+                    onClick={() => {
+                      onChange(option.value)
+                      setOpen(false)
+                    }}
+                    whileHover={{
+                      backgroundColor: 'rgba(90, 140, 220, 0.18)',
+                    }}
+                  >
+                    {option.label}
+                  </motion.div>
+                )
+              })}
+            </motion.div>
+          </AnimatePresence>,
+          document.body,
         )}
-      </AnimatePresence>
-    </div>
-  );
+    </>
+  )
 }

@@ -33,15 +33,23 @@
 }
 
 .logo {
-  width: 34px;
-  height: 34px;
-  border-radius: 10px;
-  display: grid;
-  place-items: center;
-  background: linear-gradient(180deg, #abd5ff, #7db3ec);
-  color: #062248;
-  font-size: 12px;
-  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 18px 20px;
+}
+
+.logoImage {
+  width: 48px;
+  height: 48px;
+  object-fit: contain;
+  display: block;
+}
+
+.brand {
+  font-weight: 600;
+  font-size: 22px;
+  letter-spacing: 0.4px;
 }
 
 .brandText {

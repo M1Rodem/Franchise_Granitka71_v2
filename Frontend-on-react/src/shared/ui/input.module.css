@@ -1,0 +1,89 @@
+/* ===== FIELD WRAPPER ===== */
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.label {
+  font-size: 12px;
+  color: #bad4f5;
+}
+
+/* ===== BASE INPUT ===== */
+
+.input {
+  width: 100%;
+  min-height: 42px;
+  border-radius: 12px;
+  border: 1px solid rgba(126, 164, 220, 0.33);
+  background: rgba(12, 31, 64, 0.72);
+  color: #ecf6ff;
+  padding: 0 14px;
+  transition: border 0.18s ease, box-shadow 0.18s ease;
+}
+
+.textarea {
+  composes: input;
+  padding: 12px 14px;
+  resize: vertical;
+}
+
+/* ===== INTERACTION ===== */
+
+.input:hover,
+.textarea:hover {
+  border-color: rgba(150, 190, 255, 0.55);
+  box-shadow: 0 6px 18px rgba(90, 140, 220, 0.18);
+}
+
+.input:focus,
+.textarea:focus {
+  outline: none;
+  border-color: rgba(150, 190, 255, 0.7);
+  box-shadow: 0 0 0 2px rgba(90, 140, 220, 0.35);
+}
+
+/* ===== ERROR ===== */
+
+.error {
+  font-size: 12px;
+  color: #ff7b7b;
+}
+
+.searchInput {
+  min-height: 42px;
+  flex: 1;
+  min-width: 260px;
+  border-radius: 12px;
+  border: 1px solid rgba(126, 164, 220, 0.33);
+  background: rgba(12, 31, 64, 0.72);
+  color: #ecf6ff;
+  padding: 0 12px;
+  transition: all 0.2s ease;
+}
+
+.searchInput:hover {
+  border-color: rgba(150, 190, 255, 0.55);
+  box-shadow: 0 6px 18px rgba(90, 140, 220, 0.18);
+}
+
+.searchInput:focus {
+  outline: none;
+  border-color: rgba(150, 190, 255, 0.7);
+  box-shadow: 0 0 0 2px rgba(90, 140, 220, 0.35);
+}
+
+/* Убираем стрелочки в Chrome */
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+/* Убираем стрелочки в Firefox */
+input[type="number"] {
+  appearance: textfield;
+  -moz-appearance: textfield;
+}

@@ -121,7 +121,7 @@ AppConfiguration.ConfigurePipeline(app, app.Environment);
 app.UseWebSockets(new WebSocketOptions
 {
     KeepAliveInterval = TimeSpan.FromSeconds(120),
-    AllowedOrigins = { "http://localhost:3000", "https://localhost:3000", "http://localhost:5000", "https://localhost:5001" }
+    AllowedOrigins = { "http://localhost:3000", "https://localhost:3000", "http://localhost:5000", "https://localhost:5001", "https://a2zsulyprv.localto.net" }
 });
 
 app.UseCors("AllowFrontend");

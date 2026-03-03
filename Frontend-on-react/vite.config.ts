@@ -9,4 +9,18 @@ export default defineConfig({
       '@': path.resolve(__dirname, './src'),
     },
   },
+  server: {
+    host: '0.0.0.0', // Разрешаем подключения с любых IP
+    port: 5173,
+    strictPort: true, // Не менять порт если занят
+    allowedHosts: true, // Разрешаем все хосты (или можно указать конкретный)
+    proxy: {
+      '/api': {
+        target: 'http://localhost:5000',
+        changeOrigin: true,
+        secure: false,
+        rewrite: (path) => path.replace(/^\/api/, ''), // Опционально
+      },
+    },
+  },
 });

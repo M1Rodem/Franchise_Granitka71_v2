@@ -193,7 +193,7 @@ namespace Franchisee.Web.Controllers
                     .Select(p => new OrderMediaDto
                     {
                         Id = p.Id,
-                        Url = $"/api/media/{p.Id}/file",
+                        Url = $"/api/Media/{p.Id}/file",
                         OriginalFileName = p.OriginalFileName ?? string.Empty,
                         Size = p.Size,
                         UploadedAt = p.UploadedAt,

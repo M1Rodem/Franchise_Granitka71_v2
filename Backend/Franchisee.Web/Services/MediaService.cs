@@ -13,6 +13,7 @@ namespace Franchisee.Web.Services
         private readonly ApplicationDbContext _context;
         private readonly IWebHostEnvironment _env;
         private readonly ILogger<MediaService> _logger;
+        private readonly IHttpContextAccessor _httpContextAccessor;
 
         // Увеличиваем лимит до 500 МБ
         private const long MaxFileSize = 500 * 1024 * 1024;
@@ -49,11 +50,16 @@ namespace Franchisee.Web.Services
             { "video/x-msvideo", ".avi" }
         };
 
-        public MediaService(ApplicationDbContext context, IWebHostEnvironment env, ILogger<MediaService> logger)
+        public MediaService(
+            ApplicationDbContext context,
+            IWebHostEnvironment env,
+            ILogger<MediaService> logger,
+            IHttpContextAccessor httpContextAccessor)
         {
             _context = context;
             _env = env;
             _logger = logger;
+            _httpContextAccessor = httpContextAccessor;
         }
 
         public async Task<TempUploadDto?> UploadTempAsync(IFormFile file, int uploaderId, MediaType mediaType)
@@ -156,7 +162,7 @@ namespace Franchisee.Web.Services
                     Id = tempUpload.Id,
                     OriginalFileName = tempUpload.OriginalFileName,
                     Size = tempUpload.Size,
-                    PreviewUrl = $"/api/media/temp-preview/{tempUpload.Id}",
+                    PreviewUrl = $"/api/Media/temp-preview/{tempUpload.Id}",
                     Width = tempUpload.Width ?? 0,
                     Height = tempUpload.Height ?? 0
                 };
@@ -181,8 +187,9 @@ namespace Franchisee.Web.Services
                 await using var fileStream = new FileStream(filePath, FileMode.Create);
                 await file.CopyToAsync(fileStream);
 
+                fileStream.Position = 0;
                 var checksum = await ComputeSha256Async(fileStream);
-
+                
                 var tempUpload = new TempUpload
                 {
                     FilePath = filePath,
@@ -209,7 +216,7 @@ namespace Franchisee.Web.Services
                     Id = tempUpload.Id,
                     OriginalFileName = tempUpload.OriginalFileName,
                     Size = tempUpload.Size,
-                    PreviewUrl = $"/api/media/temp-preview/{tempUpload.Id}",
+                    PreviewUrl = BuildAbsoluteUrl($"/api/media/temp-preview/{tempUpload.Id}"),
                     Width = 0,
                     Height = 0
                 };
@@ -311,7 +318,7 @@ namespace Franchisee.Web.Services
             return new OrderMediaDto
             {
                 Id = media.Id,
-                Url = $"/api/media/{media.Id}/file",
+                Url = $"/api/Media/{media.Id}/file",
                 OriginalFileName = media.OriginalFileName,
                 Size = media.Size,
                 UploadedAt = media.UploadedAt,
@@ -368,6 +375,16 @@ namespace Franchisee.Web.Services
             stream.Position = 0;
             var hash = await sha.ComputeHashAsync(stream);
             return BitConverter.ToString(hash).Replace("-", "").ToLowerInvariant();
+        }
+
+        private string BuildAbsoluteUrl(string relativePath)
+        {
+            var httpContext = _httpContextAccessor.HttpContext;
+            if (httpContext == null)
+                throw new InvalidOperationException("HttpContext is not available");
+
+            var request = httpContext.Request;
+            return $"{request.Scheme}://{request.Host}{relativePath}";
         }
     }
 }

@@ -35,6 +35,7 @@ namespace Franchisee.Web.Configuration
                         "https://localhost:5173",
                         "http://localhost:5000",
                         "https://localhost:5001",
+                        "https://a2zsulyprv.localto.net",
                     };
 
                     // Добавляем WebSocket origins
@@ -67,7 +68,8 @@ namespace Franchisee.Web.Configuration
             });
 
             services.AddScoped<IPrintService, PrintService>();
-
+            services.AddHttpContextAccessor();
+            
             // Поддержка больших файлов - УВЕЛИЧИВАЕМ ДО 500 МБ
             services.Configure<FormOptions>(options =>
             {
@@ -158,19 +160,18 @@ namespace Franchisee.Web.Configuration
                 {
                     OnMessageReceived = context =>
                     {
-                        var accessToken = context.Request.Query["access_token"];
-
-                        if (!string.IsNullOrEmpty(accessToken))
+                        // 1. Authorization header
+                        var authHeader = context.Request.Headers["Authorization"].FirstOrDefault();
+                        if (!string.IsNullOrEmpty(authHeader) && authHeader.StartsWith("Bearer "))
                         {
-                            context.Token = accessToken;
+                            context.Token = authHeader.Substring("Bearer ".Length);
+                            return Task.CompletedTask;
                         }
-                        else if (context.Request.Headers.ContainsKey("Authorization"))
+
+                        // 2. Cookie media_auth
+                        if (context.Request.Cookies.TryGetValue("media_auth", out var cookieToken))
                         {
-                            var authHeader = context.Request.Headers["Authorization"].ToString();
-                            if (authHeader.StartsWith("Bearer "))
-                            {
-                                context.Token = authHeader.Substring("Bearer ".Length);
-                            }
+                            context.Token = cookieToken;
                         }
 
                         return Task.CompletedTask;

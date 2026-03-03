@@ -168,7 +168,20 @@ namespace Franchisee.Web.Controllers
                     Expires = user.RefreshTokenExpiryTime
                 });
 
+                var cookieExpires = DateTime.UtcNow.AddHours(8);
+
+                var cookieOptions = new CookieOptions
+                {
+                    HttpOnly = true,
+                    Secure = HttpContext.Request.IsHttps,
+                    SameSite = HttpContext.Request.IsHttps ? SameSiteMode.None : SameSiteMode.Lax,
+                    Expires = cookieExpires
+                };
+
+                Response.Cookies.Append("media_auth", tokenString, cookieOptions);
+
                 LoginAttempts.TryRemove(loginKey, out _);
+
                 return Ok(new
                 {
                     id = user.Id,

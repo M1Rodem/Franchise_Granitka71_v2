@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 
-type HeaderMode = 'default' | 'orderDetails';
+type HeaderMode = 'default' | 'orderDetails' | 'adminDetails';
 
 interface HeaderState {
   mode: HeaderMode;

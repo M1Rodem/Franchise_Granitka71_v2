@@ -1,4 +1,10 @@
-import { useState, useRef, useEffect } from 'react'
+import {
+  useState,
+  useRef,
+  useEffect,
+  forwardRef,
+} from 'react'
+import type { ForwardedRef } from 'react'
 import { createPortal } from 'react-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import styles from './animated-select.module.css'
@@ -14,16 +20,33 @@ interface AnimatedSelectProps {
   onChange: (value: string) => void
 }
 
-export function AnimatedSelect({
-  value,
-  options,
-  onChange,
-}: AnimatedSelectProps) {
+export const AnimatedSelect = forwardRef<
+  HTMLDivElement,
+  AnimatedSelectProps
+>(function AnimatedSelect(
+  { value, options, onChange },
+  forwardedRef: ForwardedRef<HTMLDivElement>
+) {
   const [open, setOpen] = useState(false)
-  const [coords, setCoords] = useState({ top: 0, left: 0, width: 0 })
+  const [coords, setCoords] = useState({
+    top: 0,
+    left: 0,
+    width: 0,
+  })
 
   const rootRef = useRef<HTMLDivElement>(null)
   const dropdownRef = useRef<HTMLDivElement>(null)
+
+  // объединяем внешний ref и внутренний rootRef
+  useEffect(() => {
+    if (!forwardedRef) return
+
+    if (typeof forwardedRef === 'function') {
+      forwardedRef(rootRef.current)
+    } else {
+      forwardedRef.current = rootRef.current
+    }
+  }, [forwardedRef])
 
   const updatePosition = () => {
     if (!rootRef.current) return
@@ -71,7 +94,10 @@ export function AnimatedSelect({
 
   return (
     <>
-      <div className={styles.wrapper} ref={rootRef}>
+      <div
+        className={styles.wrapper}
+        ref={rootRef}
+      >
         <motion.button
           type="button"
           className={styles.trigger}
@@ -101,20 +127,24 @@ export function AnimatedSelect({
               }}
             >
               {options.map(option => {
-                const isSelected = option.value === value
+                const isSelected =
+                  option.value === value
 
                 return (
                   <motion.div
                     key={option.value}
                     className={`${styles.option} ${
-                      isSelected ? styles.selected : ''
+                      isSelected
+                        ? styles.selected
+                        : ''
                     }`}
                     onClick={() => {
                       onChange(option.value)
                       setOpen(false)
                     }}
                     whileHover={{
-                      backgroundColor: 'rgba(90, 140, 220, 0.18)',
+                      backgroundColor:
+                        'rgba(90, 140, 220, 0.18)',
                     }}
                   >
                     {option.label}
@@ -127,4 +157,4 @@ export function AnimatedSelect({
         )}
     </>
   )
-}
+})

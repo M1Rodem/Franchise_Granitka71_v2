@@ -11,7 +11,6 @@ export function AppHeader() {
 
   const unreadCount = useNotificationBadgeStore((state) => state.unreadCount);
   const openMobileSidebar = useUiStore((state) => state.openMobileSidebar);
-
   const header = useUiStore((state) => state.header);
 
   const defaultTitle = resolveRouteTitle(
@@ -21,6 +20,7 @@ export function AppHeader() {
   );
 
   const isOrderDetails = header.mode === 'orderDetails';
+  const isAdminDetails = header.mode === 'adminDetails';
 
   return (
     <header className={styles.header}>
@@ -35,10 +35,12 @@ export function AppHeader() {
         <span />
       </button>
 
-      {!isOrderDetails && (
+      {/* Обычный заголовок */}
+      {!isOrderDetails && !isAdminDetails && (
         <h1 className={styles.title}>{defaultTitle}</h1>
       )}
 
+      {/* Режим заказа */}
       {isOrderDetails && (
         <div className={styles.detailsContainer}>
           <button
@@ -70,6 +72,23 @@ export function AppHeader() {
               Excel
             </button>
           </div>
+        </div>
+      )}
+
+      {/* Admin режим (Users / Plots) */}
+      {isAdminDetails && (
+        <div className={styles.detailsContainer}>
+          <button
+            type="button"
+            onClick={() => navigate('/admin')}
+            className={styles.detailsBackButton}
+          >
+            ← Назад
+          </button>
+
+          <h1 className={styles.detailsTitle}>
+            {defaultTitle}
+          </h1>
         </div>
       )}
 

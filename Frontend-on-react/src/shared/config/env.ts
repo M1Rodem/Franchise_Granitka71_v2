@@ -10,4 +10,5 @@ const apiBaseUrl = getEnvString('VITE_API_BASE_URL') ?? 'http://localhost:5000';
 export const env = {
   apiBaseUrl,
   signalRUrl: getEnvString('VITE_SIGNALR_URL') ?? `${apiBaseUrl}/api/notificationhub`,
+  yandexMapApiKey: getEnvString('VITE_YANDEX_MAP_API_KEY'),
 } as const;

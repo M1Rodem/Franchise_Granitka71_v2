@@ -1,9 +1,25 @@
+import { OrderDetailMap } from './OrderDetailMap';
 import styles from './order-map-placeholder.module.css';
 
-export function OrderMapPlaceholder() {
+interface Props {
+  plotCoordinates: [number, number] | null;
+  destinationCoordinates: [number, number] | null;
+}
+
+export function OrderMapPlaceholder({
+  plotCoordinates,
+  destinationCoordinates,
+}: Props) {
+  if (!plotCoordinates && !destinationCoordinates) {
+    return null;
+  }
+
   return (
     <div className={styles.placeholder}>
-      <span>Карта будет реализована позже</span>
+      <OrderDetailMap
+        plotCoordinates={plotCoordinates}
+        destinationCoordinates={destinationCoordinates}
+      />
     </div>
   );
 }

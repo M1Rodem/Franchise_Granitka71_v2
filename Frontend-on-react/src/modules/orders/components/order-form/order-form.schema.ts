@@ -9,6 +9,8 @@ export const orderFormSchema = z
     latitude: z.number().nullable(),
     longitude: z.number().nullable(),
 
+    place: z.string().optional(),
+
     orderDate: z.string(),
 
     deceasedFullName: z.string().min(1, 'Укажите ФИО усопшего'),

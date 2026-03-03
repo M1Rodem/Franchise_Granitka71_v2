@@ -10,6 +10,8 @@ interface Props {
   latitude?: number | null
   longitude?: number | null
   distanceKm?: number | null
+  plotCoordinates: [number, number] | null
+  destinationCoordinates: [number, number] | null
 }
 
 export function InstallationSection({
@@ -19,13 +21,18 @@ export function InstallationSection({
   latitude,
   longitude,
   distanceKm,
+  plotCoordinates,
+  destinationCoordinates,
 }: Props) {
-  const hasCoordinates = latitude && longitude
+  const hasNavigatorRoute =
+    plotCoordinates &&
+    destinationCoordinates
 
-  const navigatorUrl =
-    hasCoordinates
-      ? `https://yandex.ru/maps/?rtext=~${latitude},${longitude}`
-      : null
+  const navigatorUrl = hasNavigatorRoute
+    ? `https://yandex.ru/maps/?rtext=` +
+      `${plotCoordinates[0]},${plotCoordinates[1]}` +
+      `~${destinationCoordinates[0]},${destinationCoordinates[1]}`
+    : null
 
   return (
     <section className={surface.surface}>
@@ -34,11 +41,6 @@ export function InstallationSection({
       <div className={layout.grid2}>
         <div className={layout.field}>
           <span className={layout.label}>Участок</span>
-          <span className={layout.value}>{plotName || '—'}</span>
-        </div>
-
-        <div className={layout.field}>
-          <span className={layout.label}>Место</span>
           <span className={layout.value}>{place}</span>
         </div>
 
@@ -50,7 +52,9 @@ export function InstallationSection({
         <div className={layout.field}>
           <span className={layout.label}>Расстояние</span>
           <span className={layout.value}>
-            {distanceKm ? `${distanceKm} км` : '—'}
+            {typeof distanceKm === 'number'
+              ? `${distanceKm} км`
+              : '—'}
           </span>
         </div>
       </div>
@@ -66,7 +70,10 @@ export function InstallationSection({
         </a>
       )}
 
-      <OrderMapPlaceholder />
+      <OrderMapPlaceholder
+        plotCoordinates={plotCoordinates}
+        destinationCoordinates={destinationCoordinates}
+      />
     </section>
   )
 }

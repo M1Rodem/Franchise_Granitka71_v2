@@ -1,0 +1,52 @@
+.adminWrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+}
+
+.cardsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 24px;
+}
+
+.adminCard {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+
+  min-height: 180px;
+  padding: 28px;
+  border-radius: 18px;
+
+  text-align: left;
+
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.adminCard:hover {
+  transform: translateY(-4px);
+}
+
+.iconWrapper {
+  margin-bottom: 16px;
+  opacity: 0.9;
+}
+
+.iconWrapper svg {
+  width: 32px;
+  height: 32px;
+}
+
+.cardTitle {
+  font-size: 20px;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+.cardDescription {
+  font-size: 14px;
+  line-height: 1.5;
+  opacity: 0.85;
+}

@@ -5,6 +5,7 @@ import { useQuery } from '@tanstack/react-query';
 import { ordersApi } from '@/modules/orders/api/orders.api';
 import { ordersKeys } from '@/modules/orders/lib/orders.keys';
 import type { OrderDetailsDto } from '@/modules/orders/types/orders.types';
+import { usePlots } from '@/modules/plots/hooks/use-plots';
 import { useUiStore } from '@/shared/store/ui.store';
 import { ClientSection } from '@/modules/orders/components/order-details/ClientSection';
 import { DeceasedSection } from '@/modules/orders/components/order-details/DeceasedSection';
@@ -44,6 +45,37 @@ export default function OrderDetailsPage() {
     },
     enabled: !!numericId,
   });
+  const plotsQuery = usePlots();
+
+  const plotCoordinates = useMemo(() => {
+    if (!data || !plotsQuery.data) return null;
+
+    const selectedPlot =
+      (typeof data.plotId === 'number'
+        ? plotsQuery.data.find((p) => p.id === data.plotId)
+        : null) ??
+      (data.plotName
+        ? plotsQuery.data.find((p) => p.name === data.plotName)
+        : null) ??
+      plotsQuery.data.find((p) => p.name === data.place);
+
+    const latitude = selectedPlot?.latitude;
+    const longitude = selectedPlot?.longitude;
+
+    if (typeof latitude !== 'number' || typeof longitude !== 'number') {
+      return null;
+    }
+
+    return [latitude, longitude] as [number, number];
+  }, [data, plotsQuery.data]);
+
+  const destinationCoordinates = useMemo(() => {
+    if (typeof data?.latitude !== 'number' || typeof data?.longitude !== 'number') {
+      return null;
+    }
+
+    return [data.latitude, data.longitude] as [number, number];
+  }, [data]);
 
   // Устанавливаем header режим
   useEffect(() => {
@@ -122,8 +154,12 @@ export default function OrderDetailsPage() {
         latitude={data.latitude}
         longitude={data.longitude}
         distanceKm={
-          data.workItems.find(w => w.distanceKm)?.distanceKm ?? null
+          data.workItems.find(
+            w => w.workDescription === 'Расстояние'
+          )?.quantity ?? null
         }
+        plotCoordinates={plotCoordinates}
+        destinationCoordinates={destinationCoordinates}
       />
       
       <WorksSection items={data.workItems} />

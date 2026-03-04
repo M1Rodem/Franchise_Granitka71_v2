@@ -263,7 +263,7 @@ export function OrdersDateInput({ label, isoValue, onCommit }: OrdersDateInputPr
 
   return (
     <label className={styles.field}>
-      <span>{label}</span>
+      {label && <span>{label}</span>}
       <div className={styles.inputWrap} ref={rootRef}>
         <button
           type="button"

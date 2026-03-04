@@ -112,7 +112,10 @@ export function OrdersTable({
                   `#${order.id}`}
               </span>
 
-              <span data-label="Клиент">
+              <span
+                data-label="Клиент"
+                className={table.primaryCell}
+              >
                 {order.customerFullName || '-'}
               </span>
 
@@ -145,11 +148,18 @@ export function OrdersTable({
                 </span>
               </span>
 
-              <span data-label="Участок">
+
+              <span
+                data-label="Участок"
+                className={table.primaryCell}
+              >
                 {order.plotName || '-'}
               </span>
 
-              <span data-label="Менеджер">
+              <span
+                data-label="Менеджер"
+                className={table.primaryCell}
+              >
                 {order.managerFullName || '-'}
               </span>
             </div>

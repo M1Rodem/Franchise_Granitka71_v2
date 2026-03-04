@@ -71,3 +71,8 @@
   background: rgba(200, 60, 60, 0.7);
   box-shadow: 0 8px 24px rgba(255, 80, 80, 0.4);
 }
+
+.modalWide {
+  max-width: 90vw;
+  width: 1200px;
+}

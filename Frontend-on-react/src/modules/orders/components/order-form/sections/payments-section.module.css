@@ -1,0 +1,26 @@
+.dateCell {
+  width: 100%;
+}
+
+.dateCell label {
+  width: 100%;
+  display: block;
+}
+
+.dateCell .orders-date-input-module__inputWrap {
+  width: 100%;
+}
+
+.dateCell input {
+  width: 100%;
+  height: 42px;
+}
+
+@media (max-width: 768px) {
+
+  .deleteButton {
+    width: 100%;
+    justify-content: center;
+  }
+
+}

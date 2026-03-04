@@ -2,39 +2,36 @@ import { useState } from 'react';
 import type { MediaDto } from '../api/media.types';
 import { MediaItem } from './MediaItem';
 import { MediaPreviewModal } from './MediaPreviewModal';
+import styles from './media-gallery.module.css';
 
 interface Props {
   items: MediaDto[];
 }
 
 export function MediaGallery({ items }: Props) {
-  const [selected, setSelected] = useState<MediaDto | null>(null);
+  const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
 
   if (!items || items.length === 0) {
-    return <div style={{ opacity: 0.6 }}>Медиа отсутствуют</div>;
+    return <div className={styles.empty}>Медиа отсутствуют</div>;
   }
 
   return (
     <>
-      <div
-        style={{
-          display: 'grid',
-          gap: '16px',
-          gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))',
-        }}
-      >
-        {items.map((item) => (
+      <div className={styles.grid}>
+        {items.map((item, index) => (
           <MediaItem
             key={item.id}
             item={item}
-            onClick={() => setSelected(item)}
+            onClick={() => setSelectedIndex(index)}
           />
         ))}
       </div>
 
       <MediaPreviewModal
-        item={selected}
-        onClose={() => setSelected(null)}
+        items={items}
+        index={selectedIndex}
+        onClose={() => setSelectedIndex(null)}
+        onNavigate={(i) => setSelectedIndex(i)}
       />
     </>
   );

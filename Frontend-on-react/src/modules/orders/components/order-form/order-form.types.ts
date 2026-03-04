@@ -1,7 +1,7 @@
 import type { OrderFormModel } from './order-form.schema'
 export const createOrderDefaultValues = (): OrderFormModel => {
-  const today = new Date().toISOString()
-
+  const today = new Date().toISOString().split('T')[0]
+  
   return {
     inspectionPlace: '',
     plotId: null,

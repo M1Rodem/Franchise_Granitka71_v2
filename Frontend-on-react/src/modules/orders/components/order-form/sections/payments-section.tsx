@@ -9,11 +9,11 @@ import {
 import { AnimatedSelect } from '@/shared/ui/AnimatedSelect'
 import { OrdersDateInput } from '@/modules/orders/components/OrdersDateInput'
 import type { OrderFormModel } from '../order-form.schema'
-
 import surface from '@/shared/ui/surface.module.css'
 import table from '@/shared/ui/table-base.module.css'
 import input from '@/shared/ui/input.module.css'
 import button from '@/shared/ui/button.module.css'
+import styles from './payments-section.module.css'
 
 const GRID = '1.5fr 1fr 1.2fr 2fr 120px'
 
@@ -112,23 +112,15 @@ export function PaymentsSection() {
                   type="number"
                   step="0.01"
                   inputMode="decimal"
-                  {...register(
-                    `payments.${index}.amount`,
-                    { valueAsNumber: true },
-                  )}
-                  onFocus={(e) => {
-                    if (
-                      e.target.value ===
-                      '0'
-                    ) {
-                      e.target.value = ''
-                    }
-                  }}
+                  placeholder="Сумма"
+                  {...register(`payments.${index}.amount`, {
+                    valueAsNumber: true,
+                  })}
                   className={input.input}
                 />
               </div>
 
-              <div data-label="Дата">
+              <div data-label="Дата" className={styles.dateCell}>
                 <Controller
                   control={control}
                   name={`payments.${index}.paymentDate`}
@@ -148,9 +140,8 @@ export function PaymentsSection() {
 
               <div data-label="Примечание">
                 <input
-                  {...register(
-                    `payments.${index}.note`,
-                  )}
+                  placeholder="Комментарий"
+                  {...register(`payments.${index}.note`)}
                   className={input.input}
                 />
               </div>
@@ -165,7 +156,7 @@ export function PaymentsSection() {
                     fields.length === 1 ||
                     isOnlyAdvance
                   }
-                  className={`${button.btn} ${button.btnDanger}`}
+                  className={`${button.btn} ${button.btnDanger} ${styles.deleteButton}`}
                 >
                   Удалить
                 </button>
@@ -175,24 +166,23 @@ export function PaymentsSection() {
         })}
       </div>
 
-      <button
-        type="button"
-        onClick={() =>
-          append({
-            paymentType: 'Доплата',
-            amount: 0,
-            paymentDate:
-              new Date()
-                .toISOString()
-                .split('T')[0],
-            note: '',
-          })
-        }
-        className={`${button.btn} ${button.btnPrimary}`}
-        style={{ marginTop: 16 }}
-      >
-        + Добавить платеж
-      </button>
+      <div className={table.fullWidthAction}>
+        <button
+          type="button"
+          onClick={() =>
+            append({
+              paymentType: 'Доплата',
+              amount: 0,
+              paymentDate:
+                new Date().toISOString().split('T')[0],
+              note: '',
+            })
+          }
+          className={`${button.btn} ${button.btnPrimary} ${table.fullWidthButton}`}
+        >
+          + Добавить платеж
+        </button>
+      </div>
 
       <div className={table.totalBlock}>
         <span>Сумма платежей:</span>

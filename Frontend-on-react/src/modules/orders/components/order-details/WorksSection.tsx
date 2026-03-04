@@ -63,7 +63,10 @@ export function WorksSection({ items }: Props) {
                     gridTemplateColumns: GRID_TEMPLATE,
                   }}
                 >
-                  <span data-label="Описание">
+                  <span
+                    data-label="Описание"
+                    className={table.descriptionCell}
+                  >
                     {item.workDescription}
                   </span>
 
@@ -79,7 +82,10 @@ export function WorksSection({ items }: Props) {
                     {formatMoney(rowTotal)}
                   </span>
 
-                  <span data-label="Примечание">
+                  <span
+                    data-label="Примечание"
+                    className={table.noteCell}
+                  >
                     {item.note || '—'}
                   </span>
                 </div>

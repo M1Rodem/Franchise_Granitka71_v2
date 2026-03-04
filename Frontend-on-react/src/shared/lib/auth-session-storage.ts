@@ -1,48 +1,35 @@
-﻿import { z } from 'zod';
-import type { AuthUser } from '@/shared/types/auth';
+﻿import type { AuthUser } from '@/shared/types/auth';
 
-const SESSION_KEY = 'granitka71.auth.session';
+const STORAGE_KEY = 'auth-session'
 
-const authSessionSchema = z.object({
-  token: z.string().min(1),
-  user: z.object({
-    id: z.number().int(),
-    username: z.string(),
-    fullName: z.string(),
-    role: z.union([z.literal('Manager'), z.literal('Admin'), z.literal('SuperAdmin')]),
-  }),
-  expiresAt: z.number().int().positive(),
-});
+export const AUTH_SESSION_TTL_MS = 8 * 60 * 60 * 1000
 
 export interface PersistedAuthSession {
-  token: string;
-  user: AuthUser;
-  expiresAt: number;
+  user: AuthUser
+  expiresAt: number
 }
-
-export const AUTH_SESSION_TTL_MS = 24 * 60 * 60 * 1000;
 
 export const authSessionStorage = {
   read(): PersistedAuthSession | null {
-    const raw = window.sessionStorage.getItem(SESSION_KEY);
-    if (!raw) {
-      return null;
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY)
+      if (!raw) return null
+      return JSON.parse(raw)
+    } catch {
+      return null
     }
-
-    const parsed = authSessionSchema.safeParse(JSON.parse(raw));
-    if (!parsed.success) {
-      window.sessionStorage.removeItem(SESSION_KEY);
-      return null;
-    }
-
-    return parsed.data;
   },
 
-  write(session: PersistedAuthSession): void {
-    window.sessionStorage.setItem(SESSION_KEY, JSON.stringify(session));
+  write(session: PersistedAuthSession) {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(session))
   },
 
-  clear(): void {
-    window.sessionStorage.removeItem(SESSION_KEY);
+  clear() {
+    localStorage.removeItem(STORAGE_KEY)
   },
-};
+}
+
+export interface PersistedAuthSession {
+  user: AuthUser
+  expiresAt: number
+}

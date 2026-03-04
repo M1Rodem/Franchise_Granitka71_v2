@@ -1,5 +1,6 @@
 import type { MediaDto } from '../api/media.types';
 import { useVideoThumbnail } from '../hooks/useVideoThumbnail';
+import styles from './media-item.module.css';
 
 interface Props {
   item: MediaDto;
@@ -11,40 +12,44 @@ function isVideo(type: number | string) {
 }
 
 export function MediaItem({ item, onClick }: Props) {
-  const thumbnail = isVideo(item.mediaType)
+  const video = isVideo(item.mediaType);
+
+  const thumbnail = video
     ? useVideoThumbnail(item.url)
     : null;
 
   return (
     <div
+      className={styles.item}
       onClick={onClick}
-      style={{
-        position: 'relative',
-        overflow: 'hidden',
-        borderRadius: '14px',
-        border: '1px solid rgba(125,162,219,0.25)',
-        background: 'rgba(10,29,57,0.6)',
-        aspectRatio: '1 / 1',
-        cursor: 'pointer',
-      }}
+      role="button"
+      tabIndex={0}
     >
-      {isVideo(item.mediaType) ? (
+      {video ? (
         thumbnail ? (
           <img
             src={thumbnail}
             alt={item.originalFileName}
-            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+            className={styles.preview}
           />
         ) : (
-          <div style={{ opacity: 0.5 }}>Loading...</div>
+          <div className={styles.loading}>
+            Loading...
+          </div>
         )
       ) : (
         <img
           src={item.url}
           alt={item.originalFileName}
           loading="lazy"
-          style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+          className={styles.preview}
         />
+      )}
+
+      {video && (
+        <div className={styles.videoBadge}>
+          ▶
+        </div>
       )}
     </div>
   );

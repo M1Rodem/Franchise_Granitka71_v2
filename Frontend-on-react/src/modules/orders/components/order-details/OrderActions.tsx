@@ -6,7 +6,6 @@ import { showTempMessage } from '@/shared/ui/temp-message.service'
 import { useConfirmModalStore } from '@/shared/ui/modal/modal.store'
 
 import surface from '@/shared/ui/surface.module.css'
-import layout from '@/shared/ui/form-layout.module.css'
 import button from '@/shared/ui/button.module.css'
 
 interface Props {

@@ -4,7 +4,7 @@
 
 .trigger {
   width: 100%;
-  min-height: 40px;
+  min-height: 42px;
   border-radius: 12px;
   border: 1px solid rgba(126, 164, 220, 0.33);
   background: rgba(12, 31, 64, 0.72);

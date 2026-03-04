@@ -1,6 +1,5 @@
 .field {
-  display: grid;
-  gap: 6px;
+  display: block;
 }
 
 .inputWrap {
@@ -10,7 +9,7 @@
 
 .inputWrap input {
   width: 100%;
-  min-height: 38px;
+  height: 42px;
   border-radius: 10px;
   border: 1px solid rgba(126, 164, 220, 0.33);
   background: rgba(12, 31, 64, 0.72);

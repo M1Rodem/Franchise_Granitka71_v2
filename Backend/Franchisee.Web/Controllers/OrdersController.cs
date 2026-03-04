@@ -873,7 +873,7 @@ namespace Franchisee.Web.Controllers
                 Photos = order.Photos.Select(p => new OrderMediaDto
                 {
                     Id = p.Id,
-                    Url = $"/api/media/{p.Id}/file",
+                    Url = $"/api/Media/{p.Id}/file",
                     OriginalFileName = p.OriginalFileName,
                     Size = p.Size,
                     UploadedAt = p.UploadedAt,

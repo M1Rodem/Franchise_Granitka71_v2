@@ -2,6 +2,7 @@ import table from '@/shared/ui/table-base.module.css'
 import surface from '@/shared/ui/surface.module.css'
 import button from '@/shared/ui/button.module.css'
 import type { PlotDto } from '@/modules/plots/types/plots.types'
+import styles from './plots-table.module.css'
 
 interface Props {
   plots: PlotDto[]
@@ -37,17 +38,23 @@ export function PlotsTable({ plots, onDelete, onShowMap }: Props) {
             className={table.dataRow}
             style={{ gridTemplateColumns: GRID_TEMPLATE }}
           >
-            <span data-label="Название">
+            <span
+              data-label="Название"
+              className={table.descriptionCell}
+            >
               {plot.name}
             </span>
 
-            <span data-label="Адрес">
+            <span
+              data-label="Адрес"
+              className={table.noteCell}
+            >
               {plot.description ?? '—'}
             </span>
 
             <span
               data-label="Действия"
-              style={{ display: 'flex', gap: 8 }}
+              className={styles.actionsCell}
             >
               <button
                 type="button"

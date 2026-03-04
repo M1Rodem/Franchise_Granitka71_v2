@@ -1,97 +1,151 @@
+/* ======================================================
+   HEADER BASE
+====================================================== */
+
 .header {
   margin: 12px 12px 0;
   padding: 12px 14px;
+
   min-height: 64px;
+
   border-radius: 16px;
   border: 1px solid rgba(142, 179, 236, 0.27);
-  background: linear-gradient(164deg, rgba(8, 24, 46, 0.82), rgba(11, 32, 62, 0.56));
+
+  background: linear-gradient(
+    164deg,
+    rgba(8, 24, 46, 0.82),
+    rgba(11, 32, 62, 0.56)
+  );
+
   backdrop-filter: blur(12px);
+
   box-shadow: 0 12px 28px rgba(4, 11, 26, 0.25);
+
   display: flex;
   align-items: center;
-  justify-content: space-between;
   gap: 12px;
 }
+
+
+/* ======================================================
+   MENU BUTTON
+====================================================== */
 
 .menuButton {
   width: 40px;
   height: 40px;
+
   border-radius: 11px;
+
   border: 1px solid rgba(139, 177, 232, 0.34);
   background: rgba(17, 43, 80, 0.72);
+
   display: inline-flex;
   align-items: center;
   justify-content: center;
   flex-direction: column;
+
   gap: 4px;
+
   cursor: pointer;
 }
 
 .menuButton span {
   width: 18px;
   height: 2px;
+
   border-radius: 4px;
+
   background: #dff0ff;
 }
 
+
+/* ======================================================
+   TITLE
+====================================================== */
+
 .title {
   margin: 0;
+
   font-size: 18px;
+
   color: #eff7ff;
+
   flex: 1;
+
   text-align: center;
 }
+
+
+/* ======================================================
+   BADGE
+====================================================== */
 
 .badgeContainer {
   min-width: 40px;
   height: 40px;
+
   border-radius: 12px;
+
   border: 1px solid rgba(137, 179, 239, 0.35);
   background: rgba(13, 36, 67, 0.84);
+
   display: grid;
   place-items: center;
 }
 
 .badgeValue {
   color: #dff0ff;
+
   font-size: 13px;
   font-weight: 700;
 }
 
-/* ============================= */
-/* ORDER DETAILS HEADER MODE */
-/* ============================= */
 
-.detailsContainer {
-  display: flex;
-  align-items: center;
-  gap: 18px;
-  flex: 1;
-}
+/* ======================================================
+   ORDER DETAILS MODE
+====================================================== */
 
 .detailsTitle {
   margin: 0;
+
   font-size: 18px;
+
   color: #eff7ff;
-  text-align: left;
+
+  flex: 1;
+
+  min-width: 0;
+
+  text-align: center;
+
+  overflow: hidden;
+  text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .detailsActions {
-  margin-left: auto;
   display: flex;
-  gap: 12px;
+  gap: 10px;
 }
 
-/* Liquid Back Button */
+
+/* ======================================================
+   BACK BUTTON
+====================================================== */
 
 .detailsBackButton {
   padding: 6px 14px;
+
   border-radius: 12px;
+
   border: 1px solid rgba(137, 179, 239, 0.35);
   background: rgba(17, 43, 80, 0.72);
+
   color: #dff0ff;
+
   cursor: pointer;
+
   transition:
     background 0.2s ease,
     transform 0.15s ease,
@@ -101,10 +155,13 @@
 
 .detailsBackButton:hover {
   background: rgba(90, 140, 220, 0.18);
+
   border-color: rgba(152, 204, 255, 0.55);
+
   box-shadow:
     0 6px 18px rgba(90, 140, 220, 0.35),
     inset 0 1px 0 rgba(255, 255, 255, 0.25);
+
   transform: translateY(-2px);
 }
 
@@ -112,14 +169,21 @@
   transform: translateY(0);
 }
 
-/* Universal Glass Button */
+
+/* ======================================================
+   GLASS BUTTON
+====================================================== */
 
 .glassButton {
   padding: 6px 14px;
+
   border-radius: 12px;
+
   border: 1px solid rgba(137, 179, 239, 0.35);
   background: rgba(17, 43, 80, 0.72);
+
   color: #dff0ff;
+
   cursor: pointer;
 
   backdrop-filter: blur(12px);
@@ -138,6 +202,7 @@
     rgba(123, 188, 255, 0.22),
     rgba(94, 147, 223, 0.14)
   );
+
   border-color: rgba(152, 204, 255, 0.55);
 
   box-shadow:
@@ -156,17 +221,113 @@
   cursor: not-allowed;
 }
 
-@media (min-width: 961px) {
-  .header {
-    margin: 12px 12px 0 0;
-    padding-inline: 18px;
-  }
+
+/* ======================================================
+   DESKTOP LAYOUT
+====================================================== */
+
+@media (min-width: 721px) {
 
   .menuButton {
     display: none;
   }
 
+  .header {
+    margin: 12px 12px 0 0;
+    padding-inline: 18px;
+
+    display: flex;
+    align-items: center;
+  }
+
+  .detailsBackButton {
+    order: 1;
+  }
+
+  .detailsTitle {
+    order: 2;
+  }
+
+  .detailsActions {
+    order: 3;
+  }
+
+  .badgeContainer {
+    order: 4;
+    margin-left: auto;
+  }
+
   .title {
     text-align: left;
   }
+
+}
+
+
+/* ======================================================
+   MOBILE HEADER
+====================================================== */
+
+@media (max-width: 720px) {
+
+  .header {
+    display: grid;
+
+    grid-template-columns: auto 1fr auto;
+    grid-template-rows: auto auto auto;
+
+    column-gap: 12px;
+    row-gap: 10px;
+
+    padding: 16px;
+
+    min-height: auto;
+
+    align-items: center;
+  }
+
+  /* row 1 */
+
+  .menuButton {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  .badgeContainer {
+    grid-column: 3;
+    grid-row: 1;
+
+    justify-self: end;
+  }
+
+  /* row 2 */
+
+  .detailsTitle {
+    grid-column: 1 / -1;
+    grid-row: 2;
+
+    font-size: 17px;
+
+    line-height: 1.3;
+
+    text-align: center;
+
+    font-weight: 600;
+  }
+
+  /* row 3 */
+
+  .detailsBackButton {
+    grid-column: 1;
+    grid-row: 3;
+  }
+
+  .detailsActions {
+    grid-column: 2 / span 2;
+    grid-row: 3;
+    margin-left: auto;
+    display: flex;
+    gap: 10px;
+  }
+
 }

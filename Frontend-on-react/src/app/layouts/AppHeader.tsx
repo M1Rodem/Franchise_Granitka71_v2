@@ -42,7 +42,11 @@ export function AppHeader() {
 
       {/* Режим заказа */}
       {isOrderDetails && (
-        <div className={styles.detailsContainer}>
+        <>
+          <h1 className={styles.detailsTitle}>
+            {header.title} №{header.orderNumber}
+          </h1>
+
           <button
             type="button"
             onClick={() => navigate(-1)}
@@ -50,10 +54,6 @@ export function AppHeader() {
           >
             ← Назад
           </button>
-
-          <h1 className={styles.detailsTitle}>
-            {header.title} №{header.orderNumber}
-          </h1>
 
           <div className={styles.detailsActions}>
             <button
@@ -72,7 +72,7 @@ export function AppHeader() {
               Excel
             </button>
           </div>
-        </div>
+        </>
       )}
 
       {/* Admin режим (Users / Plots) */}

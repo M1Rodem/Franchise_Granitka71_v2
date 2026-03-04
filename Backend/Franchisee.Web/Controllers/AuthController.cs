@@ -217,7 +217,7 @@ namespace Franchisee.Web.Controllers
 
             var user = await _managerRepository.GetByRefreshTokenAsync(refreshToken);
 
-            if (user == null)
+            if (user == null || user.RefreshTokenExpiryTime <= DateTime.UtcNow)
                 return Unauthorized();
 
             var key = _config["Jwt:Key"];
@@ -227,11 +227,18 @@ namespace Franchisee.Web.Controllers
             var keyBytes = Encoding.ASCII.GetBytes(key);
             var tokenHandler = new JwtSecurityTokenHandler();
 
+            var role = user.Role switch
+            {
+                UserRole.SuperAdmin => "SuperAdmin",
+                UserRole.Admin => "Admin",
+                _ => "Manager"
+            };
+
             var claims = new List<Claim>
             {
                 new Claim(ClaimTypes.Name, user.Id.ToString()),
                 new Claim(ClaimTypes.NameIdentifier, user.Username),
-                new Claim(ClaimTypes.Role, user.Role.ToString()),
+                new Claim(ClaimTypes.Role, role),
                 new Claim("UserId", user.Id.ToString()),
                 new Claim("FullName", user.FullName ?? string.Empty)
             };
@@ -250,7 +257,18 @@ namespace Franchisee.Web.Controllers
             var token = tokenHandler.CreateToken(tokenDescriptor);
             var tokenString = tokenHandler.WriteToken(token);
 
-            return Ok(new { token = tokenString });
+            // ПЕРЕЗАПИСЫВАЕМ COOKIE media_auth
+            var cookieOptions = new CookieOptions
+            {
+                HttpOnly = true,
+                Secure = HttpContext.Request.IsHttps,
+                SameSite = HttpContext.Request.IsHttps ? SameSiteMode.None : SameSiteMode.Lax,
+                Expires = DateTime.UtcNow.AddHours(8)
+            };
+
+            Response.Cookies.Append("media_auth", tokenString, cookieOptions);
+
+            return Ok(new { message = "Token refreshed" });
         }
     }
 }

@@ -1,10 +1,11 @@
-/* ===== TABLE WRAPPER ===== */
+/* =====================================================
+   TABLE WRAPPER
+===================================================== */
 
 .dataTable {
   display: flex;
   flex-direction: column;
   gap: 10px;
-  z-index: 20;
 
   border-radius: 16px;
   border: 1px solid rgba(125, 162, 219, 0.25);
@@ -16,14 +17,16 @@
   );
 
   backdrop-filter: blur(14px);
+
   padding: 14px;
 
   box-shadow: 0 16px 36px rgba(3, 12, 28, 0.4);
-
-  overflow: visible;
 }
 
-/* ===== HEADER ===== */
+
+/* =====================================================
+   HEADER
+===================================================== */
 
 .dataHeader {
   display: grid;
@@ -41,20 +44,80 @@
   border-bottom: 1px solid rgba(125, 162, 219, 0.18);
 }
 
-/* subtle left highlight */
+
+/* =====================================================
+   ROW
+===================================================== */
+
+.dataRow {
+  position: relative;
+
+  display: grid;
+  align-items: center;
+  gap: 12px;
+
+  padding: 12px 14px;
+
+  border-radius: 12px;
+
+  font-size: 14px;
+  color: #eaf4ff;
+
+  background: rgba(15, 35, 70, 0.45);
+
+  border: 1px solid rgba(125, 162, 219, 0.15);
+
+  transition:
+    background 0.18s ease,
+    transform 0.15s ease,
+    box-shadow 0.18s ease,
+    border 0.18s ease;
+}
+
+
+/* separation between rows */
+
+.dataRow + .dataRow {
+  margin-top: 6px;
+}
+
+/* ===== FULL WIDTH ACTION BUTTON ===== */
+
+.fullWidthAction {
+  margin-top: 16px;
+  display: flex;
+}
+
+.fullWidthButton {
+  width: 100%;
+  justify-content: center;
+}
+
+/* hover */
+
+.dataRow:hover {
+  background: rgba(100, 155, 232, 0.1);
+  border-color: rgba(134, 188, 255, 0.35);
+  box-shadow: 0 8px 20px rgba(90, 140, 220, 0.25);
+}
 
 .dataRow:hover::before {
   content: "";
   position: absolute;
-  left: 6px;
-  top: 20%;
-  bottom: 20%;
+  left: -1px;
+  top: 18%;
+  bottom: 18%;
   width: 3px;
+
   border-radius: 3px;
-  background: rgba(134, 188, 255, 0.6);
+
+  background: rgba(134, 188, 255, 0.7);
 }
 
-/* ===== CELL BEHAVIOR ===== */
+
+/* =====================================================
+   CELL BEHAVIOR
+===================================================== */
 
 .dataRow span,
 .dataHeader span {
@@ -63,7 +126,28 @@
   text-overflow: ellipsis;
 }
 
-/* ===== TOTAL BLOCK ===== */
+
+/* =====================================================
+   SPECIAL CELLS
+===================================================== */
+
+.descriptionCell {
+  white-space: normal !important;
+  word-break: break-word;
+}
+
+.noteCell {
+  white-space: normal !important;
+  overflow: visible !important;
+  text-overflow: unset !important;
+  line-height: 1.45;
+  word-break: break-word;
+}
+
+
+/* =====================================================
+   TOTAL BLOCK
+===================================================== */
 
 .totalBlock {
   display: flex;
@@ -90,117 +174,150 @@
   color: #ecf6ff;
 }
 
-/* ===== EMPTY STATE ===== */
+
+/* =====================================================
+   EMPTY STATE
+===================================================== */
 
 .empty {
   padding: 16px;
   text-align: center;
+
   font-size: 14px;
+
   color: #9fc1e9;
 }
 
-/* ===== ROW ===== */
+/* PRIMARY BLOCK CELLS */
 
-.dataRow {
-  position: relative;
-
-  display: grid;
-  align-items: center;
-  gap: 12px;
-
-  padding: 12px 14px;
-
-  border-radius: 12px;
-
-  font-size: 14px;
-  color: #eaf4ff;
-
-  background: rgba(15, 35, 70, 0.45);
-
-  border: 1px solid rgba(125, 162, 219, 0.15);
-
-  transition: background 0.18s ease,
-              transform 0.15s ease,
-              box-shadow 0.18s ease,
-              border 0.18s ease;
+.primaryCell {
+  white-space: normal !important;
+  word-break: break-word;
 }
 
-/* Разделение между строками */
 
-.dataRow + .dataRow {
-  margin-top: 6px;
+/* =====================================================
+   TABLET
+===================================================== */
+
+@media (max-width: 1100px) {
+
+  .dataHeader {
+    font-size: 12px;
+    padding: 8px 10px;
+  }
+
+  .dataRow {
+    font-size: 13px;
+    padding: 10px 12px;
+  }
+
 }
 
-/* Hover */
 
-.dataRow:hover {
-  background: rgba(100, 155, 232, 0.1);
-  border-color: rgba(134, 188, 255, 0.35);
-  box-shadow: 0 8px 20px rgba(90, 140, 220, 0.25);
-}
+/* =====================================================
+   MOBILE TABLE MODE
+===================================================== */
 
-/* subtle left highlight */
+@media (max-width: 768px) {
 
-.dataRow:hover::before {
-  content: "";
-  position: absolute;
-  left: -1px;
-  top: 18%;
-  bottom: 18%;
-  width: 3px;
-  border-radius: 3px;
-  background: rgba(134, 188, 255, 0.7);
-}
+  /* remove outer table card */
 
-/* ===== RESPONSIVE ===== */
+  .dataTable {
+    background: none;
+    border: none;
+    box-shadow: none;
+    padding: 0;
+    backdrop-filter: none;
+  }
 
-@media (max-width: 900px) {
+  /* hide header */
 
   .dataHeader {
     display: none;
   }
 
+  /* row becomes card */
+
   .dataRow {
     grid-template-columns: 1fr !important;
-    gap: 6px;
+    gap: 8px;
+
     padding: 14px;
   }
 
+  /* row items */
+
   .dataRow span {
+    padding: 10px 0;
+
+    border-bottom: 1px solid rgba(125,162,219,0.15);
+
     display: flex;
     justify-content: space-between;
+
     font-size: 13px;
   }
+
+  /* default label */
 
   .dataRow span::before {
     content: attr(data-label);
     font-weight: 600;
     color: #9bb8e8;
   }
-}
 
-@media (max-width: 768px) {
-  .dataHeader {
-    display: none;
-  }
 
-  .dataRow {
-    grid-template-columns: 1fr !important;
-    gap: 12px;
-    padding: 14px;
-    border-radius: 12px;
-  }
+  /* =====================================================
+     DESCRIPTION (FIRST BLOCK)
+  ===================================================== */
 
-  .dataRow > div {
-    display: flex;
-    justify-content: space-between;
+  .descriptionCell {
+    grid-column: 1 / -1;
+
+    flex-direction: column;
     align-items: center;
-    gap: 12px;
+
+    text-align: center;
   }
 
-  .dataRow > div::before {
-    content: attr(data-label);
-    font-size: 12px;
-    color: #9bb8e8;
+  .descriptionCell::before {
+    margin-bottom: 4px;
   }
+
+
+  /* =====================================================
+     NOTE (BOTTOM BLOCK)
+  ===================================================== */
+
+  .noteCell {
+    grid-column: 1 / -1;
+
+    flex-direction: column;
+    align-items: center;
+
+    text-align: center;
+
+    padding-top: 12px;
+
+    border-bottom: none;
+  }
+
+  .noteCell::before {
+    margin-bottom: 6px;
+  }
+
+    .primaryCell {
+    grid-column: 1 / -1;
+
+    flex-direction: column;
+    align-items: center;
+
+    text-align: center;
+  }
+
+  .primaryCell::before {
+    margin-bottom: 4px;
+  }
+
 }

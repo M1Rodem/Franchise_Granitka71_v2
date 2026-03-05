@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react'
+import { useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { useMutation } from '@tanstack/react-query'
 
@@ -14,6 +14,7 @@ import type { PlotDto } from '@/modules/plots/types/plots.types'
 
 import { OrdersStateView } from '@/modules/orders/components/OrdersStateView'
 import { FormModal } from '@/shared/ui/modal/FormModal'
+import { MapPreviewModal } from '@/shared/ui/modal/MapPreviewModal'
 import { useConfirmModalStore } from '@/shared/ui/modal/modal.store'
 
 import {
@@ -74,7 +75,7 @@ export default function PlotsPage() {
         <div className={styles.headerActions}>
           <button
             type="button"
-            className={`${button.btn} ${button.btnPrimary}`}
+            className={`${button.btn} ${button.btnPrimary} ${styles.addButton}`}
             onClick={() => setIsCreateOpen(true)}
           >
             Добавить участок
@@ -151,23 +152,34 @@ export default function PlotsPage() {
         }
       >
         <div className={styles.modalContent}>
-          <input
-            type="text"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            className={input.input}
-            placeholder="Название участка"
-          />
 
-          <input
-            type="text"
-            value={address}
-            readOnly
-            className={input.input}
-            placeholder="Адрес определяется автоматически"
-          />
+          <div className={styles.modalForm}>
 
-          <div className={styles.mapContainer}>
+            <div className={styles.formRow}>
+              <input
+                type="text"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                className={input.input}
+                placeholder="Название участка"
+              />
+            </div>
+
+            <div className={styles.formRow}>
+              <input
+                type="text"
+                value={address}
+                readOnly
+                className={input.input}
+                placeholder="Адрес определяется автоматически"
+              />
+            </div>
+
+            <div className={styles.mapHeader}>
+              Выберите точку на карте
+            </div>
+
+            <div className={styles.mapContainer}>
             <YandexMapProvider>
               <MapView
                 center={[55.75, 37.57]}
@@ -213,28 +225,32 @@ export default function PlotsPage() {
             </YandexMapProvider>
           </div>
         </div>
+        </div>
       </FormModal>
 
       {/* VIEW MAP MODAL */}
-      <FormModal
+      <MapPreviewModal
         isOpen={!!mapPlot}
-        title="Расположение участка"
         onClose={() => setMapPlot(null)}
       >
         {mapPlot && (
-          <div className={styles.viewMapContainer}>
+          <div
+            className={styles.viewMapContainer}
+            data-map
+            onClick={(e) => e.stopPropagation()}
+          >
             <YandexMapProvider>
               <MapView
                 center={[mapPlot.latitude, mapPlot.longitude]}
                 readOnly
               >
-                {/* ✅ Маркер теперь внутри MapView */}
+                {/* Маркер теперь внутри MapView */}
                 <MapMarker coords={[mapPlot.latitude, mapPlot.longitude]} />
               </MapView>
             </YandexMapProvider>
           </div>
         )}
-      </FormModal>
+      </MapPreviewModal>
     </div>
   )
 }

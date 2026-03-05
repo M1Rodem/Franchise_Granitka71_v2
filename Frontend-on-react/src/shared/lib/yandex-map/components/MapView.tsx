@@ -49,7 +49,7 @@ export function MapView({
 
     setTimeout(() => {
       map.container.fitToViewport()
-    }, 0)
+    }, 80)
 
     if (onReady) {
       onReady(map)

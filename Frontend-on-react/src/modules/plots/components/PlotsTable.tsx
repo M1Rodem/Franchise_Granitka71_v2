@@ -55,6 +55,7 @@ export function PlotsTable({ plots, onDelete, onShowMap }: Props) {
             <span
               data-label="Действия"
               className={styles.actionsCell}
+              style={{ textAlign: 'center' }}
             >
               <button
                 type="button"

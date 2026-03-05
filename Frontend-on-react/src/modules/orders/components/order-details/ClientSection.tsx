@@ -1,6 +1,8 @@
 import surface from '@/shared/ui/surface.module.css'
 import layout from '@/shared/ui/form-layout.module.css'
 
+import { PhoneLink } from '@/shared/ui/PhoneLink'
+
 interface Props {
   fullName: string
   email?: string | null
@@ -31,7 +33,12 @@ export function ClientSection({
 
         <div className={layout.field}>
           <span className={layout.label}>Телефон</span>
-          <span className={layout.value}>{phone}</span>
+          <span className={layout.value}>
+            <PhoneLink
+              phone={phone}
+              className={layout.value}
+            />
+          </span>
         </div>
 
         <div className={layout.field}>

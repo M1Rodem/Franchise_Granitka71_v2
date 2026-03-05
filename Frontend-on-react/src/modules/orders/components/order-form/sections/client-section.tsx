@@ -1,7 +1,7 @@
 'use client'
 
 import { useFormContext, Controller } from 'react-hook-form'
-import InputMask from 'react-input-mask'
+import { IMaskInput } from 'react-imask'
 import type { OrderFormModel } from '../order-form.schema'
 
 import surface from '@/shared/ui/surface.module.css'
@@ -9,10 +9,7 @@ import layout from '@/shared/ui/form-layout.module.css'
 import input from '@/shared/ui/input.module.css'
 
 export function ClientSection() {
-  const {
-    register,
-    control,
-  } = useFormContext<OrderFormModel>()
+  const { register, control } = useFormContext<OrderFormModel>()
 
   return (
     <div className={surface.surface}>
@@ -27,6 +24,7 @@ export function ClientSection() {
           <label className={layout.label}>ФИО *</label>
           <input
             {...register('client.fullName')}
+            placeholder="Иванов Иван Иванович"
             className={input.input}
           />
         </div>
@@ -37,6 +35,7 @@ export function ClientSection() {
           <input
             {...register('client.email')}
             type="email"
+            placeholder="example@mail.ru"
             className={input.input}
           />
         </div>
@@ -49,17 +48,17 @@ export function ClientSection() {
             control={control}
             name="client.phone"
             render={({ field }) => (
-              <InputMask
-                {...field}
-                mask="+7 (999) 999-99-99"
-              >
-                {(props: any) => (
-                  <input
-                    {...props}
-                    className={input.input}
-                  />
-                )}
-              </InputMask>
+              <IMaskInput
+                mask="+7 (000) 000-00-00"
+                value={field.value}
+                unmask={false}
+                lazy={false}
+                placeholder="+7 (___) ___-__-__"
+                className={input.input}
+                onAccept={(value) =>
+                  field.onChange(String(value))
+                }
+              />
             )}
           />
         </div>
@@ -69,6 +68,7 @@ export function ClientSection() {
           <label className={layout.label}>Адрес *</label>
           <input
             {...register('client.address')}
+            placeholder="Адрес проживания"
             className={input.input}
           />
         </div>

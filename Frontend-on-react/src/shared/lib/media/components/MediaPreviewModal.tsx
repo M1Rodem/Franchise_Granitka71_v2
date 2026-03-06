@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import styles from './media-preview-modal.module.css'
-import type { MediaDto } from '../api/media.types'
+import type { ViewerMediaDto } from '../api/media.types'
 
 interface Props {
-  items: MediaDto[]
+  items: ViewerMediaDto[]
   index: number | null
   onClose: () => void
   onNavigate: (index: number) => void

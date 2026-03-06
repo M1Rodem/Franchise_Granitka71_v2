@@ -1,33 +1,126 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useFormContext } from 'react-hook-form'
 import type { OrderFormModel } from '../order-form.schema'
 
+import { mediaApi } from '@/shared/lib/media/api/media.api'
+import { MediaPreviewModal } from '@/shared/lib/media/components/MediaPreviewModal'
+import type { ViewerMediaDto } from '@/shared/lib/media/api/media.types'
+
 import surface from '@/shared/ui/surface.module.css'
 import layout from '@/shared/ui/form-layout.module.css'
-import button from '@/shared/ui/button.module.css'
-import table from '@/shared/ui/table-base.module.css'
+
+type TempMedia = {
+  id: number
+  previewUrl: string
+  name: string
+  type: 'photo' | 'video'
+}
 
 export function MediaSection() {
   const { setValue } = useFormContext<OrderFormModel>()
 
-  const [files, setFiles] = useState<File[]>([])
+  const [media, setMedia] = useState<TempMedia[]>([])
+  const [uploading, setUploading] = useState(false)
+  const [previewIndex, setPreviewIndex] = useState<number | null>(null)
 
-  const handleFiles = (fileList: FileList | null) => {
+  const mediaRef = useRef<TempMedia[]>([])
+  const fileInputRef = useRef<HTMLInputElement | null>(null)
+
+  useEffect(() => {
+    mediaRef.current = media
+  }, [media])
+
+  const handleFiles = async (fileList: FileList | null) => {
     if (!fileList) return
 
-    const fileArray = Array.from(fileList)
-    setFiles(prev => [...prev, ...fileArray])
+    const files = Array.from(fileList)
 
-    // Пока temp ids не подключены
-    setValue('media.tempPhotoIds', [])
-    setValue('media.tempVideoIds', [])
+    setUploading(true)
+
+    try {
+      const uploads = await Promise.all(
+        files.map(async (file) => {
+          const type = file.type.startsWith('video')
+            ? 'video'
+            : 'photo'
+
+          const dto = await mediaApi.uploadTemp(file, type)
+
+          return {
+            id: dto.id,
+            previewUrl: dto.previewUrl,
+            name: dto.originalFileName,
+            type,
+          } as TempMedia
+        })
+      )
+
+      setMedia(prev => [...prev, ...uploads])
+    } finally {
+      setUploading(false)
+
+      if (fileInputRef.current) {
+        fileInputRef.current.value = ''
+      }
+    }
   }
 
-  const removeFile = (index: number) => {
-    setFiles(prev => prev.filter((_, i) => i !== index))
+  const removeFile = async (index: number) => {
+    const item = media[index]
+
+    try {
+      await mediaApi.deleteTemp(item.id)
+    } catch {}
+
+    setMedia(prev => prev.filter((_, i) => i !== index))
   }
+
+  useEffect(() => {
+    const photoIds = media
+      .filter(m => m.type === 'photo')
+      .map(m => m.id)
+
+    const videoIds = media
+      .filter(m => m.type === 'video')
+      .map(m => m.id)
+
+    setValue('media.tempPhotoIds', photoIds)
+    setValue('media.tempVideoIds', videoIds)
+  }, [media, setValue])
+
+  useEffect(() => {
+    const handleUnload = () => {
+      mediaRef.current.forEach(m => {
+        fetch(`/api/media/temp/${m.id}`, {
+          method: 'DELETE',
+          keepalive: true,
+        }).catch(() => {})
+      })
+    }
+
+    window.addEventListener('beforeunload', handleUnload)
+
+    return () => {
+      window.removeEventListener('beforeunload', handleUnload)
+    }
+  }, [])
+
+  useEffect(() => {
+    return () => {
+      mediaRef.current.forEach(m => {
+        mediaApi.deleteTemp(m.id).catch(() => {})
+      })
+    }
+  }, [])
+
+  const previewItems: ViewerMediaDto[] = media.map((m) => ({
+    id: m.id,
+    url: m.previewUrl,
+    originalFileName: m.name,
+    mediaType: m.type === 'video' ? 1 : 0,
+  }))
 
   return (
     <div className={surface.surface}>
@@ -35,7 +128,6 @@ export function MediaSection() {
         Медиафайлы
       </h2>
 
-      {/* Upload block */}
       <div className={layout.field}>
         <label className={layout.label}>
           Загрузить файлы
@@ -52,6 +144,7 @@ export function MediaSection() {
           }}
         >
           <input
+            ref={fileInputRef}
             type="file"
             multiple
             accept="image/*,video/*"
@@ -59,34 +152,92 @@ export function MediaSection() {
             onChange={(e) => handleFiles(e.target.files)}
           />
 
-          Перетащите файлы или нажмите для выбора
+          {uploading
+            ? 'Загрузка...'
+            : 'Перетащите файлы или нажмите для выбора'}
         </label>
       </div>
 
-      {/* Список файлов */}
-      {files.length > 0 && (
-        <div className={table.dataTable}>
-
-          {files.map((file, index) => (
+      {media.length > 0 && (
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fill,120px)',
+            gap: '12px',
+          }}
+        >
+          {media.map((item, index) => (
             <div
-              key={index}
-              className={table.dataRow}
-              style={{ gridTemplateColumns: '1fr auto' }}
+              key={item.id}
+              onClick={() => setPreviewIndex(index)}
+              style={{
+                position: 'relative',
+                width: '120px',
+                height: '120px',
+                cursor: 'zoom-in'
+              }}
             >
-              <span>{file.name}</span>
+              {item.type === 'photo' ? (
+                <img
+                  src={item.previewUrl}
+                  alt={item.name}
+                  style={{
+                    width: '100%',
+                    height: '100%',
+                    objectFit: 'cover',
+                    borderRadius: '10px',
+                  }}
+                />
+              ) : (
+                <video
+                  src={item.previewUrl}
+                  style={{
+                    width: '100%',
+                    height: '100%',
+                    objectFit: 'cover',
+                    borderRadius: '10px',
+                  }}
+                />
+              )}
 
               <button
                 type="button"
-                onClick={() => removeFile(index)}
-                className={`${button.btn} ${button.btnDanger}`}
+                onClick={(e) => {
+                  e.stopPropagation()
+                  removeFile(index)
+                }}
+                style={{
+                  position: 'absolute',
+                  top: '6px',
+                  right: '6px',
+                  width: '26px',
+                  height: '26px',
+                  borderRadius: '50%',
+                  border: 'none',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: '14px',
+                  color: '#fff',
+                  background: 'rgba(0,0,0,0.55)',
+                  backdropFilter: 'blur(6px)',
+                  transition: 'all 0.15s ease',
+                }}
               >
-                Удалить
+                ✕
               </button>
             </div>
           ))}
-
         </div>
       )}
+
+      <MediaPreviewModal
+        items={previewItems}
+        index={previewIndex}
+        onClose={() => setPreviewIndex(null)}
+        onNavigate={(i) => setPreviewIndex(i)}
+      />
     </div>
   )
 }

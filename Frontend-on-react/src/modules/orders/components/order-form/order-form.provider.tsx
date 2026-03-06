@@ -5,6 +5,7 @@ import { useMemo } from 'react'
 import { useForm, FormProvider } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useNavigate } from 'react-router-dom'
 
 import { orderFormSchema } from './order-form.schema'
 import type { OrderFormModel } from './order-form.schema'
@@ -28,7 +29,9 @@ export function OrderFormProvider({
   mode = 'create',
   initialValues,
 }: OrderFormProviderProps) {
+
   const queryClient = useQueryClient()
+  const navigate = useNavigate()
 
   const defaultValues = useMemo(() => {
     if (mode === 'edit' && initialValues) {
@@ -45,33 +48,48 @@ export function OrderFormProvider({
 
   const createMutation = useMutation({
     mutationFn: ordersApi.createOrder,
-    onSuccess: () => {
+    onSuccess: (order: any) => {
+
       queryClient.invalidateQueries({
         queryKey: ordersKeys.all,
       })
+
+      showTempMessage('success', 'Заказ успешно создан')
+
+      // redirect на страницу просмотра заказа
+      if (order?.id) {
+        navigate(`/orders/${order.id}`)
+      }
     },
   })
 
   const onSubmit = methods.handleSubmit(
     async (values) => {
       try {
+
         if (mode === 'create') {
+
           const payload = mapFormToCreateDto(values)
+
           await createMutation.mutateAsync(payload)
 
-          showTempMessage('success', 'Заказ успешно создан')
         }
+
       } catch (error) {
+
         if (isAxiosError(error)) {
+
           const message =
             (error.response?.data as any)?.message ??
             'Ошибка при создании заказа'
 
           showTempMessage('error', message)
           return
+
         }
 
         showTempMessage('error', 'Ошибка при создании заказа')
+
       }
     },
     (formErrors) => {
@@ -83,6 +101,7 @@ export function OrderFormProvider({
       } else {
         showTempMessage('error', 'Проверьте корректность заполнения формы')
       }
+
     }
   )
 
@@ -101,6 +120,7 @@ function normalizePhone(phone: string): string {
 
 function mapFormToCreateDto(values: OrderFormModel) {
   return {
+
     place: values.inspectionPlace,
     inspectionPlace: values.inspectionPlace,
     orderDate: values.orderDate,
@@ -144,7 +164,9 @@ function mapFormToCreateDto(values: OrderFormModel) {
 }
 
 function getFirstErrorMessage(errors: any): string | null {
+
   for (const key in errors) {
+
     const value = errors[key]
 
     if (!value) continue
@@ -154,9 +176,13 @@ function getFirstErrorMessage(errors: any): string | null {
     }
 
     if (typeof value === 'object') {
+
       const nested = getFirstErrorMessage(value)
+
       if (nested) return nested
+
     }
+
   }
 
   return null

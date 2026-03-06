@@ -1,25 +1,33 @@
-// import { httpClient } from '@/shared/api/http-client';
-// import type { MediaDto } from './media.types';
-// import { env } from '@/shared/config/env';
+import { httpClient } from '@/shared/api/http-client'
 
-// function normalizeUrl(url: string) {
-//   if (url.startsWith('http')) return url;
-//   return `${env.apiBaseUrl}${url}`;
-// }
+export interface TempUploadDto {
+  id: number
+  originalFileName: string
+  size: number
+  previewUrl: string
+  width: number
+  height: number
+}
 
-// export const mediaApi = {
-//     async getByOrder(orderId: number) {
-//     const { data } = await httpClient.get<MediaDto[]>(
-//         `/api/media/order/${orderId}`,
-//     );
+export const mediaApi = {
+  async uploadTemp(file: File, type: 'photo' | 'video') {
+    const formData = new FormData()
+    formData.append('file', file)
 
-//     return data.map((m) => ({
-//         ...m,
-//         url: normalizeUrl(m.url),
-//     }));
-//     },
+    const response = await httpClient.post<TempUploadDto>(
+      `/api/media/upload-temp?type=${type}`,
+      formData,
+      {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      }
+    )
 
-//     async delete(id: number) {
-//         await httpClient.delete(`/api/media/edit/${id}`);
-//     },
-// };
+    return response.data
+  },
+
+  async deleteTemp(tempId: number) {
+    await httpClient.delete(`/api/media/temp/${tempId}`)
+  },
+}

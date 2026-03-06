@@ -34,7 +34,7 @@ export const orderFormSchema = z
       .array(
         z.object({
           workDescription: z.string().min(1, 'Укажите вид работы'),
-          quantity: z.number().min(1, 'Количество должно быть ≥ 1'),
+          quantity: z.number().min(0, 'Количество должно быть > 0'),
           price: z.number().min(0),
           note: z.string().optional(),
         })

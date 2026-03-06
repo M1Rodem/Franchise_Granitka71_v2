@@ -8,3 +8,10 @@ export interface MediaDto {
   height: number;
   mediaType: number | string;
 }
+
+export type ViewerMediaDto = {
+  id: number
+  url: string
+  originalFileName: string
+  mediaType: number
+}

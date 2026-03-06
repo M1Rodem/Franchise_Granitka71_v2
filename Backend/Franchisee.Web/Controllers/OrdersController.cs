@@ -131,8 +131,16 @@ namespace Franchisee.Web.Controllers
                 // Бэк НЕ ДОЛЖЕН пересчитывать расстояние!
 
                 // Set FK
-                foreach (var wi in order.WorkItems) wi.OrderId = 0;
-                foreach (var p in order.Payments) p.OrderId = 0;
+                foreach (var wi in order.WorkItems)
+                {
+                    wi.OrderId = 0;
+                }
+
+                foreach (var p in order.Payments)
+                {
+                    p.OrderId = 0;
+                    p.PaymentDate = DateTime.SpecifyKind(p.PaymentDate, DateTimeKind.Utc);
+                }
 
                 _logger.LogInformation("Сохранение заказа в БД...");
                 await _orderRepository.AddAsync(order);

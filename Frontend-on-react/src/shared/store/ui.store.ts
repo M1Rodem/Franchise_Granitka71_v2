@@ -1,11 +1,18 @@
 import { create } from 'zustand';
 
-type HeaderMode = 'default' | 'orderDetails' | 'adminDetails';
+type HeaderMode =
+  | 'default'
+  | 'orderDetails'
+  | 'adminDetails'
+  | 'orderCreate'
+  | 'orderEdit'
+  | 'plots';
 
 interface HeaderState {
   mode: HeaderMode;
   title: string;
   orderNumber?: string;
+  submitDisabled?: boolean;
 }
 
 interface UiStoreState {
@@ -23,6 +30,14 @@ interface UiStoreState {
   setDefaultHeader: (title: string) => void;
   setOrderDetailsHeader: (orderNumber: string) => void;
   resetHeader: () => void;
+  setOrderCreateHeader: () => void;
+  setOrderEditHeader: (orderNumber: string) => void;
+  setHeaderSubmitDisabled: (disabled: boolean) => void;
+  setPlotsHeader: () => void
+
+  plotCreateOpen: boolean
+  openPlotCreateModal: () => void
+  closePlotCreateModal: () => void
 }
 
 export const useUiStore = create<UiStoreState>((set) => ({
@@ -61,6 +76,31 @@ export const useUiStore = create<UiStoreState>((set) => ({
       },
     }),
 
+  setOrderCreateHeader: () =>
+    set({
+      header: {
+        mode: 'orderCreate',
+        title: 'Создание нового заказа',
+      },
+    }),
+
+  setOrderEditHeader: (orderNumber) =>
+    set({
+      header: {
+        mode: 'orderEdit',
+        title: 'Редактор заказа',
+        orderNumber,
+      },
+    }),
+
+  setHeaderSubmitDisabled: (disabled) =>
+  set((state) => ({
+    header: {
+      ...state.header,
+      submitDisabled: disabled,
+    },
+  })),
+
   resetHeader: () =>
     set({
       header: {
@@ -68,4 +108,19 @@ export const useUiStore = create<UiStoreState>((set) => ({
         title: 'Granitka71',
       },
     }),
+  setPlotsHeader: () =>
+  set({
+    header: {
+      mode: 'plots',
+      title: 'Участки',
+    },
+  }),
+
+  plotCreateOpen: false,
+
+  openPlotCreateModal: () =>
+    set({ plotCreateOpen: true }),
+
+  closePlotCreateModal: () =>
+    set({ plotCreateOpen: false }),
 }));

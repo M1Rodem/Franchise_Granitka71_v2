@@ -6,7 +6,11 @@ import { useIsMutating } from '@tanstack/react-query'
 import button from '@/shared/ui/button.module.css'
 import styles from './order-form-actions.module.css'
 
-export function OrderFormActions() {
+interface Props {
+  mode?: 'create' | 'edit'
+}
+
+export function OrderFormActions({ mode = 'create' }: Props) {
 
   const {
     formState: { isSubmitting },
@@ -16,6 +20,15 @@ export function OrderFormActions() {
 
   const loading = isSubmitting || isMutating > 0
 
+  const text =
+    mode === 'edit'
+      ? loading
+        ? 'Сохранение...'
+        : 'Сохранить заказ'
+      : loading
+      ? 'Создание...'
+      : 'Создать заказ'
+
   return (
     <div className={styles.actionsWrapper}>
       <button
@@ -23,7 +36,7 @@ export function OrderFormActions() {
         disabled={loading}
         className={`${button.btn} ${button.btnPrimary} ${styles.fullWidthBtn}`}
       >
-        {loading ? 'Создание...' : 'Создать заказ'}
+        {text}
       </button>
     </div>
   )

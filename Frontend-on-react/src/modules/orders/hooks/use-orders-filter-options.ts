@@ -24,12 +24,7 @@ const plotPascalSchema = z
 const plotsSchema = z.array(z.union([plotCamelSchema, plotPascalSchema]));
 
 const getPlotsFilterOptions = async (): Promise<PlotFilterOption[]> => {
-  const response = await httpClient.get('/api/plots', {
-    params: {
-      includeInactive: false,
-    },
-  });
-
+  const response = await httpClient.get('/api/plots/all');
   return plotsSchema.parse(response.data);
 };
 

@@ -2,6 +2,7 @@ import surface from '@/shared/ui/surface.module.css'
 import layout from '@/shared/ui/form-layout.module.css'
 
 import { PhoneLink } from '@/shared/ui/PhoneLink'
+import { formatPhone } from '@/shared/lib/phone'
 
 interface Props {
   fullName: string
@@ -35,7 +36,7 @@ export function ClientSection({
           <span className={layout.label}>Телефон</span>
           <span className={layout.value}>
             <PhoneLink
-              phone={phone}
+              phone={formatPhone(phone)}
               className={layout.value}
             />
           </span>

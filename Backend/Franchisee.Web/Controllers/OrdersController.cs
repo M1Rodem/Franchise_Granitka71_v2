@@ -53,7 +53,9 @@ namespace Franchisee.Web.Controllers
 
             var (orders, total) = await _orderRepository.GetFilteredOrdersAsync(filter, null);
 
-            var responseDtos = orders.Select(MapToResponseDto).ToList();
+            var responseDtos = orders
+            .Select(MapToResponseDto)
+            .ToList();
 
             var paged = new PagedResult<OrderResponseDto>
             {
@@ -79,6 +81,49 @@ namespace Franchisee.Web.Controllers
             return Ok(dto);
         }
 
+        [HttpGet("list")]
+        public async Task<ActionResult<PagedResult<OrdersListItemDto>>> GetOrdersList([FromQuery] OrderFilterRequest filter)
+        {
+            var userId = GetCurrentUserId();
+
+            _logger.LogInformation("Получение списка заказов (light) для пользователя {UserId}", userId);
+
+            var (items, total) = await _orderRepository.GetOrdersListAsync(filter);
+
+            var paged = new PagedResult<OrdersListItemDto>
+            {
+                Items = items,
+                TotalCount = total,
+                Page = filter.Page,
+                PageSize = filter.PageSize
+            };
+
+            return Ok(paged);
+        }
+
+        [HttpGet("archived/list")]
+        public async Task<ActionResult<PagedResult<OrdersListItemDto>>> GetArchivedOrdersList(
+        [FromQuery] OrderFilterRequest filter)
+        {
+            var userId = GetCurrentUserId();
+
+            _logger.LogInformation(
+                "Получение списка архивных заказов (light) для пользователя {UserId}",
+                userId);
+
+            var (items, total) = await _orderRepository.GetArchivedOrdersListAsync(filter);
+
+            var paged = new PagedResult<OrdersListItemDto>
+            {
+                Items = items,
+                TotalCount = total,
+                Page = filter.Page,
+                PageSize = filter.PageSize
+            };
+
+            return Ok(paged);
+        }
+
         [HttpPost]
         public async Task<ActionResult<OrderResponseDto>> CreateOrder([FromBody] CreateOrderRequest request)
         {
@@ -102,6 +147,7 @@ namespace Franchisee.Web.Controllers
                 {
                     OrderNumber = orderNumber,
                     Place = request.Place,
+                    DiscountPercent = request.DiscountPercent,
                     InspectionPlace = request.InspectionPlace ?? string.Empty,
                     OrderDate = request.OrderDate.ToUniversalTime(),
 
@@ -126,6 +172,8 @@ namespace Franchisee.Web.Controllers
                     Payments = request.Payments ?? new List<OrderPayment>()
                 };
 
+                order.RecalculateTotals();
+
                 // ИСПРАВЛЕНИЕ: НЕ вызываем CalculateAndAddDistanceWorkItem
                 // Расстояние приходит с фронта в request.WorkItems
                 // Бэк НЕ ДОЛЖЕН пересчитывать расстояние!
@@ -143,11 +191,18 @@ namespace Franchisee.Web.Controllers
                 }
 
                 _logger.LogInformation("Сохранение заказа в БД...");
+
                 await _orderRepository.AddAsync(order);
 
-                // Рассчет TotalPrice
-                order.TotalPrice = request.TotalPrice > 0 ? request.TotalPrice : order.WorkItems.Sum(w => w.Price * w.Quantity);
-                await _orderRepository.UpdateAsync(order);
+                order = await _context.Orders
+                    .Include(o => o.WorkItems)
+                    .Include(o => o.Payments)
+                    .Include(o => o.Photos)
+                    .Include(o => o.Manager)
+                    .Include(o => o.Plot)
+                    .AsSplitQuery()
+                    .AsNoTracking()
+                    .FirstAsync(o => o.Id == order.Id);
 
                 _logger.LogInformation("Заказ сохранен с ID: {OrderId}, номером: {OrderNumber}", order.Id, order.OrderNumber);
 
@@ -238,6 +293,7 @@ namespace Franchisee.Web.Controllers
                     .Include(o => o.Payments)
                     .Include(o => o.Photos)
                     .Include(o => o.Manager)
+                    .AsSplitQuery()
                     .FirstOrDefaultAsync(o => o.Id == id);
 
                 if (order == null) return NotFound();
@@ -270,44 +326,33 @@ namespace Franchisee.Web.Controllers
 
                 if (request.Payments != null)
                 {
-                    var currentTotalPaid = order.Payments.Sum(p => p.Amount);
                     var newPaymentsSum = request.Payments.Sum(p => p.Amount);
 
-                    // Получаем актуальную сумму заказа (из order, т.к. WorkItems еще не обновлены)
-                    var orderTotal = order.TotalPrice;
-
-                    // Если сумма заказа 0, пропускаем валидацию (невозможно определить процент)
-                    if (orderTotal > 0)
+                    if (newPaymentsSum < 0)
                     {
-                        // Случай 1: Первый платеж (текущая оплата была 0)
-                        if (currentTotalPaid == 0 && newPaymentsSum > 0)
+                        return BadRequest(new
                         {
-                            if (newPaymentsSum < orderTotal * 0.3m)
-                            {
-                                return BadRequest(new
-                                {
-                                    message = $"Минимальный первый платеж должен быть не менее 30% от суммы заказа. " +
-                                             $"Текущая сумма: {newPaymentsSum}, требуется минимум: {orderTotal * 0.3m:F2}"
-                                });
-                            }
-                        }
-                        // Случай 2: Добавление платежей к существующим (сумма увеличивается)
-                        else if (newPaymentsSum > currentTotalPaid)
-                        {
-                            var newPercent = (newPaymentsSum / orderTotal) * 100;
+                            message = "Сумма платежей не может быть отрицательной."
+                        });
+                    }
 
-                            // Если после добавления сумма все еще меньше 30% - ошибка
-                            if (newPercent < 30)
+                    foreach (var payment in request.Payments)
+                    {
+                        if (payment.Amount <= 0)
+                        {
+                            return BadRequest(new
                             {
-                                return BadRequest(new
-                                {
-                                    message = $"Сумма платежей не может быть меньше 30% от стоимости заказа. " +
-                                             $"Текущий процент: {newPercent:F1}%"
-                                });
-                            }
+                                message = "Каждый платеж должен быть больше 0."
+                            });
                         }
-                        // Случай 3: Уменьшение суммы платежей - разрешаем (это может быть исправление ошибки)
-                        // Не блокируем
+
+                        if (payment.PaymentDate == default)
+                        {
+                            return BadRequest(new
+                            {
+                                message = "Дата платежа обязательна."
+                            });
+                        }
                     }
                 }
 
@@ -316,19 +361,56 @@ namespace Franchisee.Web.Controllers
                 try
                 {
                     // Обновляем основные поля
-                    if (!string.IsNullOrEmpty(request.Place)) order.Place = request.Place;
-                    if (!string.IsNullOrEmpty(request.InspectionPlace)) order.InspectionPlace = request.InspectionPlace;
-                    if (request.OrderDate.HasValue) order.OrderDate = request.OrderDate.Value.ToUniversalTime();
-                    if (!string.IsNullOrEmpty(request.DeceasedFullName)) order.DeceasedFullName = request.DeceasedFullName;
-                    if (!string.IsNullOrEmpty(request.CustomerFullName)) order.CustomerFullName = request.CustomerFullName;
-                    if (!string.IsNullOrEmpty(request.CustomerEmail)) order.CustomerEmail = request.CustomerEmail;
-                    if (!string.IsNullOrEmpty(request.Phone)) order.Phone = request.Phone;
-                    if (!string.IsNullOrEmpty(request.Address)) order.Address = request.Address;
-                    if (!string.IsNullOrEmpty(request.MonumentType)) order.MonumentType = request.MonumentType;
-                    if (!string.IsNullOrEmpty(request.MonumentSize)) order.MonumentSize = request.MonumentSize;
+                    if (request.Place != null)
+                        order.Place = request.Place;
 
-                    order.AdditionalInfo = request.AdditionalInfo ?? order.AdditionalInfo;
-                    if (request.Status.HasValue) order.Status = request.Status.Value;
+                    if (request.InspectionPlace != null)
+                        order.InspectionPlace = request.InspectionPlace;
+
+                    if (request.OrderDate.HasValue)
+                        order.OrderDate = request.OrderDate.Value.ToUniversalTime();
+
+                    if (request.PlotId.HasValue)
+                        order.PlotId = request.PlotId;
+
+                    if (request.Latitude.HasValue)
+                        order.Latitude = request.Latitude;
+
+                    if (request.Longitude.HasValue)
+                        order.Longitude = request.Longitude;
+
+                    if (request.DeceasedFullName != null)
+                        order.DeceasedFullName = request.DeceasedFullName;
+
+                    if (request.CustomerFullName != null)
+                        order.CustomerFullName = request.CustomerFullName;
+
+                    if (request.CustomerEmail != null)
+                        order.CustomerEmail = request.CustomerEmail;
+
+                    if (request.Phone != null)
+                        order.Phone = request.Phone;
+
+                    if (request.Address != null)
+                        order.Address = request.Address;
+
+                    if (request.MonumentType != null)
+                        order.MonumentType = request.MonumentType;
+
+                    if (request.MonumentSize != null)
+                        order.MonumentSize = request.MonumentSize;
+
+                    if (request.AdditionalInfo != null)
+                        order.AdditionalInfo = request.AdditionalInfo;
+
+                    if (request.DiscountPercent.HasValue)
+                        order.DiscountPercent = request.DiscountPercent.Value;
+
+                    if (request.Status.HasValue)
+                    {
+                        order.Status = request.Status.Value;
+                    }
+
                     order.UpdatedAt = DateTime.UtcNow;
 
                     // WorkItems - полная замена
@@ -346,6 +428,8 @@ namespace Franchisee.Web.Controllers
                         }
                     }
 
+                    order.RecalculateTotals();
+
                     // Payments - полная замена
                     if (request.Payments != null)
                     {
@@ -362,7 +446,7 @@ namespace Franchisee.Web.Controllers
                         }
                     }
 
-                    await _context.SaveChangesAsync();
+                    await _orderRepository.UpdateAsync(order);
 
                     if (request.RemovedPhotoIds?.Any() == true)
                     {
@@ -402,7 +486,6 @@ namespace Franchisee.Web.Controllers
                         await _mediaService.CommitTempToOrderAsync(id, request.TempVideoIds, userId, MediaType.Video);
                     }
 
-                    await _context.SaveChangesAsync();
                     await transaction.CommitAsync();
 
                     // Перезагружаем заказ
@@ -687,22 +770,6 @@ namespace Franchisee.Web.Controllers
             if (oldWorkItemsJson != newWorkItemsJson)
             {
                 changes["WorkItems"] = new { old = oldWorkItems, @new = newWorkItems };
-
-                // НОВОЕ: Отслеживаем изменение общей суммы
-                var oldTotal = order.WorkItems.Sum(w => w.Price * w.Quantity);
-                var newTotal = request.WorkItems.Sum(w => w.Price * w.Quantity);
-
-                if (oldTotal != newTotal)
-                {
-                    changes["TotalPrice"] = new
-                    {
-                        old = oldTotal,
-                        @new = newTotal
-                    };
-
-                    _logger.LogDebug("Обнаружено изменение суммы заказа: {OldTotal} -> {NewTotal}",
-                        oldTotal, newTotal);
-                }
             }
         }
 
@@ -831,23 +898,7 @@ namespace Franchisee.Web.Controllers
 
         private OrderResponseDto MapToResponseDto(Order order)
         {
-            // Computed TotalPrice
-            var total = order.WorkItems.Sum(w => w.Price * w.Quantity);
-
-            // Вычисление нового статуса оплаты - ИСПРАВЛЕНО
-            var paid = order.Payments.Sum(p => p.Amount);
-            var paymentStatus = PaymentStatus.Advance; // По умолчанию
-
-            if (total > 0)
-            {
-                if (paid >= total)
-                    paymentStatus = PaymentStatus.FullyPaid;
-                else if (paid > total * 0.3m)  // ИСПРАВЛЕНО: строго больше 30%
-                    paymentStatus = PaymentStatus.PartiallyPaid;
-                else if (paid > 0)  // от 0% до 30% включительно
-                    paymentStatus = PaymentStatus.Advance;
-                // else paid == 0 - остается Advance (по умолчанию)
-            }
+            var paymentStatus = CalculatePaymentStatus(order);
 
             return new OrderResponseDto
             {
@@ -870,14 +921,36 @@ namespace Franchisee.Web.Controllers
                 MonumentType = order.MonumentType,
                 MonumentSize = order.MonumentSize,
                 AdditionalInfo = order.AdditionalInfo,
+
                 Status = order.Status,
-                TotalPrice = total,
+
+                Subtotal = order.Subtotal,
+                DiscountPercent = order.DiscountPercent,
+                DiscountAmount = order.DiscountAmount,
+                TotalPrice = order.TotalPrice,
+
                 CreatedAt = order.CreatedAt,
                 UpdatedAt = order.UpdatedAt,
+
                 ManagerId = order.ManagerId,
                 ManagerFullName = order.Manager?.FullName ?? string.Empty,
-                WorkItems = order.WorkItems,
-                Payments = order.Payments,
+                WorkItems = order.WorkItems.Select(w => new OrderWorkItemDto
+                {
+                    Id = w.Id,
+                    WorkDescription = w.WorkDescription,
+                    Price = w.Price,
+                    Quantity = w.Quantity,
+                    Note = w.Note,
+                    DistanceKm = w.DistanceKm
+                }).ToList(),
+                Payments = order.Payments.Select(p => new OrderPaymentDto
+                {
+                    Id = p.Id,
+                    Amount = p.Amount,
+                    PaymentDate = p.PaymentDate,
+                    PaymentType = p.PaymentType,
+                    Note = p.Note
+                }).ToList(),
                 Photos = order.Photos.Select(p => new OrderMediaDto
                 {
                     Id = p.Id,
@@ -910,44 +983,14 @@ namespace Franchisee.Web.Controllers
             {
                 // ФИКС: Используем прямой запрос к БД с IgnoreQueryFilters
                 var query = _context.Orders
-                .IgnoreQueryFilters()
-                .Where(o => o.IsDeleted)
-                .Include(o => o.WorkItems)
-                .Include(o => o.Payments)
-                .Include(o => o.Photos)
-                .Include(o => o.Manager)
-                .Select(o => new Order // ПРОЕКЦИЯ ДЛЯ АРХИВНЫХ ЗАКАЗОВ
-                {
-                    Id = o.Id,
-                    OrderNumber = o.OrderNumber,
-                    Place = o.Place,
-                    InspectionPlace = o.InspectionPlace,
-                    OrderDate = o.OrderDate,
-                    DeceasedFullName = o.DeceasedFullName,
-                    CustomerFullName = o.CustomerFullName,
-                    CustomerEmail = o.CustomerEmail,
-                    Phone = o.Phone,
-                    Address = o.Address,
-                    MonumentType = o.MonumentType,
-                    MonumentSize = o.MonumentSize,
-                    AdditionalInfo = o.AdditionalInfo,
-                    Status = o.Status,
-                    TotalPrice = o.TotalPrice,
-                    CreatedAt = o.CreatedAt,
-                    UpdatedAt = o.UpdatedAt,
-                    ManagerId = o.ManagerId,
-                    Manager = o.Manager == null ? null : new Manager
-                    {
-                        FullName = o.Manager.FullName,
-                    },
-                    WorkItems = o.WorkItems,
-                    Payments = o.Payments,
-                    Photos = o.Photos,
-                    IsDeleted = o.IsDeleted,
-                    DeletedAt = o.DeletedAt,
-                    IsArchived = o.IsArchived
-                })
-                .AsNoTracking();
+                    .IgnoreQueryFilters()
+                    .Where(o => o.IsDeleted)
+                    .Include(o => o.WorkItems)
+                    .Include(o => o.Payments)
+                    .Include(o => o.Photos)
+                    .Include(o => o.Manager)
+                    .AsSplitQuery()
+                    .AsNoTracking();
 
                 // Применяем фильтры
                 if (!string.IsNullOrWhiteSpace(filter.SearchQuery))
@@ -1087,44 +1130,12 @@ namespace Franchisee.Web.Controllers
             try
             {
                 var order = await _context.Orders
-                .IgnoreQueryFilters()
-                .Where(o => o.Id == id && o.IsDeleted)
-                .Include(o => o.WorkItems)
-                .Include(o => o.Payments)
-                .Include(o => o.Photos)
-                .Include(o => o.Manager)
-                .Select(o => new Order // ПРОЕКЦИЯ ДЛЯ АРХИВНОГО ЗАКАЗА
-                {
-                    Id = o.Id,
-                    OrderNumber = o.OrderNumber,
-                    Place = o.Place,
-                    InspectionPlace = o.InspectionPlace,
-                    OrderDate = o.OrderDate,
-                    DeceasedFullName = o.DeceasedFullName,
-                    CustomerFullName = o.CustomerFullName,
-                    CustomerEmail = o.CustomerEmail,
-                    Phone = o.Phone,
-                    Address = o.Address,
-                    MonumentType = o.MonumentType,
-                    MonumentSize = o.MonumentSize,
-                    AdditionalInfo = o.AdditionalInfo,
-                    Status = o.Status,
-                    TotalPrice = o.TotalPrice,
-                    CreatedAt = o.CreatedAt,
-                    UpdatedAt = o.UpdatedAt,
-                    ManagerId = o.ManagerId,
-                    Manager = o.Manager == null ? null : new Manager
-                    {
-                        FullName = o.Manager.FullName,
-                    },
-                    WorkItems = o.WorkItems,
-                    Payments = o.Payments,
-                    Photos = o.Photos,
-                    IsDeleted = o.IsDeleted,
-                    DeletedAt = o.DeletedAt,
-                    IsArchived = o.IsArchived
-                })
-            .FirstOrDefaultAsync();
+                    .IgnoreQueryFilters()
+                    .Include(o => o.WorkItems)
+                    .Include(o => o.Payments)
+                    .Include(o => o.Photos)
+                    .Include(o => o.Manager)
+                    .FirstOrDefaultAsync(o => o.Id == id && o.IsDeleted);
 
                 if (order == null)
                     return NotFound("Архивный заказ не найден");
@@ -1140,5 +1151,26 @@ namespace Franchisee.Web.Controllers
         }
 
         #endregion
+
+        private PaymentStatus CalculatePaymentStatus(Order order)
+        {
+            var paid = order.Payments?.Sum(p => p.Amount) ?? 0m;
+
+            if (order.TotalPrice <= 0)
+                return PaymentStatus.Advance;
+
+            if (order.TotalPrice == 0)
+                return PaymentStatus.Advance;
+
+            var percent = paid / order.TotalPrice;
+
+            if (percent <= 0.3m)
+                return PaymentStatus.Advance;
+
+            if (percent < 1m)
+                return PaymentStatus.PartiallyPaid;
+
+            return PaymentStatus.FullyPaid;
+        }
     }
 }

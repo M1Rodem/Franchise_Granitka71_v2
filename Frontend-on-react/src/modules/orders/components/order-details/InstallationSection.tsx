@@ -16,10 +16,7 @@ interface Props {
 
 export function InstallationSection({
   plotName,
-  place,
   inspectionPlace,
-  latitude,
-  longitude,
   distanceKm,
   plotCoordinates,
   destinationCoordinates,
@@ -41,7 +38,7 @@ export function InstallationSection({
       <div className={layout.grid2}>
         <div className={layout.field}>
           <span className={layout.label}>Участок</span>
-          <span className={layout.value}>{place}</span>
+          <span className={layout.value}>{plotName ?? '—'}</span>
         </div>
 
         <div className={layout.field}>

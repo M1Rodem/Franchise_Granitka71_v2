@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { useMutation } from '@tanstack/react-query'
 
@@ -8,7 +8,7 @@ import input from '@/shared/ui/input.module.css'
 
 import { queryClient } from '@/app/providers/query-client'
 import { plotsApi } from '@/modules/plots/api/plots.api'
-import { usePlots } from '@/modules/plots/hooks/use-plots'
+import { usePlotsPage } from '@/modules/plots/hooks/use-plots-options'
 import { PlotsTable } from '@/modules/plots/components/PlotsTable'
 import type { PlotDto } from '@/modules/plots/types/plots.types'
 
@@ -16,6 +16,9 @@ import { OrdersStateView } from '@/modules/orders/components/OrdersStateView'
 import { FormModal } from '@/shared/ui/modal/FormModal'
 import { MapPreviewModal } from '@/shared/ui/modal/MapPreviewModal'
 import { useConfirmModalStore } from '@/shared/ui/modal/modal.store'
+import { PlotsPagination } from '@/modules/plots/components/PlotsPagination'
+
+import { useUiStore } from '@/shared/store/ui.store'
 
 import {
   YandexMapProvider,
@@ -24,18 +27,42 @@ import {
 } from '@/shared/lib/yandex-map'
 
 import styles from './plots.page.module.css'
+import btn1 from '@/modules/orders/components/orders-filter-bar.module.css';
 
 export default function PlotsPage() {
-  const plotsQuery = usePlots()
+  const [search, setSearch] = useState('')
+  const [page, setPage] = useState(1)
+  
+  const pageSize = 10
+
+  const plotsQuery = usePlotsPage(page, search)
+
+  const items = plotsQuery.data?.items ?? []
+  const total = plotsQuery.data?.total ?? 0
+  const totalPages = Math.ceil(total / pageSize)  
+
+  const isFetching = plotsQuery.isFetching
   const openConfirm = useConfirmModalStore((state) => state.open)
 
-  const [isCreateOpen, setIsCreateOpen] = useState(false)
+  const isCreateOpen = useUiStore((s) => s.plotCreateOpen)
+  const closeCreateModal = useUiStore((s) => s.closePlotCreateModal)
   const [name, setName] = useState('')
   const [address, setAddress] = useState('')
   const [latitude, setLatitude] = useState<number | null>(null)
   const [longitude, setLongitude] = useState<number | null>(null)
 
   const [mapPlot, setMapPlot] = useState<PlotDto | null>(null)
+
+  const setHeader = useUiStore((s) => s.setPlotsHeader)
+  const resetHeader = useUiStore((s) => s.resetHeader)
+
+  useEffect(() => {
+    setHeader()
+
+    return () => {
+      resetHeader()
+    }
+  }, [setHeader, resetHeader])
 
   const createMutation = useMutation({
     mutationFn: plotsApi.createPlot,
@@ -51,6 +78,10 @@ export default function PlotsPage() {
     },
   })
 
+  const onReset = () => {
+    setSearch('')
+  }
+
   const handleCreate = async () => {
     if (!latitude || !longitude) return
 
@@ -62,7 +93,7 @@ export default function PlotsPage() {
       isActive: true,
     })
 
-    setIsCreateOpen(false)
+    closeCreateModal()
     setName('')
     setAddress('')
     setLatitude(null)
@@ -72,13 +103,19 @@ export default function PlotsPage() {
   return (
     <div className={styles.pageWrapper}>
       <section className={surface.surface}>
-        <div className={styles.headerActions}>
-          <button
-            type="button"
-            className={`${button.btn} ${button.btnPrimary} ${styles.addButton}`}
-            onClick={() => setIsCreateOpen(true)}
-          >
-            Добавить участок
+        <div className={styles.searchContainer}>
+          <input
+            type="text"
+            placeholder="Поиск участка или адреса..."
+            className={input.input}
+            value={search}
+            onChange={(e) => {
+              setSearch(e.target.value)
+              setPage(1)
+            }}
+          />
+          <button type="button" className={btn1.clearButton} onClick={onReset} disabled={isFetching}>
+            Сброс
           </button>
         </div>
       </section>
@@ -91,46 +128,53 @@ export default function PlotsPage() {
       )}
 
       {!plotsQuery.isPending &&
-        plotsQuery.data &&
-        plotsQuery.data.length > 0 && (
-          <AnimatePresence mode="wait">
-            <motion.div
-              key="plots-table"
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -12 }}
-              transition={{ duration: 0.25 }}
-            >
-              <PlotsTable
-                plots={plotsQuery.data}
-                onDelete={(id) =>
-                  openConfirm({
-                    title: 'Удаление участка',
-                    message: 'Удалить участок?',
-                    confirmText: 'Удалить',
-                    cancelText: 'Отмена',
-                    onConfirm: async () => {
-                      await deleteMutation.mutateAsync(id)
-                    },
-                  })
-                }
-                onShowMap={(plot) => setMapPlot(plot)}
-              />
-            </motion.div>
-          </AnimatePresence>
-        )}
+      items.length > 0 && (
+        <AnimatePresence mode="wait">
+          <motion.div
+            key="plots-table"
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -12 }}
+            transition={{ duration: 0.25 }}
+          >
+            <PlotsTable
+              plots={items}
+              onDelete={(id) =>
+                openConfirm({
+                  title: 'Удаление участка',
+                  message: 'Удалить участок?',
+                  confirmText: 'Удалить',
+                  cancelText: 'Отмена',
+                  onConfirm: async () => {
+                    await deleteMutation.mutateAsync(id)
+                  },
+                })
+              }
+              onShowMap={(plot) => setMapPlot(plot)}
+            />
+
+            <PlotsPagination
+              page={page}
+              totalPages={totalPages}
+              totalCount={total}
+              isFetching={plotsQuery.isFetching}
+              onPageChange={setPage}
+            />
+          </motion.div>
+        </AnimatePresence>
+    )}
 
       {/* CREATE MODAL */}
       <FormModal
         isOpen={isCreateOpen}
         title="Добавить участок"
-        onClose={() => setIsCreateOpen(false)}
+        onClose={closeCreateModal}
         footer={
           <>
             <button
               type="button"
               className={`${button.btn} ${button.btnSecondary}`}
-              onClick={() => setIsCreateOpen(false)}
+              onClick={() => closeCreateModal()}
             >
               Отмена
             </button>
@@ -217,7 +261,7 @@ export default function PlotsPage() {
                   })
                 }}
               >
-                {/* ✅ Маркер теперь внутри MapView, получит доступ к контексту */}
+                {/* Маркер теперь внутри MapView, получит доступ к контексту */}
                 {latitude !== null && longitude !== null && (
                   <MapMarker coords={[latitude, longitude]} />
                 )}

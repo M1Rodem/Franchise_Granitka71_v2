@@ -9,6 +9,7 @@
 .grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
+
   gap: 24px;
 }
 
@@ -16,6 +17,13 @@
   display: flex;
   flex-direction: column;
   gap: 24px;
+
+  height: 100%;
+}
+
+.deceasedLimit {
+  max-height: 600px;
+  overflow: auto;
 }
 
 /* Sticky actions wrapper */

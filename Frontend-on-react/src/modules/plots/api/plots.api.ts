@@ -1,13 +1,23 @@
 import { httpClient } from '@/shared/api/http-client';
-import { plotsSchema, type PlotDto } from '../types/plots.types';
+import type { PlotDto } from '../types/plots.types';
 
 export const plotsApi = {
-  async getPlots(includeInactive = false): Promise<PlotDto[]> {
+  async getPlots(
+    page: number,
+    pageSize: number,
+    search?: string,
+    includeInactive = false
+  ): Promise<{ items: PlotDto[]; total: number }> {
     const response = await httpClient.get('/api/plots', {
-      params: { includeInactive },
+      params: {
+        page,
+        pageSize,
+        includeInactive,
+        search: search || undefined,
+      },
     });
 
-    return plotsSchema.parse(response.data);
+    return response.data;
   },
 
   async deletePlot(id: number) {
@@ -29,6 +39,20 @@ export const plotsApi = {
       isActive: data.isActive ?? true,
     })
 
+    return response.data
+  },
+  async getPlotsOptions(): Promise<PlotDto[]> {
+    const response = await httpClient.get('/api/plots', {
+      params: {
+        page: 1,
+        pageSize: 1000,
+      },
+    })
+
+    return response.data.items
+  },
+  async getAllPlots(): Promise<PlotDto[]> {
+    const response = await httpClient.get('/api/plots/all')
     return response.data
   }
 };

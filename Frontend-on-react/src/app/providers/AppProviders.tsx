@@ -1,29 +1,13 @@
 ﻿import { QueryClientProvider } from '@tanstack/react-query';
 import { useEffect } from 'react';
-import { BrowserRouter, useNavigate } from 'react-router-dom';
+
 import { queryClient } from '@/app/providers/query-client';
-import { UNAUTHORIZED_EVENT } from '@/shared/api/http-client';
+
 import { useAuthStore } from '@/shared/store/auth.store';
 import { TempMessageProvider } from '@/shared/ui/TempMessageProvider';
 
 interface AppProvidersProps {
   children: React.ReactNode;
-}
-
-function UnauthorizedListener({ children }: AppProvidersProps) {
-  const navigate = useNavigate();
-
-  useEffect(() => {
-    const handler = () => navigate('/login', { replace: true });
-
-    window.addEventListener(UNAUTHORIZED_EVENT, handler);
-    return () => window.removeEventListener(UNAUTHORIZED_EVENT, handler);
-  }, [navigate]);
-
-  return <>
-    {children}
-    <TempMessageProvider />
-  </>;
 }
 
 function SessionBootstrap({ children }: AppProvidersProps) {
@@ -54,11 +38,11 @@ function SessionBootstrap({ children }: AppProvidersProps) {
 export function AppProviders({ children }: AppProvidersProps) {
   return (
     <QueryClientProvider client={queryClient}>
-      <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
-        <SessionBootstrap>
-          <UnauthorizedListener>{children}</UnauthorizedListener>
-        </SessionBootstrap>
-      </BrowserRouter>
+      <SessionBootstrap>
+        {children}
+        <TempMessageProvider />
+      </SessionBootstrap>
     </QueryClientProvider>
-  );
+  )
 }
+ 

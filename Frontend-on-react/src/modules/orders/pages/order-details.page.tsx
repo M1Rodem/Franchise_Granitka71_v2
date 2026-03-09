@@ -16,6 +16,8 @@ import { WorksSection } from '@/modules/orders/components/order-details/WorksSec
 import { PaymentsSection } from '@/modules/orders/components/order-details/PaymentsSection';
 import { MediaSection } from '@/modules/orders/components/order-details/MediaSection';
 import { OrderActions } from '@/modules/orders/components/order-details/OrderActions';
+import { AdditionalInfoSection } from '@/modules/orders/components/order-details/AdditionalInfoSection';
+
 
 import styles from './order-details.page.module.css';
 
@@ -137,7 +139,6 @@ export default function OrderDetailsPage() {
       <MonumentSection
       type={data.monumentType}
       size={data.monumentSize}
-      additionalInfo={data.additionalInfo}
       />
 
       <MetadataSection
@@ -165,7 +166,10 @@ export default function OrderDetailsPage() {
       <WorksSection items={data.workItems} />
       <PaymentsSection items={data.payments} />
       <MediaSection items={data.photos} />
-
+      
+      <AdditionalInfoSection
+        additionalInfo={data.additionalInfo}
+      />
       <OrderActions orderId={data.id} />
     </div>
   );

@@ -19,18 +19,36 @@ namespace Franchisee.Web.Services
             return await _context.Plots.FindAsync(id);
         }
 
-        public async Task<IEnumerable<Plot>> GetAllAsync(bool includeInactive = false)
+        public async Task<(IEnumerable<Plot> Items, int Total)> GetAllAsync(
+            bool includeInactive,
+            string? search,
+            int page,
+            int pageSize)
         {
             var query = _context.Plots.AsQueryable();
 
             if (!includeInactive)
-            {
                 query = query.Where(p => p.IsActive);
+
+            if (!string.IsNullOrWhiteSpace(search))
+            {
+                var term = $"%{search}%";
+
+                query = query.Where(p =>
+                    EF.Functions.Like(p.Name, term) ||
+                    (p.Description != null && EF.Functions.Like(p.Description, term))
+                );
             }
 
-            return await query
+            var total = await query.CountAsync();
+
+            var items = await query
                 .OrderBy(p => p.Name)
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
                 .ToListAsync();
+
+            return (items, total);
         }
 
         public async Task AddAsync(Plot plot)

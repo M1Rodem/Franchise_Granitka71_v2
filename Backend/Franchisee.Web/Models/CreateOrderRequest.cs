@@ -26,7 +26,9 @@ namespace Franchisee.Web.Models
         public string MonumentType { get; set; } = string.Empty;
         public string MonumentSize { get; set; } = string.Empty;
         public string? AdditionalInfo { get; set; }
-        public decimal TotalPrice { get; set; } = 0;
+
+        [Range(0, 10)]
+        public decimal DiscountPercent { get; set; }
 
         public List<OrderWorkItem>? WorkItems { get; set; } = new();
         public List<OrderPayment>? Payments { get; set; } = new();

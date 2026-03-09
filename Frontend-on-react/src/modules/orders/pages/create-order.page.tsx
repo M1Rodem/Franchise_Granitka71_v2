@@ -7,11 +7,23 @@ import { WorksSection } from '@/modules/orders/components/order-form/sections/wo
 import { PaymentsSection } from '@/modules/orders/components/order-form/sections/payments-section'
 import { MediaSection } from '@/modules/orders/components/order-form/sections/media-section'
 import { AdditionalInfoSection } from '@/modules/orders/components/order-form/sections/additional-info-section'
-import { OrderFormActions } from '@/modules/orders/components/order-form/sections/order-form-actions'
 
 import styles from './create-order.page.module.css'
 
+import { useEffect } from 'react'
+import { useUiStore } from '@/shared/store/ui.store'
+
 export default function CreateOrderPage() {
+  const setHeader = useUiStore((s) => s.setOrderCreateHeader)
+  const resetHeader = useUiStore((s) => s.resetHeader)
+
+  useEffect(() => {
+    setHeader()
+
+    return () => {
+      resetHeader()
+    }
+  }, [setHeader, resetHeader])
   return (
     <OrderFormProvider>
       <div className={styles.page}>
@@ -31,10 +43,6 @@ export default function CreateOrderPage() {
         <PaymentsSection />
         <MediaSection />
         <AdditionalInfoSection />
-
-        <div className={styles.actions}>
-          <OrderFormActions />
-        </div>
       </div>
     </OrderFormProvider>
   )

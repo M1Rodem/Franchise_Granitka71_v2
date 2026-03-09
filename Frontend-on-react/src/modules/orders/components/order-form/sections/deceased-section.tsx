@@ -6,6 +6,7 @@ import type { OrderFormModel } from '../order-form.schema'
 import surface from '@/shared/ui/surface.module.css'
 import layout from '@/shared/ui/form-layout.module.css'
 import input from '@/shared/ui/input.module.css'
+import styles from '@/modules/orders/pages/create-order.page.module.css'
 
 export function DeceasedSection() {
   const {
@@ -13,7 +14,7 @@ export function DeceasedSection() {
   } = useFormContext<OrderFormModel>()
 
   return (
-    <div className={surface.surface}>
+    <div className={`${surface.surface} ${styles.deceasedLimit}`}>
       <h2 className={surface.sectionTitle}>
         ФИО и даты усопшего
       </h2>

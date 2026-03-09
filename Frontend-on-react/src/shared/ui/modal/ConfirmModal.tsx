@@ -12,6 +12,7 @@ export function ConfirmModal() {
     confirmText,
     cancelText,
     onConfirm,
+    onCancel,
     close,
   } = useConfirmModalStore();
 
@@ -72,7 +73,10 @@ export function ConfirmModal() {
                 <button
                 type="button"
                 className={styles.cancelButton}
-                onClick={close}
+                onClick={() => {
+                    onCancel?.();
+                    close();
+                }}
                 >
                 {cancelText}
                 </button>

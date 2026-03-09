@@ -27,7 +27,11 @@
 .textarea {
   composes: input;
   padding: 12px 14px;
-  resize: vertical;
+    resize: vertical;
+
+  max-height: 447px;
+
+  overflow-y: auto;
 }
 
 /* ===== INTERACTION ===== */

@@ -20,7 +20,9 @@ namespace Franchisee.Web.Models
         public string? MonumentSize { get; set; }
         public string? AdditionalInfo { get; set; }
         public OrderStatus? Status { get; set; }
-        public decimal? TotalPrice { get; set; }
+
+        public decimal? DiscountPercent { get; set; }
+        public decimal? DiscountAmount { get; set; }
 
         // Коллекции
         public List<OrderWorkItem>? WorkItems { get; set; }

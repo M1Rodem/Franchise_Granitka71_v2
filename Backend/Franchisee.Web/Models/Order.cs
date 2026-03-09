@@ -40,7 +40,13 @@ namespace Franchisee.Web.Models
         public string AdditionalInfo { get; set; } = string.Empty;
         public OrderStatus Status { get; set; } = OrderStatus.Новый;
 
-        public decimal TotalPrice { get; set; } = 0;
+        public decimal Subtotal { get; private set; }
+
+        [Range(0, 10)]
+        public decimal DiscountPercent { get; set; } = 0;
+        public decimal DiscountAmount { get; private set; }
+
+        public decimal TotalPrice { get; private set; }
 
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
         public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
@@ -52,5 +58,38 @@ namespace Franchisee.Web.Models
         public bool IsDeleted { get; set; } = false;
         public DateTime? DeletedAt { get; set; }
         public bool IsArchived { get; set; } = false;
+
+        public void RecalculateTotals()
+        {
+            if (WorkItems == null || !WorkItems.Any())
+            {
+                Subtotal = 0;
+                DiscountAmount = 0;
+                TotalPrice = 0;
+                return;
+            }
+
+            var subtotal = WorkItems.Sum(w => w.Price * w.Quantity);
+
+            Subtotal = Math.Round(subtotal, 2);
+
+            var percent = DiscountPercent;
+
+            if (percent < 0)
+                percent = 0;
+
+            if (percent > 10)
+                percent = 10;
+
+            DiscountAmount = Math.Round(Subtotal * percent / 100, 2);
+
+            var total = Subtotal - DiscountAmount;
+
+            if (total < 0)
+                total = 0;
+
+            TotalPrice = Math.Round(total, 2);
+        }
     }
+
 }

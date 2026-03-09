@@ -190,6 +190,15 @@ namespace Franchisee.Web.Configuration
             modelBuilder.Entity<Order>()
                 .Property(o => o.InspectionPlace)
                 .HasMaxLength(200);
+
+            modelBuilder.Entity<OrderWorkItem>()
+                .HasQueryFilter(w => !w.Order!.IsDeleted);
+
+            modelBuilder.Entity<OrderPayment>()
+                .HasQueryFilter(p => !p.Order!.IsDeleted);
+
+            modelBuilder.Entity<OrderMedia>()
+                .HasQueryFilter(m => !m.Order!.IsDeleted);
         }
     }
 }

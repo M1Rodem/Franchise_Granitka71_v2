@@ -641,7 +641,7 @@ namespace Franchisee.Web.Services
                     // ручного изменения через поле TotalPrice в changes
                     if (!changesDict.ContainsKey("TotalPrice"))
                     {
-                        order.TotalPrice = order.WorkItems.Sum(w => w.Price * w.Quantity);
+                        order.RecalculateTotals();
                     }
 
                     order.UpdatedAt = DateTime.UtcNow;
@@ -937,12 +937,7 @@ namespace Franchisee.Web.Services
                         }
                         break;
                     case "TotalPrice":
-                        if (newValue.TryGetDecimal(out var total))
-                        {
-                            order.TotalPrice = total;
-                            return true;
-                        }
-                        break;
+                        return false;
                 }
                 return false;
             }

@@ -190,9 +190,7 @@
 
   .navLeft,
   .navRight {
-    width: 40px;
-    height: 40px;
-    font-size: 20px;
+    display: none;
   }
 
   .download {
@@ -200,5 +198,4 @@
     height: 38px;
     font-size: 18px;
   }
-
 }

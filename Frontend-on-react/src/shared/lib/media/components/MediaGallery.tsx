@@ -28,7 +28,10 @@ export function MediaGallery({ items }: Props) {
       </div>
 
       <MediaPreviewModal
-        items={items}
+        items={items.map((m: MediaDto) => ({
+          ...m,
+          mediaType: Number(m.mediaType),
+        }))}
         index={selectedIndex}
         onClose={() => setSelectedIndex(null)}
         onNavigate={(i) => setSelectedIndex(i)}

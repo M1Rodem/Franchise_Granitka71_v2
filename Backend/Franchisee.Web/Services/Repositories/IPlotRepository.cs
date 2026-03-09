@@ -5,7 +5,12 @@ namespace Franchisee.Web.Services.Repositories
     public interface IPlotRepository
     {
         Task<Plot?> GetByIdAsync(int id);
-        Task<IEnumerable<Plot>> GetAllAsync(bool includeInactive = false);
+        Task<(IEnumerable<Plot> Items, int Total)> GetAllAsync(
+            bool includeInactive,
+            string? search,
+            int page,
+            int pageSize
+        );
         Task AddAsync(Plot plot);
         Task UpdateAsync(Plot plot);
         Task DeleteAsync(int id);

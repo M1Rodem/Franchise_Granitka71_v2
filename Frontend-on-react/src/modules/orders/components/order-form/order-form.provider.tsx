@@ -1,7 +1,7 @@
 'use client'
 
 import type { ReactNode } from 'react'
-import { useMemo } from 'react'
+import { useMemo, useContext, createContext, useEffect, useRef, useState } from 'react'
 import { useForm, FormProvider } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
@@ -16,6 +16,8 @@ import { ordersKeys } from '@/modules/orders/lib/orders.keys'
 
 import { showTempMessage } from '@/shared/ui/temp-message.service'
 import { isAxiosError } from 'axios'
+import { useUiStore } from '@/shared/store/ui.store'
+import { useUnsavedChangesGuard } from '@/shared/hooks/useUnsavedChangesGuard'
 
 interface OrderFormProviderProps {
   children: ReactNode
@@ -24,14 +26,33 @@ interface OrderFormProviderProps {
   orderId?: number
 }
 
+interface OrderFormContextValue {
+  mode: 'create' | 'edit'
+  orderId?: number
+}
+
+const OrderFormContext = createContext<OrderFormContextValue | null>(null)
+
+export function useOrderForm() {
+  const ctx = useContext(OrderFormContext)
+
+  if (!ctx) {
+    throw new Error('useOrderForm must be used inside OrderFormProvider')
+  }
+
+  return ctx
+}
+
 export function OrderFormProvider({
   children,
   mode = 'create',
   initialValues,
+  orderId,
 }: OrderFormProviderProps) {
 
   const queryClient = useQueryClient()
   const navigate = useNavigate()
+  const [isSaving, setIsSaving] = useState(false)
 
   const defaultValues = useMemo(() => {
     if (mode === 'edit' && initialValues) {
@@ -43,8 +64,33 @@ export function OrderFormProvider({
   const methods = useForm<OrderFormModel>({
     resolver: zodResolver(orderFormSchema),
     defaultValues,
-    mode: 'onSubmit',
+    mode: "onSubmit",
   })
+
+  const {
+    formState: { isDirty, isSubmitted, touchedFields },
+  } = methods
+
+  const isTouched = Object.keys(touchedFields).length > 0
+
+  const shouldBlock = isTouched && isDirty && !isSaving
+
+  useUnsavedChangesGuard(shouldBlock)
+
+  const didInitRef = useRef(false)
+
+  useEffect(() => {
+    if (mode === 'edit' && initialValues && !didInitRef.current) {
+      methods.reset(initialValues)
+      didInitRef.current = true
+    }
+  }, [initialValues, mode, methods])
+
+  const setHeaderSubmitDisabled = useUiStore((s) => s.setHeaderSubmitDisabled)
+
+  useEffect(() => {
+    setHeaderSubmitDisabled(!isDirty)
+  }, [isDirty, setHeaderSubmitDisabled])
 
   const createMutation = useMutation({
     mutationFn: ordersApi.createOrder,
@@ -56,23 +102,53 @@ export function OrderFormProvider({
 
       showTempMessage('success', 'Заказ успешно создан')
 
-      // redirect на страницу просмотра заказа
-      if (order?.id) {
-        navigate(`/orders/${order.id}`)
+      const id =
+        order?.id ??
+        order?.Id ??
+        order?.orderId ??
+        order?.OrderId
+
+      if (id) {
+        navigate(`/orders/${id}`)
+      } else {
+        navigate('/orders')
       }
+    },
+  })
+
+  const updateMutation = useMutation({
+    mutationFn: ({ id, payload }: { id: number; payload: any }) =>
+      ordersApi.updateOrder(id, payload),
+
+    onSuccess: (order) => {
+      queryClient.invalidateQueries({
+        queryKey: ordersKeys.byId(order.id),
+      })
+
+      showTempMessage('success', 'Заказ обновлен')
+
+      navigate(`/orders/${order.id}`)
     },
   })
 
   const onSubmit = methods.handleSubmit(
     async (values) => {
-      try {
+
+    setIsSaving(true)
+
+    try {
 
         if (mode === 'create') {
-
           const payload = mapFormToCreateDto(values)
-
           await createMutation.mutateAsync(payload)
+        }
 
+        if (mode === 'edit' && orderId) {
+          const payload = mapFormToUpdateDto(values)
+          await updateMutation.mutateAsync({
+            id: orderId,
+            payload
+          })
         }
 
       } catch (error) {
@@ -91,6 +167,9 @@ export function OrderFormProvider({
         showTempMessage('error', 'Ошибка при создании заказа')
 
       }
+      finally {
+        setIsSaving(false)
+      }
     },
     (formErrors) => {
 
@@ -107,15 +186,68 @@ export function OrderFormProvider({
 
   return (
     <FormProvider {...methods}>
-      <form onSubmit={onSubmit} noValidate>
+      <form id="order-form" onSubmit={onSubmit} noValidate>
         {children}
       </form>
     </FormProvider>
   )
 }
 
+function mapFormToUpdateDto(values: OrderFormModel) {
+  return {
+    place: values.inspectionPlace,
+    inspectionPlace: values.inspectionPlace,
+    orderDate: values.orderDate,
+    latitude: values.latitude,
+    longitude: values.longitude,
+    plotId: values.plotId,
+
+    deceasedFullName: values.deceasedFullName,
+
+    customerFullName: values.client.fullName,
+    customerEmail: values.client.email || null,
+    phone: normalizePhone(values.client.phone),
+    address: values.client.address,
+
+    monumentType: values.monument.type,
+    monumentSize: values.monument.size,
+    additionalInfo: values.additionalInfo,
+
+    totalPrice: values.works.reduce(
+      (sum, w) => sum + w.price * w.quantity,
+      0
+    ),
+
+    workItems: values.works.map((w) => ({
+      workDescription: w.workDescription,
+      price: w.price,
+      quantity: w.quantity,
+      note: w.note,
+    })),
+
+    payments: values.payments.map((p) => ({
+      amount: p.amount,
+      paymentDate: p.paymentDate,
+      paymentType: p.paymentType,
+      note: p.note,
+    })),
+
+    tempPhotoIds: values.media.tempPhotoIds,
+    tempVideoIds: values.media.tempVideoIds,
+
+    removedPhotoIds: [],
+    removedVideoIds: [],
+  }
+}
+
 function normalizePhone(phone: string): string {
-  return phone.replace(/\D/g, '')
+  let digits = phone.replace(/\D/g, '')
+
+  if (digits.startsWith('8') && digits.length === 11) {
+    digits = '7' + digits.slice(1)
+  }
+
+  return digits
 }
 
 function mapFormToCreateDto(values: OrderFormModel) {

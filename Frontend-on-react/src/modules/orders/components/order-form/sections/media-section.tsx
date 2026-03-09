@@ -18,10 +18,21 @@ type TempMedia = {
   type: 'photo' | 'video'
 }
 
-export function MediaSection() {
+interface Props {
+  existing?: ViewerMediaDto[]
+}
+
+export function MediaSection({ existing = [] }: Props) {
   const { setValue } = useFormContext<OrderFormModel>()
 
-  const [media, setMedia] = useState<TempMedia[]>([])
+  const [media, setMedia] = useState<TempMedia[]>(() =>
+    existing.map((m) => ({
+      id: m.id,
+      previewUrl: m.url,
+      name: m.originalFileName,
+      type: m.mediaType === 1 ? 'video' : 'photo',
+    }))
+  )
   const [uploading, setUploading] = useState(false)
   const [previewIndex, setPreviewIndex] = useState<number | null>(null)
 
@@ -174,7 +185,7 @@ export function MediaSection() {
                 position: 'relative',
                 width: '120px',
                 height: '120px',
-                cursor: 'zoom-in'
+                cursor: 'pointer'
               }}
             >
               {item.type === 'photo' ? (

@@ -2,6 +2,7 @@
 import surface from '@/shared/ui/surface.module.css'
 
 import type { OrderResponseDto } from '@/modules/orders/types/orders.types'
+import { formatPhone } from '@/shared/lib/phone'
 
 interface OrdersTableProps {
   orders: OrderResponseDto[]
@@ -120,7 +121,7 @@ export function OrdersTable({
               </span>
 
               <span data-label="Телефон">
-                {order.phone || '-'}
+                {formatPhone(order.phone) || '-'}
               </span>
 
               <span data-label="Дата">

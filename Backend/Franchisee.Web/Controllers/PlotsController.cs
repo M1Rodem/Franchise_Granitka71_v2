@@ -21,11 +21,51 @@ namespace Franchisee.Web.Controllers
         }
 
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<PlotDto>>> GetPlots([FromQuery] bool includeInactive = false)
+        public async Task<ActionResult> GetPlots(
+            [FromQuery] bool includeInactive = false,
+            [FromQuery] string? search = null,
+            [FromQuery] int page = 1,
+            [FromQuery] int pageSize = 10)
         {
             try
             {
-                var plots = await _plotRepository.GetAllAsync(includeInactive);
+                if (page < 1) page = 1;
+                if (pageSize < 1) pageSize = 10;
+
+                var result = await _plotRepository.GetAllAsync(includeInactive, search, page, pageSize);
+
+                var dtos = result.Items.Select(p => new PlotDto
+                {
+                    Id = p.Id,
+                    Name = p.Name,
+                    Description = p.Description,
+                    Latitude = p.Latitude,
+                    Longitude = p.Longitude,
+                    IsActive = p.IsActive,
+                    CreatedAt = p.CreatedAt,
+                    UpdatedAt = p.UpdatedAt
+                }).ToList();
+
+                return Ok(new
+                {
+                    items = dtos,
+                    total = result.Total
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Ошибка получения списка участков");
+                return StatusCode(500, "Ошибка получения списка участков");
+            }
+        }
+
+        [HttpGet("all")]
+        public async Task<ActionResult<IEnumerable<PlotDto>>> GetAllPlots()
+        {
+            try
+            {
+                var result = await _plotRepository.GetAllAsync(true, null, 1, 1000);
+                var plots = result.Items;
 
                 var dtos = plots.Select(p => new PlotDto
                 {
@@ -43,8 +83,8 @@ namespace Franchisee.Web.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Ошибка получения списка участков");
-                return StatusCode(500, "Ошибка получения списка участков");
+                _logger.LogError(ex, "Ошибка получения всех участков");
+                return StatusCode(500, "Ошибка получения участков");
             }
         }
 

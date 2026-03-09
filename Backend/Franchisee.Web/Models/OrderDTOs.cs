@@ -35,16 +35,68 @@ namespace Franchisee.Web.Models
         public string MonumentSize { get; set; } = string.Empty;
         public string AdditionalInfo { get; set; } = string.Empty;
         public OrderStatus Status { get; set; }
+        public decimal Subtotal { get; set; }
+
+        public decimal DiscountPercent { get; set; }
+        public decimal DiscountAmount { get; set; }
+
         public decimal TotalPrice { get; set; }
         public DateTime CreatedAt { get; set; }
         public DateTime UpdatedAt { get; set; }
         public int ManagerId { get; set; }
         public string ManagerFullName { get; set; } = string.Empty;
-        public List<OrderWorkItem> WorkItems { get; set; } = new();
-        public List<OrderPayment> Payments { get; set; } = new();
+        public List<OrderWorkItemDto> WorkItems { get; set; } = new();
+        public List<OrderPaymentDto> Payments { get; set; } = new();
         public List<OrderMediaDto> Photos { get; set; } = new();
 
         // НОВОЕ ПОЛЕ - статус оплаты
         public PaymentStatus PaymentStatus { get; set; }
+    }
+    public class OrderWorkItemDto
+    {
+        public int Id { get; set; }
+
+        public string WorkDescription { get; set; } = string.Empty;
+
+        public decimal Price { get; set; }
+
+        public decimal Quantity { get; set; }
+
+        public string Note { get; set; } = string.Empty;
+
+        public double? DistanceKm { get; set; }
+    }
+    public class OrdersListItemDto
+    {
+        public int Id { get; set; }
+
+        public string OrderNumber { get; set; } = string.Empty;
+
+        public string CustomerFullName { get; set; } = string.Empty;
+
+        public string Phone { get; set; } = string.Empty;
+
+        public DateTime OrderDate { get; set; }
+
+        public OrderStatus Status { get; set; }
+
+        public PaymentStatus PaymentStatus { get; set; }
+
+        public string? PlotName { get; set; }
+
+        public string ManagerFullName { get; set; } = string.Empty;
+    }
+
+    public class OrderPaymentDto
+    {
+        public int Id { get; set; }
+
+        public decimal Amount { get; set; }
+
+        public DateTime PaymentDate { get; set; }
+
+        public string PaymentType { get; set; } = string.Empty;
+
+        public string? Note { get; set; }
     }
 }

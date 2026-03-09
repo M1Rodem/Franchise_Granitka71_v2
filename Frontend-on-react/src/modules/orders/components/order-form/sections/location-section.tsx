@@ -26,6 +26,9 @@ export function LocationSection() {
 
   const plotId = watch('plotId')
   const selectedPlot = plots?.find(p => p.id === plotId)
+  const plotCoords = selectedPlot
+    ? ([selectedPlot.latitude, selectedPlot.longitude] as [number, number])
+    : null
 
   const mapRef = useRef<any>(null)
   const routeRef = useRef<any>(null)
@@ -34,30 +37,25 @@ export function LocationSection() {
   const [destination, setDestination] =
     useState<[number, number] | null>(null)
 
-  // 🔹 очистка при смене участка
+  // очистка при смене участка
   useEffect(() => {
     if (!selectedPlot || !mapRef.current) return
 
-    mapRef.current.setCenter(
-      [selectedPlot.latitude, selectedPlot.longitude],
-      15
-    )
+    const plotCoords: [number, number] = [
+      selectedPlot.latitude,
+      selectedPlot.longitude,
+    ]
 
-    setDestination(null)
+    mapRef.current.setCenter(plotCoords, 15)
 
-    if (routeRef.current) {
-      mapRef.current.geoObjects.remove(routeRef.current)
-      routeRef.current = null
+    const lat = watch('latitude')
+    const lng = watch('longitude')
+
+    if (lat != null && lng != null) {
+      handleSelect([lat, lng])
     }
 
-    if (destMarkerRef.current) {
-      mapRef.current.geoObjects.remove(destMarkerRef.current)
-      destMarkerRef.current = null
-    }
-
-    setValue('latitude', selectedPlot.latitude)
-    setValue('longitude', selectedPlot.longitude)
-  }, [plotId])
+  }, [selectedPlot])
 
   const handleSelect = useCallback(
     (coords: [number, number]) => {
@@ -197,26 +195,23 @@ export function LocationSection() {
         <div className={styles.mapContainer}>
           <YandexMapProvider>
             <MapView
-              center={
-                selectedPlot
-                  ? [
-                      selectedPlot.latitude,
-                      selectedPlot.longitude,
-                    ]
-                  : [55.75, 37.57]
-              }
+              center={plotCoords ?? [55.75, 37.57]}
               onReady={(map: any) => {
                 mapRef.current = map
+
+                if (!selectedPlot) return
+
+                const lat = watch('latitude')
+                const lng = watch('longitude')
+
+                if (lat != null && lng != null) {
+                  handleSelect([lat, lng])
+                }
               }}
               onSelect={handleSelect}
-            >
-              {selectedPlot && (
-                <MapMarker
-                  coords={[
-                    selectedPlot.latitude,
-                    selectedPlot.longitude,
-                  ]}
-                />
+            > 
+              {plotCoords && (
+                <MapMarker coords={plotCoords} />
               )}
             </MapView>
           </YandexMapProvider>

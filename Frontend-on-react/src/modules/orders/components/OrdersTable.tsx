@@ -125,9 +125,7 @@ export function OrdersTable({
               </span>
 
               <span data-label="Дата">
-                {new Date(
-                  order.createdAt,
-                ).toLocaleDateString('ru-RU')}
+                {new Date(order.orderDate).toLocaleDateString('ru-RU')}
               </span>
 
               <span data-label="Статус">

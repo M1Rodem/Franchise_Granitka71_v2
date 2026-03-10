@@ -95,8 +95,8 @@ export const ordersApi = {
     const response = await httpClient.get('/api/orders/list', {
       params: {
         SearchQuery: normalized.searchQuery,
-        CreatedFrom: normalized.dateFrom,
-        CreatedTo: normalized.dateTo,
+        OrderDateFrom: normalized.dateFrom,
+        OrderDateTo: normalized.dateTo,
         PlotId: normalized.plotId,
         PaymentStatus: normalized.paymentStatus,
         Status: normalized.completionStatus,

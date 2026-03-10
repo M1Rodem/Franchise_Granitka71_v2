@@ -25,8 +25,8 @@ namespace Franchisee.Web.Models
         public decimal? DiscountAmount { get; set; }
 
         // Коллекции
-        public List<OrderWorkItem>? WorkItems { get; set; }
-        public List<OrderPayment>? Payments { get; set; }
+        public List<OrderWorkItemDto>? WorkItems { get; set; }
+        public List<OrderPaymentDto>? Payments { get; set; }
 
         public List<int> TempPhotoIds { get; set; } = new();
         public List<int> TempVideoIds { get; set; } = new();

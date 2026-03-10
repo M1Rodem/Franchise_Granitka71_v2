@@ -168,8 +168,22 @@ namespace Franchisee.Web.Controllers
                     ManagerId = userId,
                     CreatedAt = DateTime.UtcNow,
                     UpdatedAt = DateTime.UtcNow,
-                    WorkItems = request.WorkItems ?? new List<OrderWorkItem>(),
-                    Payments = request.Payments ?? new List<OrderPayment>()
+                    WorkItems = request.WorkItems?.Select(w => new OrderWorkItem
+                    {
+                        WorkDescription = w.WorkDescription,
+                        Price = w.Price,
+                        Quantity = w.Quantity,
+                        Note = w.Note,
+                        DistanceKm = w.DistanceKm
+                    }).ToList() ?? new List<OrderWorkItem>(),
+
+                    Payments = request.Payments?.Select(p => new OrderPayment
+                    {
+                        Amount = p.Amount,
+                        PaymentDate = p.PaymentDate,
+                        PaymentType = p.PaymentType,
+                        Note = p.Note ?? string.Empty
+                    }).ToList() ?? new List<OrderPayment>()
                 };
 
                 order.RecalculateTotals();
@@ -423,8 +437,17 @@ namespace Franchisee.Web.Controllers
 
                         foreach (var wi in request.WorkItems)
                         {
-                            wi.OrderId = id;
-                            _context.OrderWorkItems.Add(wi);
+                            var entity = new OrderWorkItem
+                            {
+                                OrderId = id,
+                                WorkDescription = wi.WorkDescription,
+                                Price = wi.Price,
+                                Quantity = wi.Quantity,
+                                Note = wi.Note,
+                                DistanceKm = wi.DistanceKm
+                            };
+
+                            _context.OrderWorkItems.Add(entity);
                         }
                     }
 
@@ -438,11 +461,18 @@ namespace Franchisee.Web.Controllers
                             .ToListAsync();
                         _context.OrderPayments.RemoveRange(existingPayments);
 
-                        foreach (var payment in request.Payments)
+                        foreach (var p in request.Payments)
                         {
-                            payment.OrderId = id;
-                            payment.PaymentDate = payment.PaymentDate.ToUniversalTime();
-                            _context.OrderPayments.Add(payment);
+                            var entity = new OrderPayment
+                            {
+                                OrderId = id,
+                                Amount = p.Amount,
+                                PaymentDate = p.PaymentDate.ToUniversalTime(),
+                                PaymentType = p.PaymentType,
+                                Note = p.Note ?? string.Empty
+                            };
+
+                            _context.OrderPayments.Add(entity);
                         }
                     }
 
@@ -898,7 +928,10 @@ namespace Franchisee.Web.Controllers
 
         private OrderResponseDto MapToResponseDto(Order order)
         {
-            var paymentStatus = CalculatePaymentStatus(order);
+            var paymentStatus = OrderRepository.CalculatePaymentStatus(
+                order.TotalPrice,
+                order.Payments?.Sum(p => p.Amount) ?? 0m
+            );
 
             return new OrderResponseDto
             {
@@ -943,7 +976,8 @@ namespace Franchisee.Web.Controllers
                     Note = w.Note,
                     DistanceKm = w.DistanceKm
                 }).ToList(),
-                Payments = order.Payments.Select(p => new OrderPaymentDto
+                Payments = (order.Payments ?? new List<OrderPayment>())
+                    .Select(p => new OrderPaymentDto
                 {
                     Id = p.Id,
                     Amount = p.Amount,
@@ -1151,26 +1185,5 @@ namespace Franchisee.Web.Controllers
         }
 
         #endregion
-
-        private PaymentStatus CalculatePaymentStatus(Order order)
-        {
-            var paid = order.Payments?.Sum(p => p.Amount) ?? 0m;
-
-            if (order.TotalPrice <= 0)
-                return PaymentStatus.Advance;
-
-            if (order.TotalPrice == 0)
-                return PaymentStatus.Advance;
-
-            var percent = paid / order.TotalPrice;
-
-            if (percent <= 0.3m)
-                return PaymentStatus.Advance;
-
-            if (percent < 1m)
-                return PaymentStatus.PartiallyPaid;
-
-            return PaymentStatus.FullyPaid;
-        }
     }
 }

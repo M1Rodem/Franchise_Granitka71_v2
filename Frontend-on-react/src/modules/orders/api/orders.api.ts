@@ -92,7 +92,7 @@ export const ordersApi = {
   async getOrders(params: OrdersListQueryParams): Promise<OrdersPagedResultDto> {
     const normalized = normalizeOrdersListParams(params);
 
-    const response = await httpClient.get('/api/orders', {
+    const response = await httpClient.get('/api/orders/list', {
       params: {
         SearchQuery: normalized.searchQuery,
         CreatedFrom: normalized.dateFrom,

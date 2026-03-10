@@ -3,8 +3,7 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace Franchisee.Web.Models
 {
-    public enum MonumentType { Надгробный, Гранитный, Мраморный, Бронзовый }
-    public enum OrderStatus { Новый, ВРаботе, Оплата, Готов, Доставлен }
+        public enum OrderStatus { Новый, ВРаботе, Оплата, Готов, Доставлен }
 
     public class Order
     {

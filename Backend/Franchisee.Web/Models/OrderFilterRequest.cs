@@ -3,18 +3,29 @@
     public class OrderFilterRequest
     {
         public string? SearchQuery { get; set; }
-        public DateTime? CreatedFrom { get; set; }
-        public DateTime? CreatedTo { get; set; }
         public DateTime? OrderDateFrom { get; set; }
         public DateTime? OrderDateTo { get; set; }
         public PaymentStatus? PaymentStatus { get; set; }
         public OrderStatus? Status { get; set; }
-        public decimal? MinPrice { get; set; }
-        public decimal? MaxPrice { get; set; }
-        public int? ManagerId { get; set; }
-        public int? PlotId { get; set; }
-        public string? CustomerName { get; set; }
-        public string? Phone { get; set; }
+
+        // [Obsolete("Deprecated. Not used by frontend.")]
+        // public DateTime? CreatedFrom { get; set; }
+
+        // [Obsolete("Deprecated. Not used by frontend.")]
+        // public DateTime? CreatedTo { get; set; }
+
+        // [Obsolete("Deprecated. Not used by frontend.")]
+        // public decimal? MinPrice { get; set; }
+
+        // [Obsolete("Deprecated. Not used by frontend.")]
+        // public decimal? MaxPrice { get; set; }
+
+        // [Obsolete("Deprecated. Not used by frontend.")]
+        // public string? CustomerName { get; set; }
+
+        // [Obsolete("Deprecated. Not used by frontend.")]
+        // public string? Phone { get; set; }
+
         public int Page { get; set; } = 1;
         public int PageSize { get; set; } = 20;
     }

@@ -51,17 +51,18 @@ namespace Franchisee.Web.Services
             // Поиск
             if (!string.IsNullOrWhiteSpace(filter.SearchQuery))
             {
-                var pattern = $"%{filter.SearchQuery.Trim()}%";
+                var search = filter.SearchQuery.Trim();
+
                 query = query.Where(o =>
-                    EF.Functions.ILike(o.OrderNumber, pattern) ||
-                    EF.Functions.ILike(o.CustomerFullName, pattern) ||
-                    EF.Functions.ILike(o.Phone, pattern) ||
-                    EF.Functions.ILike(o.DeceasedFullName, pattern) ||
-                    EF.Functions.ILike(o.MonumentType, pattern) ||
+                    o.OrderNumber.StartsWith(search) ||
+                    o.Phone.StartsWith(search) ||
+                    EF.Functions.ILike(o.CustomerFullName, $"%{search}%") ||
+                    EF.Functions.ILike(o.DeceasedFullName, $"%{search}%") ||
                     (o.Manager != null && (
-                        EF.Functions.ILike(o.Manager.FullName, pattern) ||
-                        EF.Functions.ILike(o.Manager.Username, pattern)
-                    )));
+                        EF.Functions.ILike(o.Manager.FullName, $"%{search}%") ||
+                        EF.Functions.ILike(o.Manager.Username, $"%{search}%")
+                    ))
+                );
             }
 
             // Date-only filtering, inclusive by day for "To" via < next day.
@@ -75,35 +76,6 @@ namespace Franchisee.Web.Services
                 var orderDateToExclusive = ToUtcDateStart(filter.OrderDateTo.Value).AddDays(1);
                 query = query.Where(o => o.OrderDate < orderDateToExclusive);
             }
-
-            if (filter.CreatedFrom.HasValue)
-            {
-                var createdFrom = ToUtcDateStart(filter.CreatedFrom.Value);
-                query = query.Where(o => o.CreatedAt >= createdFrom);
-            }
-            if (filter.CreatedTo.HasValue)
-            {
-                var createdToExclusive = ToUtcDateStart(filter.CreatedTo.Value).AddDays(1);
-                query = query.Where(o => o.CreatedAt < createdToExclusive);
-            }
-
-            // По цене
-            if (filter.MinPrice.HasValue)
-                query = query.Where(o => o.TotalPrice >= filter.MinPrice.Value);
-            if (filter.MaxPrice.HasValue)
-                query = query.Where(o => o.TotalPrice <= filter.MaxPrice.Value);
-
-            // Фильтр по менеджеру только если явно указан
-            if (filter.ManagerId.HasValue)
-                query = query.Where(o => o.ManagerId == filter.ManagerId.Value);
-            if (filter.PlotId.HasValue)
-                query = query.Where(o => o.PlotId == filter.PlotId.Value);
-
-            // По клиенту/телефону
-            if (!string.IsNullOrEmpty(filter.CustomerName))
-                query = query.Where(o => o.CustomerFullName.Contains(filter.CustomerName));
-            if (!string.IsNullOrEmpty(filter.Phone))
-                query = query.Where(o => o.Phone.Contains(filter.Phone));
 
             // По статусу оплаты
             if (filter.PaymentStatus.HasValue && filter.PaymentStatus != PaymentStatus.All)
@@ -303,7 +275,12 @@ namespace Franchisee.Web.Services
                     EF.Functions.ILike(o.OrderNumber, pattern) ||
                     EF.Functions.ILike(o.CustomerFullName, pattern) ||
                     EF.Functions.ILike(o.Phone, pattern) ||
-                    EF.Functions.ILike(o.DeceasedFullName, pattern));
+                    EF.Functions.ILike(o.DeceasedFullName, pattern) ||
+                    (o.Manager != null && (
+                        EF.Functions.ILike(o.Manager.FullName, pattern) ||
+                        EF.Functions.ILike(o.Manager.Username, pattern)
+                    ))
+                );
             }
 
             var totalCount = await query.CountAsync();
@@ -343,6 +320,8 @@ namespace Franchisee.Web.Services
         {
             var query = _context.Orders
                 .Where(o => !o.IsDeleted)
+                .Include(o => o.Plot)
+                .Include(o => o.Manager)
                 .AsQueryable();
 
             if (!string.IsNullOrWhiteSpace(filter.SearchQuery))
@@ -353,7 +332,15 @@ namespace Franchisee.Web.Services
                     EF.Functions.ILike(o.OrderNumber, pattern) ||
                     EF.Functions.ILike(o.CustomerFullName, pattern) ||
                     EF.Functions.ILike(o.Phone, pattern) ||
-                    EF.Functions.ILike(o.DeceasedFullName, pattern));
+                    EF.Functions.ILike(o.DeceasedFullName, pattern) ||
+                    EF.Functions.ILike(o.Manager!.FullName, pattern) ||
+                    EF.Functions.ILike(o.Manager!.Username, pattern)
+                );
+            }
+
+            if (filter.PaymentStatus.HasValue && filter.PaymentStatus != PaymentStatus.All)
+            {
+                query = ApplyPaymentStatusFilter(query, filter.PaymentStatus.Value);
             }
 
             var totalCount = await query.CountAsync();
@@ -430,7 +417,7 @@ namespace Franchisee.Web.Services
                 ? dateOnly
                 : DateTime.SpecifyKind(dateOnly, DateTimeKind.Utc);
         }
-        private static PaymentStatus CalculatePaymentStatus(decimal totalPrice, decimal paid)
+        public static PaymentStatus CalculatePaymentStatus(decimal totalPrice, decimal paid)
         {
             if (totalPrice <= 0)
                 return PaymentStatus.Advance;

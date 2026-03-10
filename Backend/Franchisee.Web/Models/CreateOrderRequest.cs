@@ -4,7 +4,6 @@ namespace Franchisee.Web.Models
 {
     public class CreateOrderRequest
     {
-        public string? OrderNumber { get; set; }
         [Required] public string Place { get; set; } = string.Empty;
 
         [Required]
@@ -30,8 +29,8 @@ namespace Franchisee.Web.Models
         [Range(0, 10)]
         public decimal DiscountPercent { get; set; }
 
-        public List<OrderWorkItem>? WorkItems { get; set; } = new();
-        public List<OrderPayment>? Payments { get; set; } = new();
+        public List<OrderWorkItemDto>? WorkItems { get; set; } = new();
+        public List<OrderPaymentDto>? Payments { get; set; } = new();
 
         public List<int> TempPhotoIds { get; set; } = new();
         public List<int> TempVideoIds { get; set; } = new();

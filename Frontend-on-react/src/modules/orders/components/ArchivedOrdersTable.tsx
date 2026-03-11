@@ -2,10 +2,22 @@ import table from '@/shared/ui/table-base.module.css'
 import surface from '@/shared/ui/surface.module.css'
 import type { OrderResponseDto } from '@/modules/orders/types/orders.types'
 import { formatPhone } from '@/shared/lib/phone'
+import {
+  paymentStatusLabels,
+  getPaymentBadgeStyle
+} from '@/modules/orders/lib/payment-status'
 
 interface ArchivedOrdersTableProps {
   orders: OrderResponseDto[]
   onOpenOrder: (id: number) => void
+}
+
+const statusLabels: Record<number, string> = {
+  0: 'Новый',
+  1: 'В работе',
+  2: 'Оплата',
+  3: 'Готов',
+  4: 'Доставлен',
 }
 
 function getDaysLeft(deletedAt?: string | null) {
@@ -18,6 +30,32 @@ function getDaysLeft(deletedAt?: string | null) {
   const daysLeft = 14 - diffDays
 
   return daysLeft
+}
+
+function getDaysLeftStyle(daysLeft: number | null) {
+  if (daysLeft === null) return {}
+
+  if (daysLeft < 3) {
+    return {
+      background: 'rgba(255,99,99,0.2)',
+      border: '1px solid rgba(255,120,120,0.5)',
+      color: '#ffdede',
+    }
+  }
+
+  if (daysLeft <= 7) {
+    return {
+      background: 'rgba(255,180,0,0.2)',
+      border: '1px solid rgba(255,200,80,0.5)',
+      color: '#fff3d4',
+    }
+  }
+
+  return {
+    background: 'rgba(120,200,255,0.2)',
+    border: '1px solid rgba(150,210,255,0.5)',
+    color: '#e6f5ff',
+  }
 }
 
 const GRID_TEMPLATE =
@@ -47,7 +85,22 @@ export function ArchivedOrdersTable({ orders, onOpenOrder }: ArchivedOrdersTable
         </div>
 
         {orders.map(order => {
+
           const daysLeft = getDaysLeft((order as any).deletedAt)
+
+          const status =
+            typeof order.status === 'number'
+              ? statusLabels[order.status] ?? `Статус ${order.status}`
+              : order.status
+
+          const paymentStatus =
+            typeof order.paymentStatus === 'number'
+              ? paymentStatusLabels[order.paymentStatus] ??
+                `Статус ${order.paymentStatus}`
+              : order.paymentStatus ?? '—'
+
+          const badgeStyle =
+            getPaymentBadgeStyle(paymentStatus)
 
           return (
             <div
@@ -77,16 +130,42 @@ export function ArchivedOrdersTable({ orders, onOpenOrder }: ArchivedOrdersTable
                   : '-'}
               </span>
 
-              <span>{order.status}</span>
+              <span>{status}</span>
 
-              <span>{order.paymentStatus}</span>
+              <span data-label="Оплата">
+                <span
+                  style={{
+                    padding: '4px 10px',
+                    borderRadius: '999px',
+                    fontSize: '13px',
+                    display: 'inline-flex',
+                    justifyContent: 'center',
+                    ...badgeStyle,
+                  }}
+                >
+                  {paymentStatus}
+                </span>
+              </span>
 
               <span className={table.primaryCell}>
                 {order.plotName || '-'}
               </span>
 
               <span>
-                {daysLeft !== null ? `${daysLeft} дн.` : '-'}
+                {daysLeft !== null && (
+                  <span
+                    style={{
+                      padding: '4px 10px',
+                      borderRadius: '999px',
+                      fontSize: '13px',
+                      display: 'inline-flex',
+                      justifyContent: 'center',
+                      ...getDaysLeftStyle(daysLeft),
+                    }}
+                  >
+                    {daysLeft} дн.
+                  </span>
+                )}
               </span>
             </div>
           )

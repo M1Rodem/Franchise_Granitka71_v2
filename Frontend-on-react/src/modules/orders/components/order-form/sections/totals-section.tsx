@@ -4,8 +4,11 @@ import { useFormContext, useWatch } from 'react-hook-form'
 import type { OrderFormModel } from '../order-form.schema'
 
 import surface from '@/shared/ui/surface.module.css'
+import table from '@/shared/ui/table-base.module.css'
 import styles from './totals-section.module.css'
 import input from '@/shared/ui/input.module.css'
+
+const GRID = '2fr 1fr'
 
 export function TotalsSection() {
 
@@ -40,28 +43,50 @@ export function TotalsSection() {
 
   return (
     <div className={surface.surface}>
+
       <h2 className={surface.sectionTitle}>
         Итог
       </h2>
 
-      <div className={styles.row}>
-        <span>Сумма работ</span>
-        <strong>
-          {subtotal.toLocaleString('ru-RU')} ₽
-        </strong>
-      </div>
+      <div className={table.dataTable}>
 
-      <div className={styles.row}>
-        <span>Скидка (%)</span>
+        <div
+          className={table.dataHeader}
+          style={{ gridTemplateColumns: GRID }}
+        >
+          <span>Показатель</span>
+          <span>Значение</span>
+        </div>
 
-        <input
+        <div
+          className={table.dataRow}
+          style={{ gridTemplateColumns: GRID }}
+        >
+          <span data-label="Сумма работ">
+            Сумма работ
+          </span>
+
+          <strong data-label="Значение">
+            {subtotal.toLocaleString('ru-RU')} ₽
+          </strong>
+        </div>
+
+        <div
+          className={table.dataRow}
+          style={{ gridTemplateColumns: GRID }}
+        >
+          <span data-label="Скидка (%)">
+            Скидка (%)
+          </span>
+
+          <input
             type="number"
             min={0}
             max={10}
             step="0.1"
             {...register('discountPercent', {
-                valueAsNumber: true,
-                onChange: (e) => {
+              valueAsNumber: true,
+              onChange: (e) => {
 
                 let v = Number(e.target.value)
 
@@ -69,29 +94,43 @@ export function TotalsSection() {
                 if (v < 0) v = 0
 
                 setValue('discountPercent', v, {
-                    shouldValidate: true,
-                    shouldDirty: true
+                  shouldValidate: true,
+                  shouldDirty: true
                 })
-                }
+              }
             })}
-            className={input.input || styles.discountInput}
-        />
+            className={`${input.input}`}
+            data-label="Значение"
+          />
         </div>
 
-      <div className={styles.row}>
-        <span>Сумма скидки</span>
-        <strong>
-          {discountAmount.toLocaleString('ru-RU')} ₽
-        </strong>
-      </div>
+        <div
+          className={table.dataRow}
+          style={{ gridTemplateColumns: GRID }}
+        >
+          <span data-label="Сумма скидки">
+            Сумма скидки
+          </span>
 
-      <div className={styles.total}>
-        <span>Итого</span>
-        <strong>
-          {total.toLocaleString('ru-RU')} ₽
-        </strong>
-      </div>
+          <strong data-label="Значение">
+            {discountAmount.toLocaleString('ru-RU')} ₽
+          </strong>
+        </div>
 
+        <div
+          className={`${table.dataRow} ${styles.totalRow}`}
+          style={{ gridTemplateColumns: GRID }}
+        >
+          <span data-label="Итого">
+            Итого
+          </span>
+
+          <strong data-label="Значение">
+            {total.toLocaleString('ru-RU')} ₽
+          </strong>
+        </div>
+
+      </div>
     </div>
   )
 }

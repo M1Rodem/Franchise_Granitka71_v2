@@ -6,9 +6,11 @@ using System.Text;
 using System.Collections.Concurrent;
 using Franchisee.Web.Models;
 using Franchisee.Web.Services.Repositories;
+using Microsoft.AspNetCore.Authorization;
 
 namespace Franchisee.Web.Controllers
 {
+    [AllowAnonymous]
     [ApiController]
     [Route("api/[controller]")]
     public class AuthController : ControllerBase
@@ -207,6 +209,7 @@ namespace Franchisee.Web.Controllers
             return Ok(new { message = "Выход выполнен. Очистите токен на клиенте." });
         }
 
+        [AllowAnonymous]
         [HttpPost("refresh")]
         public async Task<IActionResult> Refresh()
         {

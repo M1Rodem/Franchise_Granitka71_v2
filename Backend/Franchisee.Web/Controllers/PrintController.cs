@@ -1,9 +1,11 @@
 ﻿using Franchisee.Web.Services.Repositories;
 using Franchisee.Web.Services;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
 
 [ApiController]
 [Route("api/[controller]")]
+[Authorize]
 public class PrintController : ControllerBase
 {
     private readonly IPrintService _printService;

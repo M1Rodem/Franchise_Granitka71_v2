@@ -324,11 +324,60 @@
     0 6px 28px rgba(60,220,140,0.28);
 }
 
+.detailsTitleButtonWrapper {
+
+  flex: 1;
+
+  display: flex;
+  justify-content: center;
+  align-items: center;
+
+}
+
+/* ======================================================
+   HEADER ACTION TITLE BUTTON
+====================================================== */
+
+.detailsActionTitleButton {
+
+  font-size: 18px;
+  font-weight: 500;
+
+  padding: 8px 20px;
+
+  border-radius: 14px;
+
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  white-space: nowrap;
+
+}
+
 /* ======================================================
    DESKTOP LAYOUT
 ====================================================== */
 
 @media (min-width: 721px) {
+
+  .detailsBackButton {
+    order: 1;
+  }
+
+  .detailsTitle,
+  .detailsTitleButtonWrapper {
+    order: 2;
+  }
+
+  .detailsActions {
+    order: 3;
+  }
+
+  .badgeContainer {
+    order: 4;
+    margin-left: auto;
+  }
 
   .menuButton {
     display: none;
@@ -343,23 +392,6 @@
 
     display: flex;
     align-items: center;
-  }
-
-  .detailsBackButton {
-    order: 1;
-  }
-
-  .detailsTitle {
-    order: 2;
-  }
-
-  .detailsActions {
-    order: 3;
-  }
-
-  .badgeContainer {
-    order: 4;
-    margin-left: auto;
   }
 
   .title {
@@ -418,6 +450,15 @@
     text-align: center;
 
     font-weight: 600;
+  }
+
+  .detailsActionTitleButton {
+    grid-column: 1 / -1;
+    grid-row: 2;
+
+    font-size: 18px;
+
+    text-align: center;
   }
 
   /* row 3 */

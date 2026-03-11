@@ -1,4 +1,5 @@
 import { useNavigate, useLocation } from 'react-router-dom';
+import {useEffect} from 'react'
 import { routeTitles } from '@/app/router/navigation.config';
 import { resolveRouteTitle } from '@/shared/lib/navigation';
 import { useNotificationBadgeStore } from '@/modules/notifications/store/notification-badge.store';
@@ -12,9 +13,9 @@ export function AppHeader() {
 
   const unreadCount = useNotificationBadgeStore((state) => state.unreadCount);
   const openMobileSidebar = useUiStore((state) => state.openMobileSidebar);
-  const header = useUiStore((state) => state.header);
-  const openPlotCreateModal = useUiStore((state) => state.openPlotCreateModal);
+  const header = useUiStore((state) => state.header)
   const submitDisabled = header.submitDisabled
+  const openPlotCreateModal = useUiStore((state) => state.openPlotCreateModal);
 
   const defaultTitle = resolveRouteTitle(
     location.pathname,
@@ -27,6 +28,10 @@ export function AppHeader() {
   const isOrderCreate = header.mode === 'orderCreate';
   const isOrderEdit = header.mode === 'orderEdit';
   const isPlots = header.mode === 'plots'
+
+  useEffect(() => {
+    console.log('HEADER RENDER submitDisabled:', submitDisabled)
+  }, [submitDisabled])
 
   return (
     <header className={styles.header}>
@@ -92,22 +97,24 @@ export function AppHeader() {
             ← Назад
           </button>
 
-          <h1 className={styles.detailsTitle}>
-            {header.title}
-          </h1>
-
-          <div className={styles.detailsActions}>
+          <div className={styles.detailsTitleButtonWrapper}>
             <button
               type="submit"
               form="order-form"
+              disabled={submitDisabled}
               className={cn(
+                styles.detailsActionTitleButton,
                 styles.glassButtonTwo,
-                styles.glassButtonGreen
+                submitDisabled
+                  ? styles.glassButtonRed
+                  : styles.glassButtonGreen
               )}
             >
-              Создать заказ
+              {header.title}
             </button>
           </div>
+
+          <div className={styles.detailsActions} />
         </>
       )}
 
@@ -122,25 +129,24 @@ export function AppHeader() {
             ← Назад
           </button>
 
-          <h1 className={styles.detailsTitle}>
-            {header.title} №{header.orderNumber}
-          </h1>
-
-          <div className={styles.detailsActions}>
+          <div className={styles.detailsTitleButtonWrapper}>
             <button
               type="submit"
               form="order-form"
               disabled={submitDisabled}
               className={cn(
-              styles.glassButtonTwo,
-              submitDisabled
-                ? styles.glassButtonRed
-                : styles.glassButtonGreen
-            )}
+                styles.detailsActionTitleButton,
+                styles.glassButtonTwo,
+                submitDisabled
+                  ? styles.glassButtonRed
+                  : styles.glassButtonGreen
+              )}
             >
-              Сохранить изменения
+              {header.title} №{header.orderNumber}
             </button>
           </div>
+
+          <div className={styles.detailsActions} />
         </>
       )}
 

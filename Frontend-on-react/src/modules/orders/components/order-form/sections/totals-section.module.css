@@ -1,19 +1,88 @@
-.row {
-  display: grid;
-  grid-template-columns: 1fr auto;
+.header {
+  display: flex;
+  justify-content: space-between;
   align-items: center;
-  margin-bottom: 10px;
+  margin-bottom: 16px;
 }
 
-.discountInput {
-  width: 80px;
-  text-align: right;
+.viewToggle {
+  display: flex;
+  gap: 8px;
 }
 
-.total {
+.cards {
   display: grid;
-  grid-template-columns: 1fr auto;
-  margin-top: 16px;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+}
+
+.card {
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 12px;
+  padding: 16px;
+
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+
+  font-size: 14px;
+}
+
+.card strong {
+  font-size: 20px;
+}
+
+.cardTotal {
+  grid-column: span 2;
+
+  background: rgba(110,171,247,0.15);
+  border: 1px solid rgba(134,188,255,0.25);
+  border-radius: 12px;
+
+  padding: 18px;
+
+  display: flex;
+  justify-content: space-between;
   font-size: 18px;
+}
+
+.totalRow {
+  font-size: 16px;
   font-weight: 600;
+}
+
+.totalItem {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+}
+
+.totalItem strong::before {
+  content: attr(data-label);
+  display: none;
+  color: #9fb4d9;
+}
+
+@media (max-width: 768px) {
+
+  :global(.table-base-module__dataRow) span::before {
+    content: none !important;
+    font-size: 16px;
+    font-weight: 600;
+  }
+  
+  .totalItem {
+    grid-template-columns: 1fr;
+    gap: 6px;
+  }
+
+  .totalItem strong::before {
+    display: block;
+    font-size: 13px;
+  }
+
+  .totalItem strong {
+    font-size: 16px;
+  }
+
 }

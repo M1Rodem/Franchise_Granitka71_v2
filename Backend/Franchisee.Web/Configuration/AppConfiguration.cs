@@ -4,6 +4,7 @@ using Franchisee.Web.Services;
 using Franchisee.Web.Services.Hubs;
 using Franchisee.Web.Services.Repositories;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Microsoft.EntityFrameworkCore;
@@ -160,16 +161,31 @@ namespace Franchisee.Web.Configuration
                 {
                     OnMessageReceived = context =>
                     {
-                        // 1. Authorization header
+                        var path = context.HttpContext.Request.Path;
+
+                        // SignalR token support
+                        var accessToken = context.Request.Query["access_token"].FirstOrDefault();
+
+                        if (!string.IsNullOrEmpty(accessToken) &&
+                            path.StartsWithSegments("/api/notificationhub"))
+                        {
+                            context.Token = accessToken;
+                            return Task.CompletedTask;
+                        }
+
+                        // Authorization header
                         var authHeader = context.Request.Headers["Authorization"].FirstOrDefault();
-                        if (!string.IsNullOrEmpty(authHeader) && authHeader.StartsWith("Bearer "))
+
+                        if (!string.IsNullOrEmpty(authHeader) &&
+                            authHeader.StartsWith("Bearer "))
                         {
                             context.Token = authHeader.Substring("Bearer ".Length);
                             return Task.CompletedTask;
                         }
 
-                        // 2. Cookie media_auth
-                        if (context.Request.Cookies.TryGetValue("media_auth", out var cookieToken))
+                        // Cookie fallback
+                        if (path.StartsWithSegments("/api/media") &&
+                            context.Request.Cookies.TryGetValue("media_auth", out var cookieToken))
                         {
                             context.Token = cookieToken;
                         }
@@ -182,6 +198,10 @@ namespace Franchisee.Web.Configuration
             // Авторизация по ролям
             services.AddAuthorization(options =>
             {
+                options.FallbackPolicy = new AuthorizationPolicyBuilder()
+                    .RequireAuthenticatedUser()
+                    .Build();
+
                 options.AddPolicy("Admin", policy => policy.RequireRole("Admin", "SuperAdmin"));
                 options.AddPolicy("SuperAdmin", policy => policy.RequireRole("SuperAdmin"));
                 options.AddPolicy("ManagerOrHigher", policy => policy.RequireRole("Manager", "Admin", "SuperAdmin"));

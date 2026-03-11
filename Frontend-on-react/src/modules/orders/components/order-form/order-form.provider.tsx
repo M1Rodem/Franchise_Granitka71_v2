@@ -1,7 +1,7 @@
 'use client'
 
 import type { ReactNode } from 'react'
-import { useMemo, useContext, createContext, useEffect, useRef, useState } from 'react'
+import { useContext, createContext, useEffect, useState, useRef } from 'react'
 import { useForm, FormProvider } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
@@ -18,6 +18,7 @@ import { showTempMessage } from '@/shared/ui/temp-message.service'
 import { isAxiosError } from 'axios'
 import { useUiStore } from '@/shared/store/ui.store'
 import { useUnsavedChangesGuard } from '@/shared/hooks/useUnsavedChangesGuard'
+import { useFormState } from "react-hook-form"
 
 interface OrderFormProviderProps {
   children: ReactNode
@@ -49,49 +50,52 @@ export function OrderFormProvider({
   initialValues,
   orderId,
 }: OrderFormProviderProps) {
-
   const queryClient = useQueryClient()
   const navigate = useNavigate()
   const [isSaving, setIsSaving] = useState(false)
 
-  const defaultValues = useMemo(() => {
-    if (mode === 'edit' && initialValues) {
-      return initialValues
-    }
-    return createOrderDefaultValues()
-  }, [mode, initialValues])
+  const defaultValuesRef = useRef<OrderFormModel | null>(null)
+
+  if (!defaultValuesRef.current) {
+    defaultValuesRef.current =
+      mode === 'edit' && initialValues
+        ? initialValues
+        : createOrderDefaultValues()
+  }
+
+  const defaultValues = defaultValuesRef.current
 
   const methods = useForm<OrderFormModel>({
     resolver: zodResolver(orderFormSchema),
-    defaultValues: defaultValues as OrderFormModel,
-    mode: "onSubmit",
+    defaultValues,
+    mode: "onChange",
+    shouldUnregister: false
   })
 
-  const {
-    formState: { isDirty, touchedFields },
-  } = methods
+  const { dirtyFields, isDirty, isSubmitting } =
+    useFormState({
+      control: methods.control
+    })
 
-  const isTouched = Object.keys(touchedFields).length > 0
-
-  const shouldBlock = isTouched && isDirty && !isSaving
+  const hasRealChanges =
+    Object.keys(dirtyFields).length > 0
+  
+  const shouldBlock = hasRealChanges && !isSaving
 
   useUnsavedChangesGuard(shouldBlock)
-
-  const didInitRef = useRef(false)
-
-  useEffect(() => {
-    if (mode === 'edit' && initialValues && !didInitRef.current) {
-      methods.reset(initialValues)
-      didInitRef.current = true
-    }
-  }, [initialValues, mode, methods])
 
   const setHeaderSubmitDisabled = useUiStore((s) => s.setHeaderSubmitDisabled)
 
   useEffect(() => {
-    setHeaderSubmitDisabled(!isDirty)
-  }, [isDirty, setHeaderSubmitDisabled])
+    const disabled =
+      mode === "create"
+        ? !isDirty || isSubmitting
+        : !hasRealChanges || isSubmitting
 
+    setHeaderSubmitDisabled(disabled)
+
+  }, [mode, isDirty, hasRealChanges, isSubmitting, dirtyFields])
+  
   const createMutation = useMutation({
     mutationFn: ordersApi.createOrder,
     onSuccess: (order: any) => {

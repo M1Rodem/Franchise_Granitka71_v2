@@ -63,8 +63,8 @@ export function LocationSection() {
 
       setDestination(coords)
 
-      setValue('latitude', coords[0])
-      setValue('longitude', coords[1])
+      setValue('latitude', coords[0], { shouldDirty: false })
+      setValue('longitude', coords[1], { shouldDirty: false })
 
       // удалить старый маршрут
       if (routeRef.current) {

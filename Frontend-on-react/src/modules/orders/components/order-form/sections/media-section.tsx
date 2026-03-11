@@ -97,9 +97,10 @@ export function MediaSection({ existing = [] }: Props) {
       .filter(m => m.type === 'video')
       .map(m => m.id)
 
-    setValue('media.tempPhotoIds', photoIds)
-    setValue('media.tempVideoIds', videoIds)
-  }, [media, setValue])
+    setValue('media.tempPhotoIds', photoIds, { shouldDirty: false })
+    setValue('media.tempVideoIds', videoIds, { shouldDirty: false })
+
+  }, [media])
 
   useEffect(() => {
     const handleUnload = () => {

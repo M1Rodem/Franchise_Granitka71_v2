@@ -17,11 +17,15 @@ const AdminPage = lazy(() => import('@/modules/users/pages/admin.page'));
 const UsersPage = lazy(() => import('@/modules/users/pages/users.page'));
 const PlotsPage = lazy(() => import('@/modules/plots/pages/plots.page'));
 const EditOrderPage = lazy(() => import('@/modules/orders/pages/edit-order.page'));
-const ArchivedOrderDetailsPage = lazy(() => import('@/modules/orders/pages/archived-orders.page'));
+const ArchivedOrderDetailsPage = lazy(
+  () => import('@/modules/orders/pages/archived-order-details.page')
+)
 
 function RouterFallback() {
   return <div className="screen-loader">Загрузка...</div>;
 }
+
+
 
 const router = createBrowserRouter([
   {
@@ -84,6 +88,14 @@ const router = createBrowserRouter([
                 ),
               },
               {
+                path: '/orders/archived/:id',
+                element: (
+                  <Suspense fallback={<RouterFallback />}>
+                    <ArchivedOrderDetailsPage />
+                  </Suspense>
+                ),
+              },
+              {
                 path: '/notifications',
                 element: (
                   <Suspense fallback={<RouterFallback />}>
@@ -123,14 +135,6 @@ const router = createBrowserRouter([
                     element: (
                       <Suspense fallback={<RouterFallback />}>
                         <PlotsPage />
-                      </Suspense>
-                    ),
-                  },
-                  {
-                    path: '/orders/archived/:id',
-                    element: (
-                      <Suspense fallback={<RouterFallback />}>
-                        <ArchivedOrderDetailsPage />
                       </Suspense>
                     ),
                   },

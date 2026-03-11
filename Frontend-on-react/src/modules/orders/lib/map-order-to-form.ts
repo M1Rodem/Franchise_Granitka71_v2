@@ -27,6 +27,8 @@ export function mapOrderToForm(
     latitude: order.latitude ?? null,
     longitude: order.longitude ?? null,
     orderDate: order.orderDate.split('T')[0],
+  
+    discountPercent: order.discountPercent ?? 0,
 
     deceasedFullName: order.deceasedFullName ?? '',
 
@@ -38,8 +40,8 @@ export function mapOrderToForm(
     },
 
     monument: {
-      type: order.monumentType ?? '',
-      size: order.monumentSize ?? '',
+      type: String(order.monumentType ?? ''),
+      size: String(order.monumentSize ?? ''),
     },
 
     works: order.workItems.map((w) => ({
@@ -56,7 +58,7 @@ export function mapOrderToForm(
       note: p.note ?? '',
     })),
 
-    additionalInfo: order.additionalInfo ?? '',
+    additionalInfo: String(order.additionalInfo || ''),
 
     media: {
       tempPhotoIds: [],

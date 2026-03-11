@@ -1,7 +1,7 @@
 import { useParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 
-import { useEffect, useMemo } from 'react'
+import { useEffect, useRef } from 'react'
 import { useUiStore } from '@/shared/store/ui.store'
 
 import { ordersApi } from '@/modules/orders/api/orders.api'
@@ -10,6 +10,7 @@ import { ordersKeys } from '@/modules/orders/lib/orders.keys'
 import { OrderFormProvider } from '@/modules/orders/components/order-form/order-form.provider'
 
 import { mapOrderToForm } from '@/modules/orders/lib/map-order-to-form'
+import type { OrderFormModel } from '@/modules/orders/components/order-form/order-form.schema'
 
 import {
   ClientSection,
@@ -50,10 +51,13 @@ export default function EditOrderPage() {
   const setHeader = useUiStore((s) => s.setOrderEditHeader)
   const resetHeader = useUiStore((s) => s.resetHeader)
 
-  const initialValues = useMemo(() => {
-    if (!data || !plots) return undefined
-    return mapOrderToForm(data, plots)
-  }, [data, plots])
+  const initialValuesRef = useRef<OrderFormModel>()
+
+  if (!initialValuesRef.current && data && plots) {
+    initialValuesRef.current = mapOrderToForm(data, plots)
+  }
+
+  const initialValues = initialValuesRef.current
 
   useEffect(() => {
     if (data?.orderNumber) {

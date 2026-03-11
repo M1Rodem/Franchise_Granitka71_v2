@@ -5,6 +5,7 @@ import { OrdersFilterBar } from '@/modules/orders/components/OrdersFilterBar'
 import { useOrdersFilters } from '@/modules/orders/hooks/use-orders-filters'
 import { useOrdersFilterOptions } from '@/modules/orders/hooks/use-orders-filter-options'
 import { useArchivedOrders } from '@/modules/orders/hooks/use-archived-orders'
+import { OrdersTableSkeleton } from '@/modules/orders/components/OrdersTableSkeleton'
 import surface from '@/shared/ui/surface.module.css'
 
 export default function ArchivedOrdersPage() {
@@ -45,6 +46,14 @@ export default function ArchivedOrdersPage() {
           onReset={resetFilters}
         />
       </section>
+
+      {ordersQuery.isPending && <OrdersTableSkeleton />}
+
+      {ordersQuery.isError && (
+        <div className={surface.surface}>
+          Ошибка загрузки архивных заказов
+        </div>
+      )}
 
       {ordersQuery.data && (
         <>

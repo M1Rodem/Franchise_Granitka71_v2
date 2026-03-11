@@ -214,12 +214,11 @@ export function OrdersDateInput({ label, isoValue, onCommit }: OrdersDateInputPr
   };
 
   const commitFromInput = () => {
-    const input = inputRef.current;
-    if (!input) {
-      return;
-    }
+    const input = inputRef.current
+    if (!input) return
 
-    const parsed = parseDisplayToIso(input.value);
+    const parsed = parseDisplayToIso(input.value)
+
     if (parsed !== null) {
       onCommit(parsed);
       if (parsed === '') {

@@ -70,16 +70,17 @@ namespace Franchisee.Web.Services
                 query = query.Where(o => o.PlotId == filter.PlotId.Value);
             }
 
-            // Date-only filtering, inclusive by day for "To" via < next day.
+            // Фильтр по дате заказа
             if (filter.OrderDateFrom.HasValue)
             {
-                var orderDateFrom = ToUtcDateStart(filter.OrderDateFrom.Value);
-                query = query.Where(o => o.OrderDate >= orderDateFrom);
+                var fromUtc = ToUtcDateStartLocal(filter.OrderDateFrom.Value);
+                query = query.Where(o => o.OrderDate >= fromUtc);
             }
+
             if (filter.OrderDateTo.HasValue)
             {
-                var orderDateToExclusive = ToUtcDateStart(filter.OrderDateTo.Value).AddDays(1);
-                query = query.Where(o => o.OrderDate < orderDateToExclusive);
+                var toUtc = ToUtcDateEndLocal(filter.OrderDateTo.Value);
+                query = query.Where(o => o.OrderDate < toUtc);
             }
 
             // По статусу оплаты
@@ -264,6 +265,18 @@ namespace Franchisee.Web.Services
             };
         }
 
+        private static DateTime ToUtcDateStartLocal(DateTime date)
+        {
+            var local = DateTime.SpecifyKind(date.Date, DateTimeKind.Local);
+            return local.ToUniversalTime();
+        }
+
+        private static DateTime ToUtcDateEndLocal(DateTime date)
+        {
+            var local = DateTime.SpecifyKind(date.Date.AddDays(1), DateTimeKind.Local);
+            return local.ToUniversalTime();
+        }
+
         public async Task<(IEnumerable<OrdersListItemDto> Orders, int TotalCount)>
         GetArchivedOrdersListAsync(OrderFilterRequest filter)
         {
@@ -301,14 +314,14 @@ namespace Franchisee.Web.Services
             // Фильтр по дате заказа
             if (filter.OrderDateFrom.HasValue)
             {
-                var orderDateFrom = ToUtcDateStart(filter.OrderDateFrom.Value);
-                query = query.Where(o => o.OrderDate >= orderDateFrom);
+                var fromUtc = ToUtcDateStartLocal(filter.OrderDateFrom.Value);
+                query = query.Where(o => o.OrderDate >= fromUtc);
             }
 
             if (filter.OrderDateTo.HasValue)
             {
-                var orderDateToExclusive = ToUtcDateStart(filter.OrderDateTo.Value).AddDays(1);
-                query = query.Where(o => o.OrderDate < orderDateToExclusive);
+                var toUtc = ToUtcDateEndLocal(filter.OrderDateTo.Value);
+                query = query.Where(o => o.OrderDate < toUtc);
             }
 
             // Фильтр по статусу оплаты
@@ -383,6 +396,18 @@ namespace Franchisee.Web.Services
             if (filter.PlotId.HasValue)
             {
                 query = query.Where(o => o.PlotId == filter.PlotId.Value);
+            }
+
+            if (filter.OrderDateFrom.HasValue)
+            {
+                var fromUtc = ToUtcDateStartLocal(filter.OrderDateFrom.Value);
+                query = query.Where(o => o.OrderDate >= fromUtc);
+            }
+
+            if (filter.OrderDateTo.HasValue)
+            {
+                var toUtc = ToUtcDateEndLocal(filter.OrderDateTo.Value);
+                query = query.Where(o => o.OrderDate < toUtc);
             }
 
             if (filter.PaymentStatus.HasValue && filter.PaymentStatus != PaymentStatus.All)

@@ -14,7 +14,7 @@ export const createOrderDefaultValues = (): OrderFormModel => {
     client: {
       fullName: '',
       email: '',
-      phone: '',
+      phone: '+7 (___) ___-__-__',
       address: '',
     },
 

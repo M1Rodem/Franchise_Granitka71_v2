@@ -57,6 +57,7 @@ export const useUiStore = create<UiStoreState>((set) => ({
   header: {
     mode: 'default',
     title: 'Granitka71',
+    submitDisabled: true,
   },
 
   setDefaultHeader: (title) =>
@@ -80,7 +81,8 @@ export const useUiStore = create<UiStoreState>((set) => ({
     set({
       header: {
         mode: 'orderCreate',
-        title: 'Создание нового заказа',
+        title: 'Создать новый заказ',
+        submitDisabled: true
       },
     }),
 
@@ -88,18 +90,23 @@ export const useUiStore = create<UiStoreState>((set) => ({
     set({
       header: {
         mode: 'orderEdit',
-        title: 'Редактор заказа',
+        title: 'Редактировать заказ',
         orderNumber,
+        submitDisabled: true,
       },
     }),
 
   setHeaderSubmitDisabled: (disabled) =>
-  set((state) => ({
-    header: {
-      ...state.header,
-      submitDisabled: disabled,
-    },
-  })),
+    set((state) => {
+      if (state.header.submitDisabled === disabled) return state
+
+      return {
+        header: {
+          ...state.header,
+          submitDisabled: disabled,
+        },
+      }
+    }),
 
   resetHeader: () =>
     set({

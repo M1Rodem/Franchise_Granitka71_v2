@@ -1,0 +1,19 @@
+.row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.discountInput {
+  width: 80px;
+  text-align: right;
+}
+
+.total {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  margin-top: 16px;
+  font-size: 18px;
+  font-weight: 600;
+}

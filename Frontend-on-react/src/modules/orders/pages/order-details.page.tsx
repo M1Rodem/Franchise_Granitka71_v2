@@ -14,6 +14,7 @@ import { MetadataSection } from '@/modules/orders/components/order-details/Metad
 import { InstallationSection } from '@/modules/orders/components/order-details/InstallationSection';
 import { WorksSection } from '@/modules/orders/components/order-details/WorksSection';
 import { PaymentsSection } from '@/modules/orders/components/order-details/PaymentsSection';
+import { FinancialSection } from '@/modules/orders/components/order-details/FinancialSection';
 import { MediaSection } from '@/modules/orders/components/order-details/MediaSection';
 import { OrderActions } from '@/modules/orders/components/order-details/OrderActions';
 import { AdditionalInfoSection } from '@/modules/orders/components/order-details/AdditionalInfoSection';
@@ -137,8 +138,8 @@ export default function OrderDetailsPage() {
       />
 
       <MonumentSection
-      type={data.monumentType}
-      size={data.monumentSize}
+        type={(data.monumentType as string) ?? ''}
+        size={(data.monumentSize as string) ?? ''}
       />
 
       <MetadataSection
@@ -164,11 +165,21 @@ export default function OrderDetailsPage() {
       />
       
       <WorksSection items={data.workItems} />
+
+      <FinancialSection
+        subtotal={data.subtotal}
+        discountPercent={data.discountPercent}
+        discountAmount={data.discountAmount}
+        totalPrice={data.totalPrice}
+        payments={data.payments}
+      />
+
       <PaymentsSection items={data.payments} />
+
       <MediaSection items={data.photos} />
       
       <AdditionalInfoSection
-        additionalInfo={data.additionalInfo}
+        additionalInfo={(data.additionalInfo as string) ?? ''}
       />
       <OrderActions orderId={data.id} />
     </div>

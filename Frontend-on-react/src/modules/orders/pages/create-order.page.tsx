@@ -7,6 +7,7 @@ import { WorksSection } from '@/modules/orders/components/order-form/sections/wo
 import { PaymentsSection } from '@/modules/orders/components/order-form/sections/payments-section'
 import { MediaSection } from '@/modules/orders/components/order-form/sections/media-section'
 import { AdditionalInfoSection } from '@/modules/orders/components/order-form/sections/additional-info-section'
+import { TotalsSection } from '@/modules/orders/components/order-form/sections/totals-section'
 
 import styles from './create-order.page.module.css'
 
@@ -40,6 +41,7 @@ export default function CreateOrderPage() {
         </div>
 
         <WorksSection />
+        <TotalsSection />
         <PaymentsSection />
         <MediaSection />
         <AdditionalInfoSection />

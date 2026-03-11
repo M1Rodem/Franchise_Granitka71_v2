@@ -8,6 +8,8 @@
         public PaymentStatus? PaymentStatus { get; set; }
         public OrderStatus? Status { get; set; }
 
+        public int? PlotId { get; set; }
+        
         // [Obsolete("Deprecated. Not used by frontend.")]
         // public DateTime? CreatedFrom { get; set; }
 

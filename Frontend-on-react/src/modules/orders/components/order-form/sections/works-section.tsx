@@ -3,7 +3,6 @@
 import {
   useFieldArray,
   useFormContext,
-  useWatch,
 } from 'react-hook-form'
 
 import type { OrderFormModel } from '../order-form.schema'
@@ -25,19 +24,6 @@ export function WorksSection() {
       control,
       name: 'works',
     })
-
-  const works = useWatch({
-    control,
-    name: 'works',
-  }) as OrderFormModel['works'] || []
-
-  const total = works.reduce<number>((sum, w) => {
-    return (
-      sum +
-      (Number(w?.price) || 0) *
-      (Number(w?.quantity) || 0)
-    )
-  }, 0)
 
   return (
     <div className={surface.surface}>
@@ -136,15 +122,6 @@ export function WorksSection() {
         >
           + Добавить работу
         </button>
-      </div>
-
-      {/* TOTAL */}
-
-      <div className={table.totalBlock}>
-        <span>Итоговая сумма:</span>
-        <strong>
-          {total.toLocaleString('ru-RU')} ₽
-        </strong>
       </div>
     </div>
   )

@@ -85,6 +85,9 @@ namespace Franchisee.Web.Models
         public string? PlotName { get; set; }
 
         public string ManagerFullName { get; set; } = string.Empty;
+
+        // НОВОЕ
+        public DateTime? DeletedAt { get; set; }
     }
 
     public class OrderPaymentDto

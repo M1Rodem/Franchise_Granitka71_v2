@@ -17,18 +17,14 @@ function formatMoney(value: number) {
   return new Intl.NumberFormat('ru-RU', {
     style: 'currency',
     currency: 'RUB',
-    maximumFractionDigits: 0,
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
   }).format(value)
 }
 
 const GRID_TEMPLATE = '2fr 1fr 1fr 1fr 2fr'
 
 export function WorksSection({ items }: Props) {
-  const total = items.reduce(
-    (sum, item) => sum + item.price * item.quantity,
-    0,
-  )
-
   return (
     <section className={surface.surface}>
       <h2 className={surface.sectionTitle}>Работы по заказу</h2>
@@ -91,11 +87,6 @@ export function WorksSection({ items }: Props) {
                 </div>
               )
             })}
-          </div>
-
-          <div className={table.totalBlock}>
-            <span>Итого по работам:</span>
-            <strong>{formatMoney(total)}</strong>
           </div>
         </>
       )}

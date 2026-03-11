@@ -58,19 +58,28 @@ namespace Franchisee.Web.Models
         public DateTime? DeletedAt { get; set; }
         public bool IsArchived { get; set; } = false;
 
-        public void RecalculateTotals()
+       public void RecalculateTotals()
         {
-            if (WorkItems == null || !WorkItems.Any())
+            if (WorkItems == null || WorkItems.Count == 0)
             {
-                Subtotal = 0;
-                DiscountAmount = 0;
-                TotalPrice = 0;
+                Subtotal = 0m;
+                DiscountAmount = 0m;
+                TotalPrice = 0m;
                 return;
             }
 
-            var subtotal = WorkItems.Sum(w => w.Price * w.Quantity);
+            decimal subtotal = 0m;
 
-            Subtotal = Math.Round(subtotal, 2);
+            foreach (var item in WorkItems)
+            {
+                if (item == null)
+                    continue;
+
+                var lineTotal = item.Price * item.Quantity;
+                subtotal += lineTotal;
+            }
+
+            Subtotal = Math.Round(subtotal, 2, MidpointRounding.AwayFromZero);
 
             var percent = DiscountPercent;
 
@@ -80,14 +89,22 @@ namespace Franchisee.Web.Models
             if (percent > 10)
                 percent = 10;
 
-            DiscountAmount = Math.Round(Subtotal * percent / 100, 2);
+            DiscountAmount = Math.Round(
+                Subtotal * percent / 100m,
+                2,
+                MidpointRounding.AwayFromZero
+            );
 
             var total = Subtotal - DiscountAmount;
 
             if (total < 0)
                 total = 0;
 
-            TotalPrice = Math.Round(total, 2);
+            TotalPrice = Math.Round(
+                total,
+                2,
+                MidpointRounding.AwayFromZero
+            );
         }
     }
 

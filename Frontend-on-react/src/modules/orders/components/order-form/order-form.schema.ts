@@ -54,6 +54,11 @@ export const orderFormSchema = z
 
     additionalInfo: z.string().optional(),
 
+    discountPercent: z
+      .number()
+      .min(0, 'Скидка не может быть меньше 0%')
+      .max(10, 'Скидка не может быть больше 10%'),
+
     media: z.object({
       tempPhotoIds: z.array(z.number()),
       tempVideoIds: z.array(z.number()),

@@ -57,8 +57,8 @@ builder.Services.AddScoped<IMediaService, MediaService>();
 var app = builder.Build();
 
 // СОЗДАНИЕ АДМИНА ПРИ ПЕРВОМ ЗАПУСКЕ (УДАЛИ ПОСЛЕ НАСТРОЙКИ)
-//try
-//{
+// try
+// {
 //    using var scope = app.Services.CreateScope();
 //    var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
 //    var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
@@ -91,12 +91,12 @@ var app = builder.Build();
 //    {
 //        logger.LogInformation("Администратор уже существует в системе");
 //    }
-//}
-//catch (Exception ex)
-//{
+// }
+// catch (Exception ex)
+// {
 //    var logger = app.Services.GetRequiredService<ILogger<Program>>();
 //    logger.LogError(ex, "Ошибка при создании администратора");
-//}
+// }
 
 // Исправленный порядок middleware
 

@@ -65,6 +65,11 @@ namespace Franchisee.Web.Services
                 );
             }
 
+            if (filter.PlotId.HasValue)
+            {
+                query = query.Where(o => o.PlotId == filter.PlotId.Value);
+            }
+
             // Date-only filtering, inclusive by day for "To" via < next day.
             if (filter.OrderDateFrom.HasValue)
             {
@@ -265,8 +270,12 @@ namespace Franchisee.Web.Services
             var query = _context.Orders
                 .IgnoreQueryFilters()
                 .Where(o => o.IsDeleted)
+                .Include(o => o.Plot)
+                .Include(o => o.Manager)
+                .Include(o => o.Payments)
                 .AsQueryable();
 
+            // Поиск
             if (!string.IsNullOrWhiteSpace(filter.SearchQuery))
             {
                 var pattern = $"%{filter.SearchQuery.Trim()}%";
@@ -281,6 +290,37 @@ namespace Franchisee.Web.Services
                         EF.Functions.ILike(o.Manager.Username, pattern)
                     ))
                 );
+            }
+
+            // Фильтр по участку
+            if (filter.PlotId.HasValue)
+            {
+                query = query.Where(o => o.PlotId == filter.PlotId.Value);
+            }
+
+            // Фильтр по дате заказа
+            if (filter.OrderDateFrom.HasValue)
+            {
+                var orderDateFrom = ToUtcDateStart(filter.OrderDateFrom.Value);
+                query = query.Where(o => o.OrderDate >= orderDateFrom);
+            }
+
+            if (filter.OrderDateTo.HasValue)
+            {
+                var orderDateToExclusive = ToUtcDateStart(filter.OrderDateTo.Value).AddDays(1);
+                query = query.Where(o => o.OrderDate < orderDateToExclusive);
+            }
+
+            // Фильтр по статусу оплаты
+            if (filter.PaymentStatus.HasValue && filter.PaymentStatus != PaymentStatus.All)
+            {
+                query = ApplyPaymentStatusFilter(query, filter.PaymentStatus.Value);
+            }
+
+            // Фильтр по статусу заказа
+            if (filter.Status.HasValue)
+            {
+                query = query.Where(o => o.Status == filter.Status.Value);
             }
 
             var totalCount = await query.CountAsync();
@@ -303,6 +343,8 @@ namespace Franchisee.Web.Services
                     ManagerFullName = o.Manager != null
                         ? o.Manager.FullName
                         : string.Empty,
+
+                    DeletedAt = o.DeletedAt,
 
                     PaymentStatus = CalculatePaymentStatus(
                         o.TotalPrice,
@@ -336,6 +378,11 @@ namespace Franchisee.Web.Services
                     EF.Functions.ILike(o.Manager!.FullName, pattern) ||
                     EF.Functions.ILike(o.Manager!.Username, pattern)
                 );
+            }
+
+            if (filter.PlotId.HasValue)
+            {
+                query = query.Where(o => o.PlotId == filter.PlotId.Value);
             }
 
             if (filter.PaymentStatus.HasValue && filter.PaymentStatus != PaymentStatus.All)

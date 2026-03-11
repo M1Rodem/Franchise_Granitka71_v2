@@ -7,4 +7,10 @@ export const ordersKeys = {
     [...ordersKeys.all, 'list', normalizeOrdersListParams(params)] as const,
   byId: (id: number) =>
   [...ordersKeys.all, 'byId', id] as const,
+
+
+  archived: (params: OrdersListQueryParams) =>
+  [...ordersKeys.all, 'archived', normalizeOrdersListParams(params)] as const,
+  archivedById: (id: number) =>
+    [...ordersKeys.all, 'archivedById', id] as const,
 };

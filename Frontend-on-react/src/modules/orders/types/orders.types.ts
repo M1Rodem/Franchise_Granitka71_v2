@@ -109,7 +109,7 @@ export type OrdersPagedResultDto = z.infer<typeof ordersPagedResultSchema>;
 
 const workItemCamelSchema = z.object({
   id: z.number().int(),
-  orderId: z.number().int(),
+  orderId: z.number().int().optional(),
   workDescription: z.string(),
   price: z.number(),
   quantity: z.number(),
@@ -119,7 +119,7 @@ const workItemCamelSchema = z.object({
 
 const workItemPascalSchema = z.object({
   Id: z.number().int(),
-  OrderId: z.number().int(),
+  OrderId: z.number().int().optional(),
   WorkDescription: z.string(),
   Price: z.number(),
   Quantity: z.number(),
@@ -139,7 +139,7 @@ export const workItemSchema = z.union([workItemCamelSchema, workItemPascalSchema
 
 const paymentCamelSchema = z.object({
   id: z.number().int(),
-  orderId: z.number().int(),
+  orderId: z.number().int().optional(),
   amount: z.number(),
   paymentDate: z.string(),
   paymentType: z.string(),
@@ -148,7 +148,7 @@ const paymentCamelSchema = z.object({
 
 const paymentPascalSchema = z.object({
   Id: z.number().int(),
-  OrderId: z.number().int(),
+  OrderId: z.number().int().optional(),
   Amount: z.number(),
   PaymentDate: z.string(),
   PaymentType: z.string(),
@@ -218,11 +218,15 @@ const orderDetailsCamelSchema = z.object({
   phone: z.string(),
   address: z.string(),
 
-  monumentType: z.string(),
-  monumentSize: z.string(),
-  additionalInfo: z.string(),
+  monumentType: z.string().optional().nullable(),
+  monumentSize: z.string().optional().nullable(),
+  additionalInfo: z.string().optional().nullable(),
 
   status: z.union([z.number(), z.string()]),
+
+  subtotal: z.number(),
+  discountPercent: z.number(),
+  discountAmount: z.number(),
   totalPrice: z.number(),
 
   createdAt: z.string(),
@@ -256,12 +260,16 @@ const orderDetailsPascalSchema = z.object({
   CustomerEmail: z.string().nullable().optional(),
   Phone: z.string(),
   Address: z.string(),
-
-  MonumentType: z.string(),
-  MonumentSize: z.string(),
-  AdditionalInfo: z.string(),
+  
+  monumentType: z.string().optional().nullable(),
+  monumentSize: z.string().optional().nullable(),
+  additionalInfo: z.string().optional().nullable(), 
 
   Status: z.union([z.number(), z.string()]),
+
+  Subtotal: z.number(),
+  DiscountPercent: z.number(),
+  DiscountAmount: z.number(),
   TotalPrice: z.number(),
 
   CreatedAt: z.string(),
@@ -296,7 +304,12 @@ const orderDetailsPascalSchema = z.object({
   monumentSize: v.MonumentSize,
   additionalInfo: v.AdditionalInfo,
   status: v.Status,
+
+  subtotal: v.Subtotal,
+  discountPercent: v.DiscountPercent,
+  discountAmount: v.DiscountAmount,
   totalPrice: v.TotalPrice,
+
   createdAt: v.CreatedAt,
   updatedAt: v.UpdatedAt,
   managerId: v.ManagerId,

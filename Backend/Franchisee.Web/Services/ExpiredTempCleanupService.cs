@@ -12,7 +12,7 @@ namespace Franchisee.Web.Services
         private readonly ILogger<ExpiredTempCleanupService> _logger;
         private readonly IServiceProvider _serviceProvider;
         private readonly TimeSpan _cleanupInterval = TimeSpan.FromHours(1); // Проверка каждый час
-        private readonly TimeSpan _archiveRetention = TimeSpan.FromDays(7); // Хранить 7 дней
+        private readonly TimeSpan _archiveRetention = TimeSpan.FromDays(14); // Хранить 7 дней
         private readonly TimeSpan _pendingApprovalRetention = TimeSpan.FromDays(14); // 14 дней для файлов ожидающих approval
 
         public ExpiredTempCleanupService(ILogger<ExpiredTempCleanupService> logger, IServiceProvider serviceProvider)

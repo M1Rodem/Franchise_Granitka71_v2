@@ -63,12 +63,12 @@ export function OrderFormProvider({
 
   const methods = useForm<OrderFormModel>({
     resolver: zodResolver(orderFormSchema),
-    defaultValues,
+    defaultValues: defaultValues as OrderFormModel,
     mode: "onSubmit",
   })
 
   const {
-    formState: { isDirty, isSubmitted, touchedFields },
+    formState: { isDirty, touchedFields },
   } = methods
 
   const isTouched = Object.keys(touchedFields).length > 0
@@ -132,7 +132,7 @@ export function OrderFormProvider({
   })
 
   const onSubmit = methods.handleSubmit(
-    async (values) => {
+    async (values: OrderFormModel) => {
 
     setIsSaving(true)
 
@@ -213,10 +213,7 @@ function mapFormToUpdateDto(values: OrderFormModel) {
     monumentSize: values.monument.size,
     additionalInfo: values.additionalInfo,
 
-    totalPrice: values.works.reduce(
-      (sum, w) => sum + w.price * w.quantity,
-      0
-    ),
+    discountPercent: values.discountPercent,
 
     workItems: values.works.map((w) => ({
       workDescription: w.workDescription,
@@ -271,10 +268,7 @@ function mapFormToCreateDto(values: OrderFormModel) {
     monumentSize: values.monument.size,
     additionalInfo: values.additionalInfo,
 
-    totalPrice: values.works.reduce(
-      (sum, w) => sum + w.price * w.quantity,
-      0
-    ),
+    discountPercent: values.discountPercent,
 
     workItems: values.works.map((w) => ({
       workDescription: w.workDescription,

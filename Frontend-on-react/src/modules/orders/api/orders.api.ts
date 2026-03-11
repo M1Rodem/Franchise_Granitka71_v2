@@ -26,7 +26,7 @@ export interface CreateOrderRequestDto {
   monumentSize?: string;
   additionalInfo?: string;
 
-  totalPrice: number;
+  discountPercent: number;
 
   workItems: {
     workDescription: string;
@@ -65,7 +65,7 @@ export interface UpdateOrderRequestDto {
   monumentSize?: string
   additionalInfo?: string
 
-  totalPrice?: number
+  discountPercent?: number
 
   workItems?: {
     workDescription: string
@@ -110,12 +110,28 @@ export const ordersApi = {
 
   async getById(id: number): Promise<OrderDetailsDto> {
     const response = await httpClient.get(`/api/orders/${id}`);
-    return orderDetailsSchema.parse(response.data);
+    const parsed = orderDetailsSchema.safeParse(response.data);
+
+    if (!parsed.success) {
+      console.error('OrderDetails parse error:', parsed.error);
+      console.log('Response data:', response.data);
+      throw new Error('DTO parse error');
+    }
+
+    return parsed.data;
   },
 
   async createOrder(payload: CreateOrderRequestDto): Promise<OrderDetailsDto> {
     const response = await httpClient.post('/api/orders', payload);
-    return orderDetailsSchema.parse(response.data);
+    const parsed = orderDetailsSchema.safeParse(response.data);
+
+    if (!parsed.success) {
+      console.error('OrderDetails parse error:', parsed.error);
+      console.log('Response data:', response.data);
+      throw new Error('DTO parse error');
+    }
+
+    return parsed.data;
   },
 
   async deleteOrder(id: number): Promise<void> {
@@ -128,5 +144,49 @@ export const ordersApi = {
   ): Promise<OrderDetailsDto> {
     const response = await httpClient.put(`/api/orders/${id}`, payload)
     return orderDetailsSchema.parse(response.data)
-  }
+  },
+  
+  // =========================
+  // ARCHIVED ORDERS
+  // =========================
+
+  async getArchivedOrders(params: OrdersListQueryParams): Promise<OrdersPagedResultDto> {
+    const normalized = normalizeOrdersListParams(params);
+
+    const response = await httpClient.get('/api/orders/archived/list', {
+      params: {
+        SearchQuery: normalized.searchQuery,
+        OrderDateFrom: normalized.dateFrom,
+        OrderDateTo: normalized.dateTo,
+        PlotId: normalized.plotId,
+        PaymentStatus: normalized.paymentStatus,
+        Status: normalized.completionStatus,
+        Page: normalized.page,
+        PageSize: normalized.pageSize,
+      },
+    });
+
+    return ordersPagedResultSchema.parse(response.data);
+  },
+
+  async getArchivedById(id: number): Promise<OrderDetailsDto> {
+    const response = await httpClient.get(`/api/orders/archived/${id}`);
+
+    const parsed = orderDetailsSchema.safeParse(response.data);
+
+    if (!parsed.success) {
+      console.error('Archived order parse error:', parsed.error);
+      throw new Error('DTO parse error');
+    }
+
+    return parsed.data;
+  },
+
+  async restoreOrder(id: number): Promise<void> {
+    await httpClient.post(`/api/orders/${id}/restore`);
+  },
+
+  async deleteArchivedOrder(id: number): Promise<void> {
+    await httpClient.delete(`/api/orders/archived/${id}`);
+  },
 };

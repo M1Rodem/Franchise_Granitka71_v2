@@ -928,6 +928,9 @@ namespace Franchisee.Web.Controllers
 
         private OrderResponseDto MapToResponseDto(Order order)
         {
+            // Пересчитываем финансы из WorkItems
+            order.RecalculateTotals();
+
             var paymentStatus = OrderRepository.CalculatePaymentStatus(
                 order.TotalPrice,
                 order.Payments?.Sum(p => p.Amount) ?? 0m

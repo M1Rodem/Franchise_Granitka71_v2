@@ -43,6 +43,8 @@ export const createOrderDefaultValues = (): OrderFormModel => {
 
     additionalInfo: '',
 
+    discountPercent: 0,
+
     media: {
       tempPhotoIds: [],
       tempVideoIds: [],

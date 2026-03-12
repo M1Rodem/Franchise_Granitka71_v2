@@ -9,6 +9,8 @@ import {
 import { AnimatedSelect } from '@/shared/ui/AnimatedSelect'
 import { OrdersDateInput } from '@/modules/orders/components/OrdersDateInput'
 import type { OrderFormModel } from '../order-form.schema'
+import { useOrderForm } from '../order-form.provider'
+import { showTempMessage } from '@/shared/ui/temp-message.service'
 import surface from '@/shared/ui/surface.module.css'
 import table from '@/shared/ui/table-base.module.css'
 import input from '@/shared/ui/input.module.css'
@@ -26,29 +28,133 @@ export function PaymentsSection() {
   const {
     register,
     control,
-    formState: { errors },
+    setValue,
+    formState: { errors, dirtyFields },
   } = useFormContext<OrderFormModel>()
+
+  const { mode } = useOrderForm()
 
   const { fields, append, remove } = useFieldArray({
     control,
     name: 'payments',
   })
 
-  const payments =
+ const payments =
     useWatch({
       control,
       name: 'payments',
     }) || []
 
-  const totalPaid = payments.reduce<number>((sum, p) => {
-    return sum + (Number(p?.amount) || 0)
-  }, 0)
+  const works =
+    useWatch({
+      control,
+      name: "works"
+    }) || []
+
+  const discountPercent =
+    useWatch({
+      control,
+      name: "discountPercent"
+    }) ?? 0
+
+  const subtotal = works.reduce(
+    (sum, w) =>
+      sum +
+      (Number(w?.price) || 0) *
+      (Number(w?.quantity) || 0),
+    0
+  )
+  
+  const roundMoney = (value: number) =>
+    Math.round(value * 100) / 100
+
+  const advanceIndex = payments.findIndex(
+    (p) => p?.paymentType === "Аванс"
+  )
+
+  const advanceAmount =
+    advanceIndex !== -1
+      ? Number(payments?.[advanceIndex]?.amount) || 0
+      : 0
+
+  const applySuggestedAdvance = () => {
+
+    if (advanceIndex === -1) return
+
+    setValue(
+      `payments.${advanceIndex}.amount`,
+      suggestedAdvance,
+      {
+        shouldDirty: true,
+        shouldValidate: true
+      }
+    )
+
+  }
+
+  const discountAmount =
+    subtotal * (discountPercent / 100)
+
+  const total =
+    roundMoney(subtotal - discountAmount)
+
+  const suggestedAdvance =
+    Math.round(total * 0.3)
+
+  const getMaxForPayment = (index: number) => {
+
+    const othersSum = payments.reduce((sum, p, i) => {
+      if (i === index) return sum
+      return sum + (Number(p?.amount) || 0)
+    }, 0)
+
+    return roundMoney(Math.max(0, total - othersSum))
+
+  }
+
+  const totalPaid = roundMoney(
+    payments.reduce<number>((sum, p) => {
+      return sum + (Number(p?.amount) || 0)
+    }, 0)
+  )
+
+  const remaining = roundMoney(Math.max(0, total - totalPaid))
 
   return (
     <div className={surface.surface}>
-      <h2 className={surface.sectionTitle}>
-        Платежи
-      </h2>
+      <div className={styles.headerRow}>
+        <h2 className={surface.sectionTitle}>
+          Платежи
+        </h2>
+
+        {advanceIndex !== -1 &&
+        advanceAmount !== suggestedAdvance &&
+        (
+          mode === "edit" ||
+          dirtyFields?.payments?.[advanceIndex]?.amount
+        ) && (
+
+          <div className={styles.advanceHint}>
+            <span className={styles.advanceText}>
+              Рекомендуемый аванс (30%):
+              <strong>
+                {" "}
+                {suggestedAdvance.toLocaleString("ru-RU")} ₽
+              </strong>
+            </span>
+
+            <button
+              type="button"
+              onClick={applySuggestedAdvance}
+              className={`${button.btn} ${button.btnSuccess}`}
+            >
+              Применить 30%
+            </button>
+          </div>
+
+        )}
+
+      </div>
 
       <div
         className={table.dataTable}
@@ -115,8 +221,39 @@ export function PaymentsSection() {
                   placeholder="Сумма"
                   {...register(`payments.${index}.amount`, {
                     valueAsNumber: true,
+                    onChange: (e) => {
+
+                      let value = Number(e.target.value) || 0
+
+                      // ограничение 2 знаков после запятой
+                      value = Math.round(value * 100) / 100
+
+                      const max = getMaxForPayment(index)
+
+                      if (value > max) {
+
+                        value = max
+
+                        showTempMessage(
+                          'warning',
+                          `Максимальная сумма этого платежа: ${max.toLocaleString('ru-RU', {
+                            minimumFractionDigits: 2,
+                            maximumFractionDigits: 2
+                          })} ₽`
+                        )
+
+                      }
+
+                      setValue(
+                        `payments.${index}.amount`,
+                        value,
+                        { shouldDirty: true }
+                      )
+
+                    }
                   })}
                   className={input.input}
+                  max={getMaxForPayment(index)}
                 />
               </div>
 
@@ -169,6 +306,7 @@ export function PaymentsSection() {
       <div className={table.fullWidthAction}>
         <button
           type="button"
+          disabled={remaining <= 0}
           onClick={() =>
             append({
               paymentType: 'Доплата',

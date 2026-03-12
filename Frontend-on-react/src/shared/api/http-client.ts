@@ -19,11 +19,15 @@ httpClient.interceptors.request.use((config) => {
   const sessionRaw = localStorage.getItem('auth-session')
 
   if (sessionRaw) {
-    const session = JSON.parse(sessionRaw)
+    try {
+      const session = JSON.parse(sessionRaw)
 
-    if (session.token) {
-      config.headers = config.headers ?? {}
-      config.headers.Authorization = `Bearer ${session.token}`
+      if (session?.token) {
+        config.headers = config.headers ?? {}
+        config.headers.Authorization = `Bearer ${session.token}`
+      }
+    } catch {
+      localStorage.removeItem('auth-session')
     }
   }
 
@@ -51,16 +55,23 @@ httpClient.interceptors.response.use(
     ) {
       try {
         if (!refreshPromise) {
-          refreshPromise = httpClient
-            .post('/api/auth/refresh')
+          const session = JSON.parse(localStorage.getItem('auth-session') || '{}')
+            refreshPromise = httpClient.post('/api/auth/refresh', {
+              refreshToken: session.refreshToken
+            })
             .then((res) => {
-              const { token, ...user } = res.data
+              const { token, refreshToken } = res.data
 
               if (token) {
-                useAuthStore.getState().setSession({
-                  user,
-                  token
-                })
+                const currentUser = useAuthStore.getState().user
+
+                if (currentUser) {
+                  useAuthStore.getState().setSession({
+                    user: currentUser,
+                    token,
+                    refreshToken
+                  })
+                }
               }
             })
             .finally(() => {
@@ -71,6 +82,7 @@ httpClient.interceptors.response.use(
         await refreshPromise
 
         if ((originalRequest as any)._retry) {
+          useAuthStore.getState().clearSession()
           return Promise.reject(error)
         }
 

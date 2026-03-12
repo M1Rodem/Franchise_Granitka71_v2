@@ -130,6 +130,11 @@ const router = createBrowserRouter([
                       </Suspense>
                     ),
                   },
+                ],
+              },
+              {
+                element: <RequireRole roles={['SuperAdmin']} />,
+                children: [
                   {
                     path: '/admin/plots',
                     element: (

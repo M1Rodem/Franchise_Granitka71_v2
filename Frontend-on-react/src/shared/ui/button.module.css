@@ -67,3 +67,31 @@
   background: rgba(90, 140, 220, 0.22);
   box-shadow: 0 6px 18px rgba(90, 140, 220, 0.35);
 }
+
+/* ===== SUCCESS (GREEN ACTION) ===== */
+
+.btnSuccess {
+  background: linear-gradient(
+    145deg,
+    rgba(86, 220, 160, 0.28),
+    rgba(40, 170, 110, 0.16)
+  );
+
+  border-color: rgba(110, 255, 200, 0.45);
+
+  color: #eafff6;
+
+  backdrop-filter: blur(16px);
+
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.35),
+    0 6px 16px rgba(60,220,140,0.22);
+}
+
+.btnSuccess:hover:not(:disabled) {
+  transform: translateY(-2px);
+
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.4),
+    0 6px 28px rgba(60,220,140,0.28);
+}

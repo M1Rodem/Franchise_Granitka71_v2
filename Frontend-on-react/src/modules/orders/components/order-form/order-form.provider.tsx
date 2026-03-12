@@ -6,6 +6,7 @@ import { useForm, FormProvider } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
+import { useWatch } from "react-hook-form"
 
 import { orderFormSchema } from './order-form.schema'
 import type { OrderFormModel } from './order-form.schema'
@@ -72,6 +73,23 @@ export function OrderFormProvider({
     shouldUnregister: false
   })
 
+  const works = useWatch({
+    control: methods.control,
+    name: "works"
+  })
+
+  const discountPercent = useWatch({
+    control: methods.control,
+    name: "discountPercent"
+  })
+
+  const payments = useWatch({
+    control: methods.control,
+    name: "payments"
+  })
+
+  const advanceManuallyEditedRef = useRef(false)
+
   const { dirtyFields, isDirty, isSubmitting } =
     useFormState({
       control: methods.control
@@ -95,6 +113,80 @@ export function OrderFormProvider({
     setHeaderSubmitDisabled(disabled)
 
   }, [mode, isDirty, hasRealChanges, isSubmitting, dirtyFields])
+
+  useEffect(() => {
+
+    if (mode !== "create") return
+    if (!payments?.length) return
+
+    const subtotal = (works ?? []).reduce(
+      (sum, w) =>
+        sum +
+        (Number(w?.price) || 0) *
+        (Number(w?.quantity) || 0),
+      0
+    )
+
+    const discountAmount =
+      subtotal * ((discountPercent ?? 0) / 100)
+
+    const total = subtotal - discountAmount
+
+    const advance = Math.round(total * 0.3)
+
+    const advanceIndex = payments.findIndex(
+      (p) => p?.paymentType === "Аванс"
+    )
+
+    if (advanceIndex === -1) return
+
+    const isDirty =
+      dirtyFields?.payments?.[advanceIndex]?.amount
+
+    if (isDirty) return
+
+    methods.setValue(
+      `payments.${advanceIndex}.amount`,
+      advance,
+      { shouldDirty: false }
+    )
+
+  }, [works, discountPercent])
+
+  useEffect(() => {
+
+    if (mode !== "create") return
+
+    const advanceIndex = payments?.findIndex(
+      (p) => p?.paymentType === "Аванс"
+    )
+
+    if (advanceIndex === -1) return
+
+    const subtotal = (works ?? []).reduce(
+      (sum, w) =>
+        sum +
+        (Number(w?.price) || 0) *
+        (Number(w?.quantity) || 0),
+      0
+    )
+
+    const discountAmount =
+      subtotal * ((discountPercent ?? 0) / 100)
+
+    const total = subtotal - discountAmount
+
+    const autoAdvance =
+      Math.round(total * 0.3)
+
+    const current =
+      payments?.[advanceIndex]?.amount
+
+    if (current !== autoAdvance) {
+      advanceManuallyEditedRef.current = true
+    }
+
+  }, [payments])
   
   const createMutation = useMutation({
     mutationFn: ordersApi.createOrder,
@@ -189,11 +281,18 @@ export function OrderFormProvider({
   )
 
   return (
-    <FormProvider {...methods}>
-      <form id="order-form" onSubmit={onSubmit} noValidate>
-        {children}
-      </form>
-    </FormProvider>
+    <OrderFormContext.Provider
+      value={{
+        mode,
+        orderId
+      }}
+    >
+      <FormProvider {...methods}>
+        <form id="order-form" onSubmit={onSubmit} noValidate>
+          {children}
+        </form>
+      </FormProvider>
+    </OrderFormContext.Provider>
   )
 }
 

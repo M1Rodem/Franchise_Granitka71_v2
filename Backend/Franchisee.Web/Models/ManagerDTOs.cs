@@ -23,6 +23,20 @@ namespace Franchisee.Web.Models
         public string Role { get; set; } = string.Empty;
         public bool IsBlocked { get; set; }
     }
+    public class ManagerDetailsDto
+    {
+        public int Id { get; set; }
+
+        public string Username { get; set; } = string.Empty;
+
+        public string FullName { get; set; } = string.Empty;
+
+        public string Role { get; set; } = string.Empty;
+
+        public bool IsBlocked { get; set; }
+
+        public string? Password { get; set; }
+    }
     public class PagedResponse<T>
     {
         public List<T> Items { get; set; } = new();

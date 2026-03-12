@@ -1,0 +1,35 @@
+.statusActive {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+
+  padding: 4px 10px;
+
+  border-radius: 999px;
+
+  font-size: 12px;
+  font-weight: 500;
+
+  background: rgba(60, 220, 140, 0.18);
+  border: 1px solid rgba(60, 220, 140, 0.35);
+
+  color: #7dffc3;
+}
+
+.statusBlocked {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+
+  padding: 4px 10px;
+
+  border-radius: 999px;
+
+  font-size: 12px;
+  font-weight: 500;
+
+  background: rgba(220, 80, 80, 0.18);
+  border: 1px solid rgba(220, 80, 80, 0.35);
+
+  color: #ff9a9a;
+}

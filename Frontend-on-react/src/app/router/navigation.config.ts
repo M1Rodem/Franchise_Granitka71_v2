@@ -6,7 +6,9 @@ export type AppIconName =
   | 'archive'
   | 'notifications'
   | 'profile'
-  | 'admin';
+  | 'admin'
+  | 'eye'
+  | 'eyeOff';
 
 export interface NavigationItem {
   id: string;

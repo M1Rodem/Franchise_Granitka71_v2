@@ -44,6 +44,35 @@ export function AppIcon({ name, className }: AppIconProps) {
           <path d="m12 3 8 4v5c0 4.8-3.2 7.8-8 9-4.8-1.2-8-4.2-8-9V7l8-4Z" stroke="currentColor" strokeWidth="1.6" />
         </svg>
       );
+    case 'eye':
+      return (
+        <svg className={className} viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path
+            d="M2 12s4-6 10-6 10 6 10 6-4 6-10 6-10-6-10-6Z"
+            stroke="currentColor"
+            strokeWidth="1.6"
+          />
+          <circle cx="12" cy="12" r="3" stroke="currentColor" strokeWidth="1.6" />
+        </svg>
+      );
+
+    case 'eyeOff':
+      return (
+        <svg className={className} viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path
+            d="M3 3 21 21"
+            stroke="currentColor"
+            strokeWidth="1.6"
+            strokeLinecap="round"
+          />
+          <path
+            d="M10.5 6.5C11 6.4 11.5 6.3 12 6.3c6 0 10 5.7 10 5.7-.6.9-1.5 2.1-2.7 3.2M6.6 6.6C4.6 8 3.3 10 2 12c0 0 4 6 10 6 1.3 0 2.5-.3 3.6-.7"
+            stroke="currentColor"
+            strokeWidth="1.6"
+            strokeLinecap="round"
+          />
+        </svg>
+      );
     default:
       return null;
   }

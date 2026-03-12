@@ -109,31 +109,38 @@ namespace Franchisee.Web.Services
                 _context.SaveChanges();
             }
         }
-        public async Task<(IEnumerable<Manager> managers, int totalCount)> GetPagedAsync(int page, int pageSize, string search = "")
+        public async Task<(List<Manager>, int)> GetPagedAsync(
+            int page,
+            int pageSize,
+            string searchQuery,
+            string? role)
         {
-            var query = _context.Managers.AsNoTracking();
+            var query = _context.Managers.AsQueryable();
 
-            // Применяем поиск если указан
-            if (!string.IsNullOrEmpty(search))
+            if (!string.IsNullOrWhiteSpace(searchQuery))
             {
-                search = search.ToLower();
-                query = query.Where(m =>
-                    m.Id.ToString().Contains(search) ||
-                    m.Username.ToLower().Contains(search) ||
-                    m.FullName.ToLower().Contains(search));
+                query = query.Where(x =>
+                    x.Username.ToLower().Contains(searchQuery.ToLower()) ||
+                    x.FullName.ToLower().Contains(searchQuery.ToLower()));
             }
 
-            // Получаем общее количество
+            if (!string.IsNullOrWhiteSpace(role))
+            {
+                if (Enum.TryParse<UserRole>(role, true, out var roleEnum))
+                {
+                    query = query.Where(x => x.Role == roleEnum);
+                }
+            }
+
             var totalCount = await query.CountAsync();
 
-            // Применяем пагинацию
-            var managers = await query
-                .OrderBy(m => m.Id)
+            var items = await query
+                .OrderBy(x => x.Id)
                 .Skip((page - 1) * pageSize)
                 .Take(pageSize)
                 .ToListAsync();
 
-            return (managers, totalCount);
+            return (items, totalCount);
         }
     }
 }

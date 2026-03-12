@@ -10,17 +10,25 @@ export function TempMessageProvider() {
 
   useEffect(() => {
     return registerTempMessageHandler((payload) => {
-      // Если уже есть таймер — очищаем
+
       if (timeoutRef.current) {
-        window.clearTimeout(timeoutRef.current);
+        window.clearTimeout(timeoutRef.current)
+        timeoutRef.current = null
       }
 
-      // Показываем новое сообщение сразу
-      setCurrent(payload);
+      setCurrent(null)
+
+      requestAnimationFrame(() => {
+        setCurrent(payload)
+      })
 
       timeoutRef.current = window.setTimeout(() => {
-        setCurrent(null);
-      }, payload.durationMs ?? 2500);
+
+        setCurrent(null)
+        timeoutRef.current = null
+
+      }, payload.durationMs ?? 2500)
+
     });
   }, []);
 

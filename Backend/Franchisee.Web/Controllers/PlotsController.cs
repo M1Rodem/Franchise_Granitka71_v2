@@ -6,9 +6,9 @@ using Franchisee.Web.Services.Repositories;
 
 namespace Franchisee.Web.Controllers
 {
-    [Route("api/[controller]")]
     [ApiController]
-    [Authorize]
+    [Route("api/[controller]")]
+    [Authorize(Policy = "SuperAdmin")]
     public class PlotsController : ControllerBase
     {
         private readonly IPlotRepository _plotRepository;

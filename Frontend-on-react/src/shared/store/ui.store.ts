@@ -6,7 +6,8 @@ type HeaderMode =
   | 'adminDetails'
   | 'orderCreate'
   | 'orderEdit'
-  | 'plots';
+  | 'plots'
+  | "users";
 
 interface HeaderState {
   mode: HeaderMode;
@@ -38,6 +39,10 @@ interface UiStoreState {
   plotCreateOpen: boolean
   openPlotCreateModal: () => void
   closePlotCreateModal: () => void
+
+  isUserCreateModalOpen: boolean
+  openUserCreateModal: () => void
+  closeUserCreateModal: () => void
 }
 
 export const useUiStore = create<UiStoreState>((set) => ({
@@ -130,4 +135,12 @@ export const useUiStore = create<UiStoreState>((set) => ({
 
   closePlotCreateModal: () =>
     set({ plotCreateOpen: false }),
+
+  isUserCreateModalOpen: false,
+
+  openUserCreateModal: () =>
+    set({ isUserCreateModalOpen: true }),
+
+  closeUserCreateModal: () =>
+    set({ isUserCreateModalOpen: false }),
 }));

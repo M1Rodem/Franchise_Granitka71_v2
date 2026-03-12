@@ -50,8 +50,8 @@ export function useLoginForm() {
   const loginMutation = useMutation({
     mutationFn: (payload: LoginFormValues) => authApi.login(payload),
 
-    onSuccess: ({ token, ...user }) => {
-      setSession({ user, token });
+    onSuccess: ({ token, refreshToken, ...user }) => {
+      setSession({ user, token, refreshToken })
       setLockRemainingMs(0);
       showTempMessage('success', 'Вход выполнен успешно');
       navigate('/orders', { replace: true });

@@ -78,33 +78,42 @@ namespace Franchisee.Web.Controllers
         }
 
         [HttpGet("{id}")]
-        public async Task<ActionResult<ManagerResponseDto>> GetById(int id)
+        public async Task<ActionResult<ManagerDetailsDto>> GetById(int id)
         {
-            _logger.LogInformation("Получение менеджера с ID: {Id}", id);
-            var manager = await _managerRepository.GetByIdAsync(id);
-            if (manager == null) return NotFound("Менеджер не найден");
+            _logger.LogInformation("Получение пользователя с ID: {Id}", id);
 
-            var response = new ManagerResponseDto
+            var manager = await _managerRepository.GetByIdAsync(id);
+
+            if (manager == null)
+                return NotFound("Пользователь не найден");
+
+            var response = new ManagerDetailsDto
             {
                 Id = manager.Id,
                 Username = manager.Username,
                 FullName = manager.FullName,
-                Role = manager.Role.ToString(), 
-                IsBlocked = manager.IsBlocked
+                Role = manager.Role.ToString(),
+                IsBlocked = manager.IsBlocked,
+
+                // пароль возвращаем только администраторам
+                Password = IsAdmin() ? manager.PasswordHash : null
             };
+
             return Ok(response);
         }
 
         [HttpGet("paged")]
         public async Task<ActionResult<PagedResponse<ManagerResponseDto>>> GetPaged(
         [FromQuery] int page = 1,
-        [FromQuery] int pageSize = 10,
-        [FromQuery] string search = "")
+        [FromQuery] int pageSize = 20,
+        [FromQuery] string searchQuery = "",
+        [FromQuery] string? role = null)
         {
             _logger.LogInformation("Получение списка менеджеров с пагинацией: страница {Page}, размер {PageSize}, поиск: {Search}",
-                page, pageSize, search);
+                page, pageSize, searchQuery);
 
-            var (managers, totalCount) = await _managerRepository.GetPagedAsync(page, pageSize, search);
+            var (managers, totalCount) = await _managerRepository
+                .GetPagedAsync(page, pageSize, searchQuery, role);
 
             var response = managers.Select(m => new ManagerResponseDto
             {

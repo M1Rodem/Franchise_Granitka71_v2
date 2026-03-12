@@ -1,0 +1,89 @@
+.modalForm {
+  display: grid;
+  gap: 18px;
+}
+
+.passwordIcon {
+  width: 18px;
+  height: 18px;
+  opacity: 0.85;
+  transition: opacity 0.2s ease;
+}
+
+.passwordIcon:hover {
+  opacity: 1;
+}
+
+.statusActive {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+
+  padding: 4px 10px;
+
+  border-radius: 999px;
+
+  font-size: 12px;
+  font-weight: 500;
+
+  background: rgba(60, 220, 140, 0.18);
+  border: 1px solid rgba(60, 220, 140, 0.35);
+
+  color: #7dffc3;
+}
+
+.statusBlocked {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+
+  padding: 4px 10px;
+
+  border-radius: 999px;
+
+  font-size: 12px;
+  font-weight: 500;
+
+  background: rgba(220, 80, 80, 0.18);
+  border: 1px solid rgba(220, 80, 80, 0.35);
+
+  color: #ff9a9a;
+}
+
+.gridTwo {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.gridFull {
+  grid-column: 1 / -1;
+}
+
+.statusCard {
+  padding: 12px 14px;
+
+  border-radius: 12px;
+
+  background: rgba(12, 31, 64, 0.55);
+
+  border: 1px solid rgba(126, 164, 220, 0.25);
+
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.statusLabel {
+  font-size: 13px;
+  color: #9bb8e8;
+}
+
+.statusValue {
+  font-weight: 500;
+}
+
+.footerActions {
+  display: flex;
+  gap: 10px;
+}

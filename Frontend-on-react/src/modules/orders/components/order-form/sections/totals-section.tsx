@@ -67,7 +67,10 @@ export function TotalsSection() {
           </span>
 
           <strong data-label="Значение">
-            {subtotal.toLocaleString('ru-RU')} ₽
+            {subtotal.toLocaleString('ru-RU', {
+              minimumFractionDigits: 2,
+              maximumFractionDigits: 2
+            })} ₽
           </strong>
         </div>
 
@@ -113,7 +116,10 @@ export function TotalsSection() {
           </span>
 
           <strong data-label="Значение">
-            {discountAmount.toLocaleString('ru-RU')} ₽
+            {discountAmount.toLocaleString('ru-RU', {
+              minimumFractionDigits: 2,
+              maximumFractionDigits: 2
+            })} ₽
           </strong>
         </div>
 
@@ -126,7 +132,10 @@ export function TotalsSection() {
           </span>
 
           <strong data-label="Значение">
-            {total.toLocaleString('ru-RU')} ₽
+            {total.toLocaleString('ru-RU', {
+              minimumFractionDigits: 2,
+              maximumFractionDigits: 2
+            })} ₽
           </strong>
         </div>
 

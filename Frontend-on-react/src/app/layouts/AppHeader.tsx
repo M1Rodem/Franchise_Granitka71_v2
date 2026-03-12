@@ -1,5 +1,4 @@
 import { useNavigate, useLocation } from 'react-router-dom';
-import {useEffect} from 'react'
 import { routeTitles } from '@/app/router/navigation.config';
 import { resolveRouteTitle } from '@/shared/lib/navigation';
 import { useNotificationBadgeStore } from '@/modules/notifications/store/notification-badge.store';
@@ -28,10 +27,7 @@ export function AppHeader() {
   const isOrderCreate = header.mode === 'orderCreate';
   const isOrderEdit = header.mode === 'orderEdit';
   const isPlots = header.mode === 'plots'
-
-  useEffect(() => {
-    console.log('HEADER RENDER submitDisabled:', submitDisabled)
-  }, [submitDisabled])
+  const isUsers = header.mode === 'users'
 
   return (
     <header className={styles.header}>
@@ -47,7 +43,7 @@ export function AppHeader() {
       </button>
 
       {/* Обычный заголовок */}
-      {!isOrderDetails && !isAdminDetails && !isOrderCreate && !isOrderEdit && !isPlots && (
+      {!isOrderDetails && !isAdminDetails && !isOrderCreate && !isOrderEdit && !isPlots && !isUsers && (
         <h1 className={styles.title}>{defaultTitle}</h1>
       )}
 
@@ -172,6 +168,40 @@ export function AppHeader() {
               onClick={openPlotCreateModal}
             >
               Добавить участок
+            </button>
+          </div>
+        </>
+      )}
+
+      {/* USERS */}
+      {isUsers && (
+        <>
+          <button
+            type="button"
+            onClick={() => navigate('/admin')}
+            className={styles.detailsBackButton}
+          >
+            ← Назад
+          </button>
+
+          <h1 className={styles.detailsTitle}>
+            {header.title}
+          </h1>
+
+          <div className={styles.detailsActions}>
+            <button
+              type="button"
+              className={cn(
+                styles.glassButtonTwo,
+                submitDisabled
+                  ? styles.glassButtonRed
+                  : styles.glassButtonGreen
+              )}
+              onClick={() => {
+                useUiStore.getState().openUserCreateModal()
+              }}
+            >
+              Добавить пользователя
             </button>
           </div>
         </>

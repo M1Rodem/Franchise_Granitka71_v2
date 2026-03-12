@@ -155,7 +155,7 @@ namespace Franchisee.Web.Controllers
                 var token = tokenHandler.CreateToken(tokenDescriptor);
                 var tokenString = tokenHandler.WriteToken(token);
 
-                var refreshToken = Guid.NewGuid().ToString();
+                var refreshToken = GenerateRefreshToken();
 
                 user.RefreshToken = refreshToken;
                 user.RefreshTokenExpiryTime = DateTime.UtcNow.AddHours(8);
@@ -165,8 +165,8 @@ namespace Franchisee.Web.Controllers
                 Response.Cookies.Append("refreshToken", refreshToken, new CookieOptions
                 {
                     HttpOnly = true,
-                    Secure = false, // пока false для localhost
-                    SameSite = SameSiteMode.Strict,
+                    Secure = false,
+                    SameSite = SameSiteMode.Lax,
                     Expires = user.RefreshTokenExpiryTime
                 });
 
@@ -190,7 +190,8 @@ namespace Franchisee.Web.Controllers
                     username = user.Username,
                     fullName = user.FullName,
                     role = role,
-                    token = tokenString
+                    token = tokenString,
+                    refreshToken = refreshToken
                 });
             }
             catch (Exception ex)
@@ -199,21 +200,45 @@ namespace Franchisee.Web.Controllers
                 return StatusCode(500, new { message = "Внутренняя ошибка сервера" });
             }
         }
-
+        
+        [Authorize]
         [HttpPost("logout")]
-        public IActionResult Logout()
+        public async Task<IActionResult> Logout()
         {
-            // Просто сообщение для фронтенда
-            var username = User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "Unknown";
-            _logger.LogInformation("Пользователь {Username} выполнил выход", username);
-            return Ok(new { message = "Выход выполнен. Очистите токен на клиенте." });
+            var userIdClaim = User.FindFirst("UserId");
+
+            if (userIdClaim == null)
+                return Unauthorized();
+
+            if (!int.TryParse(userIdClaim.Value, out var userId))
+                return Unauthorized();
+
+            var user = await _managerRepository.GetByIdAsync(userId);
+
+            if (user != null)
+            {
+                user.RefreshToken = null;
+                user.RefreshTokenExpiryTime = null;
+
+                await _managerRepository.UpdateAsync(user);
+            }
+
+            Response.Cookies.Delete("refreshToken");
+            Response.Cookies.Delete("media_auth");
+
+            return Ok(new { message = "Logged out" });
+        }
+
+        public class RefreshRequest
+        {
+            public string RefreshToken { get; set; } = "";
         }
 
         [AllowAnonymous]
         [HttpPost("refresh")]
-        public async Task<IActionResult> Refresh()
+        public async Task<IActionResult> Refresh([FromBody] RefreshRequest request)
         {
-            var refreshToken = Request.Cookies["refreshToken"];
+            var refreshToken = request.RefreshToken ?? Request.Cookies["refreshToken"];
 
             if (string.IsNullOrEmpty(refreshToken))
                 return Unauthorized();
@@ -223,9 +248,8 @@ namespace Franchisee.Web.Controllers
             if (user == null || user.RefreshTokenExpiryTime <= DateTime.UtcNow)
                 return Unauthorized();
 
-            var key = _config["Jwt:Key"];
-            if (string.IsNullOrEmpty(key))
-                return Unauthorized();
+            var key = _config["Jwt:Key"] 
+                    ?? throw new InvalidOperationException("JWT Key не настроен");
 
             var keyBytes = Encoding.ASCII.GetBytes(key);
             var tokenHandler = new JwtSecurityTokenHandler();
@@ -253,25 +277,36 @@ namespace Franchisee.Web.Controllers
                 SigningCredentials = new SigningCredentials(
                     new SymmetricSecurityKey(keyBytes),
                     SecurityAlgorithms.HmacSha256Signature),
-                Issuer = _config["Jwt:Issuer"] ?? "Franchisee.Web",
-                Audience = _config["Jwt:Audience"] ?? "Franchisee.WebUsers"
+                Issuer = _config["Jwt:Issuer"],
+                Audience = _config["Jwt:Audience"]
             };
 
             var token = tokenHandler.CreateToken(tokenDescriptor);
             var tokenString = tokenHandler.WriteToken(token);
 
-            // ПЕРЕЗАПИСЫВАЕМ COOKIE media_auth
-            var cookieOptions = new CookieOptions
+            // ROTATING REFRESH TOKEN
+            var newRefreshToken = GenerateRefreshToken();
+
+            user.RefreshToken = newRefreshToken;
+            user.RefreshTokenExpiryTime = DateTime.UtcNow.AddHours(8);
+
+            await _managerRepository.UpdateAsync(user);
+
+            return Ok(new
             {
-                HttpOnly = true,
-                Secure = HttpContext.Request.IsHttps,
-                SameSite = HttpContext.Request.IsHttps ? SameSiteMode.None : SameSiteMode.Lax,
-                Expires = DateTime.UtcNow.AddHours(8)
-            };
+                token = tokenString,
+                refreshToken = newRefreshToken
+            });
+        }
 
-            Response.Cookies.Append("media_auth", tokenString, cookieOptions);
+        private static string GenerateRefreshToken()
+        {
+            var randomNumber = new byte[64];
 
-            return Ok(new { message = "Token refreshed" });
+            using var rng = System.Security.Cryptography.RandomNumberGenerator.Create();
+            rng.GetBytes(randomNumber);
+
+            return Convert.ToBase64String(randomNumber);
         }
     }
 }

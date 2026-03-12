@@ -14,4 +14,5 @@ export interface LoginRequest {
 
 export interface LoginResponse extends AuthUser {
   token: string;
+  refreshToken: string;
 }

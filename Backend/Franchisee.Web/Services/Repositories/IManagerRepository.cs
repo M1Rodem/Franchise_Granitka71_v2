@@ -4,7 +4,12 @@ namespace Franchisee.Web.Services.Repositories
 {
     public interface IManagerRepository
     {
-        Task<(IEnumerable<Manager> managers, int totalCount)> GetPagedAsync(int page, int pageSize, string search = "");
+        Task<(List<Manager>, int)> GetPagedAsync(
+            int page,
+            int pageSize,
+            string searchQuery,
+            string? role
+        );
         Task<Manager?> GetByUsernameAsync(string username);
         Task<Manager?> GetByIdAsync(int id);
         Task<IEnumerable<Manager>> GetAllAsync(bool activeOnly = false);

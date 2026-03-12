@@ -4,6 +4,7 @@ import {
   authSessionStorage,
 } from '@/shared/lib/auth-session-storage'
 import type { AuthUser } from '@/shared/types/auth'
+import { silentRefreshService } from '@/shared/lib/silent-refresh.service'
 
 interface AuthStoreState {
   user: AuthUser | null
@@ -11,7 +12,7 @@ interface AuthStoreState {
   isHydrated: boolean
   sessionExpiresAt: number | null
 
-  setSession: (payload: { user: AuthUser; token: string }) => void
+  setSession: (payload: { user: AuthUser; token: string; refreshToken: string }) => void
   hydrateSession: () => void
   clearSession: () => void
 }
@@ -22,14 +23,17 @@ export const useAuthStore = create<AuthStoreState>((set) => ({
   isHydrated: false,
   sessionExpiresAt: null,
 
-  setSession: ({ user, token }) => {
+  setSession: ({ user, token, refreshToken }) => {
     const expiresAt = Date.now() + AUTH_SESSION_TTL_MS
 
     authSessionStorage.write({
       user,
       token,
+      refreshToken,
       expiresAt,
     })
+
+    silentRefreshService.start(expiresAt)
 
     set({
       user,
@@ -42,29 +46,32 @@ export const useAuthStore = create<AuthStoreState>((set) => ({
   hydrateSession: () => {
     const session = authSessionStorage.read()
 
-    if (!session || session.expiresAt <= Date.now()) {
-      authSessionStorage.clear()
+    if (session && session.expiresAt > Date.now()) {
+      silentRefreshService.start(session.expiresAt)
 
       set({
-        user: null,
-        isAuthenticated: false,
+        user: session.user,
+        isAuthenticated: true,
         isHydrated: true,
-        sessionExpiresAt: null,
+        sessionExpiresAt: session.expiresAt,
       })
-
       return
     }
 
+    authSessionStorage.clear()
+
     set({
-      user: session.user,
-      isAuthenticated: true,
+      user: null,
+      isAuthenticated: false,
       isHydrated: true,
-      sessionExpiresAt: session.expiresAt,
+      sessionExpiresAt: null,
     })
   },
 
   clearSession: () => {
     authSessionStorage.clear()
+
+    silentRefreshService.stop()
 
     set({
       user: null,

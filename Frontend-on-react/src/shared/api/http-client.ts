@@ -15,6 +15,21 @@ export const httpClient = axios.create({
   },
 })
 
+httpClient.interceptors.request.use((config) => {
+  const sessionRaw = localStorage.getItem('auth-session')
+
+  if (sessionRaw) {
+    const session = JSON.parse(sessionRaw)
+
+    if (session.token) {
+      config.headers = config.headers ?? {}
+      config.headers.Authorization = `Bearer ${session.token}`
+    }
+  }
+
+  return config
+})
+
 let refreshPromise: Promise<void> | null = null
 
 httpClient.interceptors.response.use(
@@ -38,13 +53,28 @@ httpClient.interceptors.response.use(
         if (!refreshPromise) {
           refreshPromise = httpClient
             .post('/api/auth/refresh')
-            .then(() => {})
+            .then((res) => {
+              const { token, ...user } = res.data
+
+              if (token) {
+                useAuthStore.getState().setSession({
+                  user,
+                  token
+                })
+              }
+            })
             .finally(() => {
               refreshPromise = null
             })
         }
 
         await refreshPromise
+
+        if ((originalRequest as any)._retry) {
+          return Promise.reject(error)
+        }
+
+        ;(originalRequest as any)._retry = true
 
         return httpClient(originalRequest)
       } catch (refreshError) {
@@ -53,7 +83,6 @@ httpClient.interceptors.response.use(
         return Promise.reject(refreshError)
       }
     }
-
     return Promise.reject(error)
   },
 )

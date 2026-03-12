@@ -14,8 +14,8 @@ export function useUnsavedChangesGuard(shouldBlock: boolean) {
     openModal({
       title: "У вас есть несохраненные изменения",
       message: "Если вы покинете страницу, изменения будут потеряны.",
-      confirmText: "Уйти",
-      cancelText: "Остаться",
+      confirmText: "Выйти",
+      cancelText: "Отмена",
 
       onConfirm: () => {
         closeModal();

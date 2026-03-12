@@ -57,46 +57,46 @@ builder.Services.AddScoped<IMediaService, MediaService>();
 var app = builder.Build();
 
 // СОЗДАНИЕ АДМИНА ПРИ ПЕРВОМ ЗАПУСКЕ (УДАЛИ ПОСЛЕ НАСТРОЙКИ)
-// try
-// {
-//    using var scope = app.Services.CreateScope();
-//    var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-//    var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+try
+{
+   using var scope = app.Services.CreateScope();
+   var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+   var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
 
-//    // Ждем пока БД будет готова
-//    await context.Database.MigrateAsync();
+   // Ждем пока БД будет готова
+   await context.Database.MigrateAsync();
 
-//    // Проверяем есть ли админ
-//    var hasAdmin = await context.Managers
-//        .AnyAsync(m => m.Role == UserRole.SuperAdmin && !m.IsBlocked);
+   // Проверяем есть ли админ
+   var hasAdmin = await context.Managers
+       .AnyAsync(m => m.Role == UserRole.SuperAdmin && !m.IsBlocked);
 
-//    if (!hasAdmin)
-//    {
-//        var adminUser = new Manager
-//        {
-//            Username = "superadmin",
-//            PasswordHash = BCrypt.Net.BCrypt.HashPassword("superadmin"),
-//            FullName = "Системный администратор",
-//            Role = UserRole.SuperAdmin,
-//            IsBlocked = false
-//        };
+   if (!hasAdmin)
+   {
+       var adminUser = new Manager
+       {
+           Username = "superadmin",
+           PasswordHash = BCrypt.Net.BCrypt.HashPassword("superadmin"),
+           FullName = "Системный администратор",
+           Role = UserRole.SuperAdmin,
+           IsBlocked = false
+       };
 
-//        context.Managers.Add(adminUser);
-//        await context.SaveChangesAsync();
+       context.Managers.Add(adminUser);
+       await context.SaveChangesAsync();
 
-//        logger.LogInformation("Создан системный администратор: superadmin / superadmin");
-//        logger.LogWarning("НЕ ЗАБУДЬ СМЕНИТЬ ПАРОЛЬ и УДАЛИТЬ ЭТОТ КОД!");
-//    }
-//    else
-//    {
-//        logger.LogInformation("Администратор уже существует в системе");
-//    }
-// }
-// catch (Exception ex)
-// {
-//    var logger = app.Services.GetRequiredService<ILogger<Program>>();
-//    logger.LogError(ex, "Ошибка при создании администратора");
-// }
+       logger.LogInformation("Создан системный администратор: superadmin / superadmin");
+       logger.LogWarning("НЕ ЗАБУДЬ СМЕНИТЬ ПАРОЛЬ и УДАЛИТЬ ЭТОТ КОД!");
+   }
+   else
+   {
+       logger.LogInformation("Администратор уже существует в системе");
+   }
+}
+catch (Exception ex)
+{
+   var logger = app.Services.GetRequiredService<ILogger<Program>>();
+   logger.LogError(ex, "Ошибка при создании администратора");
+}
 
 // Исправленный порядок middleware
 

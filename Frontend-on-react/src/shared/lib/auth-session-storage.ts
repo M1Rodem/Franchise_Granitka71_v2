@@ -6,6 +6,7 @@ export const AUTH_SESSION_TTL_MS = 8 * 60 * 60 * 1000
 
 export interface PersistedAuthSession {
   user: AuthUser
+  token: string
   expiresAt: number
 }
 
@@ -27,9 +28,4 @@ export const authSessionStorage = {
   clear() {
     localStorage.removeItem(STORAGE_KEY)
   },
-}
-
-export interface PersistedAuthSession {
-  user: AuthUser
-  expiresAt: number
 }

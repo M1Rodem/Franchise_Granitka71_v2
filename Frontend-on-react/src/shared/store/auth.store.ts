@@ -11,7 +11,7 @@ interface AuthStoreState {
   isHydrated: boolean
   sessionExpiresAt: number | null
 
-  setSession: (payload: { user: AuthUser }) => void
+  setSession: (payload: { user: AuthUser; token: string }) => void
   hydrateSession: () => void
   clearSession: () => void
 }
@@ -22,11 +22,12 @@ export const useAuthStore = create<AuthStoreState>((set) => ({
   isHydrated: false,
   sessionExpiresAt: null,
 
-  setSession: ({ user }) => {
+  setSession: ({ user, token }) => {
     const expiresAt = Date.now() + AUTH_SESSION_TTL_MS
 
     authSessionStorage.write({
       user,
+      token,
       expiresAt,
     })
 

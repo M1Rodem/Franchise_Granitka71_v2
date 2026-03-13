@@ -189,7 +189,20 @@ export function UserModal({
 
     if (user.isBlocked) {
 
-      unblockMutation.mutate()
+      unblockMutation.mutate(undefined, {
+        onSuccess() {
+          showTempMessage(
+            "success",
+            "Пользователь разблокирован"
+          )
+        },
+        onError() {
+          showTempMessage(
+            "error",
+            "Ошибка разблокировки пользователя"
+          )
+        }
+      })
 
     } else {
 
@@ -200,7 +213,23 @@ export function UserModal({
         cancelText: "Отмена",
 
         onConfirm: () => {
-          blockMutation.mutate()
+
+          blockMutation.mutate(undefined, {
+            onSuccess() {
+              showTempMessage(
+                "success",
+                "Пользователь заблокирован"
+              )
+            },
+            onError() {
+              showTempMessage(
+                "error",
+                "Нельзя заблокировать этого пользователя"
+              )
+            }
+
+          })
+
         },
       })
 
@@ -220,9 +249,27 @@ export function UserModal({
       onConfirm: () => {
 
         deleteMutation.mutate(undefined, {
+
           onSuccess() {
+
+            showTempMessage(
+              "success",
+              "Пользователь удалён"
+            )
+
             onClose()
+
+          },
+
+          onError() {
+
+            showTempMessage(
+              "error",
+              "Нельзя удалить этого пользователя"
+            )
+
           }
+
         })
 
       },
@@ -252,51 +299,96 @@ export function UserModal({
       title="Пользователь"
       size="md"
       footer={
-
-        <div className={styles.footerActions}>
+        <div className={styles.footerWrapper}>
 
           {editMode ? (
-            hasChanges ? (
-              <button
-                className={`${button.btn} ${button.btnSuccess}`}
-                onClick={handleSave}
-                disabled={updateMutation.isPending}
-              >
-                {updateMutation.isPending
-                  ? "Сохранение..."
-                  : "Сохранить"}
-              </button>
-            ) : (
+
+            <div className={styles.editActions}>
+
               <button
                 className={`${button.btn} ${button.btnSecondary}`}
                 onClick={() => setEditMode(false)}
               >
                 Отмена
               </button>
-            )
-          ) : (
-            <button
-              className={`${button.btn} ${button.btnPrimary}`}
-              onClick={() => setEditMode(true)}
-            >
-              Редактировать
-            </button>
+
+              <button
+                className={`${button.btn} ${button.btnSuccess}`}
+                onClick={handleSave}
+                disabled={!hasChanges || updateMutation.isPending}
+              >
+                {updateMutation.isPending
+                  ? "Сохранение..."
+                  : "Сохранить"}
+              </button>
+
+            </div>
+
+        ) : (
+
+            <>
+              {/* DESKTOP ACTIONS */}
+              <div className={styles.desktopActions}>
+
+                <button
+                  className={`${button.btn} ${button.btnPrimary}`}
+                  onClick={() => setEditMode(true)}
+                >
+                  Редактировать
+                </button>
+
+                <button
+                  className={`${button.btn} ${button.btnDanger}`}
+                  onClick={handleBlockToggle}
+                >
+                  {user?.isBlocked
+                    ? "Разблокировать"
+                    : "Заблокировать"}
+                </button>
+
+                <button
+                  className={`${button.btn} ${button.btnDanger}`}
+                  onClick={handleDeleteUser}
+                >
+                  Удалить
+                </button>
+
+              </div>
+
+              {/* MOBILE ACTIONS */}
+              <div className={styles.mobileActions}>
+
+                <div className={styles.mobileRow}>
+
+                  <button
+                    className={`${button.btn} ${button.btnDanger}`}
+                    onClick={handleBlockToggle}
+                  >
+                    {user?.isBlocked
+                      ? "Разблокировать"
+                      : "Заблокировать"}
+                  </button>
+
+                  <button
+                    className={`${button.btn} ${button.btnDanger}`}
+                    onClick={handleDeleteUser}
+                  >
+                    Удалить
+                  </button>
+
+                </div>
+
+                <button
+                  className={`${button.btn} ${button.btnPrimary} ${styles.mobileEdit}`}
+                  onClick={() => setEditMode(true)}
+                >
+                  Редактировать
+                </button>
+
+              </div>
+            </>
           )}
 
-          <button
-            className={`${button.btn} ${button.btnDanger}`}
-            onClick={handleBlockToggle}
-          >
-            {user?.isBlocked
-              ? "Разблокировать"
-              : "Заблокировать"}
-          </button>
-          <button
-            className={`${button.btn} ${button.btnDanger}`}
-            onClick={handleDeleteUser}
-          >
-            Удалить
-          </button>
         </div>
       }
     >
@@ -413,7 +505,7 @@ export function UserModal({
               }
             >
               {user?.isBlocked
-                ? "ЗАблокирован"
+                ? "Заблокирован"
                 : "Активный"}
             </span>
           </span>

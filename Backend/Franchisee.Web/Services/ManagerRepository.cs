@@ -71,6 +71,8 @@ namespace Franchisee.Web.Services
             if (manager != null)
             {
                 manager.IsBlocked = true;
+                manager.RefreshToken = null;
+                manager.RefreshTokenExpiryTime = null;
                 await _context.SaveChangesAsync();
             }
         }

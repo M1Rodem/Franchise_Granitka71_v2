@@ -80,7 +80,7 @@ export function UsersTable({
                 }
               >
                 {user.isBlocked
-                  ? "ЗАблокирован"
+                  ? "Заблокирован"
                   : "Активный"}
               </span>
             </span>

@@ -28,6 +28,15 @@
   overflow: hidden;
 }
 
+.toast {
+  transition: transform 0.2s ease, opacity 0.2s ease;
+  touch-action: pan-x pan-y;
+}
+
+.dragging {
+  transition: none;
+}
+
 /* Акцент через тонкую цветную полосу */
 .toast::before {
   content: '';
@@ -70,5 +79,45 @@
   to {
     opacity: 0;
     transform: translateY(-12px);
+  }
+}
+
+
+.message {
+  padding-right: 28px;
+}
+
+.closeButton {
+  position: absolute;
+  top: 50%;
+  right: 10px;
+
+  transform: translateY(-50%);
+
+  border: none;
+  background: transparent;
+
+  color: #e8f3ff;
+  font-size: 18px;
+  line-height: 1;
+
+  cursor: pointer;
+
+  opacity: 0.7;
+  transition: opacity 0.15s ease;
+}
+
+.closeButton:hover {
+  opacity: 1;
+}
+
+.closing {
+  animation: toastSwipeOut 0.2s ease forwards;
+}
+
+@keyframes toastSwipeOut {
+  to {
+    opacity: 0;
+    transform: translateY(-20px);
   }
 }

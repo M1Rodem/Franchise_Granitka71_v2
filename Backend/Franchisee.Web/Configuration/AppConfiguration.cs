@@ -165,6 +165,27 @@ namespace Franchisee.Web.Configuration
 
                 options.Events = new JwtBearerEvents
                 {
+                    OnTokenValidated = async context =>
+                    {
+                        var userIdClaim = context.Principal?.FindFirst("UserId");
+
+                        if (userIdClaim == null)
+                        {
+                            context.Fail("Unauthorized");
+                            return;
+                        }
+
+                        var db = context.HttpContext.RequestServices
+                            .GetRequiredService<ApplicationDbContext>();
+
+                        var user = await db.Managers.FindAsync(int.Parse(userIdClaim.Value));
+
+                        if (user == null || user.IsBlocked)
+                        {
+                            context.Fail("User blocked");
+                        }
+                    },
+
                     OnMessageReceived = context =>
                     {
                         var path = context.HttpContext.Request.Path;

@@ -285,22 +285,58 @@ namespace Franchisee.Web.Controllers
         public async Task<ActionResult> Block(int id)
         {
             _logger.LogInformation("Блокировка менеджера с ID: {Id}", id);
+
             var manager = await _managerRepository.GetByIdAsync(id);
-            if (manager == null) return NotFound("Менеджер не найден");
+
+            if (manager == null)
+                return NotFound("Пользователь не найден");
+
+            var currentUserRole = GetCurrentUserRole();
+
+            // Нельзя блокировать SuperAdmin
+            if (manager.Role == UserRole.SuperAdmin)
+            {
+                return StatusCode(403, "Главного администратора нельзя заблокировать");
+            }
+
+            // Admin не может блокировать Admin
+            if (currentUserRole == UserRole.Admin && manager.Role == UserRole.Admin)
+            {
+                return StatusCode(403, "Администратор не может блокировать другого администратора");
+            }
 
             await _managerRepository.BlockAsync(id);
-            return Ok("Менеджер заблокирован");
+
+            return Ok("Пользователь заблокирован");
         }
 
         [HttpPost("{id}/unblock")]
         public async Task<ActionResult> Unblock(int id)
         {
             _logger.LogInformation("Разблокировка менеджера с ID: {Id}", id);
+
             var manager = await _managerRepository.GetByIdAsync(id);
-            if (manager == null) return NotFound("Менеджер не найден");
+
+            if (manager == null)
+                return NotFound("Пользователь не найден");
+
+            var currentUserRole = GetCurrentUserRole();
+
+            // Admin не может разблокировать SuperAdmin
+            if (currentUserRole == UserRole.Admin && manager.Role == UserRole.SuperAdmin)
+            {
+                return StatusCode(403, "Администратор не может разблокировать Главного администратора");
+            }
+
+            // Admin не может разблокировать Admin
+            if (currentUserRole == UserRole.Admin && manager.Role == UserRole.Admin)
+            {
+                return StatusCode(403, "Администратор не может изменять другого администратора");
+            }
 
             await _managerRepository.UnblockAsync(id);
-            return Ok("Менеджер разблокирован");
+
+            return Ok("Пользователь разблокирован");
         }
 
         [HttpDelete("{id}")]

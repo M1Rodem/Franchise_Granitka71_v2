@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import styles from './media-preview-modal.module.css'
 import type { ViewerMediaDto } from '../api/media.types'
+import { loadMedia } from '../utils/media-loader'
 
 interface Props {
   items: ViewerMediaDto[]
@@ -67,6 +68,29 @@ export function MediaPreviewModal({
     }
 
   }, [index])
+
+  const [src, setSrc] = useState<string | null>(null)
+
+  useEffect(() => {
+
+    if (index === null) {
+      setSrc(null)
+      return
+    }
+
+    let mounted = true
+
+    setSrc(null)
+
+    loadMedia(items[index].url).then((url) => {
+      if (mounted) setSrc(url)
+    })
+
+    return () => {
+      mounted = false
+    }
+
+  }, [index, items])
 
   if (index === null) return null
 
@@ -189,17 +213,17 @@ export function MediaPreviewModal({
         >
 
           {isVideo(item.mediaType) ? (
-
+          src && (
             <video
-              src={item.url}
+              src={src}
               controls
               className={styles.media}
             />
-
-          ) : (
-
+          )
+        ) : (
+          src && (
             <img
-              src={item.url}
+              src={src}
               alt=""
               draggable={false}
               className={styles.media}
@@ -210,7 +234,7 @@ export function MediaPreviewModal({
               }}
             />
 
-          )}
+          ))}
 
         </div>
 

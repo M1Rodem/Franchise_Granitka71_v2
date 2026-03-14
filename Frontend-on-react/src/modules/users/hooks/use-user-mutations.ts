@@ -3,12 +3,15 @@ import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { usersApi } from "@/modules/users/api/users.api"
 import { usersKeys } from "@/modules/users/lib/users.keys"
 import { showTempMessage } from "@/shared/ui/temp-message.service"
+import { useAuthStore } from "@/shared/store/auth.store"
 
 import type {
   CreateUserDto,
   UpdateUserDto,
   ChangeRoleDto,
 } from "@/modules/users/types/users.types"
+
+
 
 export function useCreateUser() {
 
@@ -20,6 +23,7 @@ export function useCreateUser() {
       usersApi.createUser(payload),
 
     onSuccess: () => {
+
       queryClient.invalidateQueries({
         queryKey: usersKeys.all,
       })
@@ -32,6 +36,8 @@ export function useCreateUser() {
   })
 }
 
+
+
 export function useUpdateUser(id: number) {
 
   const queryClient = useQueryClient()
@@ -41,7 +47,20 @@ export function useUpdateUser(id: number) {
     mutationFn: (payload: UpdateUserDto) =>
       usersApi.updateUser(id, payload),
 
-    onSuccess: () => {
+    onSuccess: (_, variables) => {
+
+      const authState = useAuthStore.getState()
+
+      if (authState.user && authState.user.id === id) {
+        useAuthStore.setState({
+          user: {
+            ...authState.user,
+            fullName: variables.fullName,
+            username: variables.username,
+          }
+        })
+      }
+
       queryClient.invalidateQueries({
         queryKey: usersKeys.all,
       })
@@ -54,6 +73,8 @@ export function useUpdateUser(id: number) {
   })
 }
 
+
+
 export function useChangeRole(id: number) {
 
   const queryClient = useQueryClient()
@@ -64,9 +85,11 @@ export function useChangeRole(id: number) {
       usersApi.changeRole(id, payload),
 
     onSuccess: () => {
+
       queryClient.invalidateQueries({
         queryKey: usersKeys.all,
       })
+
       showTempMessage(
         "success",
         "Роль пользователя сменена"
@@ -74,6 +97,8 @@ export function useChangeRole(id: number) {
     },
   })
 }
+
+
 
 export function useBlockUser(id: number) {
 
@@ -85,9 +110,11 @@ export function useBlockUser(id: number) {
       usersApi.blockUser(id),
 
     onSuccess: () => {
+
       queryClient.invalidateQueries({
         queryKey: usersKeys.all,
       })
+
       showTempMessage(
         "warning",
         "Пользователь заблокирован"
@@ -95,6 +122,8 @@ export function useBlockUser(id: number) {
     },
   })
 }
+
+
 
 export function useUnblockUser(id: number) {
 
@@ -106,9 +135,11 @@ export function useUnblockUser(id: number) {
       usersApi.unblockUser(id),
 
     onSuccess: () => {
+
       queryClient.invalidateQueries({
         queryKey: usersKeys.all,
       })
+
       showTempMessage(
         "success",
         "Пользователь разблокирован"
@@ -117,16 +148,23 @@ export function useUnblockUser(id: number) {
   })
 }
 
+
+
 export function useDeleteUser(userId: number) {
+
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: () => usersApi.deleteUser(userId),
+
+    mutationFn: () =>
+      usersApi.deleteUser(userId),
 
     onSuccess() {
+
       queryClient.invalidateQueries({
         queryKey: usersKeys.all
       })
+
       showTempMessage(
         "warning",
         "Пользователь удален"

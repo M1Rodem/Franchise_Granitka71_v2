@@ -1,8 +1,7 @@
 import surface from '@/shared/ui/surface.module.css'
 import layout from '@/shared/ui/form-layout.module.css'
-import {
-  getPaymentBadgeStyle
-} from '@/modules/orders/lib/payment-status'
+import { StatusBadge } from '@/shared/ui/status'
+import { getPaymentStatusInfo } from '@/modules/orders/lib/payment-status'
 
 interface Payment {
   amount: number
@@ -33,32 +32,16 @@ export function FinancialSection({
   payments,
 }: Props) {
 
-  
-
   const paid = payments.reduce(
     (sum, p) => sum + p.amount,
     0
   )
-  
-  let paymentStatus = '—'
 
-  const percent =
-    totalPrice > 0
-      ? (paid / totalPrice) * 100
-      : 0
-
-  if (percent === 0) paymentStatus = '—'
-  else if (percent > 0 && percent <= 30)
-    paymentStatus = 'Аванс'
-  else if (percent > 30 && percent < 100)
-    paymentStatus = 'Частично оплачен'
-  else if (percent >= 100)
-    paymentStatus = 'Оплачен'
-
-  const badgeStyle =
-    getPaymentBadgeStyle(paymentStatus)
+  const paymentStatusInfo =
+    getPaymentStatusInfo(0)
 
   const remaining = totalPrice - paid
+
   return (
     <section className={surface.surface}>
       <div
@@ -71,18 +54,9 @@ export function FinancialSection({
       >
         <h2 className={surface.sectionTitle}>Финансы</h2>
 
-        <span
-          style={{
-            padding: '4px 10px',
-            borderRadius: '999px',
-            fontSize: '13px',
-            display: 'inline-flex',
-            justifyContent: 'center',
-            ...badgeStyle,
-          }}
-        >
-          {paymentStatus}
-        </span>
+        <StatusBadge style={paymentStatusInfo.style}>
+          {paymentStatusInfo.label}
+        </StatusBadge>
       </div>
 
       <div className={layout.grid2}>

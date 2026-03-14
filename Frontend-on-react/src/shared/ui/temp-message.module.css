@@ -5,30 +5,38 @@
 
   z-index: 9999;
 
-  min-width: 260px;
+  min-width: 280px;
   max-width: 380px;
 
-  padding: 14px 18px;
-  border-radius: 18px;
+  padding: 14px 16px;
+  border-radius: 14px;
 
-  backdrop-filter: blur(20px);
-  background: rgba(255, 255, 255, 0.08);
+  display: flex;
+  align-items: center;
+  gap: 12px;
 
-  border: 1px solid rgba(255, 255, 255, 0.18);
+  backdrop-filter: blur(16px);
+
+  background: linear-gradient(
+    160deg,
+    rgba(20, 34, 56, 0.95),
+    rgba(16, 26, 44, 0.92)
+  );
+
+  border: 1px solid rgba(120, 160, 220, 0.25);
+
   box-shadow:
-    0 10px 30px rgba(0, 0, 0, 0.25),
-    inset 0 1px 0 rgba(255, 255, 255, 0.25);
+    0 12px 28px rgba(0,0,0,0.35),
+    inset 0 1px 0 rgba(255,255,255,0.06);
 
-  color: #e8f3ff;
+  color: #e7f1ff;
   font-size: 14px;
   font-weight: 500;
 
-  animation: toastIn 0.25s ease, toastOut 0.25s ease 2.25s forwards;
+  animation: toastIn 0.22s ease, toastOut 0.25s ease 2.25s forwards;
 
   overflow: hidden;
-}
 
-.toast {
   transition: transform 0.2s ease, opacity 0.2s ease;
   touch-action: pan-x pan-y;
 }
@@ -37,79 +45,156 @@
   transition: none;
 }
 
-/* Акцент через тонкую цветную полосу */
-.toast::before {
-  content: '';
-  position: absolute;
-  left: 0;
-  top: 0;
-  bottom: 0;
-  width: 4px;
-  border-radius: 18px 0 0 18px;
+/* SUCCESS */
+
+.success {
+  background:
+    radial-gradient(circle at 10% 50%, rgba(60,220,140,0.15), transparent 60%),
+    linear-gradient(
+      160deg,
+      rgba(20, 34, 56, 0.96),
+      rgba(16, 26, 44, 0.94)
+    );
+
+  border-color: rgba(70,220,150,0.25);
 }
 
-.success::before {
-  background: #3ddc97;
+/* ERROR */
+
+.error {
+  background:
+    radial-gradient(circle at 10% 50%, rgba(255,90,110,0.15), transparent 60%),
+    linear-gradient(
+      160deg,
+      rgba(20, 34, 56, 0.96),
+      rgba(16, 26, 44, 0.94)
+    );
+
+  border-color: rgba(255,110,120,0.25);
 }
 
-.error::before {
-  background: #ff5f6d;
+/* WARNING */
+
+.warning {
+  background:
+    radial-gradient(circle at 10% 50%, rgba(255,190,80,0.15), transparent 60%),
+    linear-gradient(
+      160deg,
+      rgba(20, 34, 56, 0.96),
+      rgba(16, 26, 44, 0.94)
+    );
+
+  border-color: rgba(255,190,80,0.25);
 }
 
-.warning::before {
-  background: #ffb347;
+/* INFO */
+
+.info {
+  background:
+    radial-gradient(circle at 10% 50%, rgba(120,180,255,0.15), transparent 60%),
+    linear-gradient(
+      160deg,
+      rgba(20, 34, 56, 0.96),
+      rgba(16, 26, 44, 0.94)
+    );
+
+  border-color: rgba(120,180,255,0.25);
 }
 
-.info::before {
-  background: #6bbcff;
+.success .icon {
+  color: #4fffb3;
 }
 
-@keyframes toastIn {
-  from {
-    opacity: 0;
-    transform: translateY(-12px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+.error .icon {
+  color: #ff6b7a;
 }
 
-@keyframes toastOut {
-  to {
-    opacity: 0;
-    transform: translateY(-12px);
-  }
+.warning .icon {
+  color: #ffbe55;
 }
 
+.info .icon {
+  color: #7cc3ff;
+}
+
+/* CONTENT */
+
+.content {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+/* ICON */
+
+.icon {
+  width: 18px;
+  height: 18px;
+
+  flex-shrink: 0;
+
+  opacity: 0.95;
+}
+
+/* TEXT */
 
 .message {
-  padding-right: 28px;
+  flex: 1;
+  line-height: 1.4;
+
+  letter-spacing: 0.2px;
 }
+
+/* CLOSE */
 
 .closeButton {
   position: absolute;
-  top: 50%;
+
   right: 10px;
+  top: 50%;
 
   transform: translateY(-50%);
 
   border: none;
   background: transparent;
 
-  color: #e8f3ff;
+  color: #d9e8ff;
+
   font-size: 18px;
-  line-height: 1;
 
   cursor: pointer;
 
-  opacity: 0.7;
+  opacity: 0.6;
+
   transition: opacity 0.15s ease;
 }
 
 .closeButton:hover {
   opacity: 1;
 }
+
+/* ANIMATION */
+
+@keyframes toastIn {
+  from {
+    opacity: 0;
+    transform: translateY(-14px) scale(0.98);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes toastOut {
+  to {
+    opacity: 0;
+    transform: translateY(-14px) scale(0.96);
+  }
+}
+
+/* SWIPE CLOSE */
 
 .closing {
   animation: toastSwipeOut 0.2s ease forwards;
@@ -118,6 +203,6 @@
 @keyframes toastSwipeOut {
   to {
     opacity: 0;
-    transform: translateY(-20px);
+    transform: translateY(-24px);
   }
 }

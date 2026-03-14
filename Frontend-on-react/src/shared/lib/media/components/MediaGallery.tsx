@@ -20,7 +20,7 @@ export function MediaGallery({ items }: Props) {
       <div className={styles.grid}>
         {items.map((item, index) => (
           <MediaItem
-            key={item.id}
+            key={`${item.id}-${item.url}`}
             item={item}
             onClick={() => setSelectedIndex(index)}
           />

@@ -9,7 +9,10 @@ export function MediaSection({ items }: Props) {
   return (
     <section className={surface.surface}>
       <h2 className={surface.sectionTitle}>Медиафайлы</h2>
-      <MediaGallery items={items} />
+      <MediaGallery
+        key={items.map(i => i.id).join('-')}
+        items={items}
+      />
     </section>
   )
 }

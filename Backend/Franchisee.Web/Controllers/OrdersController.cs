@@ -481,13 +481,17 @@ namespace Franchisee.Web.Controllers
                     if (request.RemovedPhotoIds?.Any() == true)
                     {
                         var photosToRemove = await _context.OrderPhotos
-                            .Where(p => request.RemovedPhotoIds.Contains(p.Id) && p.MediaType == MediaType.Photo)
+                            .Where(p =>
+                                request.RemovedPhotoIds.Contains(p.Id) &&
+                                p.OrderId == id &&
+                                p.MediaType == MediaType.Photo)
                             .ToListAsync();
 
                         foreach (var photo in photosToRemove)
                         {
                             if (System.IO.File.Exists(photo.FilePath))
                                 System.IO.File.Delete(photo.FilePath);
+
                             _context.OrderPhotos.Remove(photo);
                         }
                     }
@@ -495,16 +499,22 @@ namespace Franchisee.Web.Controllers
                     if (request.RemovedVideoIds?.Any() == true)
                     {
                         var videosToRemove = await _context.OrderPhotos
-                            .Where(p => request.RemovedVideoIds.Contains(p.Id) && p.MediaType == MediaType.Video)
+                            .Where(p =>
+                                request.RemovedVideoIds.Contains(p.Id) &&
+                                p.OrderId == id &&
+                                p.MediaType == MediaType.Video)
                             .ToListAsync();
 
                         foreach (var video in videosToRemove)
                         {
                             if (System.IO.File.Exists(video.FilePath))
                                 System.IO.File.Delete(video.FilePath);
+
                             _context.OrderPhotos.Remove(video);
                         }
                     }
+
+                    await _context.SaveChangesAsync();
 
                     if (request.TempPhotoIds?.Any() == true)
                     {
@@ -1087,36 +1097,37 @@ namespace Franchisee.Web.Controllers
 
                 try
                 {
-                    // Путь к папке заказа
                     var orderFolderPath = Path.Combine(_env.WebRootPath, "uploads", "orders", id.ToString());
 
-                    // Удаляем фото и файлы
-                    var photos = order.Photos;  // ← Теперь используем order.Photos
+                    bool folderDeleted = false;
 
-                    foreach (var photo in photos)
+                    try
                     {
-                        if (System.IO.File.Exists(photo.FilePath))
+                        if (Directory.Exists(orderFolderPath))
                         {
-                            await Task.Run(() => System.IO.File.Delete(photo.FilePath));
-                            _logger.LogDebug("Удален файл: {FilePath}", photo.FilePath);
-                        }
-                        _context.OrderPhotos.Remove(photo);
-                    }
+                            Directory.Delete(orderFolderPath, true);
 
-                    // НОВОЕ: Удаляем пустую папку заказа
-                    if (Directory.Exists(orderFolderPath))
-                    {
-                        // Проверяем, остались ли еще файлы в папке (на всякий случай)
-                        if (!Directory.EnumerateFileSystemEntries(orderFolderPath).Any())
-                        {
-                            Directory.Delete(orderFolderPath);
-                            _logger.LogInformation("Удалена пустая папка заказа: {FolderPath}", orderFolderPath);
+                            folderDeleted = true;
+
+                            _logger.LogInformation(
+                                "Папка заказа {OrderId} удалена полностью",
+                                id
+                            );
                         }
                         else
                         {
-                            _logger.LogWarning("Папка заказа {OrderId} не пуста, удаление отменено", id);
+                            _logger.LogWarning(
+                                "Папка заказа {OrderId} не найдена при удалении",
+                                id
+                            );
                         }
                     }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "Ошибка удаления папки заказа {OrderId}", id);
+                    }
+
+                    _context.OrderPhotos.RemoveRange(order.Photos);
 
                     // Удаляем work items
                     var workItems = await _context.OrderWorkItems

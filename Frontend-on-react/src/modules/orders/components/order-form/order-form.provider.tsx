@@ -217,8 +217,15 @@ export function OrderFormProvider({
       ordersApi.updateOrder(id, payload),
 
     onSuccess: (order) => {
+      // обновляем кеш заказа
+      queryClient.setQueryData(
+        ordersKeys.byId(order.id),
+        order
+      )
+
+      // обновляем список заказов
       queryClient.invalidateQueries({
-        queryKey: ordersKeys.byId(order.id),
+        queryKey: ordersKeys.all,
       })
 
       showTempMessage('success', 'Заказ обновлен')
@@ -236,11 +243,13 @@ export function OrderFormProvider({
 
         if (mode === 'create') {
           const payload = mapFormToCreateDto(values)
+          console.log(values.media)
           await createMutation.mutateAsync(payload)
         }
 
         if (mode === 'edit' && orderId) {
           const payload = mapFormToUpdateDto(values)
+          console.log(values.media)
           await updateMutation.mutateAsync({
             id: orderId,
             payload
@@ -335,8 +344,8 @@ function mapFormToUpdateDto(values: OrderFormModel) {
     tempPhotoIds: values.media.tempPhotoIds,
     tempVideoIds: values.media.tempVideoIds,
 
-    removedPhotoIds: [],
-    removedVideoIds: [],
+    removedPhotoIds: values.media.removedPhotoIds,
+    removedVideoIds: values.media.removedVideoIds,
   }
 }
 

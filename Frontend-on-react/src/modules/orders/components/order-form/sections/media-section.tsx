@@ -3,6 +3,9 @@
 import { useState, useEffect, useRef } from 'react'
 import { useFormContext } from 'react-hook-form'
 import type { OrderFormModel } from '../order-form.schema'
+import { httpClient } from '@/shared/api/http-client'
+import { loadMedia } from '@/shared/lib/media/utils/media-loader'
+import { AppIcon } from '@/shared/ui/AppIcon'
 
 import { mediaApi } from '@/shared/lib/media/api/media.api'
 import { MediaPreviewModal } from '@/shared/lib/media/components/MediaPreviewModal'
@@ -11,12 +14,24 @@ import type { ViewerMediaDto } from '@/shared/lib/media/api/media.types'
 import surface from '@/shared/ui/surface.module.css'
 import layout from '@/shared/ui/form-layout.module.css'
 
-type TempMedia = {
-  id: number
-  previewUrl: string
-  name: string
-  type: 'photo' | 'video'
-}
+type MediaItem =
+  | {
+      kind: 'temp'
+      id: number
+      previewUrl: string
+      name: string
+      type: 'photo' | 'video'
+      markedForDelete?: boolean
+      uploading?: boolean
+    }
+  | {
+      kind: 'existing'
+      id: number
+      previewUrl: string
+      name: string
+      type: 'photo' | 'video'
+      markedForDelete?: boolean
+    }
 
 interface Props {
   existing?: ViewerMediaDto[]
@@ -25,8 +40,9 @@ interface Props {
 export function MediaSection({ existing = [] }: Props) {
   const { setValue } = useFormContext<OrderFormModel>()
 
-  const [media, setMedia] = useState<TempMedia[]>(() =>
+  const [media, setMedia] = useState<MediaItem[]>(() =>
     existing.map((m) => ({
+      kind: 'existing',
       id: m.id,
       previewUrl: m.url,
       name: m.originalFileName,
@@ -36,12 +52,19 @@ export function MediaSection({ existing = [] }: Props) {
   const [uploading, setUploading] = useState(false)
   const [previewIndex, setPreviewIndex] = useState<number | null>(null)
 
-  const mediaRef = useRef<TempMedia[]>([])
+  const mediaRef = useRef<MediaItem[]>([])
   const fileInputRef = useRef<HTMLInputElement | null>(null)
+  
+  const [removedPhotos] = useState<number[]>([])
+  const [removedVideos] = useState<number[]>([])
+
+  const [previewUrls, setPreviewUrls] = useState<Record<number, string>>({})
+
+  const isEditMode = existing.length > 0
 
   useEffect(() => {
     mediaRef.current = media
-  }, [media])
+  }, [media, removedPhotos, removedVideos])
 
   const handleFiles = async (fileList: FileList | null) => {
     if (!fileList) return
@@ -60,11 +83,13 @@ export function MediaSection({ existing = [] }: Props) {
           const dto = await mediaApi.uploadTemp(file, type)
 
           return {
+            kind: 'temp',
             id: dto.id,
             previewUrl: dto.previewUrl,
             name: dto.originalFileName,
             type,
-          } as TempMedia
+            uploading: false
+          } as MediaItem
         })
       )
 
@@ -78,37 +103,65 @@ export function MediaSection({ existing = [] }: Props) {
     }
   }
 
-  const removeFile = async (index: number) => {
+  const handleDelete = async (index: number) => {
+
     const item = media[index]
 
-    try {
-      await mediaApi.deleteTemp(item.id)
-    } catch {}
+    // CREATE ORDER — удаляем сразу
+    if (!isEditMode) {
 
-    setMedia(prev => prev.filter((_, i) => i !== index))
+      if (item.kind === 'temp') {
+        await mediaApi.deleteTemp(item.id).catch(() => {})
+      }
+
+      setMedia(prev => prev.filter((_, i) => i !== index))
+
+      return
+    }
+
+    // EDIT ORDER — soft delete
+    setMedia(prev =>
+      prev.map((m, i) =>
+        i === index
+          ? { ...m, markedForDelete: !m.markedForDelete }
+          : m
+      )
+    )
   }
 
   useEffect(() => {
     const photoIds = media
-      .filter(m => m.type === 'photo')
+      .filter(m => m.kind === 'temp' && m.type === 'photo')
       .map(m => m.id)
 
     const videoIds = media
-      .filter(m => m.type === 'video')
+      .filter(m => m.kind === 'temp' && m.type === 'video')
       .map(m => m.id)
 
-    setValue('media.tempPhotoIds', photoIds, { shouldDirty: false })
-    setValue('media.tempVideoIds', videoIds, { shouldDirty: false })
+    const removedPhotos = media
+      .filter(m => m.kind === 'existing' && m.type === 'photo' && m.markedForDelete)
+      .map(m => m.id)
 
-  }, [media])
+    const removedVideos = media
+      .filter(m => m.kind === 'existing' && m.type === 'video' && m.markedForDelete)
+      .map(m => m.id)
+
+    setValue('media.tempPhotoIds', photoIds, { shouldDirty: true })
+    setValue('media.tempVideoIds', videoIds, { shouldDirty: true })
+    setValue('media.removedPhotoIds', removedPhotos, { shouldDirty: true })
+    setValue('media.removedVideoIds', removedVideos, { shouldDirty: true })
+  }, [media, removedPhotos, removedVideos])
 
   useEffect(() => {
     const handleUnload = () => {
       mediaRef.current.forEach(m => {
-        fetch(`/api/media/temp/${m.id}`, {
-          method: 'DELETE',
-          keepalive: true,
-        }).catch(() => {})
+        if (
+          m.kind === 'temp' &&
+          !m.uploading &&
+          m.markedForDelete
+        ) {
+          httpClient.delete(`/api/media/temp/${m.id}`)
+        }
       })
     }
 
@@ -121,11 +174,42 @@ export function MediaSection({ existing = [] }: Props) {
 
   useEffect(() => {
     return () => {
+
       mediaRef.current.forEach(m => {
-        mediaApi.deleteTemp(m.id).catch(() => {})
+
+        if (m.kind !== 'temp') return
+
+        if (m.uploading) return
+
+        if (m.markedForDelete) {
+          mediaApi.deleteTemp(m.id).catch(() => {})
+        }
+
       })
+
     }
   }, [])
+
+  useEffect(() => {
+
+    media.forEach((m) => {
+
+      if (previewUrls[m.id]) return
+
+      loadMedia(m.previewUrl).then((url) => {
+
+        if (!url) return
+
+        setPreviewUrls((prev) => ({
+          ...prev,
+          [m.id]: url,
+        }))
+
+      })
+
+    })
+
+  }, [media])
 
   const previewItems: ViewerMediaDto[] = media.map((m) => ({
     id: m.id,
@@ -191,18 +275,21 @@ export function MediaSection({ existing = [] }: Props) {
             >
               {item.type === 'photo' ? (
                 <img
-                  src={item.previewUrl}
-                  alt={item.name}
+                  src={previewUrls[item.id]}
                   style={{
                     width: '100%',
                     height: '100%',
                     objectFit: 'cover',
                     borderRadius: '10px',
+                    filter:
+                      isEditMode && item.markedForDelete
+                        ? 'grayscale(1) opacity(0.45)'
+                        : 'none'
                   }}
                 />
               ) : (
                 <video
-                  src={item.previewUrl}
+                  src={previewUrls[item.id]}
                   style={{
                     width: '100%',
                     height: '100%',
@@ -214,10 +301,10 @@ export function MediaSection({ existing = [] }: Props) {
 
               <button
                 type="button"
-                onClick={(e) => {
-                  e.stopPropagation()
-                  removeFile(index)
-                }}
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    handleDelete(index)
+                  }}
                 style={{
                   position: 'absolute',
                   top: '6px',
@@ -237,7 +324,10 @@ export function MediaSection({ existing = [] }: Props) {
                   transition: 'all 0.15s ease',
                 }}
               >
-                ✕
+                <AppIcon
+                  name={item.markedForDelete ? 'check' : 'close'}
+                  className="media-delete-icon"
+                />
               </button>
             </div>
           ))}

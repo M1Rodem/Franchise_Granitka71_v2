@@ -1,22 +1,39 @@
-import type { MediaDto } from '../api/media.types';
-import { useVideoThumbnail } from '../hooks/useVideoThumbnail';
-import styles from './media-item.module.css';
+import { useEffect, useState } from 'react'
+import type { MediaDto } from '../api/media.types'
+import { useVideoThumbnail } from '../hooks/useVideoThumbnail'
+import { loadMedia } from '../utils/media-loader'
+import styles from './media-item.module.css'
 
 interface Props {
-  item: MediaDto;
-  onClick: () => void;
+  item: MediaDto
+  onClick: () => void
 }
 
 function isVideo(type: number | string) {
-  return String(type).toLowerCase().includes('video') || type === 1;
+  return Number(type) === 1
 }
 
 export function MediaItem({ item, onClick }: Props) {
-  const video = isVideo(item.mediaType);
+  const video = isVideo(item.mediaType)
 
-  const thumbnail = video
-    ? useVideoThumbnail(item.url)
-    : null;
+  const [src, setSrc] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (src) return
+
+    let mounted = true
+
+    loadMedia(item.url).then((url) => {
+      if (mounted) setSrc(url)
+    })
+
+    return () => {
+      mounted = false
+    }
+  }, [item.url, src])
+
+  // ⚠️ хук вызывается ВСЕГДА
+  const thumbnail = useVideoThumbnail(video ? src : null)
 
   return (
     <div
@@ -33,24 +50,20 @@ export function MediaItem({ item, onClick }: Props) {
             className={styles.preview}
           />
         ) : (
-          <div className={styles.loading}>
-            Loading...
-          </div>
+          <div className={styles.loading}>Loading...</div>
         )
-      ) : (
+      ) : src ? (
         <img
-          src={item.url}
+          src={src}
           alt={item.originalFileName}
           loading="lazy"
           className={styles.preview}
         />
+      ) : (
+        <div className={styles.loading}>Loading...</div>
       )}
 
-      {video && (
-        <div className={styles.videoBadge}>
-          ▶
-        </div>
-      )}
+      {video && <div className={styles.videoBadge}>▶</div>}
     </div>
-  );
+  )
 }

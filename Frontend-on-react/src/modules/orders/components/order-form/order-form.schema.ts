@@ -62,6 +62,8 @@ export const orderFormSchema = z
     media: z.object({
       tempPhotoIds: z.array(z.number()),
       tempVideoIds: z.array(z.number()),
+      removedPhotoIds: z.array(z.number()),
+      removedVideoIds: z.array(z.number()),
     }),
   })
   .refine((data) => data.plotId !== null, {

@@ -48,6 +48,8 @@ export const createOrderDefaultValues = (): OrderFormModel => {
     media: {
       tempPhotoIds: [],
       tempVideoIds: [],
+      removedPhotoIds: [],
+      removedVideoIds: [],
     },
   }
 }

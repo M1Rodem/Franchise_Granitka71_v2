@@ -10,10 +10,7 @@ export const httpClient = axios.create({
   baseURL: env.apiBaseUrl,
   timeout: 15000,
   withCredentials: true,
-  headers: {
-    'Content-Type': 'application/json',
-  },
-})
+});
 
 httpClient.interceptors.request.use((config) => {
   const sessionRaw = localStorage.getItem('auth-session')

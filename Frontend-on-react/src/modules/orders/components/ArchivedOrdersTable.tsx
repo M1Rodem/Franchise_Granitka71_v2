@@ -1,11 +1,9 @@
 import table from '@/shared/ui/table-base.module.css'
 import surface from '@/shared/ui/surface.module.css'
+import { StatusBadge } from "@/shared/ui/status"
 import type { OrderResponseDto } from '@/modules/orders/types/orders.types'
 import { formatPhone } from '@/shared/lib/phone'
-import {
-  paymentStatusLabels,
-  getPaymentBadgeStyle
-} from '@/modules/orders/lib/payment-status'
+import { getPaymentStatusInfo } from '@/modules/orders/lib/payment-status'
 
 interface ArchivedOrdersTableProps {
   orders: OrderResponseDto[]
@@ -93,14 +91,12 @@ export function ArchivedOrdersTable({ orders, onOpenOrder }: ArchivedOrdersTable
               ? statusLabels[order.status] ?? `Статус ${order.status}`
               : order.status
 
-          const paymentStatus =
-            typeof order.paymentStatus === 'number'
-              ? paymentStatusLabels[order.paymentStatus] ??
-                `Статус ${order.paymentStatus}`
-              : order.paymentStatus ?? '—'
-
-          const badgeStyle =
-            getPaymentBadgeStyle(paymentStatus)
+          const paymentStatusInfo =
+            getPaymentStatusInfo(
+              typeof order.paymentStatus === "number"
+                ? order.paymentStatus
+                : 0
+            )
 
           return (
             <div
@@ -133,18 +129,9 @@ export function ArchivedOrdersTable({ orders, onOpenOrder }: ArchivedOrdersTable
               <span>{status}</span>
 
               <span data-label="Оплата">
-                <span
-                  style={{
-                    padding: '4px 10px',
-                    borderRadius: '999px',
-                    fontSize: '13px',
-                    display: 'inline-flex',
-                    justifyContent: 'center',
-                    ...badgeStyle,
-                  }}
-                >
-                  {paymentStatus}
-                </span>
+                <StatusBadge style={paymentStatusInfo.style}>
+                  {paymentStatusInfo.label}
+                </StatusBadge>
               </span>
 
               <span className={table.primaryCell}>
@@ -153,18 +140,9 @@ export function ArchivedOrdersTable({ orders, onOpenOrder }: ArchivedOrdersTable
 
               <span>
                 {daysLeft !== null && (
-                  <span
-                    style={{
-                      padding: '4px 10px',
-                      borderRadius: '999px',
-                      fontSize: '13px',
-                      display: 'inline-flex',
-                      justifyContent: 'center',
-                      ...getDaysLeftStyle(daysLeft),
-                    }}
-                  >
+                  <StatusBadge style={getDaysLeftStyle(daysLeft)}>
                     {daysLeft} дн.
-                  </span>
+                  </StatusBadge>
                 )}
               </span>
             </div>

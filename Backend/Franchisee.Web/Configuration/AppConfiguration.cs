@@ -296,7 +296,10 @@ namespace Franchisee.Web.Configuration
                 // SignalR endpoint
                 endpoints.MapHub<NotificationHub>("/api/notificationhub", options =>
                 {
-                    options.Transports = Microsoft.AspNetCore.Http.Connections.HttpTransportType.LongPolling;
+                    options.Transports =
+                        HttpTransportType.WebSockets |
+                        HttpTransportType.LongPolling;
+
                     options.ApplicationMaxBufferSize = 102400;
                     options.TransportMaxBufferSize = 102400;
                 });

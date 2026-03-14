@@ -4,6 +4,7 @@ import { FormModal } from "@/shared/ui/modal/FormModal"
 import { useConfirmModalStore } from "@/shared/ui/modal/modal.store"
 
 import { AnimatedSelect } from "@/shared/ui/AnimatedSelect"
+import { getUserStatusInfo } from "@/modules/users/lib/user-status"
 
 import { useUser } from "@/modules/users/hooks/use-user"
 import { showTempMessage } from "@/shared/ui/temp-message.service"
@@ -26,6 +27,7 @@ import input from "@/shared/ui/input.module.css"
 import button from "@/shared/ui/button.module.css"
 import form from "@/shared/ui/form-layout.module.css"
 import styles from "./user-modal.module.css"
+import { StatusBadge } from "@/shared/ui/status"
 
 interface UserModalProps {
   userId: number | null
@@ -54,6 +56,7 @@ export function UserModal({
   const [username, setUsername] = useState("")
   const [fullName, setFullName] = useState("")
   const [password, setPassword] = useState("")
+  const [confirmPassword, setConfirmPassword] = useState("")
   const [showPassword, setShowPassword] = useState(false)
   const [role, setRole] = useState<UserRole>("Manager")
 
@@ -95,7 +98,9 @@ export function UserModal({
     setFullName(initial.fullName)
     setRole(initial.role)
     setPassword("")
+    setConfirmPassword("")
     setShowPassword(false)
+    setEditMode(false)
     setEditMode(false)
 
   }, [userId, isOpen])
@@ -145,6 +150,13 @@ export function UserModal({
       )
       return
     }
+    if (password && password !== confirmPassword) {
+      showTempMessage(
+        "warning",
+        "Пароли не совпадают"
+      )
+      return
+    }
 
     const payload: UpdateUserDto = {
       username,
@@ -166,12 +178,14 @@ export function UserModal({
               onSuccess() {
                 setEditMode(false)
                 setPassword("")
+                setConfirmPassword("")
               }
             }
           )
         } else {
           setEditMode(false)
           setPassword("")
+          setConfirmPassword("")
         }
       },
       onError() {
@@ -290,6 +304,8 @@ export function UserModal({
     }
     onClose()
   }
+
+  const status = getUserStatusInfo(user?.isBlocked ?? false)
 
   return (
 
@@ -444,51 +460,98 @@ export function UserModal({
             }
           />
         </div>
+      {editMode && (
+        <>
+          <div className={input.field}>
+            <label className={input.label}>Пароль</label>
 
-        <div className={input.field}>
-          <label className={input.label}>Пароль</label>
+            <div style={{ position: "relative" }}>
 
-          <div style={{ position: "relative" }}>
-
-            <input
-              className={input.input}
-              type={showPassword ? "text" : "password"}
-              value={password}
-              disabled={!editMode}
-              onChange={(e) =>
-                setPassword(e.target.value)
-              }
-            />
-
-            {editMode && password.length > 0 && (
-              <button
-                type="button"
-                onClick={() =>
-                  setShowPassword(prev => !prev)
+              <input
+                className={input.input}
+                type={showPassword ? "text" : "password"}
+                value={password}
+                disabled={!editMode}
+                onChange={(e) =>
+                  setPassword(e.target.value)
                 }
-                style={{
-                  position: "absolute",
-                  right: 12,
-                  top: "50%",
-                  transform: "translateY(-50%)",
-                  background: "none",
-                  border: "none",
-                  cursor: "pointer",
-                  display: "flex",
-                  alignItems: "center",
-                  color: "#bdd8fb"
-                }}
-              >
-                <AppIcon
-                  name={showPassword ? "eyeOff" : "eye"}
-                  className={styles.passwordIcon}
-                />
-              </button>
-            )}
+              />
 
+              {editMode && password.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() =>
+                    setShowPassword(prev => !prev)
+                  }
+                  style={{
+                    position: "absolute",
+                    right: 12,
+                    top: "50%",
+                    transform: "translateY(-50%)",
+                    background: "none",
+                    border: "none",
+                    cursor: "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    color: "#bdd8fb"
+                  }}
+                >
+                  <AppIcon
+                    name={showPassword ? "eyeOff" : "eye"}
+                    className={styles.passwordIcon}
+                  />
+                </button>
+              )}
+            </div>
           </div>
+            <div className={input.field}>
+              <label className={input.label}>
+                Подтвердите пароль
+              </label>
 
-        </div>
+              <div style={{ position: "relative" }}>
+
+                <input
+                  className={input.input}
+                  type={showPassword ? "text" : "password"}
+                  value={confirmPassword}
+                  disabled={!editMode}
+                  onChange={(e) =>
+                    setConfirmPassword(e.target.value)
+                  }
+                />
+
+                {editMode && confirmPassword.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setShowPassword(prev => !prev)
+                    }
+                    style={{
+                      position: "absolute",
+                      right: 12,
+                      top: "50%",
+                      transform: "translateY(-50%)",
+                      background: "none",
+                      border: "none",
+                      cursor: "pointer",
+                      display: "flex",
+                      alignItems: "center",
+                      color: "#bdd8fb"
+                    }}
+                  >
+                    <AppIcon
+                      name={showPassword ? "eyeOff" : "eye"}
+                      className={styles.passwordIcon}
+                    />
+                  </button>
+                )}
+
+              </div>
+            </div>
+        </>
+      )}
+
 
         <div className={`${styles.statusCard} ${styles.gridFull}`}>
 
@@ -497,17 +560,9 @@ export function UserModal({
           </span>
 
           <span data-label="Статус">
-            <span
-              className={
-                user?.isBlocked
-                  ? styles.statusBlocked
-                  : styles.statusActive
-              }
-            >
-              {user?.isBlocked
-                ? "Заблокирован"
-                : "Активный"}
-            </span>
+            <StatusBadge style={status.style}>
+              {status.label}
+            </StatusBadge>
           </span>
 
         </div>

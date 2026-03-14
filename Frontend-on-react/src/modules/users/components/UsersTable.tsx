@@ -1,8 +1,8 @@
 import table from "@/shared/ui/table-base.module.css"
 import surface from "@/shared/ui/surface.module.css"
-import styles from './users-table.module.css'
-
+import { StatusBadge } from "@/shared/ui/status"
 import type { UserDto } from "@/modules/users/types/users.types"
+import { getUserStatusInfo } from "@/modules/users/lib/user-status"
 
 interface UsersTableProps {
   users: UserDto[]
@@ -19,10 +19,6 @@ export function UsersTable({
 
   return (
     <section className={surface.surface}>
-
-      <h2 className={surface.sectionTitle}>
-        Пользователи
-      </h2>
 
       <div className={table.dataTable}>
 
@@ -44,7 +40,11 @@ export function UsersTable({
           </div>
         )}
 
-        {users.map(user => (
+        {users.map(user => {
+
+          const status = getUserStatusInfo(user.isBlocked)
+
+          return (
 
           <div
             key={user.id}
@@ -72,21 +72,13 @@ export function UsersTable({
             </span>
 
             <span data-label="Статус">
-              <span
-                className={
-                  user.isBlocked
-                    ? styles.statusBlocked
-                    : styles.statusActive
-                }
-              >
-                {user.isBlocked
-                  ? "Заблокирован"
-                  : "Активный"}
-              </span>
+              <StatusBadge style={status.style}>
+                {status.label}
+              </StatusBadge>
             </span>
 
           </div>
-        ))}
+        )})}
 
       </div>
 

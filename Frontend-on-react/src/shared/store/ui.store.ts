@@ -86,7 +86,7 @@ export const useUiStore = create<UiStoreState>((set) => ({
     set({
       header: {
         mode: 'orderCreate',
-        title: 'Создать новый заказ',
+        title: 'Создать заказ',
         submitDisabled: true
       },
     }),

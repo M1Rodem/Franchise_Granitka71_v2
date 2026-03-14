@@ -1,13 +1,11 @@
 ﻿import table from '@/shared/ui/table-base.module.css'
 import surface from '@/shared/ui/surface.module.css'
+import { StatusBadge } from "@/shared/ui/status"
 
 import type { OrderResponseDto } from '@/modules/orders/types/orders.types'
 import { formatPhone } from '@/shared/lib/phone'
 
-import {
-  paymentStatusLabels,
-  getPaymentBadgeStyle
-} from '@/modules/orders/lib/payment-status'
+import { getPaymentStatusInfo } from '@/modules/orders/lib/payment-status'
 
 interface OrdersTableProps {
   orders: OrderResponseDto[]
@@ -57,15 +55,12 @@ export function OrdersTable({
                 `Статус ${order.status}`
               : order.status
 
-          const paymentStatus =
-            typeof order.paymentStatus === 'number'
-              ? paymentStatusLabels[
-                  order.paymentStatus
-                ] ?? `Статус ${order.paymentStatus}`
-              : order.paymentStatus ?? '—'
-
-          const badgeStyle =
-            getPaymentBadgeStyle(paymentStatus)
+          const paymentStatusInfo =
+            getPaymentStatusInfo(
+              typeof order.paymentStatus === "number"
+                ? order.paymentStatus
+                : 0
+            )
 
           return (
             <div
@@ -102,18 +97,9 @@ export function OrdersTable({
               </span>
 
               <span data-label="Оплата">
-                <span
-                  style={{
-                    padding: '4px 10px',
-                    borderRadius: '999px',
-                    fontSize: '13px',
-                    display: 'inline-flex',
-                    justifyContent: 'center',
-                    ...badgeStyle,
-                  }}
-                >
-                  {paymentStatus}
-                </span>
+                <StatusBadge style={paymentStatusInfo.style}>
+                  {paymentStatusInfo.label}
+                </StatusBadge>
               </span>
 
 

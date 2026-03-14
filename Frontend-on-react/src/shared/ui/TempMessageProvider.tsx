@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom'
 import { registerTempMessageHandler } from '@/shared/ui/temp-message.service'
 import type { TempMessagePayload } from '@/shared/ui/temp-message.service'
 import styles from './temp-message.module.css'
+import { AppIcon } from '@/shared/ui/AppIcon'
 
 export function TempMessageProvider() {
 
@@ -90,9 +91,16 @@ export function TempMessageProvider() {
       onTouchEnd={handleTouchEnd}
     >
 
-      <span className={styles.message}>
-        {current.message}
-      </span>
+      <div className={styles.content}>
+        <AppIcon
+          name={current.type}
+          className={styles.icon}
+        />
+
+        <span className={styles.message}>
+          {current.message}
+        </span>
+      </div>
 
       {!isMobile && (
         <button

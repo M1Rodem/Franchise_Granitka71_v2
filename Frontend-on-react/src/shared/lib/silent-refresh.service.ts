@@ -22,16 +22,19 @@ async function runRefresh() {
   try {
     const res = await httpClient.post('/api/auth/refresh', {})
 
-    const { token } = res.data
+    // Предполагаем, что сервер возвращает и token, и refreshToken
+    const { token, refreshToken } = res.data
 
     const store = useAuthStore.getState()
     const currentUser = store.user
 
     if (!currentUser) return
 
+    // Передаём все три обязательных поля
     store.setSession({
       user: currentUser,
       token,
+      refreshToken, 
     })
   } catch {
     useAuthStore.getState().clearSession()

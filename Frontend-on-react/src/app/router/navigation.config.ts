@@ -8,7 +8,13 @@ export type AppIconName =
   | 'profile'
   | 'admin'
   | 'eye'
-  | 'eyeOff';
+  | 'eyeOff'
+  | 'success'
+  | 'error'
+  | 'warning'
+  | 'info'
+  | 'close'
+  | 'check';
 
 export interface NavigationItem {
   id: string;

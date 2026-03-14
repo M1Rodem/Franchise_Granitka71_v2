@@ -3,6 +3,7 @@ import { useState } from "react"
 import { FormModal } from "@/shared/ui/modal/FormModal"
 import { useConfirmModalStore } from "@/shared/ui/modal/modal.store"
 import { AnimatedSelect } from "@/shared/ui/AnimatedSelect"
+import { AppIcon } from "@/shared/ui/AppIcon"
 
 import { useCreateUser } from "@/modules/users/hooks/use-user-mutations"
 import { showTempMessage } from "@/shared/ui/temp-message.service"
@@ -39,12 +40,16 @@ export function CreateUserModal() {
   const [username, setUsername] = useState("")
   const [fullName, setFullName] = useState("")
   const [password, setPassword] = useState("")
+  const [confirmPassword, setConfirmPassword] = useState("")
+  const [showPassword, setShowPassword] = useState(false)
+
   const [role, setRole] = useState<UserRole>("Manager")
 
   const hasChanges =
     username.trim() !== "" ||
     fullName.trim() !== "" ||
-    password.trim() !== ""
+    password.trim() !== "" ||
+    confirmPassword.trim() !== ""
 
   const handleCreate = () => {
 
@@ -66,6 +71,14 @@ export function CreateUserModal() {
       return
     }
 
+    if (password !== confirmPassword) {
+      showTempMessage(
+        "warning",
+        "Пароли не совпадают"
+      )
+      return
+    }
+
     createMutation.mutate(
       {
         username,
@@ -79,6 +92,7 @@ export function CreateUserModal() {
           setUsername("")
           setFullName("")
           setPassword("")
+          setConfirmPassword("")
           setRole("Manager")
         },
         onError() {
@@ -92,6 +106,7 @@ export function CreateUserModal() {
   }
 
   function handleCloseRequest() {
+
     if (hasChanges) {
 
       openConfirm({
@@ -101,8 +116,10 @@ export function CreateUserModal() {
         cancelText: "Отмена",
         onConfirm: () => closeModal(),
       })
+
       return
     }
+
     closeModal()
   }
 
@@ -169,6 +186,7 @@ export function CreateUserModal() {
                 setRole(val as UserRole)
               }
             />
+
           </div>
 
         </div>
@@ -187,24 +205,104 @@ export function CreateUserModal() {
           />
         </div>
 
+        {/* PASSWORD */}
+
         <div className={input.field}>
           <label className={input.label}>
             Пароль
           </label>
 
-          <input
-            className={input.input}
-            type="password"
-            value={password}
-            onChange={(e) =>
-              setPassword(e.target.value)
-            }
-          />
+          <div style={{ position: "relative" }}>
+
+            <input
+              className={input.input}
+              type={showPassword ? "text" : "password"}
+              value={password}
+              onChange={(e) =>
+                setPassword(e.target.value)
+              }
+            />
+
+            {password.length > 0 && (
+              <button
+                type="button"
+                onClick={() =>
+                  setShowPassword(prev => !prev)
+                }
+                style={{
+                  position: "absolute",
+                  right: 12,
+                  top: "50%",
+                  transform: "translateY(-50%)",
+                  background: "none",
+                  border: "none",
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  color: "#bdd8fb"
+                }}
+              >
+                <AppIcon
+                  name={showPassword ? "eyeOff" : "eye"}
+                  className={styles.passwordIcon}
+                />
+              </button>
+            )}
+
+          </div>
+
+        </div>
+
+        {/* CONFIRM PASSWORD */}
+
+        <div className={input.field}>
+          <label className={input.label}>
+            Подтвердите пароль
+          </label>
+
+          <div style={{ position: "relative" }}>
+
+            <input
+              className={input.input}
+              type={showPassword ? "text" : "password"}
+              value={confirmPassword}
+              onChange={(e) =>
+                setConfirmPassword(e.target.value)
+              }
+            />
+
+            {confirmPassword.length > 0 && (
+              <button
+                type="button"
+                onClick={() =>
+                  setShowPassword(prev => !prev)
+                }
+                style={{
+                  position: "absolute",
+                  right: 12,
+                  top: "50%",
+                  transform: "translateY(-50%)",
+                  background: "none",
+                  border: "none",
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  color: "#bdd8fb"
+                }}
+              >
+                <AppIcon
+                  name={showPassword ? "eyeOff" : "eye"}
+                  className={styles.passwordIcon}
+                />
+              </button>
+            )}
+
+          </div>
+
         </div>
 
       </div>
 
     </FormModal>
-
   )
 }

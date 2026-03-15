@@ -9,8 +9,10 @@ import { cn } from '@/shared/lib/cn'
 export function AppHeader() {
   const navigate = useNavigate();
   const location = useLocation();
+  
+  const isRealtimeConnected =
+    useNotificationBadgeStore((state) => state.isRealtimeConnected);
 
-  const unreadCount = useNotificationBadgeStore((state) => state.unreadCount);
   const openMobileSidebar = useUiStore((state) => state.openMobileSidebar);
   const header = useUiStore((state) => state.header)
   const submitDisabled = header.submitDisabled
@@ -224,8 +226,21 @@ export function AppHeader() {
         </div>
       )}
 
-      <div className={styles.badgeContainer} aria-label="Notification badge">
-        <span className={styles.badgeValue}>{unreadCount}</span>
+      <div className={styles.realtimeStatus}>
+        <span
+          className={`${styles.realtimeDot} ${
+            isRealtimeConnected
+              ? styles.connected
+              : styles.disconnected
+          }`}
+        />
+
+        <span>
+          {isRealtimeConnected
+            ? ''
+            : ''}
+        </span>
+
       </div>
     </header>
   );

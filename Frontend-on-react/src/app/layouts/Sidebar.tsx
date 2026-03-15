@@ -8,6 +8,7 @@ import { AppIcon } from '@/shared/ui/AppIcon'
 import styles from '@/app/layouts/sidebar.module.css'
 import logo from '@/shared/assets/g71-logo.png'
 import { useEffect, useState } from 'react'
+import { useNotificationBadgeStore } from '@/modules/notifications/store/notification-badge.store'
 
 export function Sidebar() {
   const user = useAuthStore((state) => state.user)
@@ -22,6 +23,11 @@ export function Sidebar() {
 
   const toggleSidebar = useUiStore((state) => state.toggleSidebar)
   const closeMobileSidebar = useUiStore((state) => state.closeMobileSidebar)
+  const unreadCount =
+    useNotificationBadgeStore((s) => s.unreadCount)
+
+  const badgeType =
+    useNotificationBadgeStore((s) => s.badgeType)
 
   /* ---------------------------------- */
   /* MOBILE DETECTION */
@@ -114,8 +120,30 @@ export function Sidebar() {
               />
 
               {!isSidebarCollapsed && (
-                <span>
+                <span
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    width: '100%'
+                  }}
+                >
+
                   {item.label}
+
+                  {item.id === 'notifications' && unreadCount > 0 && (
+                    <span
+                      className={[
+                        styles.notificationBadge,
+                        badgeType === 'impact' && styles.badgeImpact,
+                        badgeType === 'snoozed' && styles.badgeSnoozed,
+                        badgeType === 'system' && styles.badgeSystem,
+                      ].filter(Boolean).join(' ')}
+                    >
+                      {unreadCount}
+                    </span>
+                  )}
+
                 </span>
               )}
             </NavLink>

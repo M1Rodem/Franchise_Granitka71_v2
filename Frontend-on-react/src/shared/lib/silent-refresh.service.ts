@@ -1,11 +1,14 @@
 import { httpClient } from '@/shared/api/http-client'
 import { useAuthStore } from '@/shared/store/auth.store'
+import { notificationRealtimeService } from '@/modules/notifications/services/notification-realtime.service'
+import { queryClient } from '@/app/providers/query-client'
 
 const REFRESH_BEFORE_MS = 2 * 60 * 1000
 
 let refreshTimer: ReturnType<typeof setTimeout> | null = null
 
 function scheduleRefresh(expiresAt: number) {
+
   const now = Date.now()
 
   const timeout = expiresAt - now - REFRESH_BEFORE_MS
@@ -16,13 +19,17 @@ function scheduleRefresh(expiresAt: number) {
   }
 
   refreshTimer = setTimeout(runRefresh, timeout)
+
 }
 
 async function runRefresh() {
+
   try {
+
+    console.log('[Auth Refresh] starting refresh')
+
     const res = await httpClient.post('/api/auth/refresh', {})
 
-    // Предполагаем, что сервер возвращает и token, и refreshToken
     const { token, refreshToken } = res.data
 
     const store = useAuthStore.getState()
@@ -30,30 +37,57 @@ async function runRefresh() {
 
     if (!currentUser) return
 
-    // Передаём все три обязательных поля
+    console.log('[Auth Refresh] new token received')
+
     store.setSession({
       user: currentUser,
       token,
-      refreshToken, 
+      refreshToken
     })
-  } catch {
+
+    /*
+    ==========================
+    RESTART SIGNALR
+    ==========================
+    */
+
+    console.log('[Auth Refresh] restarting SignalR')
+
+    await notificationRealtimeService.disconnect()
+
+    await notificationRealtimeService.connect(queryClient)
+
+    console.log('[Auth Refresh] SignalR restarted')
+
+  } catch (error) {
+
+    console.error('[Auth Refresh] refresh failed', error)
+
     useAuthStore.getState().clearSession()
+
   }
+
 }
 
 export const silentRefreshService = {
+
   start(expiresAt: number) {
+
     if (refreshTimer) {
       clearTimeout(refreshTimer)
     }
 
     scheduleRefresh(expiresAt)
+
   },
 
   stop() {
+
     if (refreshTimer) {
       clearTimeout(refreshTimer)
       refreshTimer = null
     }
-  },
+
+  }
+
 }

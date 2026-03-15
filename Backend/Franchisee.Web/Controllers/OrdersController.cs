@@ -1151,7 +1151,8 @@ namespace Franchisee.Web.Controllers
                     return Ok(new
                     {
                         message = "Заказ полностью удален из архива",
-                        folderDeleted = true
+                        folderDeleted = folderDeleted,
+
                     });
                 }
                 catch (Exception ex)

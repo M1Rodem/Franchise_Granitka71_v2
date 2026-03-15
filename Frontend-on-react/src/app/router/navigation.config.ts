@@ -14,7 +14,9 @@ export type AppIconName =
   | 'warning'
   | 'info'
   | 'close'
-  | 'check';
+  | 'check'
+  | 'realtimeConnected'
+  | 'realtimeDisconnected';
 
 export interface NavigationItem {
   id: string;

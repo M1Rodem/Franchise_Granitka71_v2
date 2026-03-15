@@ -14,6 +14,7 @@ using Microsoft.OpenApi.Models;
 using Serilog;
 using Swashbuckle.AspNetCore.SwaggerGen;
 using System.Text;
+using Microsoft.AspNetCore.Http.Connections;
 
 namespace Franchisee.Web.Configuration
 {

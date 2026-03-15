@@ -10,7 +10,13 @@ export const httpClient = axios.create({
   baseURL: env.apiBaseUrl,
   timeout: 15000,
   withCredentials: true,
-});
+})
+
+/*
+=============================
+REQUEST INTERCEPTOR
+=============================
+*/
 
 httpClient.interceptors.request.use((config) => {
   const sessionRaw = localStorage.getItem('auth-session')
@@ -31,7 +37,11 @@ httpClient.interceptors.request.use((config) => {
   return config
 })
 
-let refreshPromise: Promise<void> | null = null
+/*
+=============================
+RESPONSE INTERCEPTOR
+=============================
+*/
 
 httpClient.interceptors.response.use(
   (response) => response,
@@ -42,58 +52,63 @@ httpClient.interceptors.response.use(
       return Promise.reject(error)
     }
 
-    const isLoginRequest = originalRequest.url?.includes('/api/auth/login')
-    const isRefreshRequest = originalRequest.url?.includes('/api/auth/refresh')
+    const status = error.response?.status
 
-    if (
-      error.response?.status === 401 &&
-      !isLoginRequest &&
-      !isRefreshRequest
-    ) {
-      try {
-        if (!refreshPromise) {
-          const session = JSON.parse(localStorage.getItem('auth-session') || '{}')
-            refreshPromise = httpClient.post('/api/auth/refresh', {
-              refreshToken: session.refreshToken
-            })
-            .then((res) => {
-              const { token, refreshToken } = res.data
+    const isLoginRequest =
+      originalRequest.url?.includes('/api/auth/login')
 
-              if (token) {
-                const currentUser = useAuthStore.getState().user
+    const isRefreshRequest =
+      originalRequest.url?.includes('/api/auth/refresh')
 
-                if (currentUser) {
-                  useAuthStore.getState().setSession({
-                    user: currentUser,
-                    token,
-                    refreshToken
-                  })
-                }
-              }
-            })
-            .finally(() => {
-              refreshPromise = null
-            })
-        }
+    /*
+    =============================
+    HANDLE 401
+    =============================
+    */
 
-        await refreshPromise
+    if (status === 401) {
 
-        if ((originalRequest as any)._retry) {
-          useAuthStore.getState().clearSession()
-          return Promise.reject(error)
-        }
+      /*
+      Если refresh тоже дал 401 — значит refresh token
+      невалидный → нужно logout
+      */
 
-        ;(originalRequest as any)._retry = true
+      if (isRefreshRequest) {
 
-        return httpClient(originalRequest)
-      } catch (refreshError) {
+        console.warn('[HTTP] Refresh token invalid → clearing session')
+
         useAuthStore.getState().clearSession()
-        window.dispatchEvent(new CustomEvent(UNAUTHORIZED_EVENT))
-        return Promise.reject(refreshError)
+
+        window.dispatchEvent(
+          new CustomEvent(UNAUTHORIZED_EVENT)
+        )
+
+        return Promise.reject(error)
       }
+
+      /*
+      Если это login — просто вернуть ошибку
+      */
+
+      if (isLoginRequest) {
+        return Promise.reject(error)
+      }
+
+      /*
+      Любой другой 401 НЕ вызывает logout
+      Это может быть:
+      - expired JWT
+      - SignalR reconnect
+      - гонка refresh
+      */
+
+      console.warn('[HTTP] 401 received, waiting for refresh')
+
+      return Promise.reject(error)
     }
+
     return Promise.reject(error)
-  },
+  }
 )
 
 export { UNAUTHORIZED_EVENT }

@@ -8,7 +8,7 @@ namespace Franchisee.Web.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    [Authorize(Policy = "SuperAdmin")]
+    [Authorize]
     public class PlotsController : ControllerBase
     {
         private readonly IPlotRepository _plotRepository;
@@ -119,7 +119,7 @@ namespace Franchisee.Web.Controllers
         }
 
         [HttpPost]
-        [Authorize(Roles = "Admin,SuperAdmin")]
+        [Authorize(Roles = "SuperAdmin")]
         public async Task<ActionResult<PlotDto>> CreatePlot([FromBody] CreatePlotRequest request)
         {
             if (!ModelState.IsValid)
@@ -160,7 +160,7 @@ namespace Franchisee.Web.Controllers
         }
 
         [HttpPut("{id}")]
-        [Authorize(Roles = "Admin,SuperAdmin")]
+        [Authorize(Roles = "SuperAdmin")]
         public async Task<ActionResult> UpdatePlot(int id, [FromBody] UpdatePlotRequest request)
         {
             if (!ModelState.IsValid)
@@ -200,7 +200,7 @@ namespace Franchisee.Web.Controllers
         }
 
         [HttpDelete("{id}")]
-        [Authorize(Roles = "Admin,SuperAdmin")]
+        [Authorize(Roles = "SuperAdmin")]
         public async Task<ActionResult> DeletePlot(int id)
         {
             try

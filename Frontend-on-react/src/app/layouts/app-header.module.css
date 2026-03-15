@@ -477,3 +477,52 @@
   }
 
 }
+
+.realtimeStatus {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+}
+
+.realtimeDot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+
+.connected {
+  background: #42ff9e;
+  box-shadow: 0 0 0 rgba(66,255,158,0.7);
+  animation: pulseGreen 1.6s infinite;
+}
+
+.disconnected {
+  background: #ff6b6b;
+  box-shadow: 0 0 0 rgba(255,107,107,0.7);
+  animation: pulseRed 1.6s infinite;
+}
+
+@keyframes pulseGreen {
+  0% {
+    box-shadow: 0 0 0 0 rgba(66,255,158,0.7);
+  }
+  70% {
+    box-shadow: 0 0 0 8px rgba(66,255,158,0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(66,255,158,0);
+  }
+}
+
+@keyframes pulseRed {
+  0% {
+    box-shadow: 0 0 0 0 rgba(255,107,107,0.7);
+  }
+  70% {
+    box-shadow: 0 0 0 8px rgba(255,107,107,0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(255,107,107,0);
+  }
+}

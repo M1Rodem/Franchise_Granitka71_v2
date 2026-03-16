@@ -16,7 +16,9 @@ namespace Franchisee.Web.Services
             string? statusFilter = null);
 
         Task<int> GetPendingCountAsync(int userId);
-
+        Task<NotificationDetailsDto?> GetNotificationDetailsAsync(
+        int notificationId,
+        int userId);
         Task<bool> ResolveNotificationAsync(
             int notificationId,
             int userId,

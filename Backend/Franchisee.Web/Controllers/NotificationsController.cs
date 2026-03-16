@@ -28,7 +28,7 @@ public class NotificationsController : ControllerBase
         _environment = environment;
     }
 
-    [HttpGet]
+    [HttpGet("list")]
     public async Task<ActionResult> GetNotifications(
     [FromQuery] string? status = null, // "active", "postponed", "pending", "approved", "rejected", "all"
     [FromQuery] int page = 1,
@@ -64,6 +64,19 @@ public class NotificationsController : ControllerBase
             _logger.LogError(ex, "Ошибка получения уведомлений");
             return StatusCode(500, "Ошибка получения уведомлений");
         }
+    }
+    
+    [HttpGet("{id}")]
+    public async Task<ActionResult<NotificationDetailsDto>> GetNotificationDetails(int id)
+    {
+        var userId = GetCurrentUserId();
+
+        var result = await _notificationService.GetNotificationDetailsAsync(id, userId);
+
+        if (result == null)
+            return NotFound();
+
+        return Ok(result);
     }
 
     [HttpGet("count")]

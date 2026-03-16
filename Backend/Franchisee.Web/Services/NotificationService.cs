@@ -183,6 +183,52 @@ namespace Franchisee.Web.Services
             }
         }
 
+        public async Task<NotificationDetailsDto?> GetNotificationDetailsAsync(
+            int notificationId,
+            int userId)
+        {
+            var notification = await _context.Notifications
+                .Include(n => n.Initiator)
+                .Include(n => n.Order)
+                .FirstOrDefaultAsync(n => n.Id == notificationId);
+
+            if (notification == null)
+                return null;
+
+            var data = JsonSerializer.Deserialize<JsonElement>(notification.Data);
+
+            string? comment = null;
+
+            if (data.TryGetProperty("comment", out var commentProp))
+                comment = commentProp.GetString();
+
+            var dto = new NotificationDetailsDto
+            {
+                Id = notification.Id,
+                Type = notification.Type.ToString(),
+                Status = notification.Status,
+                CreatedAt = notification.CreatedAt,
+                Order = new OrderShortDto
+                {
+                    Id = notification.OrderId ?? 0,
+                    Number = notification.Order?.OrderNumber ?? ""
+                },
+                Initiator = new InitiatorDto
+                {
+                    Id = notification.InitiatorId,
+                    Name = notification.Initiator?.FullName ?? ""
+                },
+                Comment = comment
+            };
+
+            if (data.TryGetProperty("proposedChanges", out var changes))
+            {
+                dto.Changes = NotificationDiffBuilder.Build(changes);
+            }
+
+            return dto;
+        }
+
         private Task LogSignalRSend(string method, NotificationUpdateDto dto, int userId)
         {
             _logger.LogDebug(
@@ -1556,23 +1602,41 @@ namespace Franchisee.Web.Services
             }
         }
 
+    
+
         private NotificationResponseDto MapToDto(NotificationRecipient recipient)
         {
             var notification = recipient.Notification;
             var now = DateTime.UtcNow;
 
+            NotificationChangesPreviewDto? preview = null;
+
+            try
+            {
+                var data = JsonSerializer.Deserialize<JsonElement>(notification.Data);
+
+                if (data.TryGetProperty("proposedChanges", out var changes))
+                {
+                    preview = NotificationChangesPreviewBuilder.Build(changes);
+                }
+            }
+            catch
+            {
+                // ignore
+            }
+
             bool isInfluencing = notification.IsInfluencing;
             bool isInformation = !isInfluencing;
 
             bool isPostponedWithExpiredTime = recipient.Status == NotificationStatus.Postponed &&
-                                              recipient.ReturnsAt.HasValue &&
-                                              recipient.ReturnsAt <= now;
+                                            recipient.ReturnsAt.HasValue &&
+                                            recipient.ReturnsAt <= now;
 
             bool isBlocking = isInfluencing &&
-                             (recipient.Status == NotificationStatus.Pending ||
-                              isPostponedWithExpiredTime);
+                            (recipient.Status == NotificationStatus.Pending ||
+                            isPostponedWithExpiredTime);
 
-            var dto = new NotificationResponseDto
+            return new NotificationResponseDto
             {
                 Id = notification.Id,
                 RecipientId = recipient.Id,
@@ -1590,16 +1654,15 @@ namespace Franchisee.Web.Services
                 InitiatorName = notification.Initiator?.FullName ?? "Неизвестно",
                 OrderId = notification.OrderId,
                 OrderNumber = notification.Order?.OrderNumber ?? "Без номера",
-                Data = JsonSerializer.Deserialize<JsonElement>(notification.Data),
                 MinutesUntilReturn = recipient.ReturnsAt.HasValue && recipient.ReturnsAt > now
                     ? (int)(recipient.ReturnsAt.Value - now).TotalMinutes
                     : 0,
                 IsInfluencing = isInfluencing,
                 IsBlocking = isBlocking,
-                IsInformation = isInformation
-            };
+                IsInformation = isInformation,
 
-            return dto;
+                ChangesPreview = preview
+            };
         }
     }
 }

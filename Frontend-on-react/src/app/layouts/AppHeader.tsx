@@ -234,13 +234,6 @@ export function AppHeader() {
               : styles.disconnected
           }`}
         />
-
-        <span>
-          {isRealtimeConnected
-            ? ''
-            : ''}
-        </span>
-
       </div>
     </header>
   );

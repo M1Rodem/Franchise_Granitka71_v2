@@ -16,7 +16,7 @@ namespace Franchisee.Web.Models
         public DateTime? ResolvedAt { get; set; }
         public DateTime? ReturnsAt { get; set; }
         public string? ResolutionNote { get; set; }
-
+        public NotificationChangesPreviewDto? ChangesPreview { get; set; }
         public int UserId { get; set; }
         public string UserName { get; set; } = string.Empty;
 
@@ -25,8 +25,6 @@ namespace Franchisee.Web.Models
 
         public int? OrderId { get; set; }
         public string OrderNumber { get; set; } = string.Empty;
-
-        public JsonElement Data { get; set; }
 
         public bool IsInfluencing { get; set; }
         public bool IsBlocking { get; set; }

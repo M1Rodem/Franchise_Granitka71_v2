@@ -13,22 +13,6 @@ export type NotificationType =
   | 'System'
   | 'OrderCompletionConfirmation'
 
-export interface NotificationDiffValue {
-  old: unknown
-  new: unknown
-}
-
-export type NotificationProposedChanges = Record<
-  string,
-  NotificationDiffValue
->
-
-export interface NotificationData {
-  proposedChanges?: NotificationProposedChanges
-  comment?: string
-  originalOrderSnapshot?: Record<string, unknown>
-}
-
 export interface NotificationItem {
   id: number
 
@@ -49,8 +33,6 @@ export interface NotificationItem {
 
   orderId?: number
   orderNumber?: string
-
-  data?: NotificationData
 
   isInfluencing: boolean
   isBlocking: boolean

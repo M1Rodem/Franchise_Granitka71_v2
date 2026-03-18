@@ -1,7 +1,6 @@
 import { useMemo } from 'react'
 import {
   HubConnectionBuilder,
-  HubConnectionState,
   LogLevel,
 } from '@microsoft/signalr'
 import type { HubConnection } from '@microsoft/signalr'
@@ -9,36 +8,50 @@ import type { QueryClient } from '@tanstack/react-query'
 
 import { env } from '@/shared/config/env'
 import { useNotificationBadgeStore } from '@/modules/notifications/store/notification-badge.store'
-import { authSessionStorage } from '@/shared/lib/auth-session-storage'
+import { useAuthStore } from '@/shared/store/auth.store'
 
 const DEBUG_PREFIX = '[SignalR Notifications]'
 
 class NotificationRealtimeService {
-
+  private isConnecting = false
   private connection: HubConnection | null = null
+  private debugInterval: ReturnType<typeof setInterval> | null = null
 
   async connect(queryClient: QueryClient): Promise<void> {
-    if (import.meta.env.DEV) {
-      setInterval(() => {
-        if (!this.connection) return
+    if (this.connection?.state === 'Connected') {
+      console.log(DEBUG_PREFIX, 'already connected, skip')
+      return
+    }
 
-        console.log(
-          DEBUG_PREFIX,
-          'connection state:',
-          this.connection.state
-        )
-      }, 5000)
+    this.isConnecting = true
+    if (import.meta.env.DEV) {
+      if (!this.debugInterval) {
+        this.debugInterval = setInterval(() => {
+          if (!this.connection) return
+
+          console.log(
+            DEBUG_PREFIX,
+            'connection state:',
+            this.connection.state
+          )
+        }, 5000)
+      }
     }
 
     console.log(DEBUG_PREFIX, 'connect() called')
+    // всегда убиваем старое соединение
+    if (this.connection) {
+      console.log(DEBUG_PREFIX, 'disposing old connection')
 
-    if (this.connection && this.connection.state !== HubConnectionState.Disconnected) {
-      console.log(
-        DEBUG_PREFIX,
-        'connection already exists. state:',
-        this.connection.state
-      )
-      return
+      try {
+        await this.connection.stop()
+      } catch (error) {
+        console.warn(DEBUG_PREFIX, 'stop failed (safe ignore)', error)
+      }
+
+      await new Promise((r) => setTimeout(r, 300))
+
+      this.connection = null
     }
 
     console.log(DEBUG_PREFIX, 'creating new SignalR connection')
@@ -47,25 +60,12 @@ class NotificationRealtimeService {
 
       .withUrl(env.signalRUrl, {
         accessTokenFactory: () => {
-
-          console.log(DEBUG_PREFIX, 'accessTokenFactory called')
-
-          const session = authSessionStorage.read()
-
-          if (!session) {
-            console.warn(DEBUG_PREFIX, 'no auth session found')
-            return ''
-          }
-
-          const token = session.token.replace('Bearer ', '')
-
-          console.log(DEBUG_PREFIX, 'JWT token loaded')
-
-          return token
+          const token = useAuthStore.getState().token
+          return token ? token.replace('Bearer ', '') : ''
         }
       })
 
-      .withAutomaticReconnect()
+      .withAutomaticReconnect([0, 2000, 5000, 10000])
 
       .configureLogging(LogLevel.Warning)
 
@@ -73,13 +73,22 @@ class NotificationRealtimeService {
 
     console.log(DEBUG_PREFIX, 'SignalR hub URL:', env.signalRUrl)
 
-    connection.onclose((error) => {
+    connection.onclose(async (error) => {
 
       console.warn(DEBUG_PREFIX, 'connection closed', error)
 
       useNotificationBadgeStore
         .getState()
         .setRealtimeConnected(false)
+
+      // ❗ только если НЕ идет уже подключение
+      if (error && !this.isConnecting) {
+        console.log(DEBUG_PREFIX, 'forcing reconnect after close')
+
+        setTimeout(() => {
+          this.connect(queryClient)
+        }, 1000)
+      }
 
     })
 
@@ -178,31 +187,38 @@ class NotificationRealtimeService {
     console.log(DEBUG_PREFIX, 'starting SignalR connection...')
 
     try {
-      console.log(
-        DEBUG_PREFIX,
-        'connection state before start:',
-        connection.state
-      )
-
       await connection.start()
-      console.log(
-        DEBUG_PREFIX,
-        'SignalR connected successfully. state:',
-        connection.state
-      )
-
-      console.log(DEBUG_PREFIX, 'SignalR connected successfully')
 
       useNotificationBadgeStore
         .getState()
         .setRealtimeConnected(true)
 
     } catch (error) {
-
       console.error(DEBUG_PREFIX, 'SignalR connection failed', error)
-
+    } finally {
+      this.isConnecting = false
     }
 
+  }
+
+  async forceReconnect(queryClient: QueryClient): Promise<void> {
+    console.log(DEBUG_PREFIX, 'forceReconnect called')
+
+    if (this.connection) {
+      try {
+        await this.connection.stop()
+      } catch (error) {
+        console.warn(DEBUG_PREFIX, 'stop failed (safe ignore)', error)
+      }
+
+      await new Promise((r) => setTimeout(r, 300))
+
+      this.connection = null
+    }
+
+    this.isConnecting = false
+
+    await this.connect(queryClient)
   }
 
   async disconnect(): Promise<void> {

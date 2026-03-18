@@ -453,6 +453,36 @@ namespace Franchisee.Web.Services
             }
         }
 
+        public async Task<object> GetNotificationSummary(int userId)
+        {
+            var now = DateTime.UtcNow;
+
+            var items = await _context.NotificationRecipients
+                .Include(r => r.Notification)
+                .Where(r => r.UserId == userId)
+                .ToListAsync();
+
+            var hasImpact = items.Any(r =>
+                r.Status == NotificationStatus.Pending &&
+                r.Notification.IsInfluencing
+            );
+
+            var hasSnoozed = items.Any(r =>
+                r.Status == NotificationStatus.Postponed &&
+                r.ReturnsAt > now
+            );
+
+            var hasOnlySystem = items.All(r =>
+                !r.Notification.IsInfluencing
+            );
+
+            return new {
+                total = items.Count,
+                hasImpact,
+                hasSnoozed,
+                hasOnlySystem
+            };
+        }
         private async Task SendNotificationUpdatedEventAsync(Notification notification, int userId)
         {
             try
@@ -476,6 +506,42 @@ namespace Franchisee.Web.Services
             {
                 _logger.LogError(ex, "Ошибка отправки обновления уведомления");
             }
+        }
+
+        public async Task<object> GetNotificationSummaryAsync(int userId)
+        {
+            var now = DateTime.UtcNow;
+
+            var items = await _context.NotificationRecipients
+                .Include(r => r.Notification)
+                .Include(r => r.Notification.Order)
+                .Where(r => r.UserId == userId)
+                .ToListAsync();
+
+            var hasImpact = items.Any(r =>
+                r.Status == NotificationStatus.Pending &&
+                r.Notification.IsInfluencing &&
+                r.Notification.Order != null &&
+                r.Notification.Order.ManagerId == userId
+            );
+
+            var hasSnoozed = items.Any(r =>
+                r.Status == NotificationStatus.Postponed &&
+                r.ReturnsAt.HasValue &&
+                r.ReturnsAt > now
+            );
+
+            var hasOnlySystem = items.Any() && items.All(r =>
+                !r.Notification.IsInfluencing
+            );
+
+            return new
+            {
+                total = items.Count,
+                hasImpact,
+                hasSnoozed,
+                hasOnlySystem
+            };
         }
 
         private async Task<int> GetPendingCountForUserAsync(int userId)
@@ -1226,20 +1292,25 @@ namespace Franchisee.Web.Services
 
             if (!string.IsNullOrEmpty(statusFilter))
             {
-                statusFilter = statusFilter.ToLower();
+                statusFilter = statusFilter?.ToLowerInvariant();
+
                 query = statusFilter switch
                 {
                     "active" => query.Where(nr =>
                         nr.Status == NotificationStatus.Pending ||
                         (nr.Status == NotificationStatus.Postponed &&
-                         nr.ReturnsAt.HasValue &&
-                         nr.ReturnsAt > now)),
+                        nr.ReturnsAt.HasValue &&
+                        nr.ReturnsAt > now)),
 
-                    "postponed" => query.Where(nr => nr.Status == NotificationStatus.Postponed),
+                    "postponed" => query.Where(nr =>
+                        nr.Status == NotificationStatus.Postponed &&
+                        nr.ReturnsAt.HasValue &&
+                        nr.ReturnsAt > now),
 
-                    "pending" => query.Where(nr => nr.Status == NotificationStatus.Pending),
-                    "approved" => query.Where(nr => nr.Status == NotificationStatus.Approved),
-                    "rejected" => query.Where(nr => nr.Status == NotificationStatus.Rejected),
+                    "history" => query.Where(nr =>
+                        nr.Status == NotificationStatus.Approved ||
+                        nr.Status == NotificationStatus.Rejected),
+
                     "all" => query,
 
                     _ => query.Where(nr => nr.Status == NotificationStatus.Pending)
@@ -1586,7 +1657,7 @@ namespace Franchisee.Web.Services
             }
         }
 
-        private async Task SendNotificationCountUpdateAsync(int userId)
+        public  async Task SendNotificationCountUpdateAsync(int userId)
         {
             try
             {
@@ -1620,21 +1691,23 @@ namespace Franchisee.Web.Services
                     preview = NotificationChangesPreviewBuilder.Build(changes);
                 }
             }
-            catch
-            {
-                // ignore
-            }
+            catch { }
 
-            bool isInfluencing = notification.IsInfluencing;
-            bool isInformation = !isInfluencing;
+            bool isImpactForUser =
+                notification.IsInfluencing &&
+                notification.Order != null &&
+                notification.Order.ManagerId == recipient.UserId;
 
-            bool isPostponedWithExpiredTime = recipient.Status == NotificationStatus.Postponed &&
-                                            recipient.ReturnsAt.HasValue &&
-                                            recipient.ReturnsAt <= now;
+            bool isInformation = !notification.IsInfluencing;
 
-            bool isBlocking = isInfluencing &&
-                            (recipient.Status == NotificationStatus.Pending ||
-                            isPostponedWithExpiredTime);
+            bool isPostponedExpired =
+                recipient.Status == NotificationStatus.Postponed &&
+                recipient.ReturnsAt.HasValue &&
+                recipient.ReturnsAt <= now;
+
+            bool isBlocking =
+                isImpactForUser &&
+                (recipient.Status == NotificationStatus.Pending || isPostponedExpired);
 
             return new NotificationResponseDto
             {
@@ -1654,12 +1727,15 @@ namespace Franchisee.Web.Services
                 InitiatorName = notification.Initiator?.FullName ?? "Неизвестно",
                 OrderId = notification.OrderId,
                 OrderNumber = notification.Order?.OrderNumber ?? "Без номера",
+
                 MinutesUntilReturn = recipient.ReturnsAt.HasValue && recipient.ReturnsAt > now
                     ? (int)(recipient.ReturnsAt.Value - now).TotalMinutes
                     : 0,
-                IsInfluencing = isInfluencing,
-                IsBlocking = isBlocking,
+
+                IsInfluencing = notification.IsInfluencing, // оставляем как raw
+                IsImpactForCurrentUser = isImpactForUser,
                 IsInformation = isInformation,
+                IsBlocking = isBlocking,
 
                 ChangesPreview = preview
             };

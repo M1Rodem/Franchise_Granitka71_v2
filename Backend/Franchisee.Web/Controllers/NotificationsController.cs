@@ -79,6 +79,14 @@ public class NotificationsController : ControllerBase
         return Ok(result);
     }
 
+    [HttpGet("summary")]
+    public async Task<ActionResult> GetSummary()
+    {
+        var userId = GetCurrentUserId();
+        var summary = await _notificationService.GetNotificationSummaryAsync(userId);
+        return Ok(summary);
+    }
+
     [HttpGet("count")]
     public async Task<ActionResult<int>> GetUnreadCount()
     {
@@ -154,6 +162,8 @@ public class NotificationsController : ControllerBase
                     returnsAt = DateTime.UtcNow.AddMinutes(minutes)
                 });
 
+            await _notificationService.SendNotificationCountUpdateAsync(userId);
+            
             return Ok(new
             {
                 success = true,

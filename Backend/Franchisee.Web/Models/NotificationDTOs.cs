@@ -34,8 +34,9 @@ namespace Franchisee.Web.Models
 
         // Вычисляемые поля для фронтенда
         public int MinutesUntilReturn { get; set; }
-        public bool IsActionRequired => Status == NotificationStatus.Pending && !IsInformation;
-        public bool CanPostpone => Status == NotificationStatus.Pending && IsInfluencing;
+        public bool IsActionRequired => Status == NotificationStatus.Pending;
+        public bool CanPostpone => Status == NotificationStatus.Pending;
+        public bool IsImpactForCurrentUser { get; set; }
     }
 
     // DTO для изменения статуса

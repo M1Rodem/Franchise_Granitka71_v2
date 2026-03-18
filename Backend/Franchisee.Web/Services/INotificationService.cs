@@ -24,6 +24,8 @@ namespace Franchisee.Web.Services
             int userId,
             NotificationStatus status,
             string? note = null);
+        Task<object> GetNotificationSummaryAsync(int userId);
+        Task SendNotificationCountUpdateAsync(int userId);
 
         // ИЗМЕНЕНИЕ: добавляем reason параметр
         Task<bool> PostponeNotificationAsync(

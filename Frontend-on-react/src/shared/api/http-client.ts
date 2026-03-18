@@ -3,6 +3,7 @@ import type { AxiosError } from 'axios'
 import { env } from '@/shared/config/env'
 import { useAuthStore } from '@/shared/store/auth.store'
 import type { ApiErrorResponse } from '@/shared/types/api'
+import { performRefresh } from '@/shared/lib/silent-refresh.service'
 
 const UNAUTHORIZED_EVENT = 'auth:unauthorized'
 
@@ -19,19 +20,11 @@ REQUEST INTERCEPTOR
 */
 
 httpClient.interceptors.request.use((config) => {
-  const sessionRaw = localStorage.getItem('auth-session')
+  const token = useAuthStore.getState().token
 
-  if (sessionRaw) {
-    try {
-      const session = JSON.parse(sessionRaw)
-
-      if (session?.token) {
-        config.headers = config.headers ?? {}
-        config.headers.Authorization = `Bearer ${session.token}`
-      }
-    } catch {
-      localStorage.removeItem('auth-session')
-    }
+  if (token) {
+    config.headers = config.headers ?? {}
+    config.headers.Authorization = `Bearer ${token}`
   }
 
   return config
@@ -68,13 +61,7 @@ httpClient.interceptors.response.use(
 
     if (status === 401) {
 
-      /*
-      Если refresh тоже дал 401 — значит refresh token
-      невалидный → нужно logout
-      */
-
       if (isRefreshRequest) {
-
         console.warn('[HTTP] Refresh token invalid → clearing session')
 
         useAuthStore.getState().clearSession()
@@ -86,25 +73,22 @@ httpClient.interceptors.response.use(
         return Promise.reject(error)
       }
 
-      /*
-      Если это login — просто вернуть ошибку
-      */
-
       if (isLoginRequest) {
         return Promise.reject(error)
       }
 
-      /*
-      Любой другой 401 НЕ вызывает logout
-      Это может быть:
-      - expired JWT
-      - SignalR reconnect
-      - гонка refresh
-      */
+      try {
+        console.log('[HTTP] 401 → triggering refresh')
 
-      console.warn('[HTTP] 401 received, waiting for refresh')
+        await performRefresh()
 
-      return Promise.reject(error)
+        console.log('[HTTP] retrying original request')
+
+        return httpClient(originalRequest)
+
+      } catch (refreshError) {
+        return Promise.reject(refreshError)
+      }
     }
 
     return Promise.reject(error)

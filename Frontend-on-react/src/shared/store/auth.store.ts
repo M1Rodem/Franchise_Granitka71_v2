@@ -8,17 +8,28 @@ import { silentRefreshService } from '@/shared/lib/silent-refresh.service'
 
 interface AuthStoreState {
   user: AuthUser | null
+  token: string | null
+  refreshToken: string | null
+
   isAuthenticated: boolean
   isHydrated: boolean
   sessionExpiresAt: number | null
 
-  setSession: (payload: { user: AuthUser; token: string; refreshToken: string }) => void
+  setSession: (payload: {
+    user: AuthUser
+    token: string
+    refreshToken: string
+  }) => void
+
   hydrateSession: () => void
   clearSession: () => void
 }
 
 export const useAuthStore = create<AuthStoreState>((set) => ({
   user: null,
+  token: null,
+  refreshToken: null,
+
   isAuthenticated: false,
   isHydrated: false,
   sessionExpiresAt: null,
@@ -37,11 +48,14 @@ export const useAuthStore = create<AuthStoreState>((set) => ({
 
     set({
       user,
+      token,
+      refreshToken,
       isAuthenticated: true,
       isHydrated: true,
       sessionExpiresAt: expiresAt,
     })
   },
+  
 
   hydrateSession: () => {
     const session = authSessionStorage.read()
@@ -51,6 +65,8 @@ export const useAuthStore = create<AuthStoreState>((set) => ({
 
       set({
         user: session.user,
+        token: session.token,
+        refreshToken: session.refreshToken,
         isAuthenticated: true,
         isHydrated: true,
         sessionExpiresAt: session.expiresAt,
@@ -62,6 +78,8 @@ export const useAuthStore = create<AuthStoreState>((set) => ({
 
     set({
       user: null,
+      token: null,
+      refreshToken: null,
       isAuthenticated: false,
       isHydrated: true,
       sessionExpiresAt: null,
@@ -75,6 +93,8 @@ export const useAuthStore = create<AuthStoreState>((set) => ({
 
     set({
       user: null,
+      token: null,
+      refreshToken: null,
       isAuthenticated: false,
       isHydrated: true,
       sessionExpiresAt: null,

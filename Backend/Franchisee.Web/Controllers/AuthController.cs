@@ -16,7 +16,7 @@ namespace Franchisee.Web.Controllers
     public class AuthController : ControllerBase
     {
         private const int MaxAttempts = 5;
-        private static readonly TimeSpan LockDuration = TimeSpan.FromMinutes(15);
+        private static readonly TimeSpan LockDuration = TimeSpan.FromMinutes(1);
 
         private class LoginAttemptInfo
         {
@@ -144,7 +144,7 @@ namespace Franchisee.Web.Controllers
                 var tokenDescriptor = new SecurityTokenDescriptor
                 {
                     Subject = new ClaimsIdentity(claims),
-                    Expires = DateTime.UtcNow.AddMinutes(15),
+                    Expires = DateTime.UtcNow.AddMinutes(1),
                     SigningCredentials = new SigningCredentials(
                         new SymmetricSecurityKey(keyBytes),
                         SecurityAlgorithms.HmacSha256Signature),
@@ -273,7 +273,7 @@ namespace Franchisee.Web.Controllers
             var tokenDescriptor = new SecurityTokenDescriptor
             {
                 Subject = new ClaimsIdentity(claims),
-                Expires = DateTime.UtcNow.AddMinutes(15),
+                Expires = DateTime.UtcNow.AddMinutes(1),
                 SigningCredentials = new SigningCredentials(
                     new SymmetricSecurityKey(keyBytes),
                     SecurityAlgorithms.HmacSha256Signature),

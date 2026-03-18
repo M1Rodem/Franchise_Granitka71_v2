@@ -114,7 +114,6 @@ export const ordersApi = {
 
     if (!parsed.success) {
       console.error('OrderDetails parse error:', parsed.error);
-      console.log('Response data:', response.data);
       throw new Error('DTO parse error');
     }
 
@@ -127,7 +126,6 @@ export const ordersApi = {
 
     if (!parsed.success) {
       console.error('OrderDetails parse error:', parsed.error);
-      console.log('Response data:', response.data);
       throw new Error('DTO parse error');
     }
 

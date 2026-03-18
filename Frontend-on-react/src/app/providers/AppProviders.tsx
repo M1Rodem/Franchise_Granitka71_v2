@@ -2,6 +2,7 @@
 import { useEffect } from 'react';
 
 import { queryClient } from '@/app/providers/query-client';
+import { AuthRefreshProvider } from '@/app/providers/auth-refresh-provider'; // новый импорт
 
 import { useAuthStore } from '@/shared/store/auth.store';
 import { TempMessageProvider } from '@/shared/ui/TempMessageProvider';
@@ -12,10 +13,8 @@ interface AppProvidersProps {
 }
 
 function SessionBootstrap({ children }: AppProvidersProps) {
-
   const hydrateSession = useAuthStore((state) => state.hydrateSession)
   const clearSession = useAuthStore((state) => state.clearSession)
-
   const sessionExpiresAt = useAuthStore((state) => state.sessionExpiresAt)
   const isHydrated = useAuthStore((state) => state.isHydrated)
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated)
@@ -25,7 +24,6 @@ function SessionBootstrap({ children }: AppProvidersProps) {
   }, [hydrateSession])
 
   useEffect(() => {
-
     if (!sessionExpiresAt) return
 
     const timeout = window.setTimeout(
@@ -34,34 +32,30 @@ function SessionBootstrap({ children }: AppProvidersProps) {
     )
 
     return () => window.clearTimeout(timeout)
-
   }, [sessionExpiresAt, clearSession])
 
   useEffect(() => {
-
-    if (!isHydrated) return
-    if (!isAuthenticated) return
+    if (!isHydrated || !isAuthenticated) return
 
     notificationRealtimeService.connect(queryClient)
 
     return () => {
       notificationRealtimeService.disconnect()
     }
-
   }, [isHydrated, isAuthenticated])
 
   return <>{children}</>
-
 }
 
 export function AppProviders({ children }: AppProvidersProps) {
   return (
     <QueryClientProvider client={queryClient}>
-      <SessionBootstrap>
-        {children}
-        <TempMessageProvider />
-      </SessionBootstrap>
+      <AuthRefreshProvider> {/* Добавляем новый провайдер */}
+        <SessionBootstrap>
+          {children}
+          <TempMessageProvider />
+        </SessionBootstrap>
+      </AuthRefreshProvider>
     </QueryClientProvider>
   )
 }
- 

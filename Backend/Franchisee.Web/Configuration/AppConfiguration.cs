@@ -166,25 +166,19 @@ namespace Franchisee.Web.Configuration
 
                 options.Events = new JwtBearerEvents
                 {
-                    OnTokenValidated = async context =>
+                    OnTokenValidated = context =>
                     {
+                        // Просто проверяем что claim существует, без запроса в БД
                         var userIdClaim = context.Principal?.FindFirst("UserId");
-
+                        
                         if (userIdClaim == null)
                         {
                             context.Fail("Unauthorized");
-                            return;
+                            return Task.CompletedTask;
                         }
-
-                        var db = context.HttpContext.RequestServices
-                            .GetRequiredService<ApplicationDbContext>();
-
-                        var user = await db.Managers.FindAsync(int.Parse(userIdClaim.Value));
-
-                        if (user == null || user.IsBlocked)
-                        {
-                            context.Fail("User blocked");
-                        }
+                        
+                        // Здесь можно добавить кэширование статуса блокировки
+                        return Task.CompletedTask;
                     },
 
                     OnMessageReceived = context =>

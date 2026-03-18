@@ -1,8 +1,6 @@
-﻿import type { AuthUser } from '@/shared/types/auth';
+﻿﻿import type { AuthUser } from '@/shared/types/auth';
 
 const STORAGE_KEY = 'auth-session'
-
-export const AUTH_SESSION_TTL_MS = 8 * 60 * 60 * 1000
 
 export interface PersistedAuthSession {
   user: AuthUser

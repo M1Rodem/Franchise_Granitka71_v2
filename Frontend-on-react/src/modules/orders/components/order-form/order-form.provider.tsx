@@ -243,13 +243,11 @@ export function OrderFormProvider({
 
         if (mode === 'create') {
           const payload = mapFormToCreateDto(values)
-          console.log(values.media)
           await createMutation.mutateAsync(payload)
         }
 
         if (mode === 'edit' && orderId) {
           const payload = mapFormToUpdateDto(values)
-          console.log(values.media)
           await updateMutation.mutateAsync({
             id: orderId,
             payload

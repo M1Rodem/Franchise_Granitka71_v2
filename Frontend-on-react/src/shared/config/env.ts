@@ -8,7 +8,7 @@ const getEnvString = (key: string): string | null => {
 const apiBaseUrl = getEnvString('VITE_API_BASE_URL') ?? '';
 
 export const env = {
-  apiBaseUrl,
+  apiBaseUrl: import.meta.env.VITE_API_BASE_URL,
   signalRUrl:
     getEnvString('VITE_SIGNALR_URL') ?? `${apiBaseUrl}/api/notificationhub`,
   yandexMapApiKey: getEnvString('VITE_YANDEX_MAP_API_KEY'),

@@ -1,14 +1,15 @@
-﻿import { QueryClientProvider } from '@tanstack/react-query';
-import { useEffect } from 'react';
+﻿import { QueryClientProvider } from '@tanstack/react-query'
+import { useEffect } from 'react'
 
-import { queryClient } from '@/app/providers/query-client';
-import { AuthRefreshProvider } from '@/app/providers/auth-refresh-provider'; // новый импорт
+import { queryClient } from '@/app/providers/query-client'
+import { AuthRefreshProvider } from '@/app/providers/auth-refresh-provider'
+import { SignalRProvider } from '@/app/providers/signalr-provider'
 
-import { useAuthStore } from '@/shared/store/auth.store';
-import { TempMessageProvider } from '@/shared/ui/TempMessageProvider';
+import { useAuthStore } from '@/shared/store/auth.store'
+import { TempMessageProvider } from '@/shared/ui/TempMessageProvider'
 
 interface AppProvidersProps {
-  children: React.ReactNode;
+  children: React.ReactNode
 }
 
 function SessionBootstrap({ children }: AppProvidersProps) {
@@ -37,11 +38,13 @@ function SessionBootstrap({ children }: AppProvidersProps) {
 export function AppProviders({ children }: AppProvidersProps) {
   return (
     <QueryClientProvider client={queryClient}>
-      <AuthRefreshProvider> {/* Добавляем новый провайдер */}
-        <SessionBootstrap>
-          {children}
-          <TempMessageProvider />
-        </SessionBootstrap>
+      <AuthRefreshProvider>
+        <SignalRProvider> 
+          <SessionBootstrap>
+            {children}
+            <TempMessageProvider />
+          </SessionBootstrap>
+        </SignalRProvider>
       </AuthRefreshProvider>
     </QueryClientProvider>
   )

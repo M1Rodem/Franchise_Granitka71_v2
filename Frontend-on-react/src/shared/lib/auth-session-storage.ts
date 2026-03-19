@@ -5,7 +5,6 @@ const STORAGE_KEY = 'auth-session'
 export interface PersistedAuthSession {
   user: AuthUser
   token: string
-  refreshToken: string
   expiresAt: number
 }
 

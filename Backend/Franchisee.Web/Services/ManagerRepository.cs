@@ -111,6 +111,24 @@ namespace Franchisee.Web.Services
                 _context.SaveChanges();
             }
         }
+        public async Task<Manager?> RotateRefreshTokenAsync(string oldToken, string newToken, DateTime newExpiry)
+        {
+            var user = await _context.Managers
+                .FirstOrDefaultAsync(m => m.RefreshToken == oldToken);
+
+            if (user == null)
+                return null;
+
+            if (user.RefreshToken != oldToken)
+                return null;
+
+            user.RefreshToken = newToken;
+            user.RefreshTokenExpiryTime = newExpiry;
+
+            await _context.SaveChangesAsync();
+
+            return user;
+        }
         public async Task<(List<Manager>, int)> GetPagedAsync(
             int page,
             int pageSize,

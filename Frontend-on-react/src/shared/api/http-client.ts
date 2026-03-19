@@ -46,6 +46,9 @@ REQUEST INTERCEPTOR
 */
 
 httpClient.interceptors.request.use(async (config: CustomAxiosRequestConfig) => {
+  console.log('[REQUEST]', {
+    url: config.url
+  })
   const token = useAuthStore.getState().token
 
   // Не проверяем refresh запросы, чтобы избежать цикла
@@ -88,6 +91,11 @@ httpClient.interceptors.response.use(
     const isRefreshRequest = originalRequest.url?.includes('/api/auth/refresh')
 
     if (status === 401 && !isLoginRequest && !isRefreshRequest) {
+      console.log('[HTTP 401]', {
+        url: originalRequest.url,
+        isRefreshing,
+        retry: originalRequest._retry
+      })
       if (originalRequest._retry) {
         // Уже пробовали обновить для этого запроса
         return Promise.reject(error)

@@ -12,7 +12,6 @@ interface JwtPayload {
 interface AuthStoreState {
   user: AuthUser | null
   token: string | null
-  refreshToken: string | null
 
   isAuthenticated: boolean
   isHydrated: boolean
@@ -21,14 +20,12 @@ interface AuthStoreState {
   setSession: (payload: {
     user: AuthUser
     token: string
-    refreshToken: string
   }) => void
   
   // ДОБАВЛЕНО: для обновления после refresh
   updateSession: (payload: {
     user: AuthUser
     token: string
-    refreshToken: string
   }) => void
 
   hydrateSession: () => void
@@ -38,31 +35,27 @@ interface AuthStoreState {
 export const useAuthStore = create<AuthStoreState>((set) => ({
   user: null,
   token: null,
-  refreshToken: null,
 
   isAuthenticated: false,
   isHydrated: false,
   sessionExpiresAt: null,
 
-  setSession: ({ user, token, refreshToken }) => {
+  setSession: ({ user, token }) => {
     const decoded = jwtDecode<JwtPayload>(token);
     const expiresAt = decoded.exp * 1000;
 
     authSessionStorage.write({
       user,
       token,
-      refreshToken, 
       expiresAt,
     });
 
-    // При первой установке сессии - destroy и start
     silentRefreshService.destroy()
     silentRefreshService.start(expiresAt);
 
     set({
       user,
       token,
-      refreshToken,
       isAuthenticated: true,
       isHydrated: true,
       sessionExpiresAt: expiresAt,
@@ -70,24 +63,21 @@ export const useAuthStore = create<AuthStoreState>((set) => ({
   },
 
   // ДОБАВЛЕНО: для обновления после refresh без destroy
-  updateSession: ({ user, token, refreshToken }) => {
+  updateSession: ({ user, token }) => {
     const decoded = jwtDecode<JwtPayload>(token);
     const expiresAt = decoded.exp * 1000;
 
     authSessionStorage.write({
       user,
       token,
-      refreshToken, 
       expiresAt,
     });
 
-    // Просто обновляем расписание, не убивая сервис
     silentRefreshService.updateSchedule(expiresAt);
 
     set({
       user,
       token,
-      refreshToken,
       isAuthenticated: true,
       sessionExpiresAt: expiresAt,
     });
@@ -103,7 +93,6 @@ export const useAuthStore = create<AuthStoreState>((set) => ({
       set({
         user: session.user,
         token: session.token,
-        refreshToken: session.refreshToken,
         isAuthenticated: true,
         isHydrated: true,
         sessionExpiresAt: session.expiresAt,
@@ -117,7 +106,6 @@ export const useAuthStore = create<AuthStoreState>((set) => ({
     set({
       user: null,
       token: null,
-      refreshToken: null,
       isAuthenticated: false,
       isHydrated: true,
       sessionExpiresAt: null,
@@ -131,7 +119,6 @@ export const useAuthStore = create<AuthStoreState>((set) => ({
     set({
       user: null,
       token: null,
-      refreshToken: null,
       isAuthenticated: false,
       isHydrated: true,
       sessionExpiresAt: null,

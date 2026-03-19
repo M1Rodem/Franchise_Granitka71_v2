@@ -17,6 +17,7 @@ namespace Franchisee.Web.Services.Repositories
         Task UpdateAsync(Manager manager);
         Task DeleteAsync(int id);
         Task BlockAsync(int id);
+        Task<Manager?> RotateRefreshTokenAsync(string oldToken, string newToken, DateTime newExpiry);
         Task UnblockAsync(int id);
         Task ChangePasswordAsync(int managerId, string newPassword);
         bool VerifyPassword(string password, string passwordHash);

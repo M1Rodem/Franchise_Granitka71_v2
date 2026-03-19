@@ -26,6 +26,7 @@ namespace Franchisee.Web.Controllers
 
         private static readonly ConcurrentDictionary<string, LoginAttemptInfo> LoginAttempts = new();
 
+        private readonly int _accessLifetimeMinutes;
         private readonly IManagerRepository _managerRepository;
         private readonly IConfiguration _config;
         private readonly ILogger<AuthController> _logger;
@@ -40,7 +41,8 @@ namespace Franchisee.Web.Controllers
             _managerRepository = managerRepository;
             _config = config;
             _logger = logger;
-
+            
+            _accessLifetimeMinutes = int.Parse(_config["Jwt:AccessTokenMinutes"] ?? "15");
         }
 
         [HttpPost("login")]
@@ -144,7 +146,7 @@ namespace Franchisee.Web.Controllers
                 var tokenDescriptor = new SecurityTokenDescriptor
                 {
                     Subject = new ClaimsIdentity(claims),
-                    Expires = DateTime.UtcNow.AddMinutes(1),
+                    Expires = DateTime.UtcNow.AddMinutes(_accessLifetimeMinutes),
                     SigningCredentials = new SigningCredentials(
                         new SymmetricSecurityKey(keyBytes),
                         SecurityAlgorithms.HmacSha256Signature),
@@ -162,25 +164,15 @@ namespace Franchisee.Web.Controllers
 
                 await _managerRepository.UpdateAsync(user);
 
-                Response.Cookies.Append("refreshToken", refreshToken, new CookieOptions
+                Response.Cookies.Append("refreshToken", refreshToken, GetRefreshCookieOptions(user.RefreshTokenExpiryTime.Value));
+
+                Response.Cookies.Append("media_auth", tokenString, new CookieOptions
                 {
                     HttpOnly = true,
-                    Secure = false,
-                    SameSite = SameSiteMode.Lax,
-                    Expires = user.RefreshTokenExpiryTime
+                    Secure = true,
+                    SameSite = SameSiteMode.None,
+                    Expires = DateTime.UtcNow.AddHours(8)
                 });
-
-                var cookieExpires = DateTime.UtcNow.AddHours(8);
-
-                var cookieOptions = new CookieOptions
-                {
-                    HttpOnly = true,
-                    Secure = HttpContext.Request.IsHttps,
-                    SameSite = HttpContext.Request.IsHttps ? SameSiteMode.None : SameSiteMode.Lax,
-                    Expires = cookieExpires
-                };
-
-                Response.Cookies.Append("media_auth", tokenString, cookieOptions);
 
                 LoginAttempts.TryRemove(loginKey, out _);
 
@@ -191,7 +183,7 @@ namespace Franchisee.Web.Controllers
                     fullName = user.FullName,
                     role = role,
                     token = tokenString,
-                    refreshToken = refreshToken
+                    expiresIn = _accessLifetimeMinutes * 60
                 });
             }
             catch (Exception ex)
@@ -238,25 +230,29 @@ namespace Franchisee.Web.Controllers
         [HttpPost("refresh")]
         public async Task<IActionResult> Refresh([FromBody] RefreshRequest request)
         {
-            var refreshToken = request.RefreshToken ?? Request.Cookies["refreshToken"];
+            var refreshToken = Request.Cookies["refreshToken"] ?? request.RefreshToken;
+
+            _logger.LogInformation("REFRESH COOKIE: {Cookie}", Request.Cookies["refreshToken"]);
+            _logger.LogInformation("REFRESH BODY: {Body}", request?.RefreshToken);
 
             if (string.IsNullOrEmpty(refreshToken))
                 return Unauthorized();
 
-            var user = await _managerRepository.GetByRefreshTokenAsync(refreshToken);
+            var newRefreshToken = GenerateRefreshToken();
+            var newExpiry = DateTime.UtcNow.AddHours(8);
 
-            // ИСПРАВЛЕНО: добавляем проверку на блокировку
-            if (user == null || user.RefreshTokenExpiryTime <= DateTime.UtcNow || user.IsBlocked)
-            {
-                if (user?.IsBlocked == true)
-                {
-                    _logger.LogWarning("Blocked user attempted to refresh token: {Username}", user.Username);
-                }
+            var user = await _managerRepository.RotateRefreshTokenAsync(
+                refreshToken,
+                newRefreshToken,
+                newExpiry
+            );
+
+
+            if (user == null || user.IsBlocked || user.RefreshTokenExpiryTime <= DateTime.UtcNow)
                 return Unauthorized();
-            }
 
             var key = _config["Jwt:Key"]
-                    ?? throw new InvalidOperationException("JWT Key не настроен");
+                ?? throw new InvalidOperationException("JWT Key не настроен");
 
             var keyBytes = Encoding.ASCII.GetBytes(key);
             var tokenHandler = new JwtSecurityTokenHandler();
@@ -269,18 +265,18 @@ namespace Franchisee.Web.Controllers
             };
 
             var claims = new List<Claim>
-    {
-        new Claim(ClaimTypes.Name, user.Id.ToString()),
-        new Claim(ClaimTypes.NameIdentifier, user.Username),
-        new Claim(ClaimTypes.Role, role),
-        new Claim("UserId", user.Id.ToString()),
-        new Claim("FullName", user.FullName ?? string.Empty)
-    };
+            {
+                new Claim(ClaimTypes.Name, user.Id.ToString()),
+                new Claim(ClaimTypes.NameIdentifier, user.Username),
+                new Claim(ClaimTypes.Role, role),
+                new Claim("UserId", user.Id.ToString()),
+                new Claim("FullName", user.FullName ?? string.Empty)
+            };
 
             var tokenDescriptor = new SecurityTokenDescriptor
             {
                 Subject = new ClaimsIdentity(claims),
-                Expires = DateTime.UtcNow.AddMinutes(1), // ДЛЯ ТЕСТА - 1 минута
+                Expires = DateTime.UtcNow.AddMinutes(_accessLifetimeMinutes),
                 SigningCredentials = new SigningCredentials(
                     new SymmetricSecurityKey(keyBytes),
                     SecurityAlgorithms.HmacSha256Signature),
@@ -291,27 +287,16 @@ namespace Franchisee.Web.Controllers
             var token = tokenHandler.CreateToken(tokenDescriptor);
             var tokenString = tokenHandler.WriteToken(token);
 
-            // ROTATING REFRESH TOKEN
-            var newRefreshToken = GenerateRefreshToken();
-
-            user.RefreshToken = newRefreshToken;
-            user.RefreshTokenExpiryTime = DateTime.UtcNow.AddHours(8);
-
-            await _managerRepository.UpdateAsync(user);
-
-            // ИСПРАВЛЕНО: обновляем cookie
-            Response.Cookies.Append("refreshToken", newRefreshToken, new CookieOptions
-            {
-                HttpOnly = true,
-                Secure = HttpContext.Request.IsHttps,
-                SameSite = HttpContext.Request.IsHttps ? SameSiteMode.None : SameSiteMode.Lax,
-                Expires = user.RefreshTokenExpiryTime
-            });
+            Response.Cookies.Append(
+                "refreshToken",
+                newRefreshToken,
+                GetRefreshCookieOptions(user.RefreshTokenExpiryTime.Value)
+            );
 
             return Ok(new
             {
                 token = tokenString,
-                refreshToken = newRefreshToken
+                expiresIn = _accessLifetimeMinutes * 60
             });
         }
 
@@ -323,6 +308,16 @@ namespace Franchisee.Web.Controllers
             rng.GetBytes(randomNumber);
 
             return Convert.ToBase64String(randomNumber);
+        }
+        private CookieOptions GetRefreshCookieOptions(DateTime expiry)
+        {
+            return new CookieOptions
+            {
+                HttpOnly = true,
+                Secure = HttpContext.Request.IsHttps,
+                SameSite = HttpContext.Request.IsHttps ? SameSiteMode.None : SameSiteMode.Lax,
+                Expires = expiry
+            };
         }
     }
 }

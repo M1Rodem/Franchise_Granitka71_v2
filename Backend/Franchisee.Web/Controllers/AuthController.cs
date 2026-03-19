@@ -144,7 +144,7 @@ namespace Franchisee.Web.Controllers
                 var tokenDescriptor = new SecurityTokenDescriptor
                 {
                     Subject = new ClaimsIdentity(claims),
-                    Expires = DateTime.UtcNow.AddMinutes(15),
+                    Expires = DateTime.UtcNow.AddMinutes(1),
                     SigningCredentials = new SigningCredentials(
                         new SymmetricSecurityKey(keyBytes),
                         SecurityAlgorithms.HmacSha256Signature),
@@ -245,10 +245,17 @@ namespace Franchisee.Web.Controllers
 
             var user = await _managerRepository.GetByRefreshTokenAsync(refreshToken);
 
-            if (user == null || user.RefreshTokenExpiryTime <= DateTime.UtcNow)
+            // ИСПРАВЛЕНО: добавляем проверку на блокировку
+            if (user == null || user.RefreshTokenExpiryTime <= DateTime.UtcNow || user.IsBlocked)
+            {
+                if (user?.IsBlocked == true)
+                {
+                    _logger.LogWarning("Blocked user attempted to refresh token: {Username}", user.Username);
+                }
                 return Unauthorized();
+            }
 
-            var key = _config["Jwt:Key"] 
+            var key = _config["Jwt:Key"]
                     ?? throw new InvalidOperationException("JWT Key не настроен");
 
             var keyBytes = Encoding.ASCII.GetBytes(key);
@@ -262,18 +269,18 @@ namespace Franchisee.Web.Controllers
             };
 
             var claims = new List<Claim>
-            {
-                new Claim(ClaimTypes.Name, user.Id.ToString()),
-                new Claim(ClaimTypes.NameIdentifier, user.Username),
-                new Claim(ClaimTypes.Role, role),
-                new Claim("UserId", user.Id.ToString()),
-                new Claim("FullName", user.FullName ?? string.Empty)
-            };
+    {
+        new Claim(ClaimTypes.Name, user.Id.ToString()),
+        new Claim(ClaimTypes.NameIdentifier, user.Username),
+        new Claim(ClaimTypes.Role, role),
+        new Claim("UserId", user.Id.ToString()),
+        new Claim("FullName", user.FullName ?? string.Empty)
+    };
 
             var tokenDescriptor = new SecurityTokenDescriptor
             {
                 Subject = new ClaimsIdentity(claims),
-                Expires = DateTime.UtcNow.AddMinutes(15),
+                Expires = DateTime.UtcNow.AddMinutes(1), // ДЛЯ ТЕСТА - 1 минута
                 SigningCredentials = new SigningCredentials(
                     new SymmetricSecurityKey(keyBytes),
                     SecurityAlgorithms.HmacSha256Signature),
@@ -291,6 +298,15 @@ namespace Franchisee.Web.Controllers
             user.RefreshTokenExpiryTime = DateTime.UtcNow.AddHours(8);
 
             await _managerRepository.UpdateAsync(user);
+
+            // ИСПРАВЛЕНО: обновляем cookie
+            Response.Cookies.Append("refreshToken", newRefreshToken, new CookieOptions
+            {
+                HttpOnly = true,
+                Secure = HttpContext.Request.IsHttps,
+                SameSite = HttpContext.Request.IsHttps ? SameSiteMode.None : SameSiteMode.Lax,
+                Expires = user.RefreshTokenExpiryTime
+            });
 
             return Ok(new
             {

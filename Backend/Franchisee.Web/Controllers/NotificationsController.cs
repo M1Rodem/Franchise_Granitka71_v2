@@ -88,11 +88,11 @@ public class NotificationsController : ControllerBase
     }
 
     [HttpGet("count")]
-    public async Task<ActionResult<int>> GetUnreadCount()
+    public async Task<ActionResult<NotificationBadgeDto>> GetNotificationBadge()
     {
         var userId = GetCurrentUserId();
-        var count = await _notificationService.GetPendingCountAsync(userId);
-        return Ok(new { count });
+        var badge = await _notificationService.GetNotificationBadgeAsync(userId);
+        return Ok(badge);
     }
 
     [HttpPost("{id}/resolve")]
@@ -150,17 +150,6 @@ public class NotificationsController : ControllerBase
 
             if (!success)
                 return BadRequest("Не удалось отложить уведомление");
-
-            // ОТПРАВЛЯЕМ ТОЛЬКО ТЕКУЩЕМУ ПОЛЬЗОВАТЕЛЮ
-            var hubContext = HttpContext.RequestServices.GetRequiredService<IHubContext<NotificationHub>>();
-
-            await hubContext.Clients.User(userId.ToString())
-                .SendAsync("NotificationPostponed", new
-                {
-                    notificationId = id,
-                    minutes = minutes,
-                    returnsAt = DateTime.UtcNow.AddMinutes(minutes)
-                });
 
             await _notificationService.SendNotificationCountUpdateAsync(userId);
             

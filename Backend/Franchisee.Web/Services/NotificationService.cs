@@ -245,7 +245,7 @@ namespace Franchisee.Web.Services
             string? note = null)
         {
             using var transaction = await _context.Database.BeginTransactionAsync();
-
+            List<NotificationRecipient> otherRecipients = new();
             try
             {
                 // 1. Находим уведомление с получателями
@@ -383,6 +383,42 @@ namespace Franchisee.Web.Services
                 if (status == NotificationStatus.Approved || status == NotificationStatus.Rejected)
                 {
                     SyncOtherRecipients(notification, userId, status, note);
+                }
+
+                if (otherRecipients.Any())
+                {
+                    foreach (var syncedRecipient in otherRecipients)
+                    {
+                        try
+                        {
+                            await SendNotificationUpdatedEventAsync(notification, syncedRecipient.UserId);
+
+                            _logger.LogDebug(
+                                "Отправлено UpdateNotification синхронизированному получателю {UserId} для уведомления {NotificationId}",
+                                syncedRecipient.UserId, notification.Id);
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogError(ex,
+                                "Ошибка отправки UpdateNotification синхронизированному получателю {UserId}",
+                                syncedRecipient.UserId);
+                        }
+
+                        try
+                        {
+                            await SendNotificationCountUpdateAsync(syncedRecipient.UserId);
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogError(ex,
+                                "Ошибка обновления счетчика для синхронизированного получателя {UserId}",
+                                syncedRecipient.UserId);
+                        }
+                    }
+
+                    _logger.LogInformation(
+                        "Отправлены SignalR события для {Count} синхронизированных получателей уведомления {NotificationId}",
+                        otherRecipients.Count, notification.Id);
                 }
 
                 await _context.SaveChangesAsync();
@@ -585,7 +621,6 @@ namespace Franchisee.Web.Services
                           (r.Status == NotificationStatus.Pending ||
                            r.Status == NotificationStatus.Postponed))
                 .ToList();
-
             foreach (var recipient in otherRecipients)
             {
                 recipient.Status = newStatus;
@@ -599,6 +634,7 @@ namespace Franchisee.Web.Services
                     "Синхронизировано {Count} получателей уведомления {NotificationId}",
                     otherRecipients.Count, notification.Id);
             }
+
         }
 
         private async Task ApplyOrderChangesAsync(Notification notification)
@@ -1341,6 +1377,68 @@ namespace Franchisee.Web.Services
                 .CountAsync();
         }
 
+        public async Task<NotificationBadgeDto> GetNotificationBadgeAsync(int userId)
+        {
+            var now = DateTime.UtcNow;
+
+            var recipients = await _context.NotificationRecipients
+                .Include(nr => nr.Notification)
+                .Where(nr => nr.UserId == userId)
+                .ToListAsync();
+
+            // Красный: влияющие Pending или просроченные Postponed
+            var hasRed = recipients.Any(nr =>
+                nr.Notification.IsInfluencing &&
+                (nr.Status == NotificationStatus.Pending ||
+                 (nr.Status == NotificationStatus.Postponed &&
+                  nr.ReturnsAt.HasValue &&
+                  nr.ReturnsAt <= now)));
+
+            if (hasRed)
+            {
+                var count = recipients.Count(nr =>
+                    nr.Notification.IsInfluencing &&
+                    (nr.Status == NotificationStatus.Pending ||
+                     (nr.Status == NotificationStatus.Postponed &&
+                      nr.ReturnsAt.HasValue &&
+                      nr.ReturnsAt <= now)));
+
+                return new NotificationBadgeDto { Count = count, Color = "red" };
+            }
+
+            // Синий: есть активные отложенные
+            var hasBlue = recipients.Any(nr =>
+                nr.Status == NotificationStatus.Postponed &&
+                nr.ReturnsAt.HasValue &&
+                nr.ReturnsAt > now);
+
+            if (hasBlue)
+            {
+                var count = recipients.Count(nr =>
+                    nr.Status == NotificationStatus.Postponed &&
+                    nr.ReturnsAt.HasValue &&
+                    nr.ReturnsAt > now);
+
+                return new NotificationBadgeDto { Count = count, Color = "blue" };
+            }
+
+            // Серый: есть информационные
+            var hasGray = recipients.Any(nr =>
+                !nr.Notification.IsInfluencing &&
+                nr.Status == NotificationStatus.Pending);
+
+            if (hasGray)
+            {
+                var count = recipients.Count(nr =>
+                    !nr.Notification.IsInfluencing &&
+                    nr.Status == NotificationStatus.Pending);
+
+                return new NotificationBadgeDto { Count = count, Color = "gray" };
+            }
+
+            return new NotificationBadgeDto { Count = 0, Color = "none" };
+        }
+
         public async Task<int> GetBlockingNotificationsCount(int userId)
         {
             var now = DateTime.UtcNow;
@@ -1657,23 +1755,23 @@ namespace Franchisee.Web.Services
             }
         }
 
-        public  async Task SendNotificationCountUpdateAsync(int userId)
+        public async Task SendNotificationCountUpdateAsync(int userId)
         {
             try
             {
-                var count = await GetPendingCountAsync(userId);
-                _logger.LogDebug("Обновление счетчика уведомлений для UserId: {UserId}, Count: {Count}", userId, count);
+                var badge = await GetNotificationBadgeAsync(userId);
+
+                _logger.LogDebug("Обновление бейджа для UserId: {UserId}, Color: {Color}, Count: {Count}",
+                    userId, badge.Color, badge.Count);
 
                 await _hubContext.Clients.Group($"user-{userId}")
-                    .UpdateNotificationCount(count);
+                    .UpdateNotificationCount(badge);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Ошибка отправки обновления счетчика пользователю {UserId}", userId);
+                _logger.LogError(ex, "Ошибка отправки обновления бейджа пользователю {UserId}", userId);
             }
         }
-
-    
 
         private NotificationResponseDto MapToDto(NotificationRecipient recipient)
         {

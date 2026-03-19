@@ -5,12 +5,12 @@ import { checkAndRefreshIfNeeded } from '@/shared/lib/silent-refresh.service'
 export function AuthRefreshProvider({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, sessionExpiresAt } = useAuthStore()
   const checkingRef = useRef(false)
+  const timeoutRef = useRef<ReturnType<typeof setTimeout>>()
 
   useEffect(() => {
     if (!isAuthenticated || !sessionExpiresAt) return
 
     const checkToken = async () => {
-      // Предотвращаем одновременные проверки
       if (checkingRef.current) return
       
       checkingRef.current = true
@@ -21,19 +21,22 @@ export function AuthRefreshProvider({ children }: { children: React.ReactNode })
       }
     }
 
-    // Проверяем при монтировании
-    checkToken()
+    // Проверяем при монтировании с небольшой задержкой
+    // чтобы не конфликтовать с инициализацией сервиса
+    timeoutRef.current = setTimeout(checkToken, 1000)
 
-    // Проверяем при возвращении на вкладку
     const onVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
-        checkToken()
+        // Тоже с задержкой
+        clearTimeout(timeoutRef.current)
+        timeoutRef.current = setTimeout(checkToken, 500)
       }
     }
 
     document.addEventListener('visibilitychange', onVisibilityChange)
 
     return () => {
+      clearTimeout(timeoutRef.current)
       document.removeEventListener('visibilitychange', onVisibilityChange)
     }
   }, [isAuthenticated, sessionExpiresAt])

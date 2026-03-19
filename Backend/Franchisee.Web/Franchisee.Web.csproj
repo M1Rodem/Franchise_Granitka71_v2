@@ -39,7 +39,6 @@
 		<PackageReference Include="Serilog.AspNetCore" Version="9.0.0" />
 		<PackageReference Include="SixLabors.ImageSharp" Version="3.1.11" />
 		<PackageReference Include="Swashbuckle.AspNetCore" Version="9.0.6" />
-		<PackageReference Include="Microsoft.AspNetCore.SignalR" Version="1.2.9" />
 		<PackageReference Include="Microsoft.AspNetCore.SignalR.Client" Version="9.0.9" />
 	</ItemGroup>
 	<ItemGroup>

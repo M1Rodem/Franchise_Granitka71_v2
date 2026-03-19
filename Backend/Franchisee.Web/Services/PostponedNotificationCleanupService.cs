@@ -148,15 +148,22 @@ namespace Franchisee.Web.Services
 
                     // Обновляем счётчик для пользователя
                     var pendingCount = await context.NotificationRecipients
-                        .Where(nr => nr.UserId == userId &&
-                                    (nr.Status == NotificationStatus.Pending ||
-                                     (nr.Status == NotificationStatus.Postponed &&
-                                      nr.ReturnsAt.HasValue &&
-                                      nr.ReturnsAt > now)))
-                        .CountAsync(cancellationToken);
+                    .Where(nr => nr.UserId == userId &&
+                                (nr.Status == NotificationStatus.Pending ||
+                                 (nr.Status == NotificationStatus.Postponed &&
+                                  nr.ReturnsAt.HasValue &&
+                                  nr.ReturnsAt > now)))
+                    .CountAsync(cancellationToken);
+
+                    // Создаем DTO для бейджа (упрощенный вариант - цвет определит фронт)
+                    var badge = new NotificationBadgeDto
+                    {
+                        Count = pendingCount,
+                        Color = "red" // Или можно не указывать цвет, фронт сам определит
+                    };
 
                     await hubContext.Clients.Group($"user-{userId}")
-                        .UpdateNotificationCount(pendingCount);
+                        .UpdateNotificationCount(badge);
 
                     logger.LogDebug("Отправлены SignalR события пользователю {UserId} для {Count} уведомлений",
                         userId, recipients.Count);

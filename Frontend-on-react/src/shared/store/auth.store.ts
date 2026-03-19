@@ -1,7 +1,5 @@
 ﻿import { create } from 'zustand'
-import {
-  authSessionStorage,
-} from '@/shared/lib/auth-session-storage'
+import { authSessionStorage } from '@/shared/lib/auth-session-storage'
 import type { AuthUser } from '@/shared/types/auth'
 import { silentRefreshService } from '@/shared/lib/silent-refresh.service'
 import { jwtDecode } from 'jwt-decode';
@@ -25,6 +23,13 @@ interface AuthStoreState {
     token: string
     refreshToken: string
   }) => void
+  
+  // ДОБАВЛЕНО: для обновления после refresh
+  updateSession: (payload: {
+    user: AuthUser
+    token: string
+    refreshToken: string
+  }) => void
 
   hydrateSession: () => void
   clearSession: () => void
@@ -40,17 +45,18 @@ export const useAuthStore = create<AuthStoreState>((set) => ({
   sessionExpiresAt: null,
 
   setSession: ({ user, token, refreshToken }) => {
-    // Декодируем токен и берем реальное время истечения
     const decoded = jwtDecode<JwtPayload>(token);
-    const expiresAt = decoded.exp * 1000; // exp в секундах, переводим в миллисекунды
+    const expiresAt = decoded.exp * 1000;
 
     authSessionStorage.write({
       user,
       token,
       refreshToken, 
-      expiresAt, // используем реальное время из токена
+      expiresAt,
     });
 
+    // При первой установке сессии - destroy и start
+    silentRefreshService.destroy()
     silentRefreshService.start(expiresAt);
 
     set({
@@ -63,10 +69,35 @@ export const useAuthStore = create<AuthStoreState>((set) => ({
     });
   },
 
+  // ДОБАВЛЕНО: для обновления после refresh без destroy
+  updateSession: ({ user, token, refreshToken }) => {
+    const decoded = jwtDecode<JwtPayload>(token);
+    const expiresAt = decoded.exp * 1000;
+
+    authSessionStorage.write({
+      user,
+      token,
+      refreshToken, 
+      expiresAt,
+    });
+
+    // Просто обновляем расписание, не убивая сервис
+    silentRefreshService.updateSchedule(expiresAt);
+
+    set({
+      user,
+      token,
+      refreshToken,
+      isAuthenticated: true,
+      sessionExpiresAt: expiresAt,
+    });
+  },
+
   hydrateSession: () => {
     const session = authSessionStorage.read()
 
     if (session && session.expiresAt > Date.now()) {
+      silentRefreshService.destroy()
       silentRefreshService.start(session.expiresAt)
 
       set({
@@ -81,6 +112,7 @@ export const useAuthStore = create<AuthStoreState>((set) => ({
     }
 
     authSessionStorage.clear()
+    silentRefreshService.destroy()
 
     set({
       user: null,
@@ -94,8 +126,7 @@ export const useAuthStore = create<AuthStoreState>((set) => ({
 
   clearSession: () => {
     authSessionStorage.clear()
-
-    silentRefreshService.stop()
+    silentRefreshService.destroy()
 
     set({
       user: null,

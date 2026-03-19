@@ -6,7 +6,6 @@ import { AuthRefreshProvider } from '@/app/providers/auth-refresh-provider'; // 
 
 import { useAuthStore } from '@/shared/store/auth.store';
 import { TempMessageProvider } from '@/shared/ui/TempMessageProvider';
-import { notificationRealtimeService } from '@/modules/notifications/services/notification-realtime.service'
 
 interface AppProvidersProps {
   children: React.ReactNode;
@@ -16,8 +15,6 @@ function SessionBootstrap({ children }: AppProvidersProps) {
   const hydrateSession = useAuthStore((state) => state.hydrateSession)
   const clearSession = useAuthStore((state) => state.clearSession)
   const sessionExpiresAt = useAuthStore((state) => state.sessionExpiresAt)
-  const isHydrated = useAuthStore((state) => state.isHydrated)
-  const isAuthenticated = useAuthStore((state) => state.isAuthenticated)
 
   useEffect(() => {
     hydrateSession()
@@ -33,16 +30,6 @@ function SessionBootstrap({ children }: AppProvidersProps) {
 
     return () => window.clearTimeout(timeout)
   }, [sessionExpiresAt, clearSession])
-
-  useEffect(() => {
-    if (!isHydrated || !isAuthenticated) return
-
-    notificationRealtimeService.connect(queryClient)
-
-    return () => {
-      notificationRealtimeService.disconnect()
-    }
-  }, [isHydrated, isAuthenticated])
 
   return <>{children}</>
 }

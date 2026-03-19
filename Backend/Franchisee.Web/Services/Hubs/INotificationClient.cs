@@ -5,7 +5,7 @@ namespace Franchisee.Web.Services.Hubs
     public interface INotificationClient
     {
         Task ReceiveNotification(NotificationUpdateDto notification);
-        Task UpdateNotificationCount(int count);
+        Task UpdateNotificationCount(NotificationBadgeDto badge);
         Task UpdateNotification(NotificationUpdateDto notification);
         Task NotificationResolved(NotificationResolvedDto resolution);
         Task NotificationPostponed(NotificationPostponedDto postponement);

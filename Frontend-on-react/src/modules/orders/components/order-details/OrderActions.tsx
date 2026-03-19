@@ -4,7 +4,6 @@ import { ordersApi } from '@/modules/orders/api/orders.api'
 import { ordersKeys } from '@/modules/orders/lib/orders.keys'
 import { showTempMessage } from '@/shared/ui/temp-message.service'
 import { useConfirmModalStore } from '@/shared/ui/modal/modal.store'
-import { useNotificationsStore } from '@/modules/notifications/store/notifications.store'
 import surface from '@/shared/ui/surface.module.css'
 import button from '@/shared/ui/button.module.css'
 
@@ -16,11 +15,6 @@ export function OrderActions({ orderId }: Props) {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const openModal = useConfirmModalStore((s) => s.open)
-  const hasBlockingImpact = useNotificationsStore((state) => state.hasBlockingImpact);
-
-  if (hasBlockingImpact) {
-    showTempMessage('warning', 'Есть ожидающее влияние уведомление')
-  }
 
   const deleteMutation = useMutation({
     mutationFn: () => ordersApi.deleteOrder(orderId),
@@ -55,7 +49,6 @@ export function OrderActions({ orderId }: Props) {
           type="button"
           className={`${button.btn} ${button.btnPrimary}`}
           onClick={() => navigate(`/orders/${orderId}/edit`)}
-          disabled={hasBlockingImpact}
         >
           Редактировать
         </button>
@@ -64,7 +57,7 @@ export function OrderActions({ orderId }: Props) {
           type="button"
           className={`${button.btn} ${button.btnDanger}`}
           onClick={handleDelete}
-          disabled={hasBlockingImpact || deleteMutation.isPending}
+          disabled={deleteMutation.isPending}
         >
           {deleteMutation.isPending ? 'Удаление...' : 'Удалить'}
         </button>

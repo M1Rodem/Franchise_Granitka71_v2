@@ -1,40 +1,53 @@
 import { httpClient } from '@/shared/api/http-client'
 import { useAuthStore } from '@/shared/store/auth.store'
-import { notificationRealtimeService } from '@/modules/notifications/services/notification-realtime.service'
-import { queryClient } from '@/app/providers/query-client'
+import { jwtDecode } from 'jwt-decode'
 
-const REFRESH_BEFORE_MS = 2 * 60 * 1000 // 2 минуты до истечения
-const SAFE_MARGIN_MS = 30 * 1000 // 30 секунд запас
-const CHECK_INTERVAL_MS = 60 * 1000 // Проверка каждую минуту
+interface JwtPayload {
+  exp: number;
+  [key: string]: any;
+}
+
+const REFRESH_BEFORE_MS = 50 * 1000 // Обновляем за 10 секунд до истечения
+const CHECK_INTERVAL_MS = 20 * 1000 // Проверка каждые 20 секунд
+const MIN_REFRESH_INTERVAL = 45 * 1000 // Минимум 45 секунд между refresh
 
 let refreshPromise: Promise<void> | null = null
 let refreshTimer: ReturnType<typeof setTimeout> | null = null
 let checkInterval: ReturnType<typeof setInterval> | null = null
 let lastRefreshTime = 0
-
-const MIN_REFRESH_INTERVAL = 5 * 60 * 1000 // Минимум 5 минут между refresh
+let isRefreshing = false
+let isServiceActive = false
 
 export async function performRefresh(): Promise<void> {
-  // Защита от слишком частых refresh
   const now = Date.now()
+  
   if (now - lastRefreshTime < MIN_REFRESH_INTERVAL) {
+    console.log(`[Auth Refresh] Skipping - too soon (${Math.round((now - lastRefreshTime)/1000)}s)`)
     return
   }
 
-  if (refreshPromise) {
-    return refreshPromise
+  if (isRefreshing) {
+    console.log('[Auth Refresh] Already refreshing, waiting...')
+    if (refreshPromise) {
+      return refreshPromise
+    }
+    return
   }
 
+  isRefreshing = true
+  
   refreshPromise = (async () => {
     try {
+      console.log('[Auth Refresh] Performing refresh...')
       lastRefreshTime = now
       
       const store = useAuthStore.getState()
       const currentRefreshToken = store.refreshToken
 
       if (!currentRefreshToken) {
-        throw new Error('No refresh token available in store')
+        throw new Error('No refresh token')
       }
+
       const res = await httpClient.post('/api/auth/refresh', {
         refreshToken: currentRefreshToken
       })
@@ -46,20 +59,20 @@ export async function performRefresh(): Promise<void> {
         throw new Error('No user in store')
       }
 
-      store.setSession({
+      const decoded = jwtDecode<JwtPayload>(token)
+      const newExpiresAt = decoded.exp * 1000
+
+      // Обновляем сессию НО без destroy сервиса
+      store.updateSession({
         user: currentUser,
         token,
         refreshToken
       })
 
-      await new Promise(resolve => setTimeout(resolve, 50))
-      
-      notificationRealtimeService.forceReconnect(queryClient).catch(err => {
-        console.warn('[Auth Refresh] SignalR restart failed, but auth successful', err)
-      })
+      console.log(`[Auth Refresh] Success, new token expires at: ${new Date(newExpiresAt).toLocaleTimeString()}`)
 
     } catch (error) {
-      console.error('[Auth Refresh] refresh failed', error)
+      console.error('[Auth Refresh] Failed:', error)
       
       if (error && typeof error === 'object' && 'response' in error) {
         const axiosError = error as any
@@ -71,6 +84,7 @@ export async function performRefresh(): Promise<void> {
       throw error
     } finally {
       refreshPromise = null
+      isRefreshing = false
     }
   })()
 
@@ -86,19 +100,19 @@ export async function checkAndRefreshIfNeeded(): Promise<boolean> {
   
   const now = Date.now()
   const timeLeft = expiresAt - now
+  const timeSinceLastRefresh = now - lastRefreshTime
   
-  // Проверяем что прошло достаточно времени с последнего refresh
-  if (now - lastRefreshTime < MIN_REFRESH_INTERVAL) {
-    return false
+  // Логируем реже
+  if (Math.random() < 0.2) {
+    console.log(`[Auth] Time left: ${Math.round(timeLeft/1000)}s, last refresh: ${Math.round(timeSinceLastRefresh/1000)}s ago`)
   }
   
-  // Если осталось меньше чем REFRESH_BEFORE_MS
-  if (timeLeft < REFRESH_BEFORE_MS + SAFE_MARGIN_MS) {
+  if (timeLeft < REFRESH_BEFORE_MS && timeSinceLastRefresh > MIN_REFRESH_INTERVAL) {
+    console.log(`[Auth] Need refresh! Time left ${Math.round(timeLeft/1000)}s`)
     try {
       await performRefresh()
       return true
     } catch (error) {
-      console.error('[Auth Refresh] Check refresh failed', error)
       return false
     }
   }
@@ -113,40 +127,77 @@ function scheduleRefresh(expiresAt: number) {
   }
 
   const now = Date.now()
-  const timeout = expiresAt - now - REFRESH_BEFORE_MS
+  const timeUntilExpiry = expiresAt - now
+  const timeout = Math.max(0, timeUntilExpiry - REFRESH_BEFORE_MS)
 
-  if (timeout <= 0) {
+  console.log(`[Auth] Scheduling refresh in ${Math.round(timeout/1000)}s (expires in ${Math.round(timeUntilExpiry/1000)}s)`)
+
+  if (timeout <= 1000) {
     refreshTimer = setTimeout(() => {
-      checkAndRefreshIfNeeded().catch(() => {})
+      checkAndRefreshIfNeeded().catch(console.error)
     }, 100)
   } else {
     refreshTimer = setTimeout(() => {
-      checkAndRefreshIfNeeded().catch(() => {})
+      checkAndRefreshIfNeeded().catch(console.error)
     }, timeout)
   }
 }
 
 export const silentRefreshService = {
-  start(expiresAt: number) {    
-    this.stop()
+  // Для первого запуска или после логаута
+  start(expiresAt: number) {
+    if (isServiceActive) {
+      console.log('[Auth] Service already active, rescheduling...')
+      scheduleRefresh(expiresAt)
+      return
+    }
+    
+    console.log('[Auth] Starting service...')
+    isServiceActive = true
     
     scheduleRefresh(expiresAt)
     
-    // Запускаем интервальную проверку
-    checkInterval = setInterval(() => {
-      checkAndRefreshIfNeeded().catch(() => {})
-    }, CHECK_INTERVAL_MS)
+    if (!checkInterval) {
+      checkInterval = setInterval(() => {
+        if (isServiceActive && !isRefreshing) {
+          checkAndRefreshIfNeeded().catch(console.error)
+        }
+      }, CHECK_INTERVAL_MS)
+    }
+
+    console.log('[Auth] Silent refresh service started')
   },
 
-  stop() {
+  // Для обновления расписания без остановки сервиса
+  updateSchedule(expiresAt: number) {
+    if (!isServiceActive) {
+      this.start(expiresAt)
+      return
+    }
+    
+    console.log('[Auth] Updating refresh schedule...')
+    scheduleRefresh(expiresAt)
+  },
+
+  // Полная остановка (только при логауте)
+  destroy() {
+    console.log('[Auth] Destroying service...')
+    
     if (refreshTimer) {
       clearTimeout(refreshTimer)
       refreshTimer = null
     }
+    
     if (checkInterval) {
       clearInterval(checkInterval)
       checkInterval = null
     }
+    
     refreshPromise = null
+    isRefreshing = false
+    isServiceActive = false
+    lastRefreshTime = 0
+    
+    console.log('[Auth] Silent refresh service destroyed')
   }
 }

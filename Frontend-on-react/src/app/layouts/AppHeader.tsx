@@ -1,7 +1,6 @@
 import { useNavigate, useLocation } from 'react-router-dom';
 import { routeTitles } from '@/app/router/navigation.config';
 import { resolveRouteTitle } from '@/shared/lib/navigation';
-import { useNotificationBadgeStore } from '@/modules/notifications/store/notification-badge.store';
 import { useUiStore } from '@/shared/store/ui.store';
 import styles from '@/app/layouts/app-header.module.css';
 import { cn } from '@/shared/lib/cn'
@@ -9,9 +8,6 @@ import { cn } from '@/shared/lib/cn'
 export function AppHeader() {
   const navigate = useNavigate();
   const location = useLocation();
-  
-  const isRealtimeConnected =
-    useNotificationBadgeStore((state) => state.isRealtimeConnected);
 
   const openMobileSidebar = useUiStore((state) => state.openMobileSidebar);
   const header = useUiStore((state) => state.header)
@@ -225,14 +221,11 @@ export function AppHeader() {
           </h1>
         </div>
       )}
-
+      
+                  {/*заглушка*/}
       <div className={styles.realtimeStatus}>
         <span
-          className={`${styles.realtimeDot} ${
-            isRealtimeConnected
-              ? styles.connected
-              : styles.disconnected
-          }`}
+          className={`${styles.realtimeDot}`}
         />
       </div>
     </header>

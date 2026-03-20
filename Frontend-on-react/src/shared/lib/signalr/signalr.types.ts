@@ -62,15 +62,22 @@ export interface InitialNotificationStateDto {
 // ===== EVENTS =====
 
 export interface NotificationEvents {
-  receivenotification: (payload: NotificationUpdateDto) => void
-  updatenotificationcount: (payload: NotificationBadgeDto) => void
-  updatenotification: (payload: NotificationUpdateDto) => void
-  notificationresolved: (payload: NotificationResolvedDto) => void
-  notificationpostponed: (payload: NotificationPostponedDto) => void
-  notificationseen: (notificationId: number) => void
-  connectionestablished: (message: string) => void
-  connectionlost: (message: string) => void
-  initialnotificationstate: (payload: InitialNotificationStateDto) => void
+  ReceiveNotification: (notification: NotificationUpdateDto) => void
+
+  UpdateNotification: (notification: NotificationUpdateDto) => void
+
+  NotificationResolved: (resolution: NotificationResolvedDto) => void
+
+  NotificationPostponed: (postponement: NotificationPostponedDto) => void
+
+  UpdateNotificationCount: (badge: NotificationBadgeDto) => void
+
+  InitialNotificationState: (state: InitialNotificationStateDto) => void
+
+  NotificationSeen: (notificationId: number) => void
+
+  ConnectionEstablished: (message: string) => void
+  ConnectionLost: (message: string) => void
 }
 
 // ===== SERVER METHODS =====

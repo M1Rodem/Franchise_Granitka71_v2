@@ -6,7 +6,7 @@ import type {
   NotificationFilter,
   ResolveNotificationRequest,
   PostponeNotificationRequest,
-} from '../store/notifications.types'
+} from '../types/notifications.types'
 import type { PagingResponse } from '@/shared/types/api'
 
 export const notificationsApi = {

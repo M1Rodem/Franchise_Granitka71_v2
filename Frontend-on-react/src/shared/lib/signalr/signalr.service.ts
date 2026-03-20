@@ -11,8 +11,6 @@ import type {
   SignalRServerMethods,
 } from './signalr.types'
 
-type EventKey = keyof NotificationEvents
-
 class SignalRService {
   private connection: HubConnection | null = null
   private isConnecting = false
@@ -51,24 +49,6 @@ class SignalRService {
       .build()
   }
 
-  private registerCoreHandlers() {
-    if (!this.connection) return
-
-    // ВАЖНО: регистрируем ДО start()
-
-    this.connection.on('InitialNotificationState', (data) => {
-      console.log('Initial state:', data)
-    })
-
-    this.connection.on('ReceiveNotification', (data) => {
-      console.log('Notification:', data)
-    })
-
-    this.connection.on('UpdateNotificationCount', (data) => {
-      console.log('Badge:', data)
-    })
-  }
-
   // ================= CONNECT =================
 
   async connect(): Promise<void> {
@@ -88,7 +68,6 @@ class SignalRService {
 
     try {
       this.connection = this.buildConnection()
-      this.registerCoreHandlers()
       this.registerLifecycleHandlers()
 
       console.log('[SignalR] starting connection...')
@@ -97,7 +76,9 @@ class SignalRService {
 
       console.log('[SignalR] connection started')
 
-      await this.invoke('RequestCurrentState')
+      if (this.connection.state === HubConnectionState.Connected) {
+        await this.invoke('RequestCurrentState')
+      }
     } catch (error) {
       console.error('[SignalR] connect error', error)
     } finally {
@@ -175,15 +156,17 @@ class SignalRService {
 
   // ================= EVENTS =================
 
-  subscribe<K extends EventKey>(
+
+  subscribe<K extends keyof NotificationEvents>(
     event: K,
     handler: NotificationEvents[K]
   ): void {
     if (!this.connection) return
+
     this.connection.on(event, handler as (...args: unknown[]) => void)
   }
 
-  unsubscribe<K extends EventKey>(
+  unsubscribe<K extends keyof NotificationEvents>(
     event: K,
     handler: NotificationEvents[K]
   ): void {
@@ -204,6 +187,38 @@ class SignalRService {
     } catch (error) {
       console.error('[SignalR] invoke error', error)
     }
+  }
+
+  // ================= TYPED EVENTS =================
+
+  onNotificationReceived(handler: NotificationEvents['ReceiveNotification']) {
+    this.subscribe('ReceiveNotification', handler)
+    return () => this.unsubscribe('ReceiveNotification', handler)
+  }
+
+  onNotificationUpdated(handler: NotificationEvents['UpdateNotification']) {
+    this.subscribe('UpdateNotification', handler)
+    return () => this.unsubscribe('UpdateNotification', handler)
+  }
+
+  onNotificationResolved(handler: NotificationEvents['NotificationResolved']) {
+    this.subscribe('NotificationResolved', handler)
+    return () => this.unsubscribe('NotificationResolved', handler)
+  }
+
+  onNotificationPostponed(handler: NotificationEvents['NotificationPostponed']) {
+    this.subscribe('NotificationPostponed', handler)
+    return () => this.unsubscribe('NotificationPostponed', handler)
+  }
+
+  onBadgeUpdated(handler: NotificationEvents['UpdateNotificationCount']) {
+    this.subscribe('UpdateNotificationCount', handler)
+    return () => this.unsubscribe('UpdateNotificationCount', handler)
+  }
+
+  onInitialState(handler: NotificationEvents['InitialNotificationState']) {
+    this.subscribe('InitialNotificationState', handler)
+    return () => this.unsubscribe('InitialNotificationState', handler)
   }
 }
 

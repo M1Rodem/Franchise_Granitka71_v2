@@ -4,6 +4,8 @@ import { resolveRouteTitle } from '@/shared/lib/navigation';
 import { useUiStore } from '@/shared/store/ui.store';
 import styles from '@/app/layouts/app-header.module.css';
 import { cn } from '@/shared/lib/cn'
+import { useEffect, useState } from 'react'
+import { signalRService } from '@/shared/lib/signalr/signalr.service'
 
 export function AppHeader() {
   const navigate = useNavigate();
@@ -20,12 +22,25 @@ export function AppHeader() {
     'Granitka71'
   );
 
+  const [status, setStatus] = useState(
+    signalRService.getConnectionStatus()
+  )
+
   const isOrderDetails = header.mode === 'orderDetails';
   const isAdminDetails = header.mode === 'adminDetails';
   const isOrderCreate = header.mode === 'orderCreate';
   const isOrderEdit = header.mode === 'orderEdit';
   const isPlots = header.mode === 'plots'
   const isUsers = header.mode === 'users'
+
+  useEffect(() => {
+    const unsub = signalRService.subscribeStatus((s) => {
+      console.log('[SignalR DEBUG] header render status:', s)
+      setStatus(s)
+    })
+
+    return unsub
+  }, [])
 
   return (
     <header className={styles.header}>
@@ -162,7 +177,12 @@ export function AppHeader() {
           <div className={styles.detailsActions}>
             <button
               type="button"
-              className={styles.glassButton}
+              className={cn(
+                styles.glassButtonTwo,
+                submitDisabled
+                  ? styles.glassButtonRed
+                  : styles.glassButtonGreen
+              )}
               onClick={openPlotCreateModal}
             >
               Добавить участок
@@ -222,10 +242,21 @@ export function AppHeader() {
         </div>
       )}
       
-                  {/*заглушка*/}
+      {/*заглушка*/}
       <div className={styles.realtimeStatus}>
         <span
-          className={`${styles.realtimeDot}`}
+          title={status}
+          onClick={() => {
+            if (status !== 'connecting') {
+              signalRService.reconnect()
+            }
+          }}
+          className={cn(
+            styles.realtimeDot,
+            status === 'connected' && styles.connected,
+            status === 'connecting' && styles.connecting,
+            status === 'disconnected' && styles.disconnected
+          )}
         />
       </div>
     </header>

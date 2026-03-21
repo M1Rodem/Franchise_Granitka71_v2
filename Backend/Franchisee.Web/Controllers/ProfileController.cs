@@ -21,17 +21,13 @@ namespace Franchisee.Web.Controllers
         }
 
         // Вспомогательный метод для получения ID текущего пользователя
-        private int? TryGetCurrentUserId()
+        private int GetCurrentUserId()
         {
-            // используем стабильный claim
-            var userIdClaim = User.FindFirst("UserId")?.Value;
-
-            if (string.IsNullOrEmpty(userIdClaim))
-                return null;
-
-            if (!int.TryParse(userIdClaim, out var id))
-                return null;
-
+            var userId = User.FindFirst(ClaimTypes.Name)?.Value;
+            if (string.IsNullOrEmpty(userId) || !int.TryParse(userId, out int id))
+            {
+                throw new UnauthorizedAccessException("Неверный идентификатор пользователя");
+            }
             return id;
         }
 
@@ -41,13 +37,7 @@ namespace Franchisee.Web.Controllers
         {
             try
             {
-                var userId = TryGetCurrentUserId();
-
-                if (userId == null)
-                {
-                    _logger.LogWarning("Unauthorized: invalid or missing UserId claim");
-                    return Unauthorized();
-                }
+                var userId = GetCurrentUserId();
                 _logger.LogInformation("Получение профиля пользователя ID: {UserId}", userId);
 
                 var manager = await _managerRepository.GetByIdAsync(userId);
@@ -76,13 +66,7 @@ namespace Franchisee.Web.Controllers
         {
             try
             {
-                var userId = TryGetCurrentUserId();
-
-                if (userId == null)
-                {
-                    _logger.LogWarning("Unauthorized access to profile");
-                    return Unauthorized();
-                }
+                var userId = GetCurrentUserId();
                 _logger.LogInformation("Смена пароля для пользователя ID: {UserId}", userId);
 
                 // ВАЛИДАЦИЯ ПАРОЛЯ - 8 СИМВОЛОВ
@@ -118,13 +102,7 @@ namespace Franchisee.Web.Controllers
         {
             try
             {
-                var userId = TryGetCurrentUserId();
-
-                if (userId == null)
-                {
-                    _logger.LogWarning("Unauthorized access to profile");
-                    return Unauthorized();
-                }
+                var userId = GetCurrentUserId();
                 _logger.LogInformation("Обновление профиля для пользователя ID: {UserId}", userId);
 
                 var manager = await _managerRepository.GetByIdAsync(userId);

@@ -17,90 +17,80 @@ export function SignalRProvider({ children }: { children: React.ReactNode }) {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
 
   const prevTokenRef = useRef<string | null>(null)
-  const initializedRef = useRef(false)
+  const handlersRegisteredRef = useRef(false)
 
-  // ================= CONNECT =================
+  // ================= ЕДИНЫЙ ЭФФЕКТ ДЛЯ ВСЕГО =================
 
   useEffect(() => {
-    if (!initializedRef.current && isAuthenticated && token) {
-      initializedRef.current = true
-      prevTokenRef.current = token
-
-      signalRService.connect()
-      return
-    }
-
-    if (!isAuthenticated) {
+    if (!isAuthenticated || !token) {
       prevTokenRef.current = null
-      initializedRef.current = false
-
+      handlersRegisteredRef.current = false
       signalRService.disconnect()
       return
     }
 
-    if (prevTokenRef.current && token && prevTokenRef.current !== token) {
-      prevTokenRef.current = token
-
-      console.log('[SignalR] token refreshed → reconnect')
-
-      signalRService.reconnect()
-    }
-  }, [token, isAuthenticated])
-
-  // ================= SUBSCRIPTIONS =================
-
-  useEffect(() => {
-    if (!isAuthenticated) return
-
     const store = useNotificationsStore.getState()
 
-    const handleReceive = (n: NotificationUpdateDto) => {
-      const mapped = mapNotificationToStore(n)
-      store.handleNewNotification(mapped)
+    // Регистрируем обработчики (делаем это ДО connect)
+    if (!handlersRegisteredRef.current) {
+      console.log('[SignalR] Registering all handlers BEFORE connect')
+
+      const handleReceive = (n: NotificationUpdateDto) => {
+        const mapped = mapNotificationToStore(n)
+        store.handleNewNotification(mapped)
+      }
+
+      const handleUpdate = (n: NotificationUpdateDto) => {
+        const mapped = mapNotificationToStore(n)
+        store.handleUpdateNotification(mapped)
+      }
+
+      const handleBadge = (b: NotificationBadgeDto) => {
+        store.handleBadgeUpdate(b)
+      }
+
+      const handleInitial = (s: InitialNotificationStateDto) => {
+        console.log('[SignalR] INITIAL STATE RECEIVED (once)', s)
+        store.handleInitialState(s)
+      }
+
+      const handleResolved = (r: NotificationResolvedDto) => {
+        store.handleResolved({
+          notificationId: r.notificationId,
+          status: r.status,
+        })
+      }
+
+      const handlePostponed = (p: NotificationPostponedDto) => {
+        store.handlePostponed({
+          notificationId: p.notificationId,
+          returnsAt: p.returnsAt,
+        })
+      }
+
+      // Регистрируем все обработчики
+      signalRService.onNotificationReceived(handleReceive)
+      signalRService.onNotificationUpdated(handleUpdate)
+      signalRService.onNotificationResolved(handleResolved)
+      signalRService.onNotificationPostponed(handlePostponed)
+      signalRService.onBadgeUpdated(handleBadge)
+      signalRService.onInitialState(handleInitial)
+
+      handlersRegisteredRef.current = true
     }
 
-    const handleUpdate = (n: NotificationUpdateDto) => {
-      const mapped = mapNotificationToStore(n)
-      store.handleUpdateNotification(mapped)
+    // Затем подключаемся
+    if (prevTokenRef.current !== token) {
+      prevTokenRef.current = token
+      console.log('[SignalR] Token changed or initial connection')
+      
+      if (signalRService.isConnected()) {
+        signalRService.reconnect()
+      } else {
+        signalRService.connect()
+      }
     }
-
-    const handleBadge = (b: NotificationBadgeDto) => {
-      store.handleBadgeUpdate(b)
-    }
-
-    const handleInitial = (s: InitialNotificationStateDto) => {
-      store.handleInitialState(s.unreadCount)
-    }
-    const handleResolved = (r: NotificationResolvedDto) => {
-      store.handleResolved({
-        notificationId: r.notificationId,
-        status: r.status,
-      })
-    }
-
-    const handlePostponed = (p: NotificationPostponedDto) => {
-      store.handlePostponed({
-        notificationId: p.notificationId,
-        returnsAt: p.returnsAt,
-      })
-    }
-
-    const unsubReceive = signalRService.onNotificationReceived(handleReceive)
-    const unsubUpdate = signalRService.onNotificationUpdated(handleUpdate)
-    const unsubResolved = signalRService.onNotificationResolved(handleResolved)
-    const unsubPostponed = signalRService.onNotificationPostponed(handlePostponed)
-    const unsubBadge = signalRService.onBadgeUpdated(handleBadge)
-    const unsubInitial = signalRService.onInitialState(handleInitial)
-
-    return () => {
-      unsubReceive()
-      unsubUpdate()
-      unsubBadge()
-      unsubInitial()
-      unsubResolved()
-      unsubPostponed()
-    }
-  }, [isAuthenticated])
+  }, [isAuthenticated, token])
 
   return <>{children}</>
 }

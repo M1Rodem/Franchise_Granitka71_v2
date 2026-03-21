@@ -1,7 +1,8 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
 using System.Security.Claims;
-using Franchisee.Web.Services;           // для INotificationService
+using Franchisee.Web.Services;
+using Franchisee.Web.Models;
 
 namespace Franchisee.Web.Services.Hubs
 {
@@ -38,7 +39,7 @@ namespace Franchisee.Web.Services.Hubs
 
                 await Groups.AddToGroupAsync(Context.ConnectionId, $"user-{userId}");
 
-                // Отправляем текущее состояние сразу после подключения
+                // Единственное место отправки начального состояния — больше не вызываем RequestCurrentState
                 await SendInitialStateAsync(userId);
 
                 await base.OnConnectedAsync();
@@ -50,31 +51,16 @@ namespace Franchisee.Web.Services.Hubs
             }
         }
 
-        // Публичный метод — фронт может вызвать при reconnect или вручную
-        public async Task RequestCurrentState()
-        {
-            var userId = GetUserId();
-            if (userId <= 0) return;
-
-            await SendInitialStateAsync(userId);
-        }
-
         private async Task SendInitialStateAsync(int userId)
         {
             try
             {
-                var count = await _notificationService.GetPendingCountAsync(userId);
+                var badge = await _notificationService.GetNotificationBadgeAsync(userId);
 
-                var state = new InitialNotificationStateDto
-                {
-                    UnreadCount = count
-                    // Если позже решим — добавить RecentNotifications
-                };
+                await Clients.Caller.InitialNotificationState(badge);
 
-                await Clients.Caller.InitialNotificationState(state);
-
-                _logger.LogDebug("SignalR: Отправлено начальное состояние пользователю {UserId}: {Count} непрочитанных",
-                    userId, count);
+                _logger.LogDebug("SignalR: Отправлено начальное состояние пользователю {UserId}: Count={Count}, Color={Color}",
+                    userId, badge.Count, badge.Color);
             }
             catch (Exception ex)
             {

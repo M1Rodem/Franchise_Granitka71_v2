@@ -103,6 +103,8 @@ export default function UsersPage() {
         onReset={handleReset}
       />
 
+      <div style={{ marginBottom: "24px" }}></div>
+
       <UsersTable
         users={users}
         onOpenUser={handleOpenUser}

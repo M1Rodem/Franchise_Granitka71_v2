@@ -8,6 +8,8 @@ import { AppIcon } from '@/shared/ui/AppIcon'
 import styles from '@/app/layouts/sidebar.module.css'
 import logo from '@/shared/assets/g71-logo.png'
 import { useEffect, useState } from 'react'
+import { useNotificationsStore } from '@/modules/notifications/store/notifications.store'
+import { NotificationBadge } from '@/shared/ui/badge/NotificationBadge'
 
 export function Sidebar() {
   const user = useAuthStore((state) => state.user)
@@ -23,6 +25,13 @@ export function Sidebar() {
   const toggleSidebar = useUiStore((state) => state.toggleSidebar)
   const closeMobileSidebar = useUiStore((state) => state.closeMobileSidebar)
 
+  const badgeCount = useNotificationsStore((s) => s.selectTotalCount())
+  const badgeColor = useNotificationsStore((s) => s.selectBadgeColor())
+
+  console.log('[Notifications DEBUG] sidebar badge', {
+    badgeCount,
+    badgeColor,
+  })
   /* ---------------------------------- */
   /* MOBILE DETECTION */
   /* ---------------------------------- */
@@ -119,23 +128,20 @@ export function Sidebar() {
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'space-between',
-                    width: '100%'
+                    width: '100%',
+                    gap: 8,
                   }}
                 >
 
                   {item.label}
                   
                   {/*заглушка*/}
-                  {item.id === 'notifications' && 0 > 0 && (
-                    <span
-                      className={[styles.notificationBadge]
-                        .filter(Boolean)
-                        .join(' ')}
-                    >
-                      {}
-                    </span>
+                  {item.id === 'notifications' && (
+                    <NotificationBadge
+                      count={badgeCount}
+                      color={badgeColor}
+                    />
                   )}
-
                 </span>
               )}
             </NavLink>

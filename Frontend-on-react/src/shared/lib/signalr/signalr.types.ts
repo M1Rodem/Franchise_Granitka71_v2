@@ -56,28 +56,22 @@ export interface NotificationPostponedDto {
 }
 
 export interface InitialNotificationStateDto {
-  unreadCount: number
+  count: number
+  color: 'red' | 'blue' | 'gray' | 'none'
 }
 
 // ===== EVENTS =====
 
 export interface NotificationEvents {
-  ReceiveNotification: (notification: NotificationUpdateDto) => void
-
-  UpdateNotification: (notification: NotificationUpdateDto) => void
-
-  NotificationResolved: (resolution: NotificationResolvedDto) => void
-
-  NotificationPostponed: (postponement: NotificationPostponedDto) => void
-
-  UpdateNotificationCount: (badge: NotificationBadgeDto) => void
-
-  InitialNotificationState: (state: InitialNotificationStateDto) => void
-
-  NotificationSeen: (notificationId: number) => void
-
-  ConnectionEstablished: (message: string) => void
-  ConnectionLost: (message: string) => void
+  'receivenotification': (notification: NotificationUpdateDto) => void
+  'updatenotification': (notification: NotificationUpdateDto) => void
+  'notificationresolved': (resolution: NotificationResolvedDto) => void
+  'notificationpostponed': (postponement: NotificationPostponedDto) => void
+  'updatenotificationcount': (badge: NotificationBadgeDto) => void
+  'initialnotificationstate': (state: InitialNotificationStateDto) => void
+  'notificationseen': (notificationId: number) => void
+  'connectionestablished': (message: string) => void
+  'connectionlost': (message: string) => void
 }
 
 // ===== SERVER METHODS =====

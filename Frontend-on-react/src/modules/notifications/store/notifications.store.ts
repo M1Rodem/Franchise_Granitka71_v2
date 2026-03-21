@@ -20,6 +20,8 @@ interface NotificationsState {
   // selectors
   countByStatus: (status: NotificationStatus) => number
   unreadCount: () => number
+  selectTotalCount: () => number
+  selectBadgeColor: () => 'red' | 'blue' | 'gray' | 'none'
 
   // REALTIME
   handleNewNotification: (item: NotificationResponseDto) => void
@@ -33,7 +35,7 @@ interface NotificationsState {
     returnsAt: string
   }) => void
   handleBadgeUpdate: (badge: NotificationBadgeDto) => void
-  handleInitialState: (unreadCount: number) => void
+  handleInitialState: (badge: NotificationBadgeDto) => void // ИЗМЕНЕНО: number -> NotificationBadgeDto
 }
 
 export const useNotificationsStore = create<NotificationsState>((set, get) => ({
@@ -77,63 +79,68 @@ export const useNotificationsStore = create<NotificationsState>((set, get) => ({
 
   unreadCount: () => {
     return get().notifications.filter(
-        (n) => n.status === NotificationStatus.Pending
+      (n) => n.status === NotificationStatus.Pending
     ).length
-    },
+  },
 
-    // ===== REALTIME =====
+  // ===== REALTIME =====
 
-    handleNewNotification: (item) => {
-      set((state) => {
-        const exists = state.notifications.some((n) => n.id === item.id)
-        if (exists) return state
+  handleNewNotification: (item) => {
+    set((state) => {
+      const exists = state.notifications.some((n) => n.id === item.id)
+      if (exists) return state
 
-        return {
-          notifications: [item, ...state.notifications],
-        }
-      })
-    },
+      return {
+        notifications: [item, ...state.notifications],
+      }
+    })
+  },
 
-    handleUpdateNotification: (item) => {
-      set((state) => ({
-        notifications: state.notifications.map((n) =>
-          n.id === item.id ? item : n
-        ),
-      }))
-    },
+  handleUpdateNotification: (item) => {
+    set((state) => ({
+      notifications: state.notifications.map((n) =>
+        n.id === item.id ? item : n
+      ),
+    }))
+  },
 
-    handleResolved: ({ notificationId, status }) => {
-      set((state) => ({
-        notifications: state.notifications.map((n) =>
-          n.id === notificationId ? { ...n, status } : n
-        ),
-      }))
-    },
+  handleResolved: ({ notificationId, status }) => {
+    set((state) => ({
+      notifications: state.notifications.map((n) =>
+        n.id === notificationId ? { ...n, status } : n
+      ),
+    }))
+  },
 
-    handlePostponed: ({ notificationId, returnsAt }) => {
-      set((state) => ({
-        notifications: state.notifications.map((n) =>
-          n.id === notificationId
-            ? {
-                ...n,
-                status: NotificationStatus.Postponed,
-                returnsAt,
-              }
-            : n
-        ),
-      }))
-    },
+  handlePostponed: ({ notificationId, returnsAt }) => {
+    set((state) => ({
+      notifications: state.notifications.map((n) =>
+        n.id === notificationId
+          ? {
+              ...n,
+              status: NotificationStatus.Postponed,
+              returnsAt,
+            }
+          : n
+      ),
+    }))
+  },
 
-    handleBadgeUpdate: (badge) => {
-      set({ badge })
-    },
+  handleBadgeUpdate: (badge) => {
+    set({ badge })
+  },
 
-    handleInitialState: (unreadCount) => {
-      set({
-        badge: {
-          count: unreadCount,
-          color: unreadCount > 0 ? 'red' : 'none',
-        },
-      })
-    },
+  handleInitialState: (badge: NotificationBadgeDto) => {
+    console.log('[Store] INITIAL STATE', badge)
+    set({ badge }) // Прямая установка, без fallback
+  },
+
+  // ===== DERIVED SELECTORS =====
+  selectTotalCount: () => {
+    return get().badge?.count ?? 0
+  },
+
+  selectBadgeColor: () => {
+    return get().badge?.color ?? 'none'
+  },
 }))

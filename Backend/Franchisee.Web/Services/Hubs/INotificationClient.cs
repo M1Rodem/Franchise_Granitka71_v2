@@ -12,8 +12,7 @@ namespace Franchisee.Web.Services.Hubs
         Task NotificationSeen(int notificationId);
         Task ConnectionEstablished(string message);
         Task ConnectionLost(string message);
-
-        Task InitialNotificationState(InitialNotificationStateDto state);
+        Task InitialNotificationState(NotificationBadgeDto badge);
     }
 
     public class InitialNotificationStateDto

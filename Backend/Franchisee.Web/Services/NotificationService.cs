@@ -387,38 +387,35 @@ namespace Franchisee.Web.Services
 
                 if (otherRecipients.Any())
                 {
-                    foreach (var syncedRecipient in otherRecipients)
+                    // Отправляем одно событие UpdateNotification ВСЕМ получателям сразу
+                    var recipientUserIds = otherRecipients.Select(r => r.UserId).Distinct().ToList();
+
+                    foreach (var recipientUserId in recipientUserIds)
                     {
                         try
                         {
-                            await SendNotificationUpdatedEventAsync(notification, syncedRecipient.UserId);
+                            await SendNotificationUpdatedEventAsync(notification, recipientUserId);
 
                             _logger.LogDebug(
                                 "Отправлено UpdateNotification синхронизированному получателю {UserId} для уведомления {NotificationId}",
-                                syncedRecipient.UserId, notification.Id);
+                                recipientUserId, notification.Id);
                         }
                         catch (Exception ex)
                         {
                             _logger.LogError(ex,
                                 "Ошибка отправки UpdateNotification синхронизированному получателю {UserId}",
-                                syncedRecipient.UserId);
+                                recipientUserId);
                         }
+                    }
 
-                        try
-                        {
-                            await SendNotificationCountUpdateAsync(syncedRecipient.UserId);
-                        }
-                        catch (Exception ex)
-                        {
-                            _logger.LogError(ex,
-                                "Ошибка обновления счетчика для синхронизированного получателя {UserId}",
-                                syncedRecipient.UserId);
-                        }
+                    foreach (var recipientUserId in recipientUserIds)
+                    {
+                        await SendNotificationCountUpdateAsync(recipientUserId);
                     }
 
                     _logger.LogInformation(
                         "Отправлены SignalR события для {Count} синхронизированных получателей уведомления {NotificationId}",
-                        otherRecipients.Count, notification.Id);
+                        recipientUserIds.Count, notification.Id);
                 }
 
                 await _context.SaveChangesAsync();
@@ -426,12 +423,6 @@ namespace Franchisee.Web.Services
 
                 // 9. Отправляем SignalR события
                 await SendNotificationResolvedEventAsync(notification, userId, status, note);
-
-                // Обновляем счетчики для всех получателей
-                foreach (var recipientId in notification.Recipients.Select(r => r.UserId).Distinct())
-                {
-                    await SendNotificationCountUpdateAsync(recipientId);
-                }
 
                 _logger.LogInformation(
                         "DEBUG: Проверка условия. Status={Status}, InitiatorId={InitiatorId}, userId={userId}, Условие={Condition}",
@@ -1596,7 +1587,7 @@ namespace Franchisee.Web.Services
                 {
                     Id = notification.Id,
                     Type = notification.Type,
-                    Status = notification.Status, // ← ДОБАВИТЬ ЭТУ СТРОКУ!
+                    Status = notification.Status,
                     Message = notification.Message,
                     CreatedAt = notification.CreatedAt,
                     OrderId = notification.OrderId,
@@ -1605,7 +1596,6 @@ namespace Franchisee.Web.Services
                     Title = notification.Title
                 };
 
-                // остальной код без изменений
                 await _hubContext.Clients.Group($"user-{userId}")
                     .ReceiveNotification(dto);
 
@@ -1613,10 +1603,7 @@ namespace Franchisee.Web.Services
 
                 _logger.LogDebug(
                     "[SIGNALR] Уведомление {NotificationId} отправлено в группу user-{UserId}. Status: {Status}",
-                    notification.Id, userId, notification.Status); // ← Добавить логирование статуса
-
-                // Обновляем счетчик
-                await SendNotificationCountUpdateAsync(userId);
+                    notification.Id, userId, notification.Status);
             }
             catch (Exception ex)
             {
@@ -1625,10 +1612,10 @@ namespace Franchisee.Web.Services
         }
 
         private async Task SendNotificationResolvedEventAsync(
-    Notification notification,
-    int userId,
-    NotificationStatus status,
-    string? note)
+            Notification notification,
+            int userId,
+            NotificationStatus status,
+            string? note)
         {
             try
             {

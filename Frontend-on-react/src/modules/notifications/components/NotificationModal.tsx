@@ -1,15 +1,15 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useQuery} from '@tanstack/react-query'
+import { NotificationActions } from './NotificationActions'
 import { FormModal } from '@/shared/ui/modal/FormModal'
 import { notificationsApi } from '../api/notifications.api'
 import type { NotificationResponseDto } from '../types/notifications.types'
 import { DiffAccordion } from './DiffAccordion'
-import { NotificationStatus } from '../types/notifications.types'
 import surfaceStyles from '@/shared/ui/surface.module.css'
 import { formatNotificationDateTime } from '../utils/date'
 import { getNotificationTypeLabel } from '../utils/notification-type'
-import buttonStyles from '@/shared/ui/button.module.css'
-import { useNavigate } from 'react-router-dom'
 import scrollStyles from '@/shared/ui/scroll.module.css'
+import { useNavigate } from 'react-router-dom'
+import buttonStyles from '@/shared/ui/button.module.css'
 
 interface Props {
   notification: NotificationResponseDto | null
@@ -22,7 +22,6 @@ export function NotificationModal({
   isOpen,
   onClose,
 }: Props) {
-  const queryClient = useQueryClient()
 
   console.log('[Notifications DEBUG] modal open', notification?.id)
 
@@ -32,33 +31,15 @@ export function NotificationModal({
       notificationsApi.getNotificationDetails(notification!.id),
     enabled: isOpen && !!notification,
   })
-
-  const resolveMutation = useMutation({
-    mutationFn: (status: 'Approved' | 'Rejected') =>
-      notificationsApi.resolveNotification(notification!.id, { status }),
-
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['notifications'] })
-      queryClient.invalidateQueries({ queryKey: ['notification-details'] })
-      onClose()
-    },
-  })
-
-  const postponeMutation = useMutation({
-    mutationFn: () =>
-      notificationsApi.postponeNotification(notification!.id, {
-        minutes: 60,
-      }),
-
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['notifications'] })
-      onClose()
-    },
-  })
+  console.log('[DEBUG FULL DATA]:', JSON.stringify(data, null, 2))
+  const message =
+    data?.comment ||
+    (data as any)?.message ||
+    (data as any)?.text ||
+    (data as any)?.description ||
+    null
   const navigate = useNavigate()
-  const canAct =
-    notification?.status === NotificationStatus.Pending
-
+  const isSystemNotification = data?.type === 'System'
   return (
     <FormModal
       isOpen={isOpen}
@@ -66,10 +47,9 @@ export function NotificationModal({
       title={`Уведомление #${notification?.id ?? ''}`}
       size="xl"
       footer={
-        canAct && (
+        notification && (
           <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
             
-            {/* ПЕРЕЙТИ В ЗАКАЗ */}
             <button
               className={buttonStyles.navigatorButton}
               onClick={() => {
@@ -81,34 +61,12 @@ export function NotificationModal({
               Перейти в заказ
             </button>
 
-            {/* ПОДТВЕРДИТЬ */}
-            <button
-              className={`${buttonStyles.btn} ${buttonStyles.btnSuccess}`}
-              onClick={() => resolveMutation.mutate('Approved')}
-              disabled={resolveMutation.isPending}
-            >
-              Подтвердить
-            </button>
-
-            {/* ОТКЛОНИТЬ */}
-            <button
-              className={`${buttonStyles.btn} ${buttonStyles.btnDanger}`}
-              onClick={() => resolveMutation.mutate('Rejected')}
-              disabled={resolveMutation.isPending}
-            >
-              Отклонить
-            </button>
-
-            {/* ОТЛОЖИТЬ */}
-            {notification?.canPostpone && (
-              <button
-                className={`${buttonStyles.btn} ${buttonStyles.btnSecondary}`}
-                onClick={() => postponeMutation.mutate()}
-                disabled={postponeMutation.isPending}
-              >
-                Отложить
-              </button>
-            )}
+            <NotificationActions
+              notificationId={notification.id}
+              status={notification.status}
+              canPostpone={notification.canPostpone}
+              type={notification.type}
+            />
           </div>
         )
       }
@@ -152,16 +110,19 @@ export function NotificationModal({
                   </span>
                 </div>
 
-                <div className={surfaceStyles.infoRow}>
-                  <span className={surfaceStyles.infoLabel}>
-                    Инициатор
-                  </span>
-                  <span className={surfaceStyles.infoValue}>
-                    {data.initiator.name}
-                  </span>
-                </div>
+                {!isSystemNotification && (
+                  <div className={surfaceStyles.infoRow}>
+                    <span className={surfaceStyles.infoLabel}>
+                      Инициатор
+                    </span>
+                    <span className={surfaceStyles.infoValue}>
+                      {data.initiator.name}
+                    </span>
+                  </div>
+                )}
 
-                {data.comment && (
+                {/* СООБЩЕНИЕ */}
+                {message && (
                   <div className={surfaceStyles.infoRow}>
                     <span className={surfaceStyles.infoLabel}>
                       Сообщение
@@ -170,7 +131,7 @@ export function NotificationModal({
                       className={surfaceStyles.infoValue}
                       style={{ lineHeight: 1.4 }}
                     >
-                      {data.comment}
+                      {message}
                     </span>
                   </div>
                 )}

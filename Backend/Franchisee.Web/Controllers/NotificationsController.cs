@@ -1,13 +1,16 @@
 ﻿using DocumentFormat.OpenXml.Spreadsheet;
 using Franchisee.Web.Configuration;
-using Franchisee.Web.Models;
-using Franchisee.Web.Services;
-using Franchisee.Web.Services.Hubs;
+using Franchisee.Web.Models.DTOs.Notifications;
+using Franchisee.Web.Models.Entities;
+using Franchisee.Web.Models.Entities.Notification;
+using Franchisee.Web.Services.Notifications.Core;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
+using Franchisee.Web.Services.Notifications.Dispatch;
+
 
 [Route("api/[controller]")]
 [ApiController]

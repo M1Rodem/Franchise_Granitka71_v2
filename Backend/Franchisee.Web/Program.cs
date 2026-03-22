@@ -1,9 +1,7 @@
 ﻿using Franchisee.Web.Configuration;
-using Franchisee.Web.Models;
-using Franchisee.Web.Services;
-using Franchisee.Web.Services.Hubs;
-using Franchisee.Web.Services.Repositories;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Franchisee.Web.Models.DTOs.Auth;
+using Franchisee.Web.Models.DTOs.Users;
+using Franchisee.Web.Models.Entities.Users;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using Serilog;
@@ -48,9 +46,9 @@ builder.Services.AddSignalR(options =>
 AppConfiguration.ConfigureServices(builder.Services, builder.Configuration, builder.Environment);
 
 // 3. Регистрация новых сервисов
-builder.Services.AddScoped<IPlotRepository, PlotRepository>();
+builder.Services.AddScoped<Franchisee.Web.Services.Plots.Repositories.IPlotRepository, Franchisee.Web.Services.Plots.Repositories.PlotRepository>();
 
-builder.Services.AddScoped<IMediaService, MediaService>();
+builder.Services.AddScoped<Franchisee.Web.Services.Media.Core.IMediaService, Franchisee.Web.Services.Media.Core.MediaService>();
 
 var app = builder.Build();
 

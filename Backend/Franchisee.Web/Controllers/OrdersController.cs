@@ -1,8 +1,5 @@
 ﻿using DocumentFormat.OpenXml.Wordprocessing;
 using Franchisee.Web.Configuration;
-using Franchisee.Web.Models;
-using Franchisee.Web.Services;
-using Franchisee.Web.Services.Repositories;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -10,6 +7,14 @@ using System.Security.Claims;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using Microsoft.AspNetCore.Hosting;
+using Franchisee.Web.Models.Entities.Orders;
+using Franchisee.Web.Models.DTOs.Orders;
+using Franchisee.Web.Models.Requests.Orders;
+using Franchisee.Web.Services.Notifications.Core;
+using Franchisee.Web.Services.Orders.Repositories;
+using Franchisee.Web.Services.Media.Core;
+using Franchisee.Web.Services.Plots.Repositories;
+
 
 namespace Franchisee.Web.Controllers
 {
@@ -328,7 +333,7 @@ namespace Franchisee.Web.Controllers
                         orderId: id,
                         initiatorId: userId,
                         proposedChanges: proposedChanges,
-                        comment: "Запрос на изменение заказа"
+                        comment: request.ChangeComment ?? "Запрос на изменение заказа"
                     );
 
                     return Ok(new

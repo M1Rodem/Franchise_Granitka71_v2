@@ -1,8 +1,9 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Franchisee.Web.Models;
-using Franchisee.Web.Services.Repositories;
 using System.Security.Claims;
+using Franchisee.Web.Models.DTOs.Users;
+using Franchisee.Web.Models.DTOs.Profile;
+using Franchisee.Web.Services.Users.Repositories;
 
 namespace Franchisee.Web.Controllers
 {

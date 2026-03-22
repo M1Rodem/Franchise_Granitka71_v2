@@ -4,9 +4,10 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
 using System.Collections.Concurrent;
-using Franchisee.Web.Models;
-using Franchisee.Web.Services.Repositories;
 using Microsoft.AspNetCore.Authorization;
+using Franchisee.Web.Models.DTOs.Auth;
+using Franchisee.Web.Models.Entities.Users;
+using Franchisee.Web.Services.Users.Repositories;
 
 namespace Franchisee.Web.Controllers
 {

@@ -5,7 +5,6 @@ import type {
   NotificationBadgeDto,
   NotificationFilter,
   ResolveNotificationRequest,
-  PostponeNotificationRequest,
 } from '../types/notifications.types'
 import type { PagingResponse } from '@/shared/types/api'
 
@@ -43,11 +42,14 @@ export const notificationsApi = {
 
   async postponeNotification(
     id: number,
-    payload: PostponeNotificationRequest
-  ): Promise<boolean> {
+    minutes: number
+  ): Promise<{ success: boolean; message: string; notificationId: number; minutes: number }> {
     const response = await httpClient.post(
       `/api/Notifications/${id}/postpone`,
-      payload
+      null,
+      {
+        params: { minutes },
+      }
     )
     return response.data
   },

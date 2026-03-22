@@ -1,5 +1,9 @@
 ﻿using Microsoft.EntityFrameworkCore;
-using Franchisee.Web.Models;
+using Franchisee.Web.Models.Entities.Notification;
+using Franchisee.Web.Models.Entities.Orders;
+using Franchisee.Web.Models.Entities.Users;
+using Franchisee.Web.Models.Entities.Plots;
+using Franchisee.Web.Models.Entities.Media;
 
 namespace Franchisee.Web.Configuration
 {

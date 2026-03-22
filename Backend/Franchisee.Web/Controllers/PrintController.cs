@@ -1,7 +1,7 @@
-﻿using Franchisee.Web.Services.Repositories;
-using Franchisee.Web.Services;
+﻿using Franchisee.Web.Services.Orders.Repositories;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
+using Franchisee.Web.Services.Print.Core;
 
 [ApiController]
 [Route("api/[controller]")]

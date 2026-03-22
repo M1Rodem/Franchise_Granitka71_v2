@@ -7,7 +7,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
 import { useWatch } from "react-hook-form"
-
+import { OrderCommentModal } from '@/modules/orders/components/OrderCommentModal'
 import { orderFormSchema } from './order-form.schema'
 import type { OrderFormModel } from './order-form.schema'
 import { createOrderDefaultValues } from './order-form.types'
@@ -57,6 +57,9 @@ export function OrderFormProvider({
   const [isSaving, setIsSaving] = useState(false)
 
   const defaultValuesRef = useRef<OrderFormModel | null>(null)
+
+  const [isCommentOpen, setIsCommentOpen] = useState(false)
+  const [pendingValues, setPendingValues] = useState<OrderFormModel | null>(null)
 
   if (!defaultValuesRef.current) {
     defaultValuesRef.current =
@@ -255,6 +258,23 @@ export function OrderFormProvider({
     }
   })
 
+  const handleConfirmComment = async (comment?: string) => {
+    if (!pendingValues || !orderId) return
+
+    const payload = mapFormToUpdateDto(pendingValues, dirtyFields)
+
+    await updateMutation.mutateAsync({
+      id: orderId,
+      payload: {
+        ...payload,
+        ChangeComment: comment?.trim() ? comment : undefined,
+      },
+    })
+
+    setIsCommentOpen(false)
+    setPendingValues(null)
+  }
+
   const onSubmit = methods.handleSubmit(
     async (values: OrderFormModel) => {
       setIsSaving(true)
@@ -266,11 +286,14 @@ export function OrderFormProvider({
         }
 
         if (mode === 'edit' && orderId) {
-          const payload = mapFormToUpdateDto(values, dirtyFields)
-          await updateMutation.mutateAsync({
-            id: orderId,
-            payload
-          })
+          if (!hasRealChanges) {
+            showTempMessage('warning', 'Нет изменений для отправки')
+            return
+          }
+
+          setPendingValues(values)
+          setIsCommentOpen(true)
+          return
         }
       } catch (error) {
         console.error('Submit error:', error)
@@ -297,6 +320,12 @@ export function OrderFormProvider({
     >
       <FormProvider {...methods}>
         <form id="order-form" onSubmit={onSubmit} noValidate>
+          <OrderCommentModal
+            isOpen={isCommentOpen}
+            onClose={() => setIsCommentOpen(false)}
+            onConfirm={handleConfirmComment}
+            isLoading={updateMutation.isPending}
+          />
           {children}
         </form>
       </FormProvider>

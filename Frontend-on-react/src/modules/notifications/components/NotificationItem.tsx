@@ -9,53 +9,55 @@ interface Props {
   notification: NotificationResponseDto
 }
 
-
-
 export function NotificationItem({ notification }: Props) {
   const [open, setOpen] = useState(false)
 
+  const isSystem = notification.type === 1
+
   return (
     <>
-        <div
+      <div
         className={surfaceStyles.surface}
         onClick={() => setOpen(true)}
         style={{ cursor: 'pointer' }}
-        >
-            {/* 🔹 HEADER */}
-            <div
-                style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                gap: 12,
-                }}
-            >
-                <b>{notification.title}</b>
+      >
+        {/* HEADER */}
+        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+          <b>{notification.title}</b>
 
-                <span style={{ fontSize: 12, opacity: 0.7 }}>
-                {formatNotificationDateTime(notification.createdAt)}
-                </span>
-            </div>
-
-            {/* 🔹 BODY */}
-            <div
-                style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                gap: 12,
-                marginTop: 6,
-                }}
-            >
-                <span>{notification.message}</span>
-
-                {notification.status === 0 && notification.canPostpone && (
-                <button className={`${styles.btn} ${styles.btnSecondary}`}>
-                    Отложить
-                </button>
-                )}
-            </div>
+          <span style={{ fontSize: 12, opacity: 0.7 }}>
+            {formatNotificationDateTime(notification.createdAt)}
+          </span>
         </div>
+
+        {/* BODY */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 6 }}>
+          <span>{notification.message}</span>
+
+          {notification.status === 0 && (
+            isSystem ? (
+              <button
+                className={`${styles.btn} ${styles.btnPrimary}`}
+                onClick={(e) => {
+                  e.stopPropagation()
+                  // TODO: сюда accept добавим позже
+                }}
+              >
+                Закрыть
+              </button>
+            ) : (
+              notification.canPostpone && (
+                <button
+                  className={`${styles.btn} ${styles.btnSecondary}`}
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  Отложить
+                </button>
+              )
+            )
+          )}
+        </div>
+      </div>
 
       <NotificationModal
         notification={notification}

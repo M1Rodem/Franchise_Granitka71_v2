@@ -1,9 +1,4 @@
-﻿using Franchisee.Web.Configuration;
-using Franchisee.Web.Models;
-using Franchisee.Web.Services;
-using Franchisee.Web.Services.Hubs;
-using Franchisee.Web.Services.Repositories;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
+﻿using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
@@ -15,6 +10,10 @@ using Serilog;
 using Swashbuckle.AspNetCore.SwaggerGen;
 using System.Text;
 using Microsoft.AspNetCore.Http.Connections;
+using Franchisee.Web.Models.Shared;
+using Franchisee.Web.Services.Notifications.Dispatch;
+using Franchisee.Web.Services.Notifications.Background;
+using Franchisee.Web.Services.Media.Background;
 
 namespace Franchisee.Web.Configuration
 {
@@ -69,7 +68,6 @@ namespace Franchisee.Web.Configuration
                 });
             });
 
-            services.AddScoped<IPrintService, PrintService>();
             services.AddHttpContextAccessor();
             
             // Поддержка больших файлов - УВЕЛИЧИВАЕМ ДО 500 МБ
@@ -235,9 +233,12 @@ namespace Franchisee.Web.Configuration
 
             // Репозитории и сервисы
             // УБИРАЕМ: services.AddScoped<IPhotoService, PhotoService>(); - заменено на IMediaService в Program.cs
-            services.AddScoped<IManagerRepository, ManagerRepository>();
-            services.AddScoped<IOrderRepository, OrderRepository>();
-            services.AddScoped<INotificationService, NotificationService>();
+            services.AddScoped<Franchisee.Web.Services.Users.Repositories.IManagerRepository, Franchisee.Web.Services.Users.Repositories.ManagerRepository>();
+            services.AddScoped<Franchisee.Web.Services.Orders.Repositories.IOrderRepository, Franchisee.Web.Services.Orders.Repositories.OrderRepository>();
+
+            // Регистрация сервисов
+            services.AddScoped<Franchisee.Web.Services.Notifications.Core.INotificationService, Franchisee.Web.Services.Notifications.Core.NotificationService>();
+            services.AddScoped<Franchisee.Web.Services.Print.Core.IPrintService, Franchisee.Web.Services.Print.Core.PrintService>();
 
             // Фоновые сервисы
             services.AddHostedService<OldNotificationsCleanupService>();

@@ -1,11 +1,14 @@
 ﻿using DocumentFormat.OpenXml.InkML;
 using Franchisee.Web.Configuration;
-using Franchisee.Web.Models;
-using Franchisee.Web.Services.Repositories;
+using Franchisee.Web.Models.DTOs.Profile;
+using Franchisee.Web.Models.DTOs.Users;
+using Franchisee.Web.Models.Entities.Users;
+using Franchisee.Web.Services.Users.Repositories;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
+
 
 namespace Franchisee.Web.Controllers
 {

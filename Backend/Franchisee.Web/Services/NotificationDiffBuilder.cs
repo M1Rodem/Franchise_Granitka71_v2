@@ -44,7 +44,8 @@ public static class NotificationDiffBuilder
                 or "MonumentType"
                 or "MonumentSize"
                 or "DeceasedFullName"
-                or "AdditionalInfo")
+                or "AdditionalInfo"
+                or "InspectionPlace")
             {
                 list.Add(new FieldChangeDto
                 {
@@ -62,19 +63,36 @@ public static class NotificationDiffBuilder
 
     private static void BuildMap(JsonElement changes, NotificationChangesDto result)
     {
-        if (!changes.TryGetProperty("Latitude", out var lat))
-            return;
-
-        if (!changes.TryGetProperty("Longitude", out var lon))
+        if (!changes.TryGetProperty("map", out var mapElement))
             return;
 
         var map = new MapChangeDto();
 
-        map.Old.Latitude = lat.GetProperty("old").GetDouble();
-        map.New.Latitude = lat.GetProperty("new").GetDouble();
+        // Старые данные
+        if (mapElement.TryGetProperty("old", out var oldMap))
+        {
+            if (oldMap.TryGetProperty("latitude", out var lat))
+                map.Old.Latitude = lat.GetDouble();
+            
+            if (oldMap.TryGetProperty("longitude", out var lon))
+                map.Old.Longitude = lon.GetDouble();
+            
+            if (oldMap.TryGetProperty("plot", out var plot))
+                map.Old.Plot = plot.GetString();
+        }
 
-        map.Old.Longitude = lon.GetProperty("old").GetDouble();
-        map.New.Longitude = lon.GetProperty("new").GetDouble();
+        // Новые данные
+        if (mapElement.TryGetProperty("new", out var newMap))
+        {
+            if (newMap.TryGetProperty("latitude", out var lat))
+                map.New.Latitude = lat.GetDouble();
+            
+            if (newMap.TryGetProperty("longitude", out var lon))
+                map.New.Longitude = lon.GetDouble();
+            
+            if (newMap.TryGetProperty("plot", out var plot))
+                map.New.Plot = plot.GetString();
+        }
 
         result.Map = map;
     }
@@ -157,37 +175,63 @@ public static class NotificationDiffBuilder
 
         if (changes.TryGetProperty("Photos", out var photos))
         {
-            foreach (var id in photos.GetProperty("removedIds").EnumerateArray())
+            // Удаленные фото
+            if (photos.TryGetProperty("removedIds", out var removedIds))
             {
-                dto.DeletedMedia.Add(new MediaItemDto
+                foreach (var id in removedIds.EnumerateArray())
                 {
-                    Id = id.GetInt32(),
-                    Type = "photo",
-                    PreviewUrl = $"/media/{id}.jpg"
-                });
+                    dto.DeletedMedia.Add(new MediaItemDto
+                    {
+                        Id = id.GetInt32(),
+                        Type = "photo",
+                        PreviewUrl = $"/api/media/{id}/file"
+                    });
+                }
             }
 
-            foreach (var id in photos.GetProperty("addedTempIds").EnumerateArray())
+            // Добавленные фото (временные)
+            if (photos.TryGetProperty("addedTempIds", out var addedTempIds))
             {
-                dto.AddedMedia.Add(new MediaItemDto
+                foreach (var id in addedTempIds.EnumerateArray())
                 {
-                    Id = id.GetInt32(),
-                    Type = "photo",
-                    PreviewUrl = $"/media/temp/{id}.jpg"
-                });
+                    dto.AddedMedia.Add(new MediaItemDto
+                    {
+                        Id = id.GetInt32(),
+                        Type = "photo",
+                        PreviewUrl = $"/api/media/temp-preview/{id}"
+                    });
+                }
             }
         }
 
         if (changes.TryGetProperty("Videos", out var videos))
         {
-            foreach (var id in videos.GetProperty("addedTempIds").EnumerateArray())
+            // Удаленные видео (если есть)
+            if (videos.TryGetProperty("removedIds", out var removedVideoIds))
             {
-                dto.AddedMedia.Add(new MediaItemDto
+                foreach (var id in removedVideoIds.EnumerateArray())
                 {
-                    Id = id.GetInt32(),
-                    Type = "video",
-                    PreviewUrl = $"/media/temp/{id}.mp4"
-                });
+                    dto.DeletedMedia.Add(new MediaItemDto
+                    {
+                        Id = id.GetInt32(),
+                        Type = "video",
+                        PreviewUrl = $"/api/media/{id}/file"
+                    });
+                }
+            }
+
+            // Добавленные видео (временные)
+            if (videos.TryGetProperty("addedTempIds", out var addedVideoTempIds))
+            {
+                foreach (var id in addedVideoTempIds.EnumerateArray())
+                {
+                    dto.AddedMedia.Add(new MediaItemDto
+                    {
+                        Id = id.GetInt32(),
+                        Type = "video",
+                        PreviewUrl = $"/api/media/temp-preview/{id}"  // ← Убрал /videos/
+                    });
+                }
             }
         }
 
@@ -223,6 +267,7 @@ public static class NotificationDiffBuilder
             "MonumentSize" => "Размер",
             "DeceasedFullName" => "Покойный",
             "AdditionalInfo" => "Примечание",
+            "InspectionPlace" => "Место смотрел",
             _ => field
         };
     }

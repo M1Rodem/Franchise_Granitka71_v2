@@ -14,21 +14,18 @@ export const notificationsApi = {
     status: NotificationFilter,
     page: number,
     pageSize: number
-    ): Promise<PagingResponse<NotificationResponseDto>> {
+  ): Promise<PagingResponse<NotificationResponseDto>> {
     const response = await httpClient.get('/api/Notifications/list', {
-        params: {
+      params: {
         status,
         page,
         pageSize,
-        },
+      },
     })
-
     return response.data
-    },
+  },
 
-  async getNotificationDetails(
-    id: number
-  ): Promise<NotificationDetailsDto> {
+  async getNotificationDetails(id: number): Promise<NotificationDetailsDto> {
     const response = await httpClient.get(`/api/Notifications/${id}`)
     return response.data
   },
@@ -55,18 +52,17 @@ export const notificationsApi = {
     return response.data
   },
 
-  // ❗ ВАЖНО: badge = count
   async getBadge(): Promise<NotificationBadgeDto> {
     const response = await httpClient.get('/api/Notifications/count')
-
-    // ⚠️ backend может вернуть просто number
-    if (typeof response.data === 'number') {
-      return {
-        count: response.data,
-        color: response.data > 0 ? 'red' : 'none',
-      }
-    }
-
     return response.data
   },
+
+  async getCounts(): Promise<{
+    active: number
+    postponed: number
+    all: number
+  }> {
+    const response = await httpClient.get('/api/Notifications/counts')
+    return response.data
+  }
 }

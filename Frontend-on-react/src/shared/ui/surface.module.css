@@ -23,3 +23,371 @@
   font-weight: 600;
   color: #eaf4ff;
 }
+
+.dateGroup {
+  padding: 6px 12px;
+  border-radius: 10px;
+
+  font-size: 13px;
+  font-weight: 500;
+
+  color: #cfe3ff;
+
+  background: rgba(80, 120, 180, 0.12);
+
+  border: 1px solid rgba(120, 160, 220, 0.2);
+
+  display: inline-block;
+}
+
+/* ===== MAP DIFF (CLEAN) ===== */
+
+.mapChanges {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(126, 164, 220, 0.2);
+
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.mapChangeItem {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.mapChangeLabel {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #9bb8e8;
+}
+
+.mapChangeValues {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+
+  font-size: 14px;
+  color: #eaf4ff;
+
+  flex-wrap: wrap;
+}
+
+.mapOld {
+  opacity: 0.5;
+}
+
+.mapNew {
+  color: #ffffff;
+  font-weight: 500;
+}
+
+.mapArrow {
+  opacity: 0.4;
+}
+
+/* mobile */
+@media (max-width: 768px) {
+  .mapChangeValues {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+  }
+
+  .mapArrow {
+    display: none;
+  }
+}
+
+/* ===== DIFF LIST ===== */
+
+.diffList {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+/* карточка */
+
+.diffCard {
+  padding: 16px;
+  border-radius: 14px;
+
+  background: rgba(15, 35, 70, 0.4);
+  border: 1px solid rgba(126, 164, 220, 0.18);
+
+  display: flex;
+  flex-direction: column;
+}
+
+/* заголовок */
+
+.diffTitle {
+  font-size: 15px;
+  font-weight: 600;
+  color: #eaf4ff;
+
+  margin-bottom: 8px;
+}
+
+/* разделитель между полями */
+
+.diffField + .diffField {
+  border-top: 1px solid rgba(126, 164, 220, 0.12);
+  margin-top: 10px;
+  padding-top: 10px;
+}
+
+/* поле */
+
+.diffField {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+/* label */
+
+.diffLabel {
+  font-size: 11px;
+  text-transform: uppercase;
+  color: #9bb8e8;
+}
+
+/* значения */
+
+.diffValues {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+
+  font-size: 14px;
+  color: #eaf4ff;
+}
+
+/* old */
+
+.diffOld {
+  opacity: 0.5;
+}
+
+/* new */
+
+.diffNew {
+  font-weight: 600;
+  color: #ffffff;
+}
+
+/* стрелка */
+
+.diffArrow {
+  opacity: 0.4;
+}
+.hideOnDesktop {
+  display: none;
+}
+.diffBadge {
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 999px;
+
+  width: fit-content;
+}
+
+.diffBadgeAdded {
+  background: rgba(80, 220, 160, 0.2);
+  color: #6ee7b7;
+}
+
+.diffBadgeRemoved {
+  background: rgba(255, 120, 120, 0.2);
+  color: #fca5a5;
+}
+
+.diffBadgeChanged {
+  background: rgba(90, 140, 220, 0.2);
+  color: #93c5fd;
+}
+
+/* ===== REFINED SOFT DIFF (GLASS PRO) ===== */
+
+.diffOldChanged {
+  color: rgba(255, 220, 220, 0.85);
+
+  background: linear-gradient(
+    145deg,
+    rgba(255, 120, 120, 0.08),
+    rgba(255, 80, 80, 0.04)
+  );
+
+  border: 1px solid rgba(255, 120, 120, 0.14);
+
+  padding: 2px 6px;
+  border-radius: 6px;
+
+  /* чистый стеклянный эффект */
+  backdrop-filter: blur(6px);
+
+  /* мягкое layered свечение */
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.12),
+    0 1px 4px rgba(255, 120, 120, 0.06);
+
+  opacity: 0.85;
+
+  transition: all 0.2s ease;
+}
+
+.diffNewChanged {
+  color: rgba(235, 255, 245, 0.95);
+
+  background: linear-gradient(
+    145deg,
+    rgba(80, 220, 160, 0.12),
+    rgba(40, 170, 110, 0.06)
+  );
+
+  border: 1px solid rgba(110, 255, 200, 0.22);
+
+  padding: 2px 6px;
+  border-radius: 6px;
+
+  backdrop-filter: blur(6px);
+
+  /* более аккуратный glow */
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.15),
+    0 2px 10px rgba(60, 220, 140, 0.10);
+
+  font-weight: 600;
+
+  transition: all 0.2s ease;
+}
+
+/* ===== INFO GRID ===== */
+
+.infoGrid {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.infoRow {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+
+  padding: 10px 12px;
+
+  border-radius: 12px;
+
+  font-size: 16px;
+
+  background: rgba(15, 35, 70, 0.45);
+  border: 1px solid rgba(125, 162, 219, 0.15);
+
+  transition:
+    background 0.18s ease,
+    border 0.18s ease,
+    box-shadow 0.18s ease,
+    transform 0.15s ease;
+}
+
+/* hover как у table */
+.infoRow:hover {
+  background: rgba(100, 155, 232, 0.1);
+  border-color: rgba(134, 188, 255, 0.35);
+  box-shadow: 0 8px 20px rgba(90, 140, 220, 0.25);
+  transform: translateY(-1px);
+}
+
+/* label */
+.infoLabel {
+  color: #9bb8e8;
+  font-size: 14px;
+}
+
+/* value */
+.infoValue {
+  justify-self: end;
+  text-align: right;
+
+  color: #eaf4ff;
+  font-weight: 500;
+}
+
+.infoValueStrong {
+  justify-self: end;
+  text-align: right;
+
+  font-weight: 600;
+  font-size: 16px;
+  color: #ffffff;
+}
+
+/* ===== MOBILE ===== */
+
+@media (max-width: 768px) {
+  .infoRow {
+    grid-template-columns: 1fr;
+    text-align: center;
+    gap: 6px;
+  }
+
+  .infoLabel {
+    text-align: center;
+  }
+
+  .infoValue,
+  .infoValueStrong {
+    justify-self: center;
+    text-align: center;
+  }
+}
+
+/* =========================
+   MOBILE
+========================= */
+
+@media (max-width: 768px) {
+
+  .diffCard {
+    padding: 14px;
+  }
+
+  .diffValues {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+  }
+
+  /* убираем стрелку */
+  .diffArrow {
+    display: none;
+  }
+
+  /* добавляем визуальное разделение old/new */
+
+  .diffOld,
+  .diffNew {
+    width: 100%;
+    padding: 6px 10px;
+    border-radius: 8px;
+  }
+
+  .diffOld {
+    background: rgba(255, 255, 255, 0.05);
+  }
+
+  .diffNew {
+    background: rgba(90, 140, 220, 0.2);
+  }
+
+  .hideOnDesktop {
+    display: inline;
+  }
+}
+

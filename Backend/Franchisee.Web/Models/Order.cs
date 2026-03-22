@@ -3,7 +3,7 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace Franchisee.Web.Models
 {
-        public enum OrderStatus { Новый, ВРаботе, Оплата, Готов, Доставлен }
+    public enum OrderStatus { Новый, ВРаботе, Оплата, Готов, Доставлен }
 
     public class Order
     {

@@ -61,6 +61,7 @@
   color: #dff0ff;
   text-decoration: none;
   transition: all 0.2s ease;
+  cursor: pointer;
 }
 
 .navigatorButton:hover {
@@ -108,4 +109,90 @@
 
   transform: none;
 
+}
+
+/* ===== MAP TOGGLE (IMPROVED) ===== */
+
+.mapToggle {
+  display: inline-flex;
+  gap: 10px;
+}
+
+.mapToggleBtn {
+  min-height: 42px;
+  padding: 0 18px;
+
+  border-radius: 14px;
+  border: 1px solid rgba(126, 164, 220, 0.25);
+
+  background: rgba(15, 35, 70, 0.4);
+  color: #bcd6ff;
+
+  font-size: 14px;
+  font-weight: 500;
+
+  cursor: pointer;
+  transition: all 0.2s ease;
+
+  backdrop-filter: blur(10px);
+}
+
+/* hover */
+
+.mapToggleBtn:hover {
+  background: rgba(90, 140, 220, 0.18);
+  color: #ffffff;
+  transform: translateY(-1px);
+}
+
+/* active */
+
+.mapToggleBtnActive {
+  background: linear-gradient(
+    145deg,
+    rgba(90, 140, 220, 0.45),
+    rgba(60, 110, 200, 0.35)
+  );
+
+  color: #ffffff;
+
+  border-color: rgba(150, 190, 255, 0.5);
+
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.25),
+    0 8px 22px rgba(90, 140, 220, 0.35);
+
+  transform: translateY(-1px);
+}
+
+/* ===== MAP LINK BUTTON ===== */
+
+.mapLinkBtn {
+  margin-top: 10px;
+
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+
+  padding: 8px 14px;
+  border-radius: 12px;
+
+  border: 1px solid rgba(126, 164, 220, 0.3);
+
+  background: rgba(15, 35, 70, 0.45);
+  color: #cfe3ff;
+
+  font-size: 16px;
+  font-weight: 600;
+
+  text-decoration: none;
+
+  transition: all 0.2s ease;
+}
+
+.mapLinkBtn:hover {
+  background: rgba(90, 140, 220, 0.18);
+  color: #ffffff;
+
+  box-shadow: 0 6px 18px rgba(90, 140, 220, 0.25);
 }

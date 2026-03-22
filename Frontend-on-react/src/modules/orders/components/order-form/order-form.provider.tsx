@@ -20,6 +20,7 @@ import { isAxiosError } from 'axios'
 import { useUiStore } from '@/shared/store/ui.store'
 import { useUnsavedChangesGuard } from '@/shared/hooks/useUnsavedChangesGuard'
 import { useFormState } from "react-hook-form"
+import type { OrderDetailsDto } from '@/modules/orders/types/orders.types'
 
 interface OrderFormProviderProps {
   children: ReactNode
@@ -90,10 +91,9 @@ export function OrderFormProvider({
 
   const advanceManuallyEditedRef = useRef(false)
 
-  const { dirtyFields, isDirty, isSubmitting } =
-    useFormState({
-      control: methods.control
-    })
+  const { dirtyFields, isDirty, isSubmitting } = useFormState({
+    control: methods.control
+  })
 
   const hasRealChanges =
     Object.keys(dirtyFields).length > 0
@@ -216,74 +216,75 @@ export function OrderFormProvider({
     mutationFn: ({ id, payload }: { id: number; payload: any }) =>
       ordersApi.updateOrder(id, payload),
 
-    onSuccess: (order) => {
-      // обновляем кеш заказа
+    onSuccess: (response) => {  // ← убрали variables
+      const isRequestResponse = (response as any)?.success === true && 
+                                (response as any)?.message === "Запрос на изменение отправлен"
+      
+      if (isRequestResponse) {
+        
+        showTempMessage('info', 'Запрос на изменение отправлен. Ожидайте подтверждения.')
+        
+        navigate(`/orders/${orderId}`)
+        return
+      }
+      
+      // Обычное обновление (свой заказ или админ)
+      const order = response as OrderDetailsDto
+      
       queryClient.setQueryData(
         ordersKeys.byId(order.id),
         order
       )
-
-      // обновляем список заказов
+      
       queryClient.invalidateQueries({
         queryKey: ordersKeys.all,
       })
-
+      
       showTempMessage('success', 'Заказ обновлен')
-
+      
       navigate(`/orders/${order.id}`)
     },
+    
+    onError: (error: any) => {
+      if (isAxiosError(error)) {
+        const message = (error.response?.data as any)?.message ?? 'Ошибка при обновлении заказа'
+        showTempMessage('error', message)
+      } else {
+        showTempMessage('error', 'Ошибка при обновлении заказа')
+      }
+    }
   })
 
   const onSubmit = methods.handleSubmit(
     async (values: OrderFormModel) => {
+      setIsSaving(true)
 
-    setIsSaving(true)
-
-    try {
-
+      try {
         if (mode === 'create') {
           const payload = mapFormToCreateDto(values)
           await createMutation.mutateAsync(payload)
         }
 
         if (mode === 'edit' && orderId) {
-          const payload = mapFormToUpdateDto(values)
+          const payload = mapFormToUpdateDto(values, dirtyFields)
           await updateMutation.mutateAsync({
             id: orderId,
             payload
           })
         }
-
       } catch (error) {
-
-        if (isAxiosError(error)) {
-
-          const message =
-            (error.response?.data as any)?.message ??
-            'Ошибка при создании заказа'
-
-          showTempMessage('error', message)
-          return
-
-        }
-
-        showTempMessage('error', 'Ошибка при создании заказа')
-
-      }
-      finally {
+        console.error('Submit error:', error)
+      } finally {
         setIsSaving(false)
       }
     },
     (formErrors) => {
-
       const firstError = getFirstErrorMessage(formErrors)
-
       if (firstError) {
         showTempMessage('error', firstError)
       } else {
         showTempMessage('error', 'Проверьте корректность заполнения формы')
       }
-
     }
   )
 
@@ -303,8 +304,9 @@ export function OrderFormProvider({
   )
 }
 
-function mapFormToUpdateDto(values: OrderFormModel) {
-  return {
+function mapFormToUpdateDto(values: OrderFormModel, dirtyFields: any) {
+  const payload: any = {
+    // Основные поля всегда отправляем
     place: values.inspectionPlace,
     inspectionPlace: values.inspectionPlace,
     orderDate: values.orderDate,
@@ -325,26 +327,31 @@ function mapFormToUpdateDto(values: OrderFormModel) {
 
     discountPercent: values.discountPercent,
 
-    workItems: values.works.map((w) => ({
+    tempPhotoIds: values.media.tempPhotoIds,
+    tempVideoIds: values.media.tempVideoIds,
+    removedPhotoIds: values.media.removedPhotoIds,
+    removedVideoIds: values.media.removedVideoIds,
+  }
+
+  if (dirtyFields?.works) {
+    payload.workItems = values.works.map((w) => ({
       workDescription: w.workDescription,
       price: w.price,
       quantity: w.quantity,
       note: w.note,
-    })),
+    }))
+  }
 
-    payments: values.payments.map((p) => ({
+  if (dirtyFields?.payments) {
+    payload.payments = values.payments.map((p) => ({
       amount: p.amount,
       paymentDate: p.paymentDate,
       paymentType: p.paymentType,
       note: p.note,
-    })),
-
-    tempPhotoIds: values.media.tempPhotoIds,
-    tempVideoIds: values.media.tempVideoIds,
-
-    removedPhotoIds: values.media.removedPhotoIds,
-    removedVideoIds: values.media.removedVideoIds,
+    }))
   }
+
+  return payload
 }
 
 function normalizePhone(phone: string): string {

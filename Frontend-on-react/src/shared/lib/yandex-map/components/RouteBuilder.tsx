@@ -18,10 +18,10 @@ export function RouteBuilder({ from, to }: Props) {
   const routeRef = useRef<any | null>(null);
 
   useEffect(() => {
-    if (!map || !window.ymaps) return;
+    if (!map || !window.ymaps) return
 
     if (routeRef.current) {
-      map.geoObjects.remove(routeRef.current);
+      map.geoObjects.remove(routeRef.current)
     }
 
     const multiRoute = new window.ymaps.multiRouter.MultiRoute(
@@ -29,17 +29,21 @@ export function RouteBuilder({ from, to }: Props) {
         referencePoints: [from, to],
       },
       { boundsAutoApply: true }
-    );
+    )
 
-    map.geoObjects.add(multiRoute);
-    routeRef.current = multiRoute;
+    multiRoute.options.set({
+      wayPointVisible: false,
+    })
+
+    map.geoObjects.add(multiRoute)
+    routeRef.current = multiRoute
 
     return () => {
       if (routeRef.current) {
-        map.geoObjects.remove(routeRef.current);
+        map.geoObjects.remove(routeRef.current)
       }
-    };
-  }, [from, to, map]);
+    }
+  }, [from, to, map])
 
   return null;
 }

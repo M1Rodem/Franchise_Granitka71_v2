@@ -148,7 +148,7 @@ namespace Franchisee.Web.Services
                     MediaType = MediaType.Photo,
                     UploaderId = uploaderId,
                     UploadedAt = DateTime.UtcNow,
-                    ExpiresAt = DateTime.UtcNow.AddHours(1)
+                    ExpiresAt = DateTime.UtcNow.AddDays(14)
                 };
 
                 _context.TempUploads.Add(tempUpload);
@@ -202,7 +202,7 @@ namespace Franchisee.Web.Services
                     MediaType = MediaType.Video,
                     UploaderId = uploaderId,
                     UploadedAt = DateTime.UtcNow,
-                    ExpiresAt = DateTime.UtcNow.AddHours(1)
+                    ExpiresAt = DateTime.UtcNow.AddDays(14)
                 };
 
                 _context.TempUploads.Add(tempUpload);

@@ -39,6 +39,13 @@ namespace Franchisee.Web.Models
         public bool IsImpactForCurrentUser { get; set; }
     }
 
+    public class NotificationCountsDto
+    {
+        public int Active { get; set; }   // Pending + Postponed (ReturnsAt > now)
+        public int Postponed { get; set; } // Postponed (ReturnsAt > now)
+        public int All { get; set; }       // Все уведомления пользователя
+    }
+
     // DTO для изменения статуса
     public class ResolveNotificationRequest
     {

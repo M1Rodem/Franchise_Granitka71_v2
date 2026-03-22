@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { MapContext } from '../context/MapContext'
 import type { Coordinates } from '../types'
+import { useYandexLoader } from '../hooks/useYandexLoader'
 
 declare global {
   interface Window {
@@ -30,40 +31,13 @@ export function MapView({
   const clickHandlerRef = useRef<any>(null)
   const lastCenterRef = useRef<Coordinates | null>(null)
   const [mapInstance, setMapInstance] = useState<any>(null)
-  const [isApiReady, setIsApiReady] = useState(false)
+  
+  // Используем существующий хук для загрузки API
+  const { isLoaded } = useYandexLoader()
 
-  // Проверяем загрузку API
+  // создание карты (только когда API загружен и контейнер готов)
   useEffect(() => {
-    // Если API уже загружен
-    if (window.ymaps) {
-      window.ymaps.ready(() => {
-        setIsApiReady(true)
-      })
-      return
-    }
-
-    // Проверяем каждые 100мс в течение 5 секунд
-    let attempts = 0
-    const interval = setInterval(() => {
-      attempts++
-      if (window.ymaps) {
-        clearInterval(interval)
-        window.ymaps.ready(() => {
-          setIsApiReady(true)
-        })
-      } else if (attempts > 50) { // 5 секунд * 10 = 50 попыток
-        clearInterval(interval)
-        console.error('Yandex Maps API failed to load')
-      }
-    }, 100)
-
-    return () => clearInterval(interval)
-  }, [])
-
-  // создание карты
-  useEffect(() => {
-    // Ждем готовности API и контейнера
-    if (!isApiReady || !containerRef.current || mapRef.current) return
+    if (!isLoaded || !containerRef.current || mapRef.current) return
 
     try {
       const map = new window.ymaps.Map(containerRef.current, {
@@ -89,12 +63,12 @@ export function MapView({
     } catch (error) {
       console.error('Failed to create map:', error)
     }
-  }, [isApiReady]) // Зависимость только от isApiReady
+  }, [isLoaded]) // Только когда API загружен
 
-  // обновление центра (без конфликтов)
+  // обновление центра
   useEffect(() => {
     const map = mapRef.current
-    if (!map || !isApiReady) return
+    if (!map || !isLoaded) return
 
     if (
       !lastCenterRef.current ||
@@ -104,12 +78,12 @@ export function MapView({
       map.setCenter(center)
       lastCenterRef.current = center
     }
-  }, [center, isApiReady])
+  }, [center, isLoaded])
 
   // обработчик клика
   useEffect(() => {
     const map = mapRef.current
-    if (!map || !isApiReady || readOnly || !onSelect) return
+    if (!map || !isLoaded || readOnly || !onSelect) return
 
     if (clickHandlerRef.current) {
       map.events.remove('click', clickHandlerRef.current)
@@ -128,17 +102,17 @@ export function MapView({
         map.events.remove('click', handler)
       }
     }
-  }, [onSelect, readOnly, isApiReady])
+  }, [onSelect, readOnly, isLoaded])
 
   // Показываем заглушку пока API не готов
-  if (!isApiReady) {
+  if (!isLoaded) {
     return (
       <div
-        ref={containerRef}
         style={{
           width: '100%',
           height: '100%',
-          borderRadius: '16px',
+          minHeight: 200,
+          borderRadius: '12px',
           overflow: 'hidden',
           backgroundColor: '#f0f0f0',
           display: 'flex',
@@ -158,7 +132,8 @@ export function MapView({
         style={{
           width: '100%',
           height: '100%',
-          borderRadius: '16px',
+          minHeight: 200,
+          borderRadius: '12px',
           overflow: 'hidden',
         }}
       />

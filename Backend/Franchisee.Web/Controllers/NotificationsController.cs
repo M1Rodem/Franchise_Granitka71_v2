@@ -95,6 +95,24 @@ public class NotificationsController : ControllerBase
         return Ok(badge);
     }
 
+    [HttpGet("counts")]
+    public async Task<ActionResult<NotificationCountsDto>> GetNotificationCounts()
+    {
+        var userId = GetCurrentUserId();
+        
+        try
+        {
+            var counts = await _notificationService.GetNotificationCountsAsync(userId);
+            return Ok(counts);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Ошибка получения counts уведомлений для пользователя {UserId}", userId);
+            return StatusCode(500, "Ошибка получения статистики уведомлений");
+        }
+    }
+
+
     [HttpPost("{id}/resolve")]
     public async Task<ActionResult> ResolveNotification(
         int id,

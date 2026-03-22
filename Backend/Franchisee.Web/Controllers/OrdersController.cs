@@ -307,6 +307,7 @@ namespace Franchisee.Web.Controllers
                     .Include(o => o.Payments)
                     .Include(o => o.Photos)
                     .Include(o => o.Manager)
+                    .Include(o => o.Plot)
                     .AsSplitQuery()
                     .FirstOrDefaultAsync(o => o.Id == id);
 
@@ -731,8 +732,15 @@ namespace Franchisee.Web.Controllers
             if (!string.IsNullOrEmpty(request.Place) && request.Place != order.Place)
                 changes["Place"] = new { old = order.Place, @new = request.Place };
 
-            if (!string.IsNullOrEmpty(request.InspectionPlace) && request.InspectionPlace != order.InspectionPlace)
-                changes["InspectionPlace"] = new { old = order.InspectionPlace, @new = request.InspectionPlace };
+            // InspectionPlace - собираем отдельно (НЕ в map)
+            if (request.InspectionPlace != order.InspectionPlace)
+            {
+                changes["InspectionPlace"] = new 
+                { 
+                    old = order.InspectionPlace ?? string.Empty, 
+                    @new = request.InspectionPlace ?? string.Empty 
+                };
+            }
 
             if (request.OrderDate.HasValue)
             {
@@ -749,24 +757,71 @@ namespace Franchisee.Web.Controllers
                 }
             }
 
-            // НОВОЕ: Геоданные
+            // Собираем изменения карты (map) ТОЛЬКО если менялись Latitude, Longitude или Plot
+            bool hasMapChanges = false;
+            
+            // Используем nullable типы для совместимости
+            double? oldLatitude = order.Latitude;
+            double? oldLongitude = order.Longitude;
+            string oldPlot = order.Plot?.Name ?? string.Empty;
+            
+            double? newLatitude = order.Latitude;
+            double? newLongitude = order.Longitude;
+            string newPlot = order.Plot?.Name ?? string.Empty;
+
+            // Latitude
             if (request.Latitude.HasValue && request.Latitude != order.Latitude)
-                changes["Latitude"] = new { old = order.Latitude, @new = request.Latitude };
+            {
+                newLatitude = request.Latitude.Value;
+                hasMapChanges = true;
+            }
 
+            // Longitude
             if (request.Longitude.HasValue && request.Longitude != order.Longitude)
-                changes["Longitude"] = new { old = order.Longitude, @new = request.Longitude };
+            {
+                newLongitude = request.Longitude.Value;
+                hasMapChanges = true;
+            }
 
+            // Plot
             if (request.PlotId.HasValue && request.PlotId != order.PlotId)
-                changes["PlotId"] = new { old = order.PlotId, @new = request.PlotId };
+            {
+                newPlot = _context.Plots
+                    .Where(p => p.Id == request.PlotId.Value)
+                    .Select(p => p.Name)
+                    .FirstOrDefault() ?? string.Empty;
+                hasMapChanges = true;
+            }
 
+            // Если есть изменения карты - добавляем map
+            if (hasMapChanges)
+            {
+                changes["map"] = new
+                {
+                    old = new
+                    {
+                        latitude = oldLatitude,
+                        longitude = oldLongitude,
+                        plot = oldPlot
+                    },
+                    @new = new
+                    {
+                        latitude = newLatitude,
+                        longitude = newLongitude,
+                        plot = newPlot
+                    }
+                };
+            }
+
+            // Остальные поля
             if (!string.IsNullOrEmpty(request.DeceasedFullName) && request.DeceasedFullName != order.DeceasedFullName)
                 changes["DeceasedFullName"] = new { old = order.DeceasedFullName, @new = request.DeceasedFullName };
 
             if (!string.IsNullOrEmpty(request.CustomerFullName) && request.CustomerFullName != order.CustomerFullName)
                 changes["CustomerFullName"] = new { old = order.CustomerFullName, @new = request.CustomerFullName };
 
-            if (!string.IsNullOrEmpty(request.CustomerEmail) && request.CustomerEmail != order.CustomerEmail)
-                changes["CustomerEmail"] = new { old = order.CustomerEmail, @new = request.CustomerEmail };
+            if (request.CustomerEmail != order.CustomerEmail)
+                changes["CustomerEmail"] = new { old = order.CustomerEmail ?? string.Empty, @new = request.CustomerEmail ?? string.Empty };
 
             if (!string.IsNullOrEmpty(request.Phone) && request.Phone != order.Phone)
                 changes["Phone"] = new { old = order.Phone, @new = request.Phone };
@@ -780,12 +835,13 @@ namespace Franchisee.Web.Controllers
             if (!string.IsNullOrEmpty(request.MonumentSize) && request.MonumentSize != order.MonumentSize)
                 changes["MonumentSize"] = new { old = order.MonumentSize, @new = request.MonumentSize };
 
-            if (!string.IsNullOrEmpty(request.AdditionalInfo) && request.AdditionalInfo != order.AdditionalInfo)
-                changes["AdditionalInfo"] = new { old = order.AdditionalInfo, @new = request.AdditionalInfo };
+            if (request.AdditionalInfo != order.AdditionalInfo)
+                changes["AdditionalInfo"] = new { old = order.AdditionalInfo ?? string.Empty, @new = request.AdditionalInfo ?? string.Empty };
 
             if (request.Status.HasValue && request.Status.Value != order.Status)
                 changes["Status"] = new { old = order.Status.ToString(), @new = request.Status.Value.ToString() };
         }
+
         private void CollectWorkItemsChanges(Order order, UpdateOrderRequest request, Dictionary<string, object> changes)
         {
             if (request.WorkItems == null) return;

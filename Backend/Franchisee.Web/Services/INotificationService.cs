@@ -46,5 +46,6 @@ namespace Franchisee.Web.Services
             int? initiatorId = null,
             params int[] userIds);
         Task<NotificationBadgeDto> GetNotificationBadgeAsync(int userId);
+        Task<NotificationCountsDto> GetNotificationCountsAsync(int userId);
     }
 }

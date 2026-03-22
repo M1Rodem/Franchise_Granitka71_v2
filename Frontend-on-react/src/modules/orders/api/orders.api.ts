@@ -8,6 +8,14 @@ import {
 } from '@/modules/orders/types/orders.types';
 import { normalizeOrdersListParams } from '@/modules/orders/lib/orders-filters';
 
+export interface OrderUpdateRequestResponse {
+  success: boolean;
+  message: string;
+  notificationId: number;
+}
+
+export type UpdateOrderResponse = OrderDetailsDto | OrderUpdateRequestResponse;
+
 export interface CreateOrderRequestDto {
   place: string;
   inspectionPlace: string;
@@ -139,9 +147,11 @@ export const ordersApi = {
   async updateOrder(
     id: number,
     payload: UpdateOrderRequestDto
-  ): Promise<OrderDetailsDto> {
+  ): Promise<UpdateOrderResponse> {
     const response = await httpClient.put(`/api/orders/${id}`, payload)
-    return orderDetailsSchema.parse(response.data)
+    
+    // Возвращаем как есть, разбор будет в provider
+    return response.data
   },
   
   // =========================

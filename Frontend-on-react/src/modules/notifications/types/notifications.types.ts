@@ -34,7 +34,7 @@ export interface NotificationResponseDto {
   resolvedAt?: string | null
   returnsAt?: string | null
   resolutionNote?: string | null
-  changes: unknown
+  changes: NotificationChangesDto
   userId: number
   userName: string
   initiatorId?: number | null
@@ -60,7 +60,7 @@ export interface NotificationDetailsDto {
   order: OrderShortDto
   initiator: InitiatorDto
   comment?: string | null
-  changes: unknown // DTO не дан
+  changes: NotificationChangesDto
 }
 
 export interface OrderShortDto {
@@ -71,6 +71,89 @@ export interface OrderShortDto {
 export interface InitiatorDto {
   id?: number | null
   name: string
+}
+
+export interface FieldChangeDto {
+  field: string
+  label: string
+  oldValue?: string | null
+  newValue?: string | null
+}
+
+export interface MapStateDto {
+  latitude?: number | null
+  longitude?: number | null
+  plot?: string | null
+  plotLatitude?: number | null
+  plotLongitude?: number | null
+  inspectionPlace?: string | null
+  distanceKm?: number | null
+}
+
+export interface MapChangeDto {
+  old: MapStateDto
+  new: MapStateDto
+}
+
+export interface WorkItemDto {
+  workDescription: string
+  quantity: number
+  price: number
+  note?: string | null
+}
+
+export interface WorksChangeDto {
+  oldWorks: WorkItemDto[]
+  newWorks: WorkItemDto[]
+  oldTotal: number
+  newTotal: number
+}
+
+export interface PaymentDto {
+  paymentType: string
+  amount: number
+  paymentDate: string
+  note?: string | null
+}
+
+export interface PaymentsChangeDto {
+  oldPayments: PaymentDto[]
+  newPayments: PaymentDto[]
+}
+
+export interface MediaItemDto {
+  id: number
+  type: string
+  previewUrl: string
+}
+
+export interface MediaChangeDto {
+  deletedMedia: MediaItemDto[]
+  addedMedia: MediaItemDto[]
+}
+
+export interface FinanceStateDto {
+  worksTotal: number
+  discount: number
+  discountAmount: number
+  total: number
+  paid: number
+  remaining: number
+}
+
+export interface FinanceChangeDto {
+  old: FinanceStateDto
+  new: FinanceStateDto
+}
+
+export interface NotificationChangesDto {
+  mainInfo?: FieldChangeDto[]
+  client?: FieldChangeDto[]
+  map?: MapChangeDto
+  works?: WorksChangeDto
+  payments?: PaymentsChangeDto
+  finance?: FinanceChangeDto
+  media?: MediaChangeDto
 }
 
 // ===== BADGE =====

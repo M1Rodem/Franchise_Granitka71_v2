@@ -82,6 +82,30 @@ namespace Franchisee.Web.Services
                     }
                 }
 
+                if (proposedChanges.TryGetValue("Videos", out var videosChangeObj))
+                {
+                    var videosChange = JsonSerializer.Deserialize<JsonElement>(JsonSerializer.Serialize(videosChangeObj));
+
+                    if (videosChange.TryGetProperty("addedTempIds", out var addedTempIdsElement))
+                    {
+                        var addedTempIds = addedTempIdsElement.Deserialize<List<int>>();
+
+                        if (addedTempIds?.Any() == true)
+                        {
+                            var tempUploads = await _context.TempUploads
+                                .Where(t => addedTempIds.Contains(t.Id) && t.UploaderId == initiatorId)
+                                .ToListAsync();
+
+                            foreach (var tempUpload in tempUploads)
+                            {
+                                tempUpload.ExpiresAt = DateTime.UtcNow.AddDays(14);
+                            }
+
+                            await _context.SaveChangesAsync();
+                        }
+                    }
+                }
+
                 var notification = new Notification
                 {
                     Type = NotificationType.OrderUpdateRequest,
@@ -115,6 +139,31 @@ namespace Franchisee.Web.Services
                     var photosChange = JsonSerializer.Deserialize<JsonElement>(JsonSerializer.Serialize(photosChangeObj));
 
                     if (photosChange.TryGetProperty("addedTempIds", out var addedTempIdsElement))
+                    {
+                        var addedTempIds = addedTempIdsElement.Deserialize<List<int>>();
+
+                        if (addedTempIds?.Any() == true)
+                        {
+                            var tempUploads = await _context.TempUploads
+                                .Where(t => addedTempIds.Contains(t.Id) && t.UploaderId == initiatorId)
+                                .ToListAsync();
+
+                            foreach (var tempUpload in tempUploads)
+                            {
+                                tempUpload.NotificationId = notification.Id;
+                                tempUpload.ExpiresAt = DateTime.UtcNow.AddDays(14);
+                            }
+
+                            await _context.SaveChangesAsync();
+                        }
+                    }
+                }
+
+                if (proposedChanges.TryGetValue("Videos", out videosChangeObj))
+                {
+                    var videosChange = JsonSerializer.Deserialize<JsonElement>(JsonSerializer.Serialize(videosChangeObj));
+
+                    if (videosChange.TryGetProperty("addedTempIds", out var addedTempIdsElement))
                     {
                         var addedTempIds = addedTempIdsElement.Deserialize<List<int>>();
 
@@ -181,6 +230,39 @@ namespace Franchisee.Web.Services
                 _logger.LogError(ex, "Ошибка создания уведомления об изменении заказа {OrderId}", orderId);
                 throw;
             }
+        }
+
+        public async Task<NotificationCountsDto> GetNotificationCountsAsync(int userId)
+        {
+            var now = DateTime.UtcNow;
+            
+            var query = _context.NotificationRecipients
+                .Where(nr => nr.UserId == userId);
+            
+            // Используем Union для одного запроса
+            var counts = await query
+                .GroupBy(nr => 1)
+                .Select(g => new
+                {
+                    All = g.Count(),
+                    Active = g.Count(nr => 
+                        nr.Status == NotificationStatus.Pending ||
+                        (nr.Status == NotificationStatus.Postponed &&
+                        nr.ReturnsAt.HasValue &&
+                        nr.ReturnsAt > now)),
+                    Postponed = g.Count(nr =>
+                        nr.Status == NotificationStatus.Postponed &&
+                        nr.ReturnsAt.HasValue &&
+                        nr.ReturnsAt > now)
+                })
+                .FirstOrDefaultAsync();
+            
+            return new NotificationCountsDto
+            {
+                Active = counts?.Active ?? 0,
+                Postponed = counts?.Postponed ?? 0,
+                All = counts?.All ?? 0
+            };
         }
 
         public async Task<NotificationDetailsDto?> GetNotificationDetailsAsync(

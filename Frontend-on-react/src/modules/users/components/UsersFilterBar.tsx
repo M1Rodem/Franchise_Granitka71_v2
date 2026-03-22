@@ -19,7 +19,7 @@ interface UsersFilterBarProps {
 }
 
 const roleOptions = [
-  { value: "", label: "Все роли" },
+  { value: "", label: "Список ролей" },
   { value: "Manager", label: "Manager" },
   { value: "Admin", label: "Admin" },
   { value: "SuperAdmin", label: "SuperAdmin" },
@@ -98,18 +98,31 @@ export function UsersFilterBar({
           }}
         />
 
-        <AnimatedSelect
-          value={filters.role ?? ""}
-          options={roleOptions}
-          onChange={(value) => {
+        <div style={{ width: 200 }}>
+          <AnimatedSelect
+            value={filters.role ?? ""}
+            options={roleOptions}
+            onChange={(value) => {
 
-            onFiltersChange({
-              role: value as UserRole | "",
-              page: 1,
-            })
+              onFiltersChange({
+                role: value as UserRole | "",
+                page: 1,
+              })
 
-          }}
-        />
+            }}
+          />
+        </div>
+
+        <style>{`
+          .animated-select-wrapper .animated-select-trigger {
+            text-align: center !important;
+            justify-content: center !important;
+          }
+          .animated-select-wrapper .animated-select-value {
+            text-align: center !important;
+            width: 100% !important;
+          }
+        `}</style>
 
         <button
           type="button"

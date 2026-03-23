@@ -22,9 +22,9 @@ namespace Franchisee.Web.Services.Notifications.Dispatch
 
         public override async Task OnConnectedAsync()
         {
+            var userId = GetUserId();
             try
             {
-                var userId = GetUserId();
                 if (userId <= 0)
                 {
                     _logger.LogWarning("SignalR: Не удалось определить userId при подключении");
@@ -32,10 +32,11 @@ namespace Franchisee.Web.Services.Notifications.Dispatch
                     return;
                 }
 
-                var username = Context.User?.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "Anonymous";
-
-                _logger.LogDebug("SignalR: Пользователь {Username} (ID: {UserId}) подключился, ConnectionId: {ConnectionId}",
-                    username, userId, Context.ConnectionId);
+                _logger.LogInformation(
+                    "[SignalR] UserId={UserId} Connected via {ConnectionId} at {Timestamp}",
+                    userId,
+                    Context.ConnectionId,
+                    DateTime.UtcNow);
 
                 await Groups.AddToGroupAsync(Context.ConnectionId, $"user-{userId}");
 
@@ -46,7 +47,7 @@ namespace Franchisee.Web.Services.Notifications.Dispatch
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Ошибка при подключении к SignalR");
+                _logger.LogError(ex, "[SignalR] Error UserId={UserId} Exception={Exception}", userId, ex.Message);
                 throw;
             }
         }
@@ -70,16 +71,21 @@ namespace Franchisee.Web.Services.Notifications.Dispatch
 
         public override async Task OnDisconnectedAsync(Exception? exception)
         {
+            var userId = GetUserId();
+            var reason = exception?.Message ?? "ClientDisconnected";
             try
             {
-                var userId = GetUserId();
-                _logger.LogDebug("SignalR: Пользователь {UserId} отключился", userId);
+                _logger.LogInformation(
+                    "[SignalR] UserId={UserId} Disconnected {ConnectionId} Reason={Reason}",
+                    userId,
+                    Context.ConnectionId,
+                    reason);
 
                 await base.OnDisconnectedAsync(exception);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Ошибка при отключении от SignalR");
+                _logger.LogError(ex, "[SignalR] Error UserId={UserId} Exception={Exception}", userId, ex.Message);
             }
         }
 

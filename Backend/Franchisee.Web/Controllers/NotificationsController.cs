@@ -304,6 +304,7 @@ public class NotificationsController : ControllerBase
         try
         {
             var blockingCount = await _notificationService.GetBlockingNotificationsCount(userId);
+            _logger.LogInformation("[Blocking] OrderId={OrderId} Result={IsBlocked}", 0, blockingCount > 0);
 
             return Ok(new
             {

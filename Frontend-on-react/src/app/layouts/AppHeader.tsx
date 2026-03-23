@@ -35,7 +35,6 @@ export function AppHeader() {
 
   useEffect(() => {
     const unsub = signalRService.subscribeStatus((s) => {
-      console.log('[SignalR DEBUG] header render status:', s)
       setStatus(s)
     })
 

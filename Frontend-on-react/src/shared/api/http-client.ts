@@ -6,9 +6,8 @@ import type { ApiErrorResponse } from '@/shared/types/api'
 import { performRefresh } from '@/shared/lib/silent-refresh.service'
 
 const UNAUTHORIZED_EVENT = 'auth:unauthorized'
-const REFRESH_TIMEOUT = 10000 // 10 секунд таймаут для refresh
+const REFRESH_TIMEOUT = 10000
 
-// Очередь запросов во время refresh
 let isRefreshing = false
 let failedQueue: Array<{
   resolve: (value: unknown) => void
@@ -17,17 +16,17 @@ let failedQueue: Array<{
 }> = []
 
 const processQueue = (error: any = null) => {
-  failedQueue.forEach(prom => {
+  failedQueue.forEach((promise) => {
     if (error) {
-      prom.reject(error)
+      promise.reject(error)
     } else {
-      prom.resolve(httpClient(prom.config))
+      promise.resolve(httpClient(promise.config))
     }
   })
+
   failedQueue = []
 }
 
-// Расширяем интерфейс для кастомных свойств
 interface CustomAxiosRequestConfig extends InternalAxiosRequestConfig {
   _retry?: boolean
   _queueProcessed?: boolean
@@ -39,21 +38,10 @@ export const httpClient = axios.create({
   withCredentials: true,
 })
 
-/*
-=============================
-REQUEST INTERCEPTOR
-=============================
-*/
-
 httpClient.interceptors.request.use(async (config: CustomAxiosRequestConfig) => {
-  console.log('[REQUEST]', {
-    url: config.url
-  })
   const token = useAuthStore.getState().token
 
-  // Не проверяем refresh запросы, чтобы избежать цикла
   if (token && !config.url?.includes('/api/auth/refresh')) {
-    // Импортируем динамически, чтобы избежать циклической зависимости
     const { checkAndRefreshIfNeeded } = await import('@/shared/lib/silent-refresh.service')
     await checkAndRefreshIfNeeded()
   }
@@ -66,12 +54,6 @@ httpClient.interceptors.request.use(async (config: CustomAxiosRequestConfig) => 
   return config
 })
 
-/*
-=============================
-RESPONSE INTERCEPTOR
-=============================
-*/
-
 httpClient.interceptors.response.use(
   (response) => response,
   async (error: AxiosError<ApiErrorResponse>) => {
@@ -81,7 +63,6 @@ httpClient.interceptors.response.use(
       return Promise.reject(error)
     }
 
-    // Предотвращаем повторную обработку одного запроса
     if (originalRequest._queueProcessed) {
       return Promise.reject(error)
     }
@@ -91,26 +72,19 @@ httpClient.interceptors.response.use(
     const isRefreshRequest = originalRequest.url?.includes('/api/auth/refresh')
 
     if (status === 401 && !isLoginRequest && !isRefreshRequest) {
-      console.log('[HTTP 401]', {
-        url: originalRequest.url,
-        isRefreshing,
-        retry: originalRequest._retry
-      })
       if (originalRequest._retry) {
-        // Уже пробовали обновить для этого запроса
         return Promise.reject(error)
       }
 
       if (isRefreshing) {
-        // Ставим в очередь, а не пытаемся обновить снова
         return new Promise((resolve, reject) => {
-          failedQueue.push({ 
-            resolve, 
-            reject, 
+          failedQueue.push({
+            resolve,
+            reject,
             config: {
               ...originalRequest,
-              _queueProcessed: true
-            }
+              _queueProcessed: true,
+            },
           })
         })
       }
@@ -119,7 +93,6 @@ httpClient.interceptors.response.use(
       isRefreshing = true
 
       try {
-        // Добавляем таймаут для refresh
         const refreshPromise = performRefresh()
         const timeoutPromise = new Promise((_, reject) => {
           setTimeout(() => reject(new Error('Refresh timeout')), REFRESH_TIMEOUT)
@@ -127,20 +100,15 @@ httpClient.interceptors.response.use(
 
         await Promise.race([refreshPromise, timeoutPromise])
 
-        // Обновляем токен в оригинальном запросе
         const newToken = useAuthStore.getState().token
         if (!newToken) {
           throw new Error('No token after refresh')
         }
 
         originalRequest.headers.Authorization = `Bearer ${newToken}`
-        
-        // Обрабатываем очередь
         processQueue(null)
-        
-        // Повторяем оригинальный запрос
-        return httpClient(originalRequest)
 
+        return httpClient(originalRequest)
       } catch (refreshError) {
         processQueue(refreshError)
         useAuthStore.getState().clearSession()

@@ -15,7 +15,6 @@ interface Props {
 }
 
 export function MapDiff({ data }: Props) {
-  console.log('[Notifications DEBUG] MapDiff data', data)
 
   const oldMap = data.old
   const newMap = data.new

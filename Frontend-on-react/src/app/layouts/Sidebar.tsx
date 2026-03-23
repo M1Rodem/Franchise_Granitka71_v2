@@ -28,10 +28,6 @@ export function Sidebar() {
   const badgeCount = useNotificationsStore((s) => s.selectTotalCount())
   const badgeColor = useNotificationsStore((s) => s.selectBadgeColor())
 
-  console.log('[Notifications DEBUG] sidebar badge', {
-    badgeCount,
-    badgeColor,
-  })
   /* ---------------------------------- */
   /* MOBILE DETECTION */
   /* ---------------------------------- */
@@ -114,7 +110,13 @@ export function Sidebar() {
             <NavLink
               key={item.id}
               to={item.path}
-              className={`${styles.navItem} ${isActive ? styles.active : ''}`}
+              className={[
+                styles.navItem,
+                isActive ? styles.active : '',
+                item.id === 'notifications' && badgeColor === 'red'
+                  ? styles.glow
+                  : '',
+              ].join(' ')}
               onClick={closeMobileSidebar}
             >
               <AppIcon

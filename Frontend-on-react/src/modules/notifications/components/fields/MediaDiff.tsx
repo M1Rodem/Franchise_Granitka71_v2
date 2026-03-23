@@ -16,10 +16,6 @@ function mapMedia(items: MediaChangeDto['addedMedia']): MediaDto[] {
         ? m.previewUrl
         : `${env.apiBaseUrl}${m.previewUrl}`
 
-      console.log('[Notifications DEBUG] media url', {
-        original: m.previewUrl,
-        final: url,
-      })
 
       return {
         id: m.id,

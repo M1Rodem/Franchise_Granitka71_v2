@@ -67,7 +67,6 @@ export function NotificationsFilter({ value, onChange, counts }: Props) {
               <button
                 key={f.key}
                 onClick={() => {
-                  console.log('[Notifications DEBUG] filter change', f.key)
                   onChange(f.key)
                 }}
                 className={`${styles.btn} ${

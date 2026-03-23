@@ -34,6 +34,8 @@ interface OrderFormContextValue {
   orderId?: number
 }
 
+
+
 const OrderFormContext = createContext<OrderFormContextValue | null>(null)
 
 export function useOrderForm() {
@@ -55,7 +57,7 @@ export function OrderFormProvider({
   const queryClient = useQueryClient()
   const navigate = useNavigate()
   const [isSaving, setIsSaving] = useState(false)
-
+  const [allowNavigation, setAllowNavigation] = useState(false)
   const defaultValuesRef = useRef<OrderFormModel | null>(null)
 
   const [isCommentOpen, setIsCommentOpen] = useState(false)
@@ -103,7 +105,7 @@ export function OrderFormProvider({
   
   const shouldBlock = hasRealChanges && !isSaving
 
-  useUnsavedChangesGuard(shouldBlock)
+  useUnsavedChangesGuard(shouldBlock && !allowNavigation)
 
   const setHeaderSubmitDisabled = useUiStore((s) => s.setHeaderSubmitDisabled)
 
@@ -219,32 +221,31 @@ export function OrderFormProvider({
     mutationFn: ({ id, payload }: { id: number; payload: any }) =>
       ordersApi.updateOrder(id, payload),
 
-    onSuccess: (response) => {  // ← убрали variables
+    onSuccess: (response) => {
+      setAllowNavigation(true)
+
       const isRequestResponse = (response as any)?.success === true && 
                                 (response as any)?.message === "Запрос на изменение отправлен"
-      
+
       if (isRequestResponse) {
-        
         showTempMessage('info', 'Запрос на изменение отправлен. Ожидайте подтверждения.')
-        
         navigate(`/orders/${orderId}`)
         return
       }
-      
-      // Обычное обновление (свой заказ или админ)
+
       const order = response as OrderDetailsDto
-      
+
       queryClient.setQueryData(
         ordersKeys.byId(order.id),
         order
       )
-      
+
       queryClient.invalidateQueries({
         queryKey: ordersKeys.all,
       })
-      
+
       showTempMessage('success', 'Заказ обновлен')
-      
+
       navigate(`/orders/${order.id}`)
     },
     
@@ -261,18 +262,27 @@ export function OrderFormProvider({
   const handleConfirmComment = async (comment?: string) => {
     if (!pendingValues || !orderId) return
 
+    setIsSaving(true)
+
     const payload = mapFormToUpdateDto(pendingValues, dirtyFields)
 
-    await updateMutation.mutateAsync({
-      id: orderId,
-      payload: {
-        ...payload,
-        ChangeComment: comment?.trim() ? comment : undefined,
-      },
-    })
+    try {
+      await updateMutation.mutateAsync({
+        id: orderId,
+        payload: {
+          ...payload,
+          ChangeComment: comment?.trim() ? comment : undefined,
+        },
+      })
 
-    setIsCommentOpen(false)
-    setPendingValues(null)
+      setAllowNavigation(true)
+
+      setIsCommentOpen(false)
+      setPendingValues(null)
+
+    } finally {
+      setIsSaving(false)
+    }
   }
 
   const onSubmit = methods.handleSubmit(

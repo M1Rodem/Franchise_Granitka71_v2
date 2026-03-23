@@ -21,7 +21,7 @@ export function NotificationActions({
 
   const { accept, reject, snooze, isLoading } =
     useNotificationActions({ notificationId })
- 
+
   const canAct =
     status === NotificationStatus.Pending ||
     status === NotificationStatus.Postponed
@@ -37,7 +37,6 @@ export function NotificationActions({
           <button
             className={`${buttonStyles.btn} ${buttonStyles.btnPrimary}`}
             onClick={() => {
-              console.log('[Notifications DEBUG] system close')
               accept()
             }}
             disabled={isLoading}
@@ -59,7 +58,7 @@ export function NotificationActions({
               onClick={() => setModalType('reject')}
               disabled={isLoading}
             >
-              Отклонить
+              Отменить
             </button>
 
             {canPostpone && status === NotificationStatus.Pending && (
@@ -68,7 +67,7 @@ export function NotificationActions({
                 onClick={() => snooze(30)}
                 disabled={isLoading}
               >
-                Отложить (30 мин)
+                Отложить (на 30 минут)
               </button>
             )}
           </>

@@ -219,6 +219,8 @@ namespace Franchisee.Web.Controllers
             Response.Cookies.Delete("refreshToken");
             Response.Cookies.Delete("media_auth");
 
+            _logger.LogInformation("[Token] Revoked UserId={UserId}", userId);
+
             return Ok(new { message = "Logged out" });
         }
 
@@ -233,11 +235,20 @@ namespace Franchisee.Web.Controllers
         {
             var refreshToken = Request.Cookies["refreshToken"] ?? request.RefreshToken;
 
-            _logger.LogInformation("REFRESH COOKIE: {Cookie}", Request.Cookies["refreshToken"]);
-            _logger.LogInformation("REFRESH BODY: {Body}", request?.RefreshToken);
-
             if (string.IsNullOrEmpty(refreshToken))
+            {
+                _logger.LogWarning("[TokenRefresh] UserId={UserId} Failed Reason={Reason}", 0, "RefreshTokenMissing");
                 return Unauthorized();
+            }
+
+            var existingUser = await _managerRepository.GetByRefreshTokenAsync(refreshToken);
+            var existingUserId = existingUser?.Id ?? 0;
+            var oldExpiry = existingUser?.RefreshTokenExpiryTime;
+
+            if (existingUser != null && existingUser.RefreshTokenExpiryTime <= DateTime.UtcNow)
+            {
+                _logger.LogWarning("[Token] Expired UserId={UserId} At={Time}", existingUser.Id, existingUser.RefreshTokenExpiryTime);
+            }
 
             var newRefreshToken = GenerateRefreshToken();
             var newExpiry = DateTime.UtcNow.AddHours(8);
@@ -250,7 +261,16 @@ namespace Franchisee.Web.Controllers
 
 
             if (user == null || user.IsBlocked || user.RefreshTokenExpiryTime <= DateTime.UtcNow)
+            {
+                var reason = user == null
+                    ? "InvalidRefreshToken"
+                    : user.IsBlocked
+                        ? "UserBlocked"
+                        : "RefreshTokenExpired";
+
+                _logger.LogWarning("[TokenRefresh] UserId={UserId} Failed Reason={Reason}", existingUserId, reason);
                 return Unauthorized();
+            }
 
             var key = _config["Jwt:Key"]
                 ?? throw new InvalidOperationException("JWT Key не настроен");
@@ -293,6 +313,12 @@ namespace Franchisee.Web.Controllers
                 newRefreshToken,
                 GetRefreshCookieOptions(user.RefreshTokenExpiryTime.Value)
             );
+
+            _logger.LogInformation(
+                "[TokenRefresh] UserId={UserId} Success OldExpiry={Old} NewExpiry={New}",
+                user.Id,
+                oldExpiry,
+                user.RefreshTokenExpiryTime);
 
             return Ok(new
             {

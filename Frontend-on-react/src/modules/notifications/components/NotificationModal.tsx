@@ -23,7 +23,6 @@ export function NotificationModal({
   onClose,
 }: Props) {
 
-  console.log('[Notifications DEBUG] modal open', notification?.id)
 
   const { data, isLoading } = useQuery({
     queryKey: ['notification-details', notification?.id],
@@ -31,7 +30,6 @@ export function NotificationModal({
       notificationsApi.getNotificationDetails(notification!.id),
     enabled: isOpen && !!notification,
   })
-  console.log('[DEBUG FULL DATA]:', JSON.stringify(data, null, 2))
   const message =
     data?.comment ||
     (data as any)?.message ||

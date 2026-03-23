@@ -15,7 +15,6 @@ interface Props {
 export function DiffAccordion({ changes }: Props) {
   const [openSections, setOpenSections] = useState<Set<string>>(new Set())
 
-  console.log('[Notifications DEBUG] diff render', changes)
 
   const toggle = (key: string) => {
     setOpenSections((prev) => {

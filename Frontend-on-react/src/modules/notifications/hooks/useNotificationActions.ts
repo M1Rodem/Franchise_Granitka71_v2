@@ -1,4 +1,5 @@
 import { useMutation } from '@tanstack/react-query'
+import { useQueryClient } from '@tanstack/react-query'
 import { notificationsApi } from '../api/notifications.api'
 import { useNotificationsStore } from '../store/notifications.store'
 import { NotificationStatus } from '../types/notifications.types'
@@ -10,11 +11,8 @@ interface Params {
 
 export function useNotificationActions({ notificationId }: Params) {
   const store = useNotificationsStore()
-
-  const getCurrent = () =>
-    store.notifications.find((n) => n.id === notificationId)
-
-  // ===== ACCEPT / REJECT =====
+  const queryClient = useQueryClient()
+  const getCurrent = () => store.notifications.find((notification) => notification.id === notificationId)
 
   const resolveMutation = useMutation({
     mutationFn: (payload: {
@@ -27,12 +25,14 @@ export function useNotificationActions({ notificationId }: Params) {
       }),
 
     onMutate: async (payload) => {
-      console.log('[Notifications DEBUG] resolve start', payload)
+      console.info('[NOTIFICATION] Action', {
+        action: payload.status,
+        id: notificationId,
+      })
 
       const prev = getCurrent()
       if (!prev) return
 
-      // optimistic
       store.handleResolved({
         notificationId,
         status:
@@ -45,7 +45,7 @@ export function useNotificationActions({ notificationId }: Params) {
     },
 
     onError: (error, _, context) => {
-      console.log('[Notifications DEBUG] resolve error', error)
+      console.error('[NOTIFICATION] Error', { id: notificationId, error })
 
       if (context?.prev) {
         store.updateNotification(context.prev)
@@ -56,26 +56,27 @@ export function useNotificationActions({ notificationId }: Params) {
 
     onSuccess: () => {
       showTempMessage('success', 'Уведомление обработано')
+      queryClient.invalidateQueries({
+        queryKey: ['notifications', 'blocking'],
+      })
     },
   })
-
-  // ===== SNOOZE =====
 
   const snoozeMutation = useMutation({
     mutationFn: (minutes: number) =>
       notificationsApi.postponeNotification(notificationId, minutes),
 
     onMutate: async (minutes) => {
-      console.log('[Notifications DEBUG] snooze start', { minutes })
+      console.info('[NOTIFICATION] Action', {
+        action: `snooze:${minutes}`,
+        id: notificationId,
+      })
 
       const prev = getCurrent()
       if (!prev) return
 
-      const returnsAt = new Date(
-        Date.now() + minutes * 60 * 1000
-      ).toISOString()
+      const returnsAt = new Date(Date.now() + minutes * 60 * 1000).toISOString()
 
-      // optimistic
       store.handlePostponed({
         notificationId,
         returnsAt,
@@ -85,7 +86,7 @@ export function useNotificationActions({ notificationId }: Params) {
     },
 
     onError: (error, _, context) => {
-      console.log('[Notifications DEBUG] snooze error', error)
+      console.error('[NOTIFICATION] Error', { id: notificationId, error })
 
       if (context?.prev) {
         store.updateNotification(context.prev)
@@ -96,19 +97,16 @@ export function useNotificationActions({ notificationId }: Params) {
 
     onSuccess: () => {
       showTempMessage('success', 'Уведомление отложено')
+      queryClient.invalidateQueries({
+        queryKey: ['notifications', 'blocking'],
+      })
     },
   })
 
   return {
-    accept: (note?: string) =>
-      resolveMutation.mutate({ status: 'Approved', note }),
-
-    reject: (note?: string) =>
-      resolveMutation.mutate({ status: 'Rejected', note }),
-
+    accept: (note?: string) => resolveMutation.mutate({ status: 'Approved', note }),
+    reject: (note?: string) => resolveMutation.mutate({ status: 'Rejected', note }),
     snooze: (minutes: number) => snoozeMutation.mutate(minutes),
-
-    isLoading:
-      resolveMutation.isPending || snoozeMutation.isPending,
+    isLoading: resolveMutation.isPending || snoozeMutation.isPending,
   }
 }

@@ -1,5 +1,6 @@
 import { Suspense, lazy } from 'react';
 import { Navigate, createBrowserRouter, RouterProvider } from 'react-router-dom';
+import { OrderBlockingGuard } from '@/modules/orders/components/OrderBlockingGuard'
 
 import { AppLayout } from '@/app/layouts/AppLayout';
 import { AuthLayout } from '@/app/layouts/AuthLayout';
@@ -58,17 +59,21 @@ const router = createBrowserRouter([
               {
                 path: '/orders/new',
                 element: (
-                  <Suspense fallback={<RouterFallback />}>
-                    <CreateOrderPage />
-                  </Suspense>
+                  <OrderBlockingGuard>
+                    <Suspense fallback={<RouterFallback />}>
+                      <CreateOrderPage />
+                    </Suspense>
+                  </OrderBlockingGuard>
                 ),
               },
               {
                 path: '/orders/:id/edit',
                 element: (
-                  <Suspense fallback={<RouterFallback />}>
-                    <EditOrderPage />
-                  </Suspense>
+                  <OrderBlockingGuard>
+                    <Suspense fallback={<RouterFallback />}>
+                      <EditOrderPage />
+                    </Suspense>
+                  </OrderBlockingGuard>
                 ),
               },
               {

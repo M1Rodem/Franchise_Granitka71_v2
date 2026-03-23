@@ -4,26 +4,21 @@ import type {
   NotificationBadgeDto,
 } from '../types/notifications.types'
 import { NotificationStatus } from '../types/notifications.types'
+import { showTempMessage } from '@/shared/ui/temp-message.service'
 
 interface NotificationsState {
   notifications: NotificationResponseDto[]
   badge: NotificationBadgeDto | null
   loading: boolean
-
-  // actions
   setNotifications: (items: NotificationResponseDto[]) => void
   updateNotification: (item: NotificationResponseDto) => void
   removeNotification: (id: number) => void
   setBadge: (badge: NotificationBadgeDto) => void
   setLoading: (value: boolean) => void
-
-  // selectors
   countByStatus: (status: NotificationStatus) => number
   unreadCount: () => number
   selectTotalCount: () => number
   selectBadgeColor: () => 'red' | 'blue' | 'gray' | 'none'
-
-  // REALTIME
   handleNewNotification: (item: NotificationResponseDto) => void
   handleUpdateNotification: (item: NotificationResponseDto) => void
   handleResolved: (payload: {
@@ -35,7 +30,7 @@ interface NotificationsState {
     returnsAt: string
   }) => void
   handleBadgeUpdate: (badge: NotificationBadgeDto) => void
-  handleInitialState: (badge: NotificationBadgeDto) => void // ИЗМЕНЕНО: number -> NotificationBadgeDto
+  handleInitialState: (badge: NotificationBadgeDto) => void
 }
 
 export const useNotificationsStore = create<NotificationsState>((set, get) => ({
@@ -43,23 +38,21 @@ export const useNotificationsStore = create<NotificationsState>((set, get) => ({
   badge: null,
   loading: false,
 
-  // ===== ACTIONS =====
-
   setNotifications: (items) => {
     set({ notifications: items })
   },
 
   updateNotification: (item) => {
     set((state) => ({
-      notifications: state.notifications.map((n) =>
-        n.id === item.id ? item : n
+      notifications: state.notifications.map((notification) =>
+        notification.id === item.id ? item : notification
       ),
     }))
   },
 
   removeNotification: (id) => {
     set((state) => ({
-      notifications: state.notifications.filter((n) => n.id !== id),
+      notifications: state.notifications.filter((notification) => notification.id !== id),
     }))
   },
 
@@ -71,57 +64,54 @@ export const useNotificationsStore = create<NotificationsState>((set, get) => ({
     set({ loading: value })
   },
 
-  // ===== SELECTORS =====
-
   countByStatus: (status) => {
-    return get().notifications.filter((n) => n.status === status).length
+    return get().notifications.filter((notification) => notification.status === status).length
   },
 
   unreadCount: () => {
     return get().notifications.filter(
-      (n) => n.status === NotificationStatus.Pending
+      (notification) => notification.status === NotificationStatus.Pending
     ).length
   },
 
-  // ===== REALTIME =====
-
   handleNewNotification: (item) => {
-    set((state) => {
-      const exists = state.notifications.some((n) => n.id === item.id)
-      if (exists) return state
+    const exists = get().notifications.some((notification) => notification.id === item.id)
+    if (exists) return
 
-      return {
-        notifications: [item, ...state.notifications],
-      }
-    })
+    console.info('[NOTIFICATION] Received', { id: item.id, type: item.type })
+    showTempMessage('info', 'У вас новое уведомление')
+
+    set((state) => ({
+      notifications: [item, ...state.notifications],
+    }))
   },
 
   handleUpdateNotification: (item) => {
     set((state) => ({
-      notifications: state.notifications.map((n) =>
-        n.id === item.id ? item : n
+      notifications: state.notifications.map((notification) =>
+        notification.id === item.id ? item : notification
       ),
     }))
   },
 
   handleResolved: ({ notificationId, status }) => {
     set((state) => ({
-      notifications: state.notifications.map((n) =>
-        n.id === notificationId ? { ...n, status } : n
+      notifications: state.notifications.map((notification) =>
+        notification.id === notificationId ? { ...notification, status } : notification
       ),
     }))
   },
 
   handlePostponed: ({ notificationId, returnsAt }) => {
     set((state) => ({
-      notifications: state.notifications.map((n) =>
-        n.id === notificationId
+      notifications: state.notifications.map((notification) =>
+        notification.id === notificationId
           ? {
-              ...n,
+              ...notification,
               status: NotificationStatus.Postponed,
               returnsAt,
             }
-          : n
+          : notification
       ),
     }))
   },
@@ -130,12 +120,10 @@ export const useNotificationsStore = create<NotificationsState>((set, get) => ({
     set({ badge })
   },
 
-  handleInitialState: (badge: NotificationBadgeDto) => {
-    console.log('[Store] INITIAL STATE', badge)
-    set({ badge }) // Прямая установка, без fallback
+  handleInitialState: (badge) => {
+    set({ badge })
   },
 
-  // ===== DERIVED SELECTORS =====
   selectTotalCount: () => {
     return get().badge?.count ?? 0
   },

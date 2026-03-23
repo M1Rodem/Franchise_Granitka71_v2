@@ -9,7 +9,7 @@ import type {
   NotificationBadgeDto,
   InitialNotificationStateDto,
   NotificationPostponedDto,
-  NotificationResolvedDto
+  NotificationResolvedDto,
 } from '@/shared/lib/signalr/signalr.types'
 
 export function SignalRProvider({ children }: { children: React.ReactNode }) {
@@ -18,8 +18,6 @@ export function SignalRProvider({ children }: { children: React.ReactNode }) {
 
   const prevTokenRef = useRef<string | null>(null)
   const handlersRegisteredRef = useRef(false)
-
-  // ================= ЕДИНЫЙ ЭФФЕКТ ДЛЯ ВСЕГО =================
 
   useEffect(() => {
     if (!isAuthenticated || !token) {
@@ -31,44 +29,37 @@ export function SignalRProvider({ children }: { children: React.ReactNode }) {
 
     const store = useNotificationsStore.getState()
 
-    // Регистрируем обработчики (делаем это ДО connect)
     if (!handlersRegisteredRef.current) {
-      console.log('[SignalR] Registering all handlers BEFORE connect')
-
-      const handleReceive = (n: NotificationUpdateDto) => {
-        const mapped = mapNotificationToStore(n)
-        store.handleNewNotification(mapped)
+      const handleReceive = (notification: NotificationUpdateDto) => {
+        store.handleNewNotification(mapNotificationToStore(notification))
       }
 
-      const handleUpdate = (n: NotificationUpdateDto) => {
-        const mapped = mapNotificationToStore(n)
-        store.handleUpdateNotification(mapped)
+      const handleUpdate = (notification: NotificationUpdateDto) => {
+        store.handleUpdateNotification(mapNotificationToStore(notification))
       }
 
-      const handleBadge = (b: NotificationBadgeDto) => {
-        store.handleBadgeUpdate(b)
+      const handleBadge = (badge: NotificationBadgeDto) => {
+        store.handleBadgeUpdate(badge)
       }
 
-      const handleInitial = (s: InitialNotificationStateDto) => {
-        console.log('[SignalR] INITIAL STATE RECEIVED (once)', s)
-        store.handleInitialState(s)
+      const handleInitial = (state: InitialNotificationStateDto) => {
+        store.handleInitialState(state)
       }
 
-      const handleResolved = (r: NotificationResolvedDto) => {
+      const handleResolved = (resolution: NotificationResolvedDto) => {
         store.handleResolved({
-          notificationId: r.notificationId,
-          status: r.status,
+          notificationId: resolution.notificationId,
+          status: resolution.status,
         })
       }
 
-      const handlePostponed = (p: NotificationPostponedDto) => {
+      const handlePostponed = (postponement: NotificationPostponedDto) => {
         store.handlePostponed({
-          notificationId: p.notificationId,
-          returnsAt: p.returnsAt,
+          notificationId: postponement.notificationId,
+          returnsAt: postponement.returnsAt,
         })
       }
 
-      // Регистрируем все обработчики
       signalRService.onNotificationReceived(handleReceive)
       signalRService.onNotificationUpdated(handleUpdate)
       signalRService.onNotificationResolved(handleResolved)
@@ -79,11 +70,9 @@ export function SignalRProvider({ children }: { children: React.ReactNode }) {
       handlersRegisteredRef.current = true
     }
 
-    // Затем подключаемся
     if (prevTokenRef.current !== token) {
       prevTokenRef.current = token
-      console.log('[SignalR] Token changed or initial connection')
-      
+
       if (signalRService.isConnected()) {
         signalRService.reconnect()
       } else {

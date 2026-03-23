@@ -223,6 +223,9 @@ namespace Franchisee.Web.Services.Notifications.Core
                     await SendRealTimeNotificationAsync(notification, userId);
                 }
 
+                LogNotificationCreated(notification, initiatorId, recipientUserIds.Count);
+                LogNotificationDispatch(notification.Id, recipientUserIds.Count);
+
                 _logger.LogInformation(
                     "Создано уведомление об изменении заказа. ID: {NotificationId}, Заказ: {OrderId}, Уникальных получателей: {Count}",
                     notification.Id, orderId, recipientUserIds.Count);
@@ -335,6 +338,35 @@ namespace Franchisee.Web.Services.Notifications.Core
             return Task.CompletedTask;
         }
 
+        private void LogNotificationCreated(Notification notification, int initiatorId, int recipientsCount)
+        {
+            _logger.LogInformation(
+                "[Notification] Created Id={Id} Type={Type} OrderId={OrderId} InitiatorId={UserId} Recipients={Count}",
+                notification.Id,
+                notification.Type,
+                notification.OrderId,
+                initiatorId,
+                recipientsCount);
+        }
+
+        private void LogNotificationDispatch(int notificationId, int recipientsCount)
+        {
+            _logger.LogInformation(
+                "[Notification] Dispatch Id={Id} Recipients={Count}",
+                notificationId,
+                recipientsCount);
+        }
+
+        private void LogNotificationUpdated(int notificationId, NotificationStatus status, int userId, string? comment)
+        {
+            _logger.LogInformation(
+                "[Notification] Updated Id={Id} Status={Status} By={UserId} Comment={Comment}",
+                notificationId,
+                status,
+                userId,
+                comment ?? string.Empty);
+        }
+
         public async Task<bool> ResolveNotificationAsync(
             int notificationId,
             int userId,
@@ -412,6 +444,7 @@ namespace Franchisee.Web.Services.Notifications.Core
 
                     // 7. Отправляем SignalR событие об обновлении
                     await SendNotificationResolvedEventAsync(notification, userId, status, note);
+                    LogNotificationUpdated(notificationId, status, userId, note);
 
                     _logger.LogInformation(
                         "Информационное уведомление {NotificationId} убрано пользователем {UserId}. Статус: {OldStatus} -> {NewStatus}",
@@ -520,6 +553,7 @@ namespace Franchisee.Web.Services.Notifications.Core
 
                 // 9. Отправляем SignalR события
                 await SendNotificationResolvedEventAsync(notification, userId, status, note);
+                LogNotificationUpdated(notificationId, status, userId, note);
 
                 _logger.LogInformation(
                         "DEBUG: Проверка условия. Status={Status}, InitiatorId={InitiatorId}, userId={userId}, Условие={Condition}",
@@ -1387,6 +1421,8 @@ namespace Franchisee.Web.Services.Notifications.Core
                 await SendNotificationPostponedEventAsync(notificationId, userId, minutes);
 
                 await SendNotificationCountUpdateAsync(userId);
+                LogNotificationUpdated(notificationId, NotificationStatus.Postponed, userId, reason);
+                _logger.LogInformation("[Notification] Snoozed Id={Id} Until={ReturnsAt}", notificationId, returnsAt);
 
                 _logger.LogInformation(
                     "Уведомление {NotificationId} отложено пользователем {UserId} на {Minutes} минут. " +
@@ -1664,6 +1700,9 @@ namespace Franchisee.Web.Services.Notifications.Core
                     }
                 }
 
+                LogNotificationCreated(systemNotification, initiatorId ?? 0, recipients.Count);
+                LogNotificationDispatch(systemNotification.Id, recipients.Count);
+
                 _logger.LogInformation(
                     "Отправлено {Type} уведомление: {Message}. Получателей: {Count}",
                     isInformationNotification ? "информационное" : "системное",
@@ -1763,6 +1802,9 @@ namespace Franchisee.Web.Services.Notifications.Core
                     }
                 }
 
+                LogNotificationCreated(systemNotification, initiatorId ?? 0, recipients.Count);
+                LogNotificationDispatch(systemNotification.Id, recipients.Count);
+
                 _logger.LogInformation(
                     "Отправлено системное уведомление. ShortMessage: {ShortMessage}, FullMessage: {FullMessage}. Получателей: {Count}",
                     shortMessage, fullMessage, recipients.Count);
@@ -1778,10 +1820,6 @@ namespace Franchisee.Web.Services.Notifications.Core
         {
             try
             {
-                _logger.LogDebug(
-                    "[SIGNALR] Отправка уведомления {NotificationId} в группу user-{UserId}",
-                    notification.Id, userId);
-
                 var dto = new NotificationUpdateDto
                 {
                     Id = notification.Id,
@@ -1798,6 +1836,12 @@ namespace Franchisee.Web.Services.Notifications.Core
                 await _hubContext.Clients.Group($"user-{userId}")
                     .ReceiveNotification(dto);
 
+                _logger.LogInformation(
+                    "[SignalR] Send NotificationId={NotificationId} RecipientId={UserId} ConnectionId={ConnectionId}",
+                    notification.Id,
+                    userId,
+                    $"user-{userId}");
+
                 await LogSignalRSend("ReceiveNotification", dto, userId);
 
                 _logger.LogDebug(
@@ -1806,7 +1850,7 @@ namespace Franchisee.Web.Services.Notifications.Core
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Ошибка отправки уведомления пользователю {UserId}", userId);
+                _logger.LogError(ex, "[SignalR] Error UserId={UserId} Exception={Exception}", userId, ex.Message);
             }
         }
 

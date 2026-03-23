@@ -27,7 +27,7 @@ export function OrderCommentModal({
         <div style={{ display: 'flex', gap: 10 }}>
           <button
             className={`${buttonStyles.btn} ${buttonStyles.btnSuccess}`}
-            onClick={() => onConfirm(comment || undefined)}
+            onClick={() => { onConfirm(comment || undefined) }}
             disabled={isLoading}
           >
             Отправить

@@ -22,14 +22,13 @@ export function useUnsavedChangesGuard(shouldBlock: boolean) {
         blocker.proceed();
       },
 
-      // добавь это в store open config
       onCancel: () => {
         closeModal();
         blocker.reset();
       },
     });
 
-  }, [blocker, openModal, closeModal]);
+  }, [blocker, openModal, closeModal, shouldBlock]);
 
   useEffect(() => {
     if (!shouldBlock) return;

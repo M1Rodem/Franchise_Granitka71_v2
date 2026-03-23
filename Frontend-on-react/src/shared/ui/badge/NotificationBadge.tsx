@@ -13,7 +13,6 @@ export function NotificationBadge({
 }: NotificationBadgeProps) {
   if (count <= 0 || color === 'none') return null
 
-  console.log('[Notifications DEBUG] badge render', { count, color })
 
   return (
     <span

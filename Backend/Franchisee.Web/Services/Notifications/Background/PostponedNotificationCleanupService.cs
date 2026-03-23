@@ -72,6 +72,7 @@ namespace Franchisee.Web.Services.Notifications.Background
 
             logger.LogInformation("Найдено {Count} отложенных уведомлений для возврата в Pending",
                 postponedRecipients.Count);
+            logger.LogInformation("[Notification] Resume Count={Count}", postponedRecipients.Count);
 
             // Группируем по пользователям для отправки SignalR
             var usersToUpdate = new Dictionary<int, List<NotificationRecipient>>();

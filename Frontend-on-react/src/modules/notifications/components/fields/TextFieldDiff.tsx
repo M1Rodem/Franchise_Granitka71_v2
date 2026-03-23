@@ -57,12 +57,6 @@ export function TextFieldDiff({ items }: Props) {
         const diffType = getDiffType(oldValue, newValue)
         const diffLabel = getDiffLabel(diffType)
 
-        console.log('[Notifications DEBUG] field diff', {
-          field: item.field,
-          oldValue,
-          newValue,
-          diffType,
-        })
 
         return (
           <div key={item.field} className={surfaceStyles.diffCard}>

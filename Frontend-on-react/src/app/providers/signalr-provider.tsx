@@ -73,9 +73,7 @@ export function SignalRProvider({ children }: { children: React.ReactNode }) {
     if (prevTokenRef.current !== token) {
       prevTokenRef.current = token
 
-      if (signalRService.isConnected()) {
-        signalRService.reconnect()
-      } else {
+      if (!signalRService.isConnected()) {
         signalRService.connect()
       }
     }

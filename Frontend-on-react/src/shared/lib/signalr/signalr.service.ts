@@ -19,13 +19,27 @@ export type SignalRConnectionStatus =
 class SignalRService {
   private connection: HubConnection | null = null
   private isConnecting = false
-  private registeredHandlers: Map<string, (...args: unknown[]) => void> = new Map()
+  private registeredHandlers: Map<
+    string,
+    {
+      original: (...args: unknown[]) => void
+      wrapped: (...args: unknown[]) => void
+    }
+  > = new Map()
   private connectionStatus: SignalRConnectionStatus = 'connecting'
   private listeners = new Set<(status: SignalRConnectionStatus) => void>()
 
   private setStatus(status: SignalRConnectionStatus) {
     this.connectionStatus = status
     this.listeners.forEach((listener) => listener(status))
+  }
+
+  clearHandlers(): void {
+    console.warn('[SIGNALR][CLEAR_HANDLERS]', {
+      count: this.registeredHandlers.size,
+    })
+
+    this.registeredHandlers.clear()
   }
 
   registerHandler<K extends keyof NotificationEvents>(
@@ -35,16 +49,33 @@ class SignalRService {
     const key = event as string
 
     if (this.registeredHandlers.has(key)) {
+      console.warn('[SIGNALR][SKIP_DUPLICATE_HANDLER]', {
+        event: key,
+      })
       console.warn('[SignalR] handler already registered:', key)
       return
     }
 
-    this.registeredHandlers.set(key, handler as (...args: unknown[]) => void)
+    const wrapped = (...args: unknown[]) => {
+      console.debug('[SIGNALR][EVENT]', {
+        event: key,
+        args,
+      })
+      ;(handler as (...args: unknown[]) => void)(...args)
+    }
+
+    console.info('[SIGNALR][REGISTER]', {
+      event: key,
+      totalHandlers: this.registeredHandlers.size + 1,
+    })
+
+    this.registeredHandlers.set(key, {
+      original: handler as (...args: unknown[]) => void,
+      wrapped,
+    })
 
     if (this.connection) {
-      this.connection.on(key, (...args) => {
-        ;(handler as (...args: unknown[]) => void)(...args)
-      })
+      this.connection.on(key, wrapped)
     }
   }
 
@@ -86,8 +117,13 @@ class SignalRService {
 
   async connect(): Promise<void> {
     if (!this.isAuthenticated()) return
+    await this.waitForValidToken()
     if (this.connection?.state === HubConnectionState.Connected) return
     if (this.isConnecting) return
+    console.info('[SIGNALR][CONNECT_START]', {
+      hasConnection: !!this.connection,
+      state: this.connection?.state ?? null,
+    })
 
     this.setStatus('connecting')
     this.isConnecting = true
@@ -106,10 +142,12 @@ class SignalRService {
       const connection = this.buildConnection()
       this.connection = connection
 
-      this.registeredHandlers.forEach((handler, event) => {
-        connection.on(event, (...args) => {
-          handler(...args)
+      this.registeredHandlers.forEach(({ wrapped }, event) => {
+        console.info('[SIGNALR][BIND_HANDLER]', {
+          event,
+          totalHandlers: this.registeredHandlers.size,
         })
+        connection.on(event, wrapped)
       })
 
       this.registerLifecycleHandlers(connection)
@@ -119,7 +157,7 @@ class SignalRService {
         this.setStatus('connected')
       }
 
-      console.info('[SIGNALR] Connected', {
+      console.info('[SIGNALR][CONNECTED]', {
         userId: useAuthStore.getState().user?.id ?? null,
       })
     } catch (error) {
@@ -145,7 +183,10 @@ class SignalRService {
   }
 
   async reconnect(): Promise<void> {
-    if (this.isConnecting) return
+    if (this.isConnecting) {
+      console.warn('[SIGNALR][RECONNECT_SKIP_ALREADY_CONNECTING]')
+      return
+    }
 
     try {
       await this.disconnect()
@@ -155,18 +196,29 @@ class SignalRService {
     }
   }
 
+  private async waitForValidToken(): Promise<void> {
+    const { checkAndRefreshIfNeeded } = await import('@/shared/lib/silent-refresh.service')
+
+    try {
+      await checkAndRefreshIfNeeded()
+    } catch (e) {
+      console.warn('[SIGNALR][TOKEN_WAIT_FAILED]')
+    }
+  }
+
   private registerLifecycleHandlers(connection: HubConnection) {
     let reconnectAttempt = 0
 
-    connection.onreconnecting((error) => {
+    connection.onreconnecting(async (error) => {
+      await this.waitForValidToken()
       if (this.connection !== connection) return
 
       reconnectAttempt += 1
-      this.setStatus('connecting')
-      console.warn('[SIGNALR] Reconnecting', {
+      console.warn('[SIGNALR][RECONNECTING]', {
         attempt: reconnectAttempt,
         reason: error?.message ?? null,
       })
+      this.setStatus('connecting')
     })
 
     connection.onreconnected((connectionId) => {
@@ -174,15 +226,22 @@ class SignalRService {
 
       reconnectAttempt = 0
       this.setStatus('connected')
-      console.info('[SIGNALR] Reconnected', { connectionId })
+      console.info('[SIGNALR][RECONNECTED]', {
+        connectionId,
+      })
+      console.info('[SIGNALR][CONNECTED]', {
+        userId: useAuthStore.getState().user?.id ?? null,
+        handlers: this.registeredHandlers.size,
+      })
     })
 
     connection.onclose((error) => {
       if (this.connection !== connection) return
 
       this.setStatus('disconnected')
-      console.warn('[SIGNALR] Disconnected', {
+      console.warn('[SIGNALR][DISCONNECTED]', {
         reason: error?.message ?? null,
+        handlers: this.registeredHandlers.size,
       })
     })
   }
@@ -191,14 +250,21 @@ class SignalRService {
     event: K,
     handler: NotificationEvents[K]
   ): void {
-    if (!this.connection) return
-
-    this.connection.off(event, handler as (...args: unknown[]) => void)
-
     const key = event as string
-    if (this.registeredHandlers.has(key) && this.registeredHandlers.get(key) === handler) {
-      this.registeredHandlers.delete(key)
+    const record = this.registeredHandlers.get(key)
+
+    if (!record) return
+
+    if (record.original !== handler) return
+
+    if (this.connection) {
+      this.connection.off(key, record.wrapped)
     }
+    console.info('[SIGNALR][UNSUBSCRIBE]', {
+      event: key,
+      remaining: this.registeredHandlers.size - 1,
+    })
+    this.registeredHandlers.delete(key)
   }
 
   async invoke<T = void>(

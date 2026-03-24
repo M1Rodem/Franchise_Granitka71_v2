@@ -72,6 +72,9 @@ httpClient.interceptors.response.use(
     const isRefreshRequest = originalRequest.url?.includes('/api/auth/refresh')
 
     if (status === 401 && !isLoginRequest && !isRefreshRequest) {
+      console.warn('[HTTP][401_INTERCEPTED]', {
+        url: originalRequest.url,
+      })
       if (originalRequest._retry) {
         return Promise.reject(error)
       }
@@ -93,6 +96,7 @@ httpClient.interceptors.response.use(
       isRefreshing = true
 
       try {
+        console.info('[HTTP][REFRESH_START_FROM_INTERCEPTOR]')
         const refreshPromise = performRefresh()
         const timeoutPromise = new Promise((_, reject) => {
           setTimeout(() => reject(new Error('Refresh timeout')), REFRESH_TIMEOUT)
@@ -107,7 +111,7 @@ httpClient.interceptors.response.use(
 
         originalRequest.headers.Authorization = `Bearer ${newToken}`
         processQueue(null)
-
+        console.info('[HTTP][REFRESH_SUCCESS_FROM_INTERCEPTOR]')
         return httpClient(originalRequest)
       } catch (refreshError) {
         processQueue(refreshError)

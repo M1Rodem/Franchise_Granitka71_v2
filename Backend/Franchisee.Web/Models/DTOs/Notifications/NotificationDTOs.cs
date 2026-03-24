@@ -38,6 +38,11 @@ namespace Franchisee.Web.Models.DTOs.Notifications
         public bool IsActionRequired => Status == NotificationStatus.Pending;
         public bool CanPostpone => Status == NotificationStatus.Pending;
         public bool IsImpactForCurrentUser { get; set; }
+
+        /// <summary>
+        /// Время последнего изменения уведомления
+        /// </summary>
+        public DateTime UpdatedAt { get; set; }
     }
 
     public class NotificationCountsDto
@@ -87,6 +92,10 @@ namespace Franchisee.Web.Models.DTOs.Notifications
         public string? OrderNumber { get; set; }
         public string InitiatorName { get; set; } = string.Empty;
         public DateTime? ReturnsAt { get; set; }
+        /// <summary>
+        /// Время последнего изменения уведомления
+        /// </summary>
+        public DateTime UpdatedAt { get; set; }
     }
 
     public class NotificationResolvedDto

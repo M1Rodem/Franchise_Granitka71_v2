@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useQuery } from '@tanstack/react-query'
 import { notificationsApi } from '../api/notifications.api'
 import type {
   NotificationFilter,
@@ -15,14 +15,19 @@ interface Params {
 }
 
 export function useNotifications({ filter, page, pageSize }: Params) {
-  const queryClient = useQueryClient()
-  const storeNotifications = useNotificationsStore((state) => state.notifications)
+  const storeNotifications = useNotificationsStore((s) => s.notifications)
+  const setNotifications = useNotificationsStore((s) => s.setNotifications)
 
   const query = useQuery<PagingResponse<NotificationResponseDto>>({
     queryKey: ['notifications', filter, page, pageSize],
-    queryFn: async () => notificationsApi.getNotifications(filter, page, pageSize),
+    queryFn: () => notificationsApi.getNotifications(filter, page, pageSize),
     placeholderData: (prev) => prev,
   })
+
+  useEffect(() => {
+    if (!query.data) return
+    setNotifications(query.data.items)
+  }, [query.data, setNotifications])
 
   const countsQuery = useQuery({
     queryKey: ['notifications-counts'],
@@ -30,13 +35,8 @@ export function useNotifications({ filter, page, pageSize }: Params) {
     staleTime: 30 * 1000,
   })
 
-  useEffect(() => {
-    if (storeNotifications.length === 0) return
-    queryClient.invalidateQueries({ queryKey: ['notifications'] })
-  }, [storeNotifications.length, queryClient])
-
   return {
-    items: query.data?.items ?? [],
+    items: storeNotifications,
     totalPages: query.data?.totalPages ?? 0,
     total: query.data?.totalCount ?? 0,
     isLoading: query.isLoading,

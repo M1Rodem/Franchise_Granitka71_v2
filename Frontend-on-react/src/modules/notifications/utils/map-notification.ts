@@ -19,8 +19,8 @@ export function mapNotificationToStore(
     returnsAt: dto.returnsAt ?? null,
     resolutionNote: null,
 
-    changes: null,
-
+    changes: {} as NotificationResponseDto['changes'],
+    updatedAt: dto.updatedAt,
     recipientId: 0,
     userId: 0,
     userName: dto.initiatorName,

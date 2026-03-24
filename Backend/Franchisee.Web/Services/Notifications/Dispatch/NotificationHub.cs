@@ -57,9 +57,9 @@ namespace Franchisee.Web.Services.Notifications.Dispatch
             try
             {
                 var badge = await _notificationService.GetNotificationBadgeAsync(userId);
-
+                
                 await Clients.Caller.InitialNotificationState(badge);
-
+                
                 _logger.LogDebug("SignalR: Отправлено начальное состояние пользователю {UserId}: Count={Count}, Color={Color}",
                     userId, badge.Count, badge.Color);
             }

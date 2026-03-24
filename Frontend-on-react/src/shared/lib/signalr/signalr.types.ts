@@ -28,6 +28,7 @@ export interface NotificationUpdateDto {
   title: string
   message: string
   createdAt: string
+  updatedAt: string
   orderId?: number | null
   orderNumber?: string | null
   initiatorName: string

@@ -6,8 +6,36 @@ import type {
 import { NotificationStatus } from '../types/notifications.types'
 import { showTempMessage } from '@/shared/ui/temp-message.service'
 
+function classify(
+  notification: NotificationResponseDto
+): 'active' | 'postponed' | 'history' {
+  switch (notification.status) {
+    case NotificationStatus.Pending:
+      return 'active'
+    case NotificationStatus.Postponed:
+      return 'postponed'
+    default:
+      return 'history'
+  }
+}
+
+function rebuildFlat(state: {
+  active: NotificationResponseDto[]
+  postponed: NotificationResponseDto[]
+  history: NotificationResponseDto[]
+}) {
+  return [...state.active, ...state.postponed, ...state.history].sort(
+    (a, b) =>
+      new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+  )
+}
+
 interface NotificationsState {
-  notifications: NotificationResponseDto[]
+  active: NotificationResponseDto[]
+  postponed: NotificationResponseDto[]
+  history: NotificationResponseDto[]
+
+  notifications: NotificationResponseDto[] 
   badge: NotificationBadgeDto | null
   loading: boolean
   setNotifications: (items: NotificationResponseDto[]) => void
@@ -19,6 +47,7 @@ interface NotificationsState {
   unreadCount: () => number
   selectTotalCount: () => number
   selectBadgeColor: () => 'red' | 'blue' | 'gray' | 'none'
+  upsertNotification: (item: NotificationResponseDto) => void
   handleNewNotification: (item: NotificationResponseDto) => void
   handleUpdateNotification: (item: NotificationResponseDto) => void
   handleResolved: (payload: {
@@ -33,27 +62,82 @@ interface NotificationsState {
   handleInitialState: (badge: NotificationBadgeDto) => void
 }
 
+
 export const useNotificationsStore = create<NotificationsState>((set, get) => ({
+  active: [],
+  postponed: [],
+  history: [],
+
   notifications: [],
   badge: null,
   loading: false,
 
   setNotifications: (items) => {
-    set({ notifications: items })
+    const active: NotificationResponseDto[] = []
+    const postponed: NotificationResponseDto[] = []
+    const history: NotificationResponseDto[] = []
+
+    for (const item of items) {
+      const bucket = classify(item)
+      if (bucket === 'active') active.push(item)
+      else if (bucket === 'postponed') postponed.push(item)
+      else history.push(item)
+    }
+
+    set(() => ({
+      active,
+      postponed,
+      history,
+      notifications: rebuildFlat({ active, postponed, history }),
+    }))
+  },
+
+  upsertNotification: (item: NotificationResponseDto) => {
+    set((state) => {
+      const existing = state.notifications.find((n) => n.id === item.id)
+
+      // защита от устаревших данных
+      if (
+        existing &&
+        new Date(existing.updatedAt).getTime() >=
+          new Date(item.updatedAt).getTime()
+      ) {
+        return state
+      }
+
+      const next = {
+        active: state.active.filter((n) => n.id !== item.id),
+        postponed: state.postponed.filter((n) => n.id !== item.id),
+        history: state.history.filter((n) => n.id !== item.id),
+      }
+
+      const bucket = classify(item)
+      next[bucket].unshift(item)
+
+      return {
+        ...next,
+        notifications: rebuildFlat(next),
+      }
+    })
   },
 
   updateNotification: (item) => {
-    set((state) => ({
-      notifications: state.notifications.map((notification) =>
-        notification.id === item.id ? item : notification
-      ),
-    }))
+    get().upsertNotification(item)
   },
 
   removeNotification: (id) => {
-    set((state) => ({
-      notifications: state.notifications.filter((notification) => notification.id !== id),
-    }))
+    set((state) => {
+      const next = {
+        active: state.active.filter((n) => n.id !== id),
+        postponed: state.postponed.filter((n) => n.id !== id),
+        history: state.history.filter((n) => n.id !== id),
+      }
+
+      return {
+        ...next,
+        notifications: rebuildFlat(next),
+      }
+    })
   },
 
   setBadge: (badge) => {
@@ -75,45 +159,38 @@ export const useNotificationsStore = create<NotificationsState>((set, get) => ({
   },
 
   handleNewNotification: (item) => {
-    const exists = get().notifications.some((notification) => notification.id === item.id)
-    if (exists) return
+    console.info('[NOTIFICATION] Received', { id: item.id })
 
-    console.info('[NOTIFICATION] Received', { id: item.id, type: item.type })
     showTempMessage('info', 'У вас новое уведомление')
 
-    set((state) => ({
-      notifications: [item, ...state.notifications],
-    }))
+    get().upsertNotification(item)
   },
 
   handleUpdateNotification: (item) => {
-    set((state) => ({
-      notifications: state.notifications.map((notification) =>
-        notification.id === item.id ? item : notification
-      ),
-    }))
+    get().upsertNotification(item)
   },
 
-  handleResolved: ({ notificationId, status }) => {
-    set((state) => ({
-      notifications: state.notifications.map((notification) =>
-        notification.id === notificationId ? { ...notification, status } : notification
-      ),
-    }))
+  handleResolved: (payload) => {
+    const existing = get().notifications.find((n) => n.id === payload.notificationId)
+    if (!existing) return
+
+    get().upsertNotification({
+      ...existing,
+      status: payload.status,
+      updatedAt: new Date().toISOString(),
+    })
   },
 
   handlePostponed: ({ notificationId, returnsAt }) => {
-    set((state) => ({
-      notifications: state.notifications.map((notification) =>
-        notification.id === notificationId
-          ? {
-              ...notification,
-              status: NotificationStatus.Postponed,
-              returnsAt,
-            }
-          : notification
-      ),
-    }))
+    const existing = get().notifications.find((n) => n.id === notificationId)
+    if (!existing) return
+
+    get().upsertNotification({
+      ...existing,
+      status: NotificationStatus.Postponed,
+      returnsAt,
+      updatedAt: new Date().toISOString(),
+    })
   },
 
   handleBadgeUpdate: (badge) => {

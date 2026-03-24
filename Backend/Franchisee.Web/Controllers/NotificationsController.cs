@@ -125,32 +125,25 @@ public class NotificationsController : ControllerBase
 
         try
         {
-            // Конвертируем строку в enum
-            NotificationStatus status;
-            try
-            {
-                status = request.GetStatus();
-            }
-            catch (ArgumentException ex)
-            {
-                return BadRequest(new { error = ex.Message });
-            }
+            var status = request.GetStatus();
 
-            var success = await _notificationService.ResolveNotificationAsync(
+            // Используем новый метод, который возвращает уведомление
+            var updatedNotification = await _notificationService.ResolveNotificationWithResultAsync(
                 notificationId: id,
                 userId: userId,
                 status: status,
                 note: request.Note
             );
 
-            if (!success)
+            if (updatedNotification == null)
                 return BadRequest("Не удалось обработать уведомление");
 
             return Ok(new
             {
                 success = true,
                 message = "Уведомление обработано",
-                notificationId = id
+                notificationId = id,
+                notification = updatedNotification 
             });
         }
         catch (Exception ex)
@@ -172,14 +165,15 @@ public class NotificationsController : ControllerBase
             if (!success)
                 return BadRequest("Не удалось отложить уведомление");
 
-            await _notificationService.SendNotificationCountUpdateAsync(userId);
-            
+            var updatedNotification = await _notificationService.GetNotificationByIdAsync(id, userId);
+
             return Ok(new
             {
                 success = true,
                 message = $"Уведомление отложено на {minutes} минут",
                 notificationId = id,
-                minutes = minutes
+                minutes = minutes,
+                notification = updatedNotification  // ← НОВОЕ ПОЛЕ
             });
         }
         catch (Exception ex)
@@ -188,7 +182,7 @@ public class NotificationsController : ControllerBase
             return StatusCode(500, "Ошибка откладывания уведомления");
         }
     }
-
+    
     private int GetCurrentUserId()
     {
         var userIdStr = User.FindFirst(ClaimTypes.Name)?.Value;

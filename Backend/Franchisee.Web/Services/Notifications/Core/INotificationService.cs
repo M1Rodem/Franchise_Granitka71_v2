@@ -46,7 +46,13 @@ namespace Franchisee.Web.Services.Notifications.Core
             string? orderNumber = null,
             int? initiatorId = null,
             params int[] userIds);
+        Task<NotificationResponseDto?> ResolveNotificationWithResultAsync(
+            int notificationId,
+            int userId,
+            NotificationStatus status,
+            string? note = null);
         Task<NotificationBadgeDto> GetNotificationBadgeAsync(int userId);
         Task<NotificationCountsDto> GetNotificationCountsAsync(int userId);
+        Task<NotificationResponseDto?> GetNotificationByIdAsync(int notificationId, int userId);
     }
 }

@@ -222,6 +222,11 @@ namespace Franchisee.Web.Services.Notifications.Core
                 {
                     await SendRealTimeNotificationAsync(notification, userId);
                 }
+                
+                foreach (var userId in recipientUserIds)
+                {
+                    await SendNotificationCountUpdateAsync(userId);
+                }
 
                 LogNotificationCreated(notification, initiatorId, recipientUserIds.Count);
                 LogNotificationDispatch(notification.Id, recipientUserIds.Count);
@@ -431,6 +436,7 @@ namespace Franchisee.Web.Services.Notifications.Core
                     infoRecipient.Status = status; // ИСПРАВЛЕНО
                     infoRecipient.ResolvedAt = DateTime.UtcNow; // ИСПРАВЛЕНО
                     infoRecipient.ResolutionNote = note; // ИСПРАВЛЕНО
+                    notification.UpdatedAt = DateTime.UtcNow;
 
                     // 5. Обновляем глобальный статус уведомления
                     notification.Status = status;
@@ -500,6 +506,7 @@ namespace Franchisee.Web.Services.Notifications.Core
                 {
                     notification.Status = status;
                     notification.ResolvedAt = DateTime.UtcNow;
+                    notification.UpdatedAt = DateTime.UtcNow;
 
                     // 7. Если одобрено - применяем изменения
                     if (status == NotificationStatus.Approved &&
@@ -538,7 +545,7 @@ namespace Franchisee.Web.Services.Notifications.Core
                         }
                     }
 
-                    foreach (var recipientUserId in recipientUserIds)
+                     foreach (var recipientUserId in recipientUserIds)
                     {
                         await SendNotificationCountUpdateAsync(recipientUserId);
                     }
@@ -554,6 +561,8 @@ namespace Franchisee.Web.Services.Notifications.Core
                 // 9. Отправляем SignalR события
                 await SendNotificationResolvedEventAsync(notification, userId, status, note);
                 LogNotificationUpdated(notificationId, status, userId, note);
+                
+                await SendNotificationCountUpdateAsync(userId);
 
                 _logger.LogInformation(
                         "DEBUG: Проверка условия. Status={Status}, InitiatorId={InitiatorId}, userId={userId}, Условие={Condition}",
@@ -615,6 +624,32 @@ namespace Franchisee.Web.Services.Notifications.Core
             }
         }
 
+        public async Task<NotificationResponseDto?> ResolveNotificationWithResultAsync(
+            int notificationId,
+            int userId,
+            NotificationStatus status,
+            string? note = null)
+        {
+            // Вызываем существующий метод
+            var success = await ResolveNotificationAsync(notificationId, userId, status, note);
+            
+            if (!success) return null;
+            
+            // Получаем обновленное уведомление для этого пользователя
+            var recipient = await _context.NotificationRecipients
+                .Include(r => r.Notification)
+                    .ThenInclude(n => n.Initiator)
+                .Include(r => r.Notification)
+                    .ThenInclude(n => n.Order)
+                .Include(r => r.User)
+                .FirstOrDefaultAsync(r => r.NotificationId == notificationId && r.UserId == userId);
+            
+            if (recipient == null) return null;
+            
+            // Маппим в DTO
+            return MapToDto(recipient);
+        }
+
         public async Task<object> GetNotificationSummary(int userId)
         {
             var now = DateTime.UtcNow;
@@ -658,6 +693,7 @@ namespace Franchisee.Web.Services.Notifications.Core
                         Title = notification.Title,
                         Message = notification.Message,
                         CreatedAt = notification.CreatedAt,
+                        UpdatedAt = notification.UpdatedAt,
                         OrderId = notification.OrderId,
                         OrderNumber = notification.Order?.OrderNumber ?? "Без номера",
                         InitiatorName = notification.Initiator?.FullName ?? "Неизвестно",
@@ -1396,6 +1432,7 @@ namespace Franchisee.Web.Services.Notifications.Core
                 recipient.ResolvedAt = DateTime.UtcNow;
                 recipient.ReturnsAt = returnsAt;
                 recipient.ResolutionNote = reason ?? $"Отложено на {minutes} минут";
+                recipient.Notification.UpdatedAt = DateTime.UtcNow;
 
                 // Если все получатели отложили - обновляем глобальный статус
                 var allRecipients = await _context.NotificationRecipients
@@ -1411,6 +1448,12 @@ namespace Franchisee.Web.Services.Notifications.Core
                     var notification = recipient.Notification;
                     notification.Status = NotificationStatus.Postponed;
                     notification.ReturnsAt = returnsAt;
+
+                    var allRecipientIds = allRecipients.Select(r => r.UserId).Distinct();
+                    foreach (var id in allRecipientIds)
+                    {
+                        await SendNotificationCountUpdateAsync(id);
+                    }
                 }
 
                 await _context.SaveChangesAsync();
@@ -1439,6 +1482,18 @@ namespace Franchisee.Web.Services.Notifications.Core
             }
         }
 
+        public async Task<NotificationResponseDto?> GetNotificationByIdAsync(int notificationId, int userId)
+        {
+            var recipient = await _context.NotificationRecipients
+                .Include(r => r.Notification)
+                    .ThenInclude(n => n.Initiator)
+                .Include(r => r.Notification)
+                    .ThenInclude(n => n.Order)
+                .Include(r => r.User)
+                .FirstOrDefaultAsync(r => r.NotificationId == notificationId && r.UserId == userId);
+            
+            return recipient != null ? MapToDto(recipient) : null;
+        }
 
         public async Task<IEnumerable<NotificationResponseDto>> GetUserNotificationsAsync(
             int userId,
@@ -1827,6 +1882,7 @@ namespace Franchisee.Web.Services.Notifications.Core
                     Status = notification.Status,
                     Message = notification.Message,
                     CreatedAt = notification.CreatedAt,
+                    UpdatedAt = notification.UpdatedAt,
                     OrderId = notification.OrderId,
                     OrderNumber = notification.Order?.OrderNumber ?? "Без номера",
                     InitiatorName = notification.Initiator?.FullName ?? "Неизвестно",
@@ -2046,6 +2102,7 @@ namespace Franchisee.Web.Services.Notifications.Core
                 Title = notification.Title,
                 Message = notification.Message,
                 CreatedAt = notification.CreatedAt,
+                UpdatedAt = notification.UpdatedAt,
                 ResolvedAt = recipient.ResolvedAt,
                 ReturnsAt = recipient.ReturnsAt,
                 ResolutionNote = recipient.ResolutionNote,

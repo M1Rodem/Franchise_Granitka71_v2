@@ -64,6 +64,7 @@ export function NotificationModal({
               status={notification.status}
               canPostpone={notification.canPostpone}
               type={notification.type}
+              onDone={onClose}
             />
           </div>
         )

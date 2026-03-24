@@ -9,6 +9,7 @@ interface Props {
   status: NotificationStatus
   canPostpone?: boolean
   type: number
+  onDone?: () => void
 }
 
 export function NotificationActions({
@@ -16,6 +17,7 @@ export function NotificationActions({
   status,
   canPostpone,
   type,
+  onDone,
 }: Props) {
   const [modalType, setModalType] = useState<'accept' | 'reject' | null>(null)
 
@@ -84,6 +86,7 @@ export function NotificationActions({
           if (modalType === 'reject') reject(note)
 
           setModalType(null)
+          onDone?.()
         }}
       />
     </>

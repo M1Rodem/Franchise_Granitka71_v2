@@ -32,7 +32,10 @@ export const notificationsApi = {
   async resolveNotification(
     id: number,
     payload: ResolveNotificationRequest
-  ): Promise<boolean> {
+  ): Promise<{
+  success: boolean
+  notification: NotificationResponseDto
+  }> {
     const response = await httpClient.post(
       `/api/Notifications/${id}/resolve`,
       payload
@@ -43,7 +46,10 @@ export const notificationsApi = {
   async postponeNotification(
     id: number,
     minutes: number
-  ): Promise<{ success: boolean; message: string; notificationId: number; minutes: number }> {
+  ): Promise<{
+    success: boolean
+    notification: NotificationResponseDto
+  }> {
     const response = await httpClient.post(
       `/api/Notifications/${id}/postpone`,
       null,

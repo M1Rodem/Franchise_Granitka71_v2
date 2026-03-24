@@ -1,5 +1,4 @@
 import { useMutation } from '@tanstack/react-query'
-import { useQueryClient } from '@tanstack/react-query'
 import { notificationsApi } from '../api/notifications.api'
 import { useNotificationsStore } from '../store/notifications.store'
 import { NotificationStatus } from '../types/notifications.types'
@@ -11,8 +10,11 @@ interface Params {
 
 export function useNotificationActions({ notificationId }: Params) {
   const store = useNotificationsStore()
-  const queryClient = useQueryClient()
-  const getCurrent = () => store.notifications.find((notification) => notification.id === notificationId)
+  const getStore = () => useNotificationsStore.getState()
+  const getCurrent = () =>
+    useNotificationsStore.getState().notifications.find(
+      (n) => n.id === notificationId
+    )
 
   const resolveMutation = useMutation({
     mutationFn: (payload: {
@@ -33,12 +35,13 @@ export function useNotificationActions({ notificationId }: Params) {
       const prev = getCurrent()
       if (!prev) return
 
-      store.handleResolved({
-        notificationId,
+      getStore().upsertNotification({
+        ...prev,
         status:
           payload.status === 'Approved'
             ? NotificationStatus.Approved
             : NotificationStatus.Rejected,
+        updatedAt: new Date(Date.now() + 1).toISOString(),
       })
 
       return { prev }
@@ -54,11 +57,16 @@ export function useNotificationActions({ notificationId }: Params) {
       showTempMessage('error', 'Ошибка обработки уведомления')
     },
 
-    onSuccess: () => {
+    onSuccess: (response) => {
       showTempMessage('success', 'Уведомление обработано')
-      queryClient.invalidateQueries({
-        queryKey: ['notifications', 'blocking'],
-      })
+
+      const store = useNotificationsStore.getState()
+
+      if (response?.notification) {
+        store.upsertNotification(response.notification)
+      }
+
+      store.removeNotification(notificationId)
     },
   })
 
@@ -72,14 +80,18 @@ export function useNotificationActions({ notificationId }: Params) {
         id: notificationId,
       })
 
-      const prev = getCurrent()
+      const prev = getStore().notifications.find(
+        (n) => n.id === notificationId
+      )
       if (!prev) return
 
       const returnsAt = new Date(Date.now() + minutes * 60 * 1000).toISOString()
 
-      store.handlePostponed({
-        notificationId,
+      getStore().upsertNotification({
+        ...prev,
+        status: NotificationStatus.Postponed,
         returnsAt,
+        updatedAt: new Date(Date.now() + 1).toISOString(),
       })
 
       return { prev }
@@ -95,11 +107,14 @@ export function useNotificationActions({ notificationId }: Params) {
       showTempMessage('error', 'Ошибка отложения уведомления')
     },
 
-    onSuccess: () => {
+    onSuccess: (response) => {
       showTempMessage('success', 'Уведомление отложено')
-      queryClient.invalidateQueries({
-        queryKey: ['notifications', 'blocking'],
-      })
+
+      if (response?.notification) {
+        useNotificationsStore
+          .getState()
+          .upsertNotification(response.notification)
+      }
     },
   })
 

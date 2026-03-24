@@ -27,37 +27,47 @@ export function SignalRProvider({ children }: { children: React.ReactNode }) {
       return
     }
 
-    const store = useNotificationsStore.getState()
-
     if (!handlersRegisteredRef.current) {
       const handleReceive = (notification: NotificationUpdateDto) => {
-        store.handleNewNotification(mapNotificationToStore(notification))
+        useNotificationsStore
+          .getState()
+          .handleNewNotification(mapNotificationToStore(notification))
       }
 
       const handleUpdate = (notification: NotificationUpdateDto) => {
-        store.handleUpdateNotification(mapNotificationToStore(notification))
+        useNotificationsStore
+          .getState()
+          .handleUpdateNotification(mapNotificationToStore(notification))
       }
 
       const handleBadge = (badge: NotificationBadgeDto) => {
-        store.handleBadgeUpdate(badge)
+        useNotificationsStore
+          .getState()
+          .handleBadgeUpdate(badge)
       }
 
       const handleInitial = (state: InitialNotificationStateDto) => {
-        store.handleInitialState(state)
+        useNotificationsStore
+          .getState()
+          .handleInitialState(state)
       }
 
       const handleResolved = (resolution: NotificationResolvedDto) => {
-        store.handleResolved({
-          notificationId: resolution.notificationId,
-          status: resolution.status,
-        })
+        useNotificationsStore
+          .getState()
+          .handleResolved({
+            notificationId: resolution.notificationId,
+            status: resolution.status,
+          })
       }
 
       const handlePostponed = (postponement: NotificationPostponedDto) => {
-        store.handlePostponed({
-          notificationId: postponement.notificationId,
-          returnsAt: postponement.returnsAt,
-        })
+        useNotificationsStore
+          .getState()
+          .handlePostponed({
+            notificationId: postponement.notificationId,
+            returnsAt: postponement.returnsAt,
+          })
       }
 
       signalRService.onNotificationReceived(handleReceive)

@@ -32,6 +32,7 @@ export interface NotificationResponseDto {
   message: string
   createdAt: string
   resolvedAt?: string | null
+  updatedAt: string
   returnsAt?: string | null
   resolutionNote?: string | null
   changes: NotificationChangesDto

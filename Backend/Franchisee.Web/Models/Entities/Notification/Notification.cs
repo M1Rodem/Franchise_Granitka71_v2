@@ -21,7 +21,6 @@ namespace Franchisee.Web.Models.Entities.Notification
         Postponed = 3
     }
 
-    // Notification.cs
     public class Notification
     {
         [Key]
@@ -54,6 +53,12 @@ namespace Franchisee.Web.Models.Entities.Notification
 
         public DateTime? ResolvedAt { get; set; }
         public DateTime? ReturnsAt { get; set; }
+
+        /// <summary>
+        /// Время последнего изменения уведомления
+        /// Используется для разрешения конфликтов при out-of-order событиях
+        /// </summary>
+        public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 
         // Навигационные свойства
         [ForeignKey("InitiatorId")]

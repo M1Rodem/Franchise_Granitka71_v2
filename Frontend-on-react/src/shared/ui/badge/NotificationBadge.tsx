@@ -1,26 +1,15 @@
 import styles from './notification-badge.module.css'
+import { useNotificationsStore } from '@/modules/notifications/store/notifications.store'
 
-type BadgeColor = 'red' | 'blue' | 'gray' | 'none'
 
-interface NotificationBadgeProps {
-  count: number
-  color: BadgeColor
-}
+export function NotificationBadge() {
+  const count = useNotificationsStore((s) => s.badge?.count ?? 0)
+  const color = useNotificationsStore((s) => s.badge?.color ?? 'none')
 
-export function NotificationBadge({
-  count,
-  color,
-}: NotificationBadgeProps) {
-  if (count <= 0 || color === 'none') return null
-
+  if (!count || color === 'none') return null
 
   return (
-    <span
-      className={[
-        styles.badge,
-        styles[color],
-      ].join(' ')}
-    >
+    <span className={[styles.badge, styles[color]].join(' ')}>
       {count > 99 ? '99+' : count}
     </span>
   )

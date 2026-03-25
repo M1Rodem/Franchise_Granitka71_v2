@@ -149,6 +149,7 @@ class SignalRService {
         })
         connection.on(event, wrapped)
       })
+      
 
       this.registerLifecycleHandlers(connection)
       await connection.start()
@@ -280,11 +281,8 @@ class SignalRService {
     }
   }
 
-  onInitialState(handler: NotificationEvents['initialnotificationstate']) {
-    this.registerHandler('initialnotificationstate', handler)
-    return () => {
-      this.unsubscribe('initialnotificationstate', handler)
-    }
+  onNotificationCountsUpdated(handler: NotificationEvents['updatenotificationcounts']) {
+    this.registerHandler('updatenotificationcounts', handler)
   }
 
   onNotificationReceived(handler: NotificationEvents['receivenotification']) {
@@ -305,11 +303,6 @@ class SignalRService {
   onNotificationPostponed(handler: NotificationEvents['notificationpostponed']) {
     this.registerHandler('notificationpostponed', handler)
     return () => this.unsubscribe('notificationpostponed', handler)
-  }
-
-  onBadgeUpdated(handler: NotificationEvents['updatenotificationcount']) {
-    this.registerHandler('updatenotificationcount', handler)
-    return () => this.unsubscribe('updatenotificationcount', handler)
   }
 }
 

@@ -47,9 +47,14 @@ namespace Franchisee.Web.Models.DTOs.Notifications
 
     public class NotificationCountsDto
     {
-        public int Active { get; set; }   // Pending + Postponed (ReturnsAt > now)
-        public int Postponed { get; set; } // Postponed (ReturnsAt > now)
-        public int All { get; set; }       // Все уведомления пользователя
+        public int Active { get; set; }
+        public int Postponed { get; set; }
+        public int History { get; set; }
+        public int All { get; set; }
+
+        public bool HasActiveNonSystem { get; set; }
+        public bool HasPostponed { get; set; }
+        public bool HasOnlySystem { get; set; }
     }
 
     // DTO для изменения статуса

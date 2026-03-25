@@ -7,6 +7,7 @@ import type {
   ResolveNotificationRequest,
 } from '../types/notifications.types'
 import type { PagingResponse } from '@/shared/types/api'
+import type { NotificationCountsDto } from '../store/notifications.store'
 
 export const notificationsApi = {
   async getNotifications(
@@ -65,11 +66,7 @@ export const notificationsApi = {
     return response.data
   },
 
-  async getCounts(): Promise<{
-    active: number
-    postponed: number
-    all: number
-  }> {
+  async getCounts(): Promise<NotificationCountsDto> {
     const response = await httpClient.get('/api/Notifications/counts')
     return response.data
   }

@@ -2,31 +2,56 @@ import type { NotificationFilter } from '../types/notifications.types'
 import styles from '@/shared/ui/button.module.css'
 import { NotificationBadge } from '@/shared/ui/badge/NotificationBadge'
 import surface from '@/shared/ui/surface.module.css'
+import { useNotificationsStore } from '../store/notifications.store'
 
 interface Props {
   value: NotificationFilter
   onChange: (value: NotificationFilter) => void
-  counts?: {
-    active: number
-    postponed: number
-    all: number
-  }
 }
 
-export function NotificationsFilter({ value, onChange, counts }: Props) {
-  const activeCount = counts?.active ?? 0
-  const postponedCount = counts?.postponed ?? 0
-  const historyCount = (counts?.all ?? 0)
-
+export function NotificationsFilter({
+  value,
+  onChange,
+}: Props){
+  const counts = useNotificationsStore((s) => s.counts)
   const filters: {
     key: NotificationFilter
     label: string
     count: number
     badgeColor: 'red' | 'blue' | 'gray' | 'none'
   }[] = [
-    { key: 'active', label: 'Активные', count: activeCount, badgeColor: activeCount > 0 ? 'red' : 'gray' },
-    { key: 'postponed', label: 'Отложенные', count: postponedCount, badgeColor: postponedCount > 0 ? 'blue' : 'gray' },
-    { key: 'all', label: 'История', count: historyCount, badgeColor: historyCount > 0 ? 'gray' : 'none' },
+    {
+      key: 'active',
+      label: 'Активные',
+      count: counts?.active ?? 0,
+      badgeColor: counts
+        ? counts.hasActiveNonSystem
+          ? 'red'
+          : counts.active > 0
+          ? 'gray'
+          : 'none'
+        : 'none',
+    },
+    {
+      key: 'postponed',
+      label: 'Отложенные',
+      count: counts?.postponed ?? 0,
+      badgeColor: counts && counts.hasPostponed ? 'blue' : 'none',
+    },
+    {
+      key: 'all',
+      label: 'История',
+      count: counts?.all ?? 0,
+      badgeColor: counts
+        ? counts.hasActiveNonSystem
+          ? 'red'
+          : counts.hasPostponed
+          ? 'blue'
+          : counts.all > 0
+          ? 'gray'
+          : 'none'
+        : 'none',
+    },
   ]
 
   return (

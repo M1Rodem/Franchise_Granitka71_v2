@@ -6,6 +6,7 @@ namespace Franchisee.Web.Services.Notifications.Dispatch
     {
         Task ReceiveNotification(NotificationUpdateDto notification);
         Task UpdateNotificationCount(NotificationBadgeDto badge);
+        Task UpdateNotificationCounts(NotificationCountsDto counts);
         Task UpdateNotification(NotificationUpdateDto notification);
         Task NotificationResolved(NotificationResolvedDto resolution);
         Task NotificationPostponed(NotificationPostponedDto postponement);

@@ -56,16 +56,16 @@ namespace Franchisee.Web.Services.Notifications.Dispatch
         {
             try
             {
-                var badge = await _notificationService.GetNotificationBadgeAsync(userId);
+                var counts = await _notificationService.GetNotificationCountsAsync(userId);
                 
-                await Clients.Caller.InitialNotificationState(badge);
+                await Clients.Caller.UpdateNotificationCounts(counts);  // ← новый метод
                 
-                _logger.LogDebug("SignalR: Отправлено начальное состояние пользователю {UserId}: Count={Count}, Color={Color}",
-                    userId, badge.Count, badge.Color);
+                _logger.LogDebug("SignalR: Отправлены начальные counts пользователю {UserId}: Active={Active}, HasActiveNonSystem={HasActiveNonSystem}",
+                    userId, counts.Active, counts.HasActiveNonSystem);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Ошибка при отправке начального состояния пользователю {UserId}", userId);
+                _logger.LogError(ex, "Ошибка при отправке начальных counts пользователю {UserId}", userId);
             }
         }
 

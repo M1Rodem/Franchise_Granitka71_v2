@@ -4,6 +4,7 @@ using Franchisee.Web.Services.Notifications.Dispatch;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using Franchisee.Web.Models.DTOs.Notifications;
+using Franchisee.Web.Services.Notifications.Core;
 
 namespace Franchisee.Web.Services.Notifications.Background
 {
@@ -145,27 +146,16 @@ namespace Franchisee.Web.Services.Notifications.Background
                             });
                     }
 
-                    // Обновляем счётчик для пользователя
-                    var pendingCount = await context.NotificationRecipients
-                    .Where(nr => nr.UserId == userId &&
-                                (nr.Status == NotificationStatus.Pending ||
-                                 (nr.Status == NotificationStatus.Postponed &&
-                                  nr.ReturnsAt.HasValue &&
-                                  nr.ReturnsAt > now)))
-                    .CountAsync(cancellationToken);
-
-                    // Создаем DTO для бейджа (упрощенный вариант - цвет определит фронт)
-                    var badge = new NotificationBadgeDto
-                    {
-                        Count = pendingCount,
-                        Color = "red" // Или можно не указывать цвет, фронт сам определит
-                    };
+                    // НОВАЯ ЛОГИКА: получаем counts через сервис
+                    using var serviceScope = _serviceProvider.CreateScope();
+                    var notificationService = serviceScope.ServiceProvider.GetRequiredService<INotificationService>();
+                    var counts = await notificationService.GetNotificationCountsAsync(userId);
 
                     await hubContext.Clients.Group($"user-{userId}")
-                        .UpdateNotificationCount(badge);
+                        .UpdateNotificationCounts(counts);
 
-                    logger.LogDebug("Отправлены SignalR события пользователю {UserId} для {Count} уведомлений",
-                        userId, recipients.Count);
+                    logger.LogDebug("Отправлены counts пользователю {UserId}: Active={Active}, HasActiveNonSystem={HasActiveNonSystem}",
+                        userId, counts.Active, counts.HasActiveNonSystem);
                 }
                 catch (Exception ex)
                 {

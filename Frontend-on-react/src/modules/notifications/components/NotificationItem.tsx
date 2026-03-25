@@ -4,6 +4,7 @@ import styles from '@/shared/ui/button.module.css'
 import { formatNotificationDateTime } from '../utils/date'
 import { useState } from 'react'
 import { NotificationModal } from './NotificationModal'
+import { useNotificationActions } from '../hooks/useNotificationActions'
 
 interface Props {
   notification: NotificationResponseDto
@@ -13,6 +14,10 @@ export function NotificationItem({ notification }: Props) {
   const [open, setOpen] = useState(false)
 
   const isSystem = notification.type === 1
+
+  const { snooze } = useNotificationActions({
+    notificationId: notification.id,
+  })
 
   return (
     <>
@@ -49,7 +54,10 @@ export function NotificationItem({ notification }: Props) {
               notification.canPostpone && (
                 <button
                   className={`${styles.btn} ${styles.btnSecondary}`}
-                  onClick={(e) => e.stopPropagation()}
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    snooze(30)
+                  }}
                 >
                   Отложить
                 </button>

@@ -3,14 +3,13 @@ import { useAuthStore } from '@/shared/store/auth.store'
 import { signalRService } from '@/shared/lib/signalr/signalr.service'
 import { useNotificationsStore } from '@/modules/notifications/store/notifications.store'
 import { mapNotificationToStore } from '@/modules/notifications/utils/map-notification'
-
 import type {
   NotificationUpdateDto,
-  NotificationBadgeDto,
-  InitialNotificationStateDto,
   NotificationPostponedDto,
   NotificationResolvedDto,
 } from '@/shared/lib/signalr/signalr.types'
+
+import type { NotificationCountsDto } from '@/modules/notifications/store/notifications.store'
 
 export function SignalRProvider({ children }: { children: React.ReactNode }) {
   const token = useAuthStore((s) => s.token)
@@ -40,16 +39,10 @@ export function SignalRProvider({ children }: { children: React.ReactNode }) {
           .handleUpdateNotification(mapNotificationToStore(notification))
       }
 
-      const handleBadge = (badge: NotificationBadgeDto) => {
+      const handleCounts = (counts: NotificationCountsDto) => {
         useNotificationsStore
           .getState()
-          .handleBadgeUpdate(badge)
-      }
-
-      const handleInitial = (state: InitialNotificationStateDto) => {
-        useNotificationsStore
-          .getState()
-          .handleInitialState(state)
+          .setCounts(counts)
       }
 
       const handleResolved = (resolution: NotificationResolvedDto) => {
@@ -74,8 +67,7 @@ export function SignalRProvider({ children }: { children: React.ReactNode }) {
       signalRService.onNotificationUpdated(handleUpdate)
       signalRService.onNotificationResolved(handleResolved)
       signalRService.onNotificationPostponed(handlePostponed)
-      signalRService.onBadgeUpdated(handleBadge)
-      signalRService.onInitialState(handleInitial)
+      signalRService.onNotificationCountsUpdated(handleCounts)
 
       handlersRegisteredRef.current = true
     }

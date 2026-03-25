@@ -27,11 +27,6 @@ export function useNotificationActions({ notificationId }: Params) {
       }),
 
     onMutate: async (payload) => {
-      console.info('[NOTIFICATION] Action', {
-        action: payload.status,
-        id: notificationId,
-      })
-
       const prev = getCurrent()
       if (!prev) return
 
@@ -74,23 +69,20 @@ export function useNotificationActions({ notificationId }: Params) {
     mutationFn: (minutes: number) =>
       notificationsApi.postponeNotification(notificationId, minutes),
 
-    onMutate: async (minutes) => {
-      console.info('[NOTIFICATION] Action', {
-        action: `snooze:${minutes}`,
-        id: notificationId,
-      })
+    onMutate: async (minutes: number) => {
+      const returnsAt = new Date(Date.now() + minutes * 60 * 1000).toISOString()
 
       const prev = getStore().notifications.find(
         (n) => n.id === notificationId
       )
       if (!prev) return
 
-      const returnsAt = new Date(Date.now() + minutes * 60 * 1000).toISOString()
+      getStore().removeNotification(notificationId)
 
       getStore().upsertNotification({
         ...prev,
         status: NotificationStatus.Postponed,
-        returnsAt,
+        returnsAt: returnsAt,
         updatedAt: new Date(Date.now() + 1).toISOString(),
       })
 
@@ -110,11 +102,13 @@ export function useNotificationActions({ notificationId }: Params) {
     onSuccess: (response) => {
       showTempMessage('success', 'Уведомление отложено')
 
+      const store = useNotificationsStore.getState()
+
       if (response?.notification) {
-        useNotificationsStore
-          .getState()
-          .upsertNotification(response.notification)
+        store.upsertNotification(response.notification)
       }
+
+      store.removeNotification(notificationId)
     },
   })
 

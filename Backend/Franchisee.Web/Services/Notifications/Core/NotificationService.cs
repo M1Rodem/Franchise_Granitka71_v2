@@ -25,7 +25,8 @@ namespace Franchisee.Web.Services.Notifications.Core
             PropertyNameCaseInsensitive = true,
             NumberHandling = JsonNumberHandling.AllowReadingFromString,
             DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
-            PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+            PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+            Converters = { new System.Text.Json.Serialization.JsonStringEnumConverter() }
         };
 
         public NotificationService(
@@ -225,7 +226,7 @@ namespace Franchisee.Web.Services.Notifications.Core
                 
                 foreach (var userId in recipientUserIds)
                 {
-                    await SendNotificationCountUpdateAsync(userId);
+                    await SendNotificationCountsUpdateAsync(userId);
                 }
 
                 LogNotificationCreated(notification, initiatorId, recipientUserIds.Count);
@@ -245,37 +246,77 @@ namespace Franchisee.Web.Services.Notifications.Core
             }
         }
 
+        private async Task SendNotificationCountsUpdateAsync(int userId)
+        {
+            try
+            {
+                var counts = await GetNotificationCountsAsync(userId);
+                
+                await _hubContext.Clients.Group($"user-{userId}")
+                    .UpdateNotificationCounts(counts);
+                
+                _logger.LogDebug("Отправлены counts для UserId: {UserId}, Active={Active}, HasActiveNonSystem={HasActiveNonSystem}",
+                    userId, counts.Active, counts.HasActiveNonSystem);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Ошибка отправки counts пользователю {UserId}", userId);
+            }
+        }
+
         public async Task<NotificationCountsDto> GetNotificationCountsAsync(int userId)
         {
             var now = DateTime.UtcNow;
-            
-            var query = _context.NotificationRecipients
-                .Where(nr => nr.UserId == userId);
-            
-            // Используем Union для одного запроса
-            var counts = await query
-                .GroupBy(nr => 1)
-                .Select(g => new
+
+            // Один запрос к БД с агрегацией
+            var result = await _context.NotificationRecipients
+                .Where(nr => nr.UserId == userId)
+                .Select(nr => new
                 {
+                    nr.Status,
+                    nr.ReturnsAt,
+                    IsSystem = nr.Notification.Type == NotificationType.System,
+                    IsActive = nr.Status == NotificationStatus.Pending ||
+                            (nr.Status == NotificationStatus.Postponed &&
+                                nr.ReturnsAt.HasValue &&
+                                nr.ReturnsAt <= now),
+                    IsPostponed = nr.Status == NotificationStatus.Postponed &&
+                                nr.ReturnsAt.HasValue &&
+                                nr.ReturnsAt > now,
+                    IsHistory = nr.Status == NotificationStatus.Approved ||
+                                nr.Status == NotificationStatus.Rejected
+                })
+                .GroupBy(x => 1) // Группируем всё в одну группу для агрегации
+                .Select(g => new NotificationCountsDto
+                {
+                    Active = g.Count(x => x.IsActive),
+                    Postponed = g.Count(x => x.IsPostponed),
+                    History = g.Count(x => x.IsHistory),
                     All = g.Count(),
-                    Active = g.Count(nr => 
-                        nr.Status == NotificationStatus.Pending ||
-                        (nr.Status == NotificationStatus.Postponed &&
-                        nr.ReturnsAt.HasValue &&
-                        nr.ReturnsAt > now)),
-                    Postponed = g.Count(nr =>
-                        nr.Status == NotificationStatus.Postponed &&
-                        nr.ReturnsAt.HasValue &&
-                        nr.ReturnsAt > now)
+                    
+                    HasActiveNonSystem = g.Any(x => x.IsActive && !x.IsSystem),
+                    HasPostponed = g.Any(x => x.IsPostponed),
+                    HasOnlySystem = g.Count(x => x.IsActive || x.IsPostponed) > 0 &&
+                                    !g.Any(x => (x.IsActive || x.IsPostponed) && !x.IsSystem)
                 })
                 .FirstOrDefaultAsync();
-            
-            return new NotificationCountsDto
+
+            // Если нет уведомлений, возвращаем пустые значения
+            if (result == null)
             {
-                Active = counts?.Active ?? 0,
-                Postponed = counts?.Postponed ?? 0,
-                All = counts?.All ?? 0
-            };
+                return new NotificationCountsDto
+                {
+                    Active = 0,
+                    Postponed = 0,
+                    History = 0,
+                    All = 0,
+                    HasActiveNonSystem = false,
+                    HasPostponed = false,
+                    HasOnlySystem = false
+                };
+            }
+
+            return result;
         }
 
         public async Task<NotificationDetailsDto?> GetNotificationDetailsAsync(
@@ -298,11 +339,11 @@ namespace Franchisee.Web.Services.Notifications.Core
             if (data.TryGetProperty("comment", out var commentProp))
                 comment = commentProp.GetString();
 
-            // ✅ Извлекаем полное сообщение из Data
+            // Извлекаем полное сообщение из Data
             if (data.TryGetProperty("fullMessage", out var fullMessageProp))
                 fullMessage = fullMessageProp.GetString();
 
-            // ✅ Если нет fullMessage, используем стандартное (для обратной совместимости)
+            // Если нет fullMessage, используем стандартное (для обратной совместимости)
             if (string.IsNullOrEmpty(fullMessage))
                 fullMessage = notification.Message;
 
@@ -380,6 +421,8 @@ namespace Franchisee.Web.Services.Notifications.Core
         {
             using var transaction = await _context.Database.BeginTransactionAsync();
             List<NotificationRecipient> otherRecipients = new();
+            List<int> syncedRecipientUserIds = new();
+            
             try
             {
                 // 1. Находим уведомление с получателями
@@ -446,7 +489,8 @@ namespace Franchisee.Web.Services.Notifications.Core
                     await transaction.CommitAsync();
 
                     // 6. Обновляем счетчик для пользователя
-                    await SendNotificationCountUpdateAsync(userId);
+                    await SendNotificationCountsUpdateAsync(userId);  // ← новый метод
+
 
                     // 7. Отправляем SignalR событие об обновлении
                     await SendNotificationResolvedEventAsync(notification, userId, status, note);
@@ -524,10 +568,10 @@ namespace Franchisee.Web.Services.Notifications.Core
 
                 if (otherRecipients.Any())
                 {
-                    // Отправляем одно событие UpdateNotification ВСЕМ получателям сразу
-                    var recipientUserIds = otherRecipients.Select(r => r.UserId).Distinct().ToList();
+                    // Сохраняем в переменную, объявленную в начале
+                    syncedRecipientUserIds = otherRecipients.Select(r => r.UserId).Distinct().ToList();
 
-                    foreach (var recipientUserId in recipientUserIds)
+                    foreach (var recipientUserId in syncedRecipientUserIds)
                     {
                         try
                         {
@@ -545,14 +589,14 @@ namespace Franchisee.Web.Services.Notifications.Core
                         }
                     }
 
-                     foreach (var recipientUserId in recipientUserIds)
+                    foreach (var recipientUserId in syncedRecipientUserIds)
                     {
-                        await SendNotificationCountUpdateAsync(recipientUserId);
+                        await SendNotificationCountsUpdateAsync(recipientUserId);
                     }
 
                     _logger.LogInformation(
                         "Отправлены SignalR события для {Count} синхронизированных получателей уведомления {NotificationId}",
-                        recipientUserIds.Count, notification.Id);
+                        syncedRecipientUserIds.Count, notification.Id);
                 }
 
                 await _context.SaveChangesAsync();
@@ -562,17 +606,18 @@ namespace Franchisee.Web.Services.Notifications.Core
                 await SendNotificationResolvedEventAsync(notification, userId, status, note);
                 LogNotificationUpdated(notificationId, status, userId, note);
                 
-                await SendNotificationCountUpdateAsync(userId);
+                // Для влияющих уведомлений
+                await SendNotificationCountsUpdateAsync(userId);
 
-                _logger.LogInformation(
-                        "DEBUG: Проверка условия. Status={Status}, InitiatorId={InitiatorId}, userId={userId}, Условие={Condition}",
-                        status,
-                        notification.InitiatorId,
-                        userId,
-                        (status == NotificationStatus.Approved || status == NotificationStatus.Rejected)
-                );
+                // 10. Отправляем обновления синхронизированным получателям (если есть)
+                if (syncedRecipientUserIds.Any())
+                {
+                    foreach (var recipientUserId in syncedRecipientUserIds)
+                    {
+                        await SendNotificationCountsUpdateAsync(recipientUserId);
+                    }
+                }
 
-                // 10. Отправить информационное уведомление инициатору
                 if ((status == NotificationStatus.Approved || status == NotificationStatus.Rejected) &&
                     notification.InitiatorId.HasValue &&
                     notification.InitiatorId.Value > 0 &&
@@ -611,6 +656,42 @@ namespace Franchisee.Web.Services.Notifications.Core
                 _logger.LogInformation(
                     "Уведомление {NotificationId} обработано пользователем {UserId}. Статус: {Status} ({OldStatus} -> {NewStatus})",
                     notificationId, userId, status, oldStatus, status);
+
+                
+                List<int> recipientUserIds = new List<int>();
+
+                if (otherRecipients.Any())
+                {
+                    // Отправляем одно событие UpdateNotification ВСЕМ получателям сразу
+                    recipientUserIds = otherRecipients.Select(r => r.UserId).Distinct().ToList();
+
+                    foreach (var recipientUserId in recipientUserIds)
+                    {
+                        try
+                        {
+                            await SendNotificationUpdatedEventAsync(notification, recipientUserId);
+
+                            _logger.LogDebug(
+                                "Отправлено UpdateNotification синхронизированному получателю {UserId} для уведомления {NotificationId}",
+                                recipientUserId, notification.Id);
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogError(ex,
+                                "Ошибка отправки UpdateNotification синхронизированному получателю {UserId}",
+                                recipientUserId);
+                        }
+                    }
+
+                    foreach (var recipientUserId in recipientUserIds)
+                    {
+                        await SendNotificationCountsUpdateAsync(recipientUserId);
+                    }
+
+                    _logger.LogInformation(
+                        "Отправлены SignalR события для {Count} синхронизированных получателей уведомления {NotificationId}",
+                        recipientUserIds.Count, notification.Id);
+                }
 
                 return true;
             }
@@ -1188,7 +1269,10 @@ namespace Franchisee.Web.Services.Notifications.Core
                     case "OrderDate":
                         if (newValue.TryGetDateTime(out var date))
                         {
-                            order.OrderDate = date.ToUniversalTime();
+                            // Гарантируем UTC
+                            order.OrderDate = date.Kind == DateTimeKind.Utc 
+                                ? date 
+                                : DateTime.SpecifyKind(date, DateTimeKind.Utc);
                             return true;
                         }
                         break;
@@ -1263,9 +1347,7 @@ namespace Franchisee.Web.Services.Notifications.Core
             try
             {
                 _logger.LogDebug("=== ApplyWorkItemsChangesAsync для заказа {OrderId} ===", orderId);
-                _logger.LogDebug("newWorkItemsValue JSON: {Json}", newWorkItemsValue.GetRawText());
 
-                // ИСПРАВЛЕНИЕ: Использовать PropertyNameCaseInsensitive
                 var workItems = newWorkItemsValue.Deserialize<List<OrderWorkItem>>(new JsonSerializerOptions
                 {
                     PropertyNameCaseInsensitive = true,
@@ -1278,21 +1360,11 @@ namespace Franchisee.Web.Services.Notifications.Core
                     return false;
                 }
 
-                _logger.LogDebug("Десериализовано {Count} WorkItems", workItems.Count);
-
-                for (int i = 0; i < workItems.Count; i++)
-                {
-                    var wi = workItems[i];
-                    _logger.LogDebug("WorkItem {Index}: Description='{Description}', Price={Price}, Quantity={Quantity}",
-                        i, wi.WorkDescription, wi.Price, wi.Quantity);
-                }
-
                 // Удаляем старые
                 var existing = await _context.OrderWorkItems
                     .Where(w => w.OrderId == orderId)
                     .ToListAsync();
 
-                _logger.LogDebug("Удаление {Count} старых WorkItems", existing.Count);
                 _context.OrderWorkItems.RemoveRange(existing);
 
                 // Добавляем новые
@@ -1301,17 +1373,13 @@ namespace Franchisee.Web.Services.Notifications.Core
                     wi.OrderId = orderId;
                     wi.Id = 0;
 
-                    // ЗАЩИТА: Если Description пустой после десериализации
-                    if (string.IsNullOrEmpty(wi.WorkDescription))
-                    {
-                        _logger.LogWarning("WorkItem имеет пустой WorkDescription после десериализации!");
-                    }
-
                     _logger.LogDebug("Добавление WorkItem: Description='{Description}', Price={Price}",
                         wi.WorkDescription, wi.Price);
 
                     _context.OrderWorkItems.Add(wi);
                 }
+
+                await _context.SaveChangesAsync();
 
                 _logger.LogDebug("=== ApplyWorkItemsChangesAsync УСПЕШНО для заказа {OrderId} ===", orderId);
                 return true;
@@ -1323,14 +1391,13 @@ namespace Franchisee.Web.Services.Notifications.Core
             }
         }
 
+
         private async Task<bool> ApplyPaymentsChangesAsync(int orderId, JsonElement newPaymentsValue)
         {
             try
             {
                 _logger.LogDebug("=== ApplyPaymentsChangesAsync для заказа {OrderId} ===", orderId);
-                _logger.LogDebug("newPaymentsValue JSON: {Json}", newPaymentsValue.GetRawText());
 
-                // ИСПРАВЛЕНИЕ: Использовать PropertyNameCaseInsensitive
                 var payments = newPaymentsValue.Deserialize<List<OrderPayment>>(new JsonSerializerOptions
                 {
                     PropertyNameCaseInsensitive = true,
@@ -1343,21 +1410,11 @@ namespace Franchisee.Web.Services.Notifications.Core
                     return false;
                 }
 
-                _logger.LogDebug("Десериализовано {Count} Payments", payments.Count);
-
-                for (int i = 0; i < payments.Count; i++)
-                {
-                    var p = payments[i];
-                    _logger.LogDebug("Payment {Index}: Amount={Amount}, Type={Type}, Date={Date}",
-                        i, p.Amount, p.PaymentType, p.PaymentDate);
-                }
-
                 // Удаляем старые
                 var existing = await _context.OrderPayments
                     .Where(p => p.OrderId == orderId)
                     .ToListAsync();
 
-                _logger.LogDebug("Удаление {Count} старых Payments", existing.Count);
                 _context.OrderPayments.RemoveRange(existing);
 
                 // Добавляем новые
@@ -1366,17 +1423,23 @@ namespace Franchisee.Web.Services.Notifications.Core
                     p.OrderId = orderId;
                     p.Id = 0;
 
-                    // Убедиться, что PaymentDate установлен
+                    // 🔧 ИСПРАВЛЕНИЕ: Гарантируем UTC для PaymentDate
                     if (p.PaymentDate == default)
                     {
                         p.PaymentDate = DateTime.UtcNow;
                     }
+                    else if (p.PaymentDate.Kind != DateTimeKind.Utc)
+                    {
+                        p.PaymentDate = DateTime.SpecifyKind(p.PaymentDate, DateTimeKind.Utc);
+                    }
 
-                    _logger.LogDebug("Добавление Payment: Amount={Amount}, Type={Type}",
-                        p.Amount, p.PaymentType);
+                    _logger.LogDebug("Добавление Payment: Amount={Amount}, Type={Type}, Date={Date} (Kind={Kind})",
+                        p.Amount, p.PaymentType, p.PaymentDate, p.PaymentDate.Kind);
 
                     _context.OrderPayments.Add(p);
                 }
+
+                await _context.SaveChangesAsync();
 
                 _logger.LogDebug("=== ApplyPaymentsChangesAsync УСПЕШНО для заказа {OrderId} ===", orderId);
                 return true;
@@ -1452,7 +1515,7 @@ namespace Franchisee.Web.Services.Notifications.Core
                     var allRecipientIds = allRecipients.Select(r => r.UserId).Distinct();
                     foreach (var id in allRecipientIds)
                     {
-                        await SendNotificationCountUpdateAsync(id);
+                        await SendNotificationCountsUpdateAsync(id); 
                     }
                 }
 
@@ -1463,7 +1526,7 @@ namespace Franchisee.Web.Services.Notifications.Core
 
                 await SendNotificationPostponedEventAsync(notificationId, userId, minutes);
 
-                await SendNotificationCountUpdateAsync(userId);
+                await SendNotificationCountsUpdateAsync(userId);
                 LogNotificationUpdated(notificationId, NotificationStatus.Postponed, userId, reason);
                 _logger.LogInformation("[Notification] Snoozed Id={Id} Until={ReturnsAt}", notificationId, returnsAt);
 
@@ -1519,7 +1582,7 @@ namespace Franchisee.Web.Services.Notifications.Core
                         nr.Status == NotificationStatus.Pending ||
                         (nr.Status == NotificationStatus.Postponed &&
                         nr.ReturnsAt.HasValue &&
-                        nr.ReturnsAt > now)),
+                        nr.ReturnsAt <= now)),
 
                     "postponed" => query.Where(nr =>
                         nr.Status == NotificationStatus.Postponed &&
@@ -1573,18 +1636,18 @@ namespace Franchisee.Web.Services.Notifications.Core
             var hasRed = recipients.Any(nr =>
                 nr.Notification.IsInfluencing &&
                 (nr.Status == NotificationStatus.Pending ||
-                 (nr.Status == NotificationStatus.Postponed &&
-                  nr.ReturnsAt.HasValue &&
-                  nr.ReturnsAt <= now)));
+                (nr.Status == NotificationStatus.Postponed &&
+                nr.ReturnsAt.HasValue &&
+                nr.ReturnsAt <= now)));
 
             if (hasRed)
             {
+                // ИСПРАВЛЕНИЕ: считаем ВСЕ активные, а не только влияющие
                 var count = recipients.Count(nr =>
-                    nr.Notification.IsInfluencing &&
-                    (nr.Status == NotificationStatus.Pending ||
-                     (nr.Status == NotificationStatus.Postponed &&
-                      nr.ReturnsAt.HasValue &&
-                      nr.ReturnsAt <= now)));
+                    nr.Status == NotificationStatus.Pending ||
+                    (nr.Status == NotificationStatus.Postponed &&
+                    nr.ReturnsAt.HasValue &&
+                    nr.ReturnsAt <= now));
 
                 return new NotificationBadgeDto { Count = count, Color = "red" };
             }
@@ -1747,7 +1810,7 @@ namespace Franchisee.Web.Services.Notifications.Core
                             .ReceiveNotification(dto);
 
                         // 6. Обновляем счетчик уведомлений
-                        await SendNotificationCountUpdateAsync(recipient.UserId);
+                        await SendNotificationCountsUpdateAsync(recipient.UserId);
                     }
                     catch (Exception ex)
                     {
@@ -1849,7 +1912,7 @@ namespace Franchisee.Web.Services.Notifications.Core
                         await _hubContext.Clients.Group($"user-{recipient.UserId}")
                             .ReceiveNotification(dto);
 
-                        await SendNotificationCountUpdateAsync(recipient.UserId);
+                        await SendNotificationCountsUpdateAsync(recipient.UserId);
                     }
                     catch (Exception ex)
                     {
@@ -1908,6 +1971,13 @@ namespace Franchisee.Web.Services.Notifications.Core
             {
                 _logger.LogError(ex, "[SignalR] Error UserId={UserId} Exception={Exception}", userId, ex.Message);
             }
+        }
+
+        private DateTime EnsureUtc(DateTime dateTime)
+        {
+            return dateTime.Kind == DateTimeKind.Utc 
+                ? dateTime 
+                : DateTime.SpecifyKind(dateTime, DateTimeKind.Utc);
         }
 
         private async Task SendNotificationResolvedEventAsync(
@@ -2038,24 +2108,6 @@ namespace Franchisee.Web.Services.Notifications.Core
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Ошибка отправки события откладывания уведомления");
-            }
-        }
-
-        public async Task SendNotificationCountUpdateAsync(int userId)
-        {
-            try
-            {
-                var badge = await GetNotificationBadgeAsync(userId);
-
-                _logger.LogDebug("Обновление бейджа для UserId: {UserId}, Color: {Color}, Count: {Count}",
-                    userId, badge.Color, badge.Count);
-
-                await _hubContext.Clients.Group($"user-{userId}")
-                    .UpdateNotificationCount(badge);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Ошибка отправки обновления бейджа пользователю {UserId}", userId);
             }
         }
 

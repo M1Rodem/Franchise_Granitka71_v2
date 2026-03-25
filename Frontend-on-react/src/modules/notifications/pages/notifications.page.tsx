@@ -9,7 +9,12 @@ export default function NotificationsPage() {
   const [filter, setFilter] = useState<NotificationFilter>('active')
   const [page, setPage] = useState(1)
 
-  const { items, totalPages, total, isLoading, counts, isLoadingCounts } = useNotifications({
+  const {
+    items,
+    totalPages,
+    total,
+    isLoading,
+  } = useNotifications({
     filter,
     page,
     pageSize: 20,
@@ -20,10 +25,7 @@ export default function NotificationsPage() {
       <NotificationsFilter
         value={filter}
         onChange={setFilter}
-        counts={counts}
       />
-
-      {isLoadingCounts && <div>Загрузка статистики...</div>}
 
       {isLoading && <div>Загрузка уведомлений...</div>}
 

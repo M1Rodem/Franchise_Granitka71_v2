@@ -25,9 +25,7 @@ export function Sidebar() {
   const toggleSidebar = useUiStore((state) => state.toggleSidebar)
   const closeMobileSidebar = useUiStore((state) => state.closeMobileSidebar)
 
-  const badgeCount = useNotificationsStore((s) => s.selectTotalCount())
-  const badgeColor = useNotificationsStore((s) => s.selectBadgeColor())
-
+  const color = useNotificationsStore((s) => s.selectSidebarColor())
   /* ---------------------------------- */
   /* MOBILE DETECTION */
   /* ---------------------------------- */
@@ -113,7 +111,7 @@ export function Sidebar() {
               className={[
                 styles.navItem,
                 isActive ? styles.active : '',
-                item.id === 'notifications' && badgeColor === 'red'
+                item.id === 'notifications' && color === 'red'
                   ? styles.glow
                   : '',
               ].join(' ')}
@@ -139,10 +137,7 @@ export function Sidebar() {
                   
                   {/*заглушка*/}
                   {item.id === 'notifications' && (
-                    <NotificationBadge
-                      count={badgeCount}
-                      color={badgeColor}
-                    />
+                    <NotificationBadge />
                   )}
                 </span>
               )}

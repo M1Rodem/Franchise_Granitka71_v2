@@ -61,6 +61,17 @@ export interface InitialNotificationStateDto {
   color: 'red' | 'blue' | 'gray' | 'none'
 }
 
+export interface NotificationCountsDto {
+  active: number
+  postponed: number
+  history: number
+  all: number
+
+  hasActiveNonSystem: boolean
+  hasPostponed: boolean
+  hasOnlySystem: boolean
+}
+
 // ===== EVENTS =====
 
 export interface NotificationEvents {
@@ -68,8 +79,7 @@ export interface NotificationEvents {
   'updatenotification': (notification: NotificationUpdateDto) => void
   'notificationresolved': (resolution: NotificationResolvedDto) => void
   'notificationpostponed': (postponement: NotificationPostponedDto) => void
-  'updatenotificationcount': (badge: NotificationBadgeDto) => void
-  'initialnotificationstate': (state: InitialNotificationStateDto) => void
+  'updatenotificationcounts': (counts: NotificationCountsDto) => void
   'notificationseen': (notificationId: number) => void
   'connectionestablished': (message: string) => void
   'connectionlost': (message: string) => void

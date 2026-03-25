@@ -1,55 +1,22 @@
 import { create } from 'zustand'
 import type {
   NotificationResponseDto,
-  NotificationBadgeDto,
 } from '../types/notifications.types'
 import { NotificationStatus } from '../types/notifications.types'
 import { showTempMessage } from '@/shared/ui/temp-message.service'
 
-function classify(
-  notification: NotificationResponseDto
-): 'active' | 'postponed' | 'history' {
-  switch (notification.status) {
-    case NotificationStatus.Pending:
-      return 'active'
-    case NotificationStatus.Postponed:
-      return 'postponed'
-    default:
-      return 'history'
-  }
-}
-
-function rebuildFlat(state: {
-  active: NotificationResponseDto[]
-  postponed: NotificationResponseDto[]
-  history: NotificationResponseDto[]
-}) {
-  return [...state.active, ...state.postponed, ...state.history].sort(
-    (a, b) =>
-      new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-  )
-}
-
 interface NotificationsState {
-  active: NotificationResponseDto[]
-  postponed: NotificationResponseDto[]
-  history: NotificationResponseDto[]
-
   notifications: NotificationResponseDto[] 
-  badge: NotificationBadgeDto | null
   loading: boolean
+  counts: NotificationCountsDto | null
   setNotifications: (items: NotificationResponseDto[]) => void
   updateNotification: (item: NotificationResponseDto) => void
   removeNotification: (id: number) => void
-  setBadge: (badge: NotificationBadgeDto) => void
   setLoading: (value: boolean) => void
-  countByStatus: (status: NotificationStatus) => number
-  unreadCount: () => number
-  selectTotalCount: () => number
-  selectBadgeColor: () => 'red' | 'blue' | 'gray' | 'none'
   upsertNotification: (item: NotificationResponseDto) => void
   handleNewNotification: (item: NotificationResponseDto) => void
   handleUpdateNotification: (item: NotificationResponseDto) => void
+  setCounts: (counts: NotificationCountsDto) => void
   handleResolved: (payload: {
     notificationId: number
     status: NotificationStatus
@@ -58,45 +25,96 @@ interface NotificationsState {
     notificationId: number
     returnsAt: string
   }) => void
-  handleBadgeUpdate: (badge: NotificationBadgeDto) => void
-  handleInitialState: (badge: NotificationBadgeDto) => void
+  selectSidebarBadge: () => {
+    count: number
+    color: BadgeColor
+  }
+  selectSidebarCount: () => number
+  selectSidebarColor: () => BadgeColor
 }
 
+type BadgeColor = 'red' | 'blue' | 'gray' | 'none'
+
+export interface NotificationCountsDto {
+  active: number
+  postponed: number
+  history: number
+  all: number
+
+  hasActiveNonSystem: boolean
+  hasPostponed: boolean
+  hasOnlySystem: boolean
+}
+
+const getBadgeColor = (counts: NotificationCountsDto): BadgeColor => {
+  if (counts.hasActiveNonSystem) return 'red'
+  if (counts.hasPostponed) return 'blue'
+  if (counts.hasOnlySystem) return 'gray'
+  return 'none'
+}
 
 export const useNotificationsStore = create<NotificationsState>((set, get) => ({
-  active: [],
-  postponed: [],
-  history: [],
-
+  counts: null,
   notifications: [],
-  badge: null,
   loading: false,
 
+  selectSidebarCount: () => {
+    const c = get().counts
+    return c ? c.active + c.postponed : 0
+  },
+
+  selectSidebarColor: () => {
+    const c = get().counts
+    if (!c) return 'none'
+
+    if (c.hasActiveNonSystem) return 'red'
+    if (c.hasPostponed) return 'blue'
+    if (c.hasOnlySystem) return 'gray'
+
+    return 'none'
+  },
+
   setNotifications: (items) => {
-    const active: NotificationResponseDto[] = []
-    const postponed: NotificationResponseDto[] = []
-    const history: NotificationResponseDto[] = []
+    set((state) => {
+      const map = new Map(state.notifications.map(n => [n.id, n]))
 
-    for (const item of items) {
-      const bucket = classify(item)
-      if (bucket === 'active') active.push(item)
-      else if (bucket === 'postponed') postponed.push(item)
-      else history.push(item)
-    }
+      items.forEach(item => {
+        const existing = map.get(item.id)
 
-    set(() => ({
-      active,
-      postponed,
-      history,
-      notifications: rebuildFlat({ active, postponed, history }),
-    }))
+        if (
+          !existing ||
+          new Date(existing.updatedAt).getTime() <
+          new Date(item.updatedAt).getTime()
+        ) {
+          map.set(item.id, item)
+        }
+      })
+
+      return {
+        notifications: Array.from(map.values())
+      }
+    })
+  },
+
+  setCounts: (counts) => {
+    set((state) => {
+      if (
+        state.counts &&
+        state.counts.active === counts.active &&
+        state.counts.postponed === counts.postponed &&
+        state.counts.history === counts.history
+      ) {
+        return state
+      }
+
+      return { counts }
+    })
   },
 
   upsertNotification: (item: NotificationResponseDto) => {
     set((state) => {
       const existing = state.notifications.find((n) => n.id === item.id)
 
-      // защита от устаревших данных
       if (
         existing &&
         new Date(existing.updatedAt).getTime() >=
@@ -105,18 +123,13 @@ export const useNotificationsStore = create<NotificationsState>((set, get) => ({
         return state
       }
 
-      const next = {
-        active: state.active.filter((n) => n.id !== item.id),
-        postponed: state.postponed.filter((n) => n.id !== item.id),
-        history: state.history.filter((n) => n.id !== item.id),
-      }
-
-      const bucket = classify(item)
-      next[bucket].unshift(item)
+      const filtered = state.notifications.filter((n) => n.id !== item.id)
 
       return {
-        ...next,
-        notifications: rebuildFlat(next),
+        notifications: [item, ...filtered].sort(
+          (a, b) =>
+            new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+        ),
       }
     })
   },
@@ -126,36 +139,13 @@ export const useNotificationsStore = create<NotificationsState>((set, get) => ({
   },
 
   removeNotification: (id) => {
-    set((state) => {
-      const next = {
-        active: state.active.filter((n) => n.id !== id),
-        postponed: state.postponed.filter((n) => n.id !== id),
-        history: state.history.filter((n) => n.id !== id),
-      }
-
-      return {
-        ...next,
-        notifications: rebuildFlat(next),
-      }
-    })
-  },
-
-  setBadge: (badge) => {
-    set({ badge })
+    set((state) => ({
+      notifications: state.notifications.filter((n) => n.id !== id),
+    }))
   },
 
   setLoading: (value) => {
     set({ loading: value })
-  },
-
-  countByStatus: (status) => {
-    return get().notifications.filter((notification) => notification.status === status).length
-  },
-
-  unreadCount: () => {
-    return get().notifications.filter(
-      (notification) => notification.status === NotificationStatus.Pending
-    ).length
   },
 
   handleNewNotification: (item) => {
@@ -182,30 +172,37 @@ export const useNotificationsStore = create<NotificationsState>((set, get) => ({
   },
 
   handlePostponed: ({ notificationId, returnsAt }) => {
-    const existing = get().notifications.find((n) => n.id === notificationId)
-    if (!existing) return
+    set((state) => {
+      const existing = state.notifications.find((n) => n.id === notificationId)
+      if (!existing) return state
 
-    get().upsertNotification({
-      ...existing,
-      status: NotificationStatus.Postponed,
-      returnsAt,
-      updatedAt: new Date().toISOString(),
+      const updated = {
+        ...existing,
+        status: NotificationStatus.Postponed,
+        returnsAt,
+        updatedAt: new Date().toISOString(),
+      }
+
+      return {
+        notifications: state.notifications
+          .map((n) => (n.id === notificationId ? updated : n))
+      }
     })
   },
 
-  handleBadgeUpdate: (badge) => {
-    set({ badge })
-  },
+  selectSidebarBadge: () => {
+    const counts = get().counts
+    if (!counts) return { count: 0, color: 'none' as const }
 
-  handleInitialState: (badge) => {
-    set({ badge })
-  },
+    const total = counts.active + counts.postponed
 
-  selectTotalCount: () => {
-    return get().badge?.count ?? 0
-  },
+    if (total === 0) {
+      return { count: 0, color: 'none' as const }
+    }
 
-  selectBadgeColor: () => {
-    return get().badge?.color ?? 'none'
+    return {
+      count: total,
+      color: getBadgeColor(counts),
+    }
   },
 }))

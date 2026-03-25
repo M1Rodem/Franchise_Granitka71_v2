@@ -26,11 +26,43 @@ export function useNotifications({ filter, page, pageSize }: Params) {
   })
 
   useEffect(() => {
+    // грузим все группы ОДИН раз
+    notificationsApi.getNotifications('postponed', 1, 20)
+      .then(res => {
+        const store = useNotificationsStore.getState()
+        res.items.forEach(item => store.upsertNotification(item))
+      })
+
+    notificationsApi.getNotifications('all', 1, 20)
+      .then(res => {
+        const store = useNotificationsStore.getState()
+        res.items.forEach(item => store.upsertNotification(item))
+      })
+  }, [])
+  
+  useEffect(() => {
     if (!query.data) return
 
     const store = useNotificationsStore.getState()
 
+    console.log('[API][RESPONSE]', {
+      filter,
+      items: query.data.items.map((i) => ({
+        id: i.id,
+        status: i.status,
+        updatedAt: i.updatedAt,
+      })),
+    })
+
     query.data.items.forEach((item) => {
+      const existing = store.notifications.find((n) => n.id === item.id)
+
+      console.log('[API][MERGE]', {
+        id: item.id,
+        apiStatus: item.status,
+        storeStatus: existing?.status,
+      })
+
       store.upsertNotification(item)
     })
   }, [query.data])

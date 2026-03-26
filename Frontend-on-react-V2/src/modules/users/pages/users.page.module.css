@@ -1,0 +1,9 @@
+.page {
+  display: grid;
+}
+
+@media (max-width: 768px) {
+  .page {
+    gap: 16px;
+  }
+}

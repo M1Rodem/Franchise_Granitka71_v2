@@ -1,0 +1,14 @@
+.placeholder {
+  height: 220px;
+  border-radius: 18px;
+  border: 1px solid rgba(145, 175, 225, 0.25);
+  background: linear-gradient(
+    145deg,
+    rgba(8, 24, 48, 0.72),
+    rgba(12, 36, 69, 0.54)
+  );
+  display: grid;
+  place-items: center;
+  color: #c6defd;
+  font-size: 14px;
+}

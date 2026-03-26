@@ -1,0 +1,42 @@
+/* =========================================
+   CENTER CELL
+========================================= */
+
+.centerCell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+
+
+/* =========================================
+   ACTIONS CELL
+========================================= */
+
+.actionsCell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+
+/* =========================================
+   MOBILE ACTIONS
+========================================= */
+
+@media (max-width: 768px) {
+
+  .actionsCell {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+
+  .actionsCell button {
+    width: 100%;
+    justify-content: center;
+  }
+
+}

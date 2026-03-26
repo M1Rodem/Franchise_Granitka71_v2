@@ -1,0 +1,191 @@
+:root {
+  color-scheme: dark;
+  font-family:
+    'Manrope',
+    ui-sans-serif,
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    sans-serif;
+  --bg-app: #07111b;
+  --bg-app-strong: #0b1725;
+  --bg-elevated: rgba(9, 19, 31, 0.92);
+
+  --bg-surface: rgba(8, 18, 30, 0.78);
+  --bg-surface-soft: rgba(12, 23, 38, 0.58);
+  --bg-surface-strong: rgba(6, 14, 24, 0.92);
+  --bg-panel: rgba(255, 255, 255, 0.038);
+  --bg-panel-strong: rgba(255, 255, 255, 0.07);
+  --border-primary: rgba(145, 179, 213, 0.16);
+  --border-strong: rgba(184, 212, 237, 0.28);
+
+  --text-primary: #f3f7fb;
+  --text-secondary: #c7d4e2;
+  --text-muted: #8598ad;
+  --accent-primary: #77afe9;
+  --accent-primary-strong: #5997e0;
+  --accent-primary-soft: rgba(119, 175, 233, 0.28);
+  --accent-secondary: #6fbeb7;
+  --accent-secondary-soft: rgba(111, 190, 183, 0.26);
+  --accent-success: #42b883;
+  --accent-success-soft: rgba(66, 184, 131, 0.28);
+  --accent-danger: #eb6a75;
+  --accent-danger-soft: rgba(235, 106, 117, 0.28);
+  --accent-warning: #f59e0b;
+  --accent-warning-soft: rgba(245, 158, 11, 0.28);
+  --accent-info: #72c1f4;
+  --accent-info-soft: rgba(114, 193, 244, 0.28);
+
+  --surface-gradient-soft: linear-gradient(135deg, rgba(10, 22, 38, 0.75), rgba(4, 12, 22, 0.85));
+  --surface-gradient: linear-gradient(135deg, rgba(12, 25, 43, 0.8), rgba(5, 13, 23, 0.88));
+  --surface-gradient-strong: linear-gradient(135deg, rgba(14, 28, 48, 0.85), rgba(4, 12, 22, 0.94));
+
+  --surface-overlay: 
+    radial-gradient(circle at 25% 20%, rgba(100, 150, 200, 0.06), transparent 45%),
+    radial-gradient(circle at 75% 70%, rgba(80, 140, 180, 0.04), transparent 40%),
+    linear-gradient(125deg, rgba(255, 255, 255, 0.022), transparent 68%);
+
+  --surface-overlay-accent: 
+    radial-gradient(circle at 15% 75%, rgba(80, 145, 210, 0.08), transparent 52%),
+    radial-gradient(circle at 85% 25%, rgba(70, 160, 150, 0.06), transparent 48%),
+    linear-gradient(145deg, rgba(255, 255, 255, 0.028), transparent 62%);
+
+  --interactive-gloss: linear-gradient(
+    145deg,
+    rgba(255, 255, 255, 0.035) 0%,
+    rgba(255, 255, 255, 0.01) 45%,
+    rgba(255, 255, 255, 0.022) 100%
+  );
+
+  --interactive-gloss-strong: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.045) 0%,
+    rgba(255, 255, 255, 0.012) 40%,
+    rgba(255, 255, 255, 0.03) 90%
+  );
+
+  --accent-gradient-primary: linear-gradient(
+    180deg,
+    rgba(119, 175, 233, 0.18),
+    rgba(119, 175, 233, 0.08)
+  );
+  --accent-gradient-success: linear-gradient(
+    180deg,
+    rgba(91, 182, 138, 0.18),
+    rgba(91, 182, 138, 0.08)
+  );
+  --accent-gradient-danger: linear-gradient(
+    180deg,
+    rgba(226, 113, 126, 0.17),
+    rgba(226, 113, 126, 0.08)
+  );
+  --accent-gradient-warning: linear-gradient(
+    180deg,
+    rgba(240, 179, 91, 0.18),
+    rgba(240, 179, 91, 0.08)
+  );
+  --accent-gradient-info: linear-gradient(
+    180deg,
+    rgba(113, 191, 243, 0.18),
+    rgba(113, 191, 243, 0.08)
+  );
+
+  --accent-gloss: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.18) 0%,
+    rgba(255, 255, 255, 0.04) 50%,
+    rgba(255, 255, 255, 0.1) 100%
+  );
+
+  --accent-shadow: 0 8px 20px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(255, 255, 255, 0.05) inset;
+  --accent-hover-shadow: 0 12px 28px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.08) inset;
+
+  --shadow-sm: 0 14px 30px rgba(1, 7, 16, 0.22);
+  --shadow-md: 0 22px 48px rgba(1, 7, 16, 0.28);
+  --shadow-lg: 0 32px 72px rgba(1, 7, 16, 0.36);
+
+  --glass-blur: 24px;
+  --glass-highlight: inset 0 0.5px 0 rgba(255, 255, 255, 0.07), inset 0 -0.5px 0 rgba(0, 0, 0, 0.25);
+  --glass-shadow: 0 28px 62px rgba(0, 0, 0, 0.55), 0 2px 8px rgba(0, 0, 0, 0.3);
+
+  --app-background:
+    radial-gradient(circle at 18% 16%, rgba(119, 175, 233, 0.17), transparent 26%),
+    radial-gradient(circle at 84% 8%, rgba(111, 190, 183, 0.12), transparent 18%),
+    radial-gradient(circle at 50% 102%, rgba(45, 84, 136, 0.24), transparent 30%),
+    linear-gradient(180deg, #07111b 0%, #091522 48%, #07101a 100%);
+  background: var(--app-background);
+  color: var(--text-primary);
+  font-synthesis: none;
+  line-height: 1.55;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+  background: var(--app-background) fixed;
+  color: var(--text-primary);
+  letter-spacing: -0.01em;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+button,
+a,
+input,
+textarea,
+select {
+  -webkit-tap-highlight-color: transparent;
+}
+
+a {
+  color: inherit;
+}
+
+::selection {
+  background: rgba(108, 165, 235, 0.34);
+  color: #f8fafc;
+}
+
+#root {
+  min-height: 100vh;
+  isolation: isolate;
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(9, 18, 30, 0.78);
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(130, 156, 184, 0.28);
+  border: 2px solid rgba(9, 18, 30, 0.78);
+  border-radius: 999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(149, 177, 207, 0.4);
+}

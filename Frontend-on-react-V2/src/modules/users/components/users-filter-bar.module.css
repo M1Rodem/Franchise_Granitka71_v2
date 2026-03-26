@@ -1,0 +1,24 @@
+.controls {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.selectWrap {
+  width: 220px;
+}
+
+@media (max-width: 720px) {
+  .controls {
+    align-items: stretch;
+  }
+
+  .controls > * {
+    width: 100%;
+  }
+
+  .selectWrap {
+    width: 100%;
+  }
+}

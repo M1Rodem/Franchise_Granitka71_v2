@@ -1,0 +1,247 @@
+/* ======================================== */
+/* OVERLAY (Telegram style background) */
+/* ======================================== */
+
+.overlay {
+  position: fixed;
+  inset: 0;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(8px);
+
+  z-index: 1200;
+}
+
+/* ======================================== */
+/* ICON */
+/* ======================================== */
+
+.icon {
+  width: 22px;
+  height: 22px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  color: rgba(255,255,255,0.9);
+
+  transition: all 0.2s ease;
+}
+
+.icon svg {
+  width: 100%;
+  height: 100%;
+}
+
+.navLeft:hover .icon {
+  transform: translateX(-3px) scale(1.1);
+}
+
+.navRight:hover .icon {
+  transform: translateX(3px) scale(1.1);
+}
+
+.download:hover .icon {
+  transform: translateY(2px) scale(1.1);
+}
+
+.navLeft:active .icon,
+.navRight:active .icon,
+.download:active .icon {
+  transform: scale(0.92);
+}
+
+.navLeft:hover,
+.navRight:hover,
+.download:hover {
+  background: rgba(255,255,255,0.08);
+  backdrop-filter: blur(10px);
+}
+
+/* ======================================== */
+/* VIEWER */
+/* ======================================== */
+
+.viewer {
+  position: relative;
+
+  width: 100%;
+  height: 100%;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  padding: 40px;
+}
+
+
+/* ======================================== */
+/* MEDIA CONTAINER */
+/* ======================================== */
+
+.mediaContainer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  max-width: 90vw;
+  max-height: 90vh;
+}
+
+
+/* ======================================== */
+/* IMAGE / VIDEO */
+/* ======================================== */
+
+.media {
+  max-width: 90vw;
+  max-height: 90vh;
+
+  object-fit: contain;
+
+  border-radius: 12px;
+
+  box-shadow:
+    0 20px 50px rgba(0,0,0,0.6);
+}
+
+
+/* ======================================== */
+/* NAVIGATION */
+/* ======================================== */
+
+.navLeft,
+.navRight {
+  position: absolute;
+  top: 50%;
+
+  transform: translateY(-50%);
+
+  width: 46px;
+  height: 46px;
+
+  border-radius: 12px;
+
+  border: none;
+
+  cursor: pointer;
+
+  font-size: 24px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  background: rgba(10, 30, 60, 0.75);
+  color: #eaf4ff;
+
+  transition: all 0.2s ease;
+}
+
+.navLeft:hover,
+.navRight:hover {
+  background: rgba(90, 140, 220, 0.45);
+}
+
+.navLeft {
+  left: 20px;
+}
+
+.navRight {
+  right: 20px;
+}
+
+
+/* ======================================== */
+/* DOWNLOAD ICON */
+/* ======================================== */
+
+.download {
+  position: absolute;
+
+  top: 20px;
+  right: 20px;
+
+  width: 44px;
+  height: 44px;
+
+  border-radius: 12px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  text-decoration: none;
+
+  font-size: 20px;
+
+  color: #eaf4ff;
+
+  background: rgba(10, 30, 60, 0.75);
+
+  transition: all 0.2s ease;
+}
+
+.download:hover {
+  background: rgba(90, 140, 220, 0.45);
+}
+
+
+/* ======================================== */
+/* RESPONSIVE */
+/* ======================================== */
+
+@media (max-width: 768px) {
+
+  .viewer {
+    padding: 20px;
+  }
+
+  .media {
+    max-width: 94vw;
+    max-height: 86vh;
+  }
+
+  .navLeft {
+    left: 10px;
+  }
+
+  .navRight {
+    right: 10px;
+  }
+
+  .download {
+    top: 14px;
+    right: 14px;
+  }
+
+}
+
+@media (max-width: 480px) {
+
+  .viewer {
+    padding: 10px;
+  }
+
+  .media {
+    max-width: 96vw;
+    max-height: 82vh;
+  }
+
+  .navLeft,
+  .navRight {
+    display: none;
+  }
+
+  .download {
+    width: 38px;
+    height: 38px;
+    font-size: 18px;
+  }
+}

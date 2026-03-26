@@ -1,0 +1,37 @@
+.page {
+  display: grid;
+  gap: 20px;
+}
+
+.toolbar {
+  padding: 16px;
+  position: relative;
+  z-index: 20;
+}
+
+.results {
+  display: grid;
+  gap: 16px;
+  position: relative;
+  z-index: 1;
+}
+
+.filtersSection {
+  overflow: visible !important;
+}
+
+.filterSurface {
+  position: relative;
+  z-index: 20;
+  gap: 22px;
+}
+
+@media (max-width: 768px) {
+  .page {
+    gap: 16px;
+  }
+
+  .results {
+    gap: 14px;
+  }
+}

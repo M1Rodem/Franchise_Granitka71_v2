@@ -1,0 +1,68 @@
+.dateCell {
+  width: 100%;
+}
+
+.dateCell label {
+  width: 100%;
+  display: block;
+}
+
+.dateCell .orders-date-input-module__inputWrap {
+  width: 100%;
+}
+
+.dateCell input {
+  width: 100%;
+  height: 42px;
+}
+
+@media (max-width: 768px) {
+  .deleteButton {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+.headerRow{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:16px;
+}
+
+.advanceHint{
+
+  display:flex;
+  align-items:center;
+  gap:14px;
+
+  padding:6px 10px;
+
+  border-radius:12px;
+
+  background:rgba(16,42,78,0.55);
+
+  border:1px solid rgba(126,164,220,0.25);
+
+  backdrop-filter:blur(12px);
+}
+
+.advanceText{
+  font-size:13px;
+  color:#cfe6ff;
+}
+@media (max-width:640px){
+
+  .headerRow{
+    flex-direction:column;
+    align-items:flex-start;
+    gap:10px;
+  }
+
+  .advanceHint{
+    width:100%;
+    flex-direction:column;
+    align-items:flex-start;
+  }
+
+}

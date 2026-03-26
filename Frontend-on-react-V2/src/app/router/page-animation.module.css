@@ -1,0 +1,134 @@
+/* =========================================================
+   PAGE ANIMATIONS (Liquid Glass)
+========================================================= */
+
+/* Контейнер страницы */
+.pageContainer {
+  flex: 1;
+  animation: pageFadeIn 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@keyframes pageFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* Появление элементов с задержкой */
+.fadeInUp {
+  animation: fadeInUp 0.4s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  opacity: 0;
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(15px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Staggered children */
+.staggerChildren > * {
+  animation: fadeInUp 0.4s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  opacity: 0;
+}
+
+.staggerChildren > *:nth-child(1) { animation-delay: 0s; }
+.staggerChildren > *:nth-child(2) { animation-delay: 0.05s; }
+.staggerChildren > *:nth-child(3) { animation-delay: 0.1s; }
+.staggerChildren > *:nth-child(4) { animation-delay: 0.15s; }
+.staggerChildren > *:nth-child(5) { animation-delay: 0.2s; }
+.staggerChildren > *:nth-child(6) { animation-delay: 0.25s; }
+
+/* Slide in from left */
+.slideInLeft {
+  animation: slideInLeft 0.4s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  opacity: 0;
+}
+
+@keyframes slideInLeft {
+  from {
+    opacity: 0;
+    transform: translateX(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* Slide in from right */
+.slideInRight {
+  animation: slideInRight 0.4s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  opacity: 0;
+}
+
+@keyframes slideInRight {
+  from {
+    opacity: 0;
+    transform: translateX(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* Scale in */
+.scaleIn {
+  animation: scaleIn 0.35s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  opacity: 0;
+  transform: scale(0.95);
+}
+
+@keyframes scaleIn {
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Skeleton shimmer */
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    rgba(90, 140, 220, 0.08) 25%,
+    rgba(90, 140, 220, 0.15) 50%,
+    rgba(90, 140, 220, 0.08) 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+  border-radius: 12px;
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .pageContainer,
+  .fadeInUp,
+  .slideInLeft,
+  .slideInRight,
+  .scaleIn,
+  .staggerChildren > * {
+    animation: none;
+    opacity: 1;
+    transform: none;
+  }
+}

@@ -1,0 +1,29 @@
+.page {
+  display: grid;
+  gap: 20px;
+}
+
+.filterSurface {
+  gap: 22px;
+}
+
+.helper {
+  color: var(--text-secondary);
+  font-size: 14px;
+  line-height: 1.7;
+  padding: 16px 18px;
+  border-radius: 16px;
+  border: 1px solid rgba(184, 212, 237, 0.12);
+  background: rgba(8, 18, 29, 0.42);
+}
+
+@media (max-width: 720px) {
+  .page {
+    gap: 16px;
+  }
+
+  .helper {
+    font-size: 13px;
+    padding: 12px 14px;
+  }
+}

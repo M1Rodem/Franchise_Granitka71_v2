@@ -18,7 +18,7 @@ import { FinancialSection } from '@/modules/orders/components/order-details/Fina
 import { MediaSection } from '@/modules/orders/components/order-details/MediaSection';
 import { OrderActions } from '@/modules/orders/components/order-details/OrderActions';
 import { AdditionalInfoSection } from '@/modules/orders/components/order-details/AdditionalInfoSection';
-
+import { AppIcon } from '@/shared/ui/AppIcon'
 
 import styles from './order-details.page.module.css';
 
@@ -105,8 +105,14 @@ export default function OrderDetailsPage() {
     return (
       <div className={styles.stateContainer}>
         <div className={styles.error}>Ошибка загрузки заказа</div>
-        <button onClick={() => navigate(-1)} className={styles.backButton}>
-          ← Назад
+        <button
+          onClick={() => navigate(-1)}
+          className={styles.backButton}
+        >
+          <span className={styles.backIcon}>
+            <AppIcon name="arrowLeft" />
+          </span>
+          Назад
         </button>
       </div>
     );
@@ -117,8 +123,14 @@ export default function OrderDetailsPage() {
     return (
       <div className={styles.stateContainer}>
         <div className={styles.error}>Заказ не найден</div>
-        <button onClick={() => navigate(-1)} className={styles.backButton}>
-          ← Назад
+        <button
+          onClick={() => navigate(-1)}
+          className={styles.backButton}
+        >
+          <span className={styles.backIcon}>
+            <AppIcon name="arrowLeft" />
+          </span>
+          Назад
         </button>
       </div>
     );

@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom'
 import styles from './media-preview-modal.module.css'
 import type { ViewerMediaDto } from '../api/media.types'
 import { loadMedia } from '../utils/media-loader'
+import { AppIcon } from '@/shared/ui/AppIcon'
 
 interface Props {
   items: ViewerMediaDto[]
@@ -196,7 +197,9 @@ export function MediaPreviewModal({
             onClick={prev}
             className={styles.navLeft}
           >
-            ←
+            <span className={styles.icon}>
+              <AppIcon name="arrowLeft" />
+            </span>
           </button>
         )}
 
@@ -243,7 +246,9 @@ export function MediaPreviewModal({
             onClick={next}
             className={styles.navRight}
           >
-            →
+            <span className={styles.icon}>
+              <AppIcon name="arrowRight" />
+            </span>
           </button>
         )}
 
@@ -254,21 +259,9 @@ export function MediaPreviewModal({
           className={styles.download}
           onClick={(e) => e.stopPropagation()}
         >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            width="22"
-            height="22"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-            <polyline points="7 10 12 15 17 10"/>
-            <line x1="12" y1="15" x2="12" y2="3"/>
-          </svg>
+          <span className={styles.icon}>
+            <AppIcon name="download" />
+          </span>
         </a>
 
       </div>

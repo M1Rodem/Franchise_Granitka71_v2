@@ -40,6 +40,8 @@ export function SignalRProvider({ children }: { children: React.ReactNode }) {
       }
 
       const handleCounts = (counts: NotificationCountsDto) => {
+        console.debug('[SignalR DEBUG][COUNTS_EVENT]', counts)
+
         useNotificationsStore
           .getState()
           .setCounts(counts)

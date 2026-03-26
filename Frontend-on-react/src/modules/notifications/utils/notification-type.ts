@@ -13,3 +13,7 @@ export function getNotificationTypeLabel(type: string): string {
       return type
   }
 }
+
+export function isSystemNotification(type: number | string) {
+  return type === 1 || type === 'System'
+}

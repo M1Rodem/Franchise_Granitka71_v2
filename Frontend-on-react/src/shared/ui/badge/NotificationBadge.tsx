@@ -13,7 +13,12 @@ export function NotificationBadge(props: Props) {
   const count = props.count ?? storeCount
   const color = props.color ?? storeColor
 
-  if (!count || color === 'none') return null
+  console.debug('[Notifications DEBUG][BADGE_RENDER]', {
+    count,
+    color,
+  })
+
+  if (!count) return null
 
   return (
     <span className={[styles.badge, styles[color]].join(' ')}>

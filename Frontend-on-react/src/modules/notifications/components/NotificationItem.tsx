@@ -5,6 +5,7 @@ import { formatNotificationDateTime } from '../utils/date'
 import { useState } from 'react'
 import { NotificationModal } from './NotificationModal'
 import { useNotificationActions } from '../hooks/useNotificationActions'
+import { isSystemNotification } from '../utils/notification-type'
 
 interface Props {
   notification: NotificationResponseDto
@@ -13,9 +14,9 @@ interface Props {
 export function NotificationItem({ notification }: Props) {
   const [open, setOpen] = useState(false)
 
-  const isSystem = notification.type === 1
+  const isSystem = notification.isInformation
 
-  const { snooze } = useNotificationActions({
+  const { snooze, accept } = useNotificationActions({
     notificationId: notification.id,
   })
 
@@ -45,15 +46,15 @@ export function NotificationItem({ notification }: Props) {
                 className={`${styles.btn} ${styles.btnPrimary}`}
                 onClick={(e) => {
                   e.stopPropagation()
-                  // TODO: сюда accept добавим позже
+                  accept()
                 }}
               >
-                Закрыть
+                Пометить как прочитанное
               </button>
             ) : (
               notification.canPostpone && (
                 <button
-                  className={`${styles.btn} ${styles.btnSecondary}`}
+                  className={`${styles.btn} ${styles.btnWarning}`}
                   onClick={(e) => {
                     e.stopPropagation()
                     snooze(30)

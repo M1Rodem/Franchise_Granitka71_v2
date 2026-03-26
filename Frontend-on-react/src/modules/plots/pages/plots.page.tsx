@@ -181,7 +181,7 @@ export default function PlotsPage() {
 
             <button
               type="button"
-              className={`${button.btn} ${button.btnPrimary}`}
+              className={`${button.btn} ${button.btnSuccess}`}
               onClick={handleCreate}
               disabled={
                 !name.trim() ||

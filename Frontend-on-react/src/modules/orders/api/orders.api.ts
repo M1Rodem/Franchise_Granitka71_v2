@@ -116,6 +116,22 @@ export const ordersApi = {
     return ordersPagedResultSchema.parse(response.data);
   },
 
+  async printOrderHtml(id: number): Promise<Blob> {
+    const response = await httpClient.get(`/api/Print/order/${id}/html-print`, {
+      responseType: 'blob',
+    })
+
+    return response.data
+  },
+
+  async downloadOrderExcel(id: number): Promise<Blob> {
+    const response = await httpClient.get(`/api/Print/order/${id}/download`, {
+      responseType: 'blob',
+    })
+
+    return response.data
+  },
+
   async getById(id: number): Promise<OrderDetailsDto> {
     const response = await httpClient.get(`/api/orders/${id}`);
     const parsed = orderDetailsSchema.safeParse(response.data);

@@ -83,13 +83,6 @@ export function EditProfileModal({
         <div style={{ display: "flex", gap: 10 }}>
 
           <button
-            className={`${button.btn} ${button.btnSecondary}`}
-            onClick={handleCloseRequest}
-          >
-            Отмена
-          </button>
-
-          <button
             className={`${button.btn} ${button.btnSuccess}`}
             onClick={handleSave}
             disabled={!hasChanges}
@@ -97,6 +90,13 @@ export function EditProfileModal({
             {updateMutation.isPending
               ? "Сохранение..."
               : "Сохранить"}
+          </button>
+
+          <button
+            className={`${button.btn} ${button.btnSecondary}`}
+            onClick={handleCloseRequest}
+          >
+            Отмена
           </button>
 
         </div>

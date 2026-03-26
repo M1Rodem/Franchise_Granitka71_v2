@@ -8,7 +8,6 @@ import type {
 import type { PagingResponse } from '@/shared/types/api'
 import { useNotificationsStore } from '../store/notifications.store'
 import { NotificationStatus } from '../types/notifications.types'
-import type { NotificationCountsDto } from '../store/notifications.store'
 
 interface Params {
   filter: NotificationFilter
@@ -45,33 +44,10 @@ export function useNotifications({ filter, page, pageSize }: Params) {
 
     const store = useNotificationsStore.getState()
 
-    console.log('[API][RESPONSE]', {
-      filter,
-      items: query.data.items.map((i) => ({
-        id: i.id,
-        status: i.status,
-        updatedAt: i.updatedAt,
-      })),
-    })
-
     query.data.items.forEach((item) => {
-      const existing = store.notifications.find((n) => n.id === item.id)
-
-      console.log('[API][MERGE]', {
-        id: item.id,
-        apiStatus: item.status,
-        storeStatus: existing?.status,
-      })
-
       store.upsertNotification(item)
     })
   }, [query.data])
-  
-  const countsQuery = useQuery<NotificationCountsDto>({
-    queryKey: ['notifications-counts'],
-    queryFn: () => notificationsApi.getCounts(),
-    staleTime: 30 * 1000,
-  })
 
   const aggregation = storeNotifications.reduce(
     (acc, n) => {
@@ -87,36 +63,13 @@ export function useNotifications({ filter, page, pageSize }: Params) {
     }
   )
 
-  const setCounts = useNotificationsStore((s) => s.setCounts)
-
-  useEffect(() => {
-    if (!countsQuery.data) return
-    setCounts(countsQuery.data as NotificationCountsDto)
-  }, [countsQuery.data])
-
-  const filteredItems = storeNotifications.filter((n) => {
-    if (filter === 'active') {
-      return n.status === NotificationStatus.Pending
-    }
-
-    if (filter === 'postponed') {
-      return n.status === NotificationStatus.Postponed
-    }
-
-    if (filter === 'all') {
-      return true
-    }
-
-    return true
-  })
+  const filteredItems = query.data?.items ?? []
 
   return {
     items: filteredItems,
     totalPages: query.data?.totalPages ?? 0,
     total: query.data?.totalCount ?? 0,
     isLoading: query.isLoading,
-    counts: countsQuery.data,
     aggregation,
-    isLoadingCounts: countsQuery.isLoading,
   }
 }

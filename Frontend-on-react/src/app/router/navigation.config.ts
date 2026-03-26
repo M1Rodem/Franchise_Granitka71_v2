@@ -16,7 +16,12 @@ export type AppIconName =
   | 'close'
   | 'check'
   | 'realtimeConnected'
-  | 'realtimeDisconnected';
+  | 'realtimeDisconnected'
+  | 'print'
+  | 'download'
+  | 'excel'
+  | 'arrowLeft'
+  | 'arrowRight';
 
 export interface NavigationItem {
   id: string;

@@ -59,13 +59,11 @@ export const useNotificationsStore = create<NotificationsState>((set, get) => ({
   lockedIds: new Set<number>(),
   
   selectSidebarCount: () => {
-    const notifications = get().notifications
+    const counts = get().counts
 
-    return notifications.filter(
-      (n) =>
-        n.status === NotificationStatus.Pending ||
-        n.status === NotificationStatus.Postponed
-    ).length
+    if (!counts) return 0
+
+    return counts.active + counts.postponed
   },
 
   selectFiltersData: () => {
@@ -89,25 +87,13 @@ export const useNotificationsStore = create<NotificationsState>((set, get) => ({
   },
 
   selectSidebarColor: () => {
-    const notifications = get().notifications
+    const counts = get().counts
 
-    const hasActiveNonSystem = notifications.some(
-      (n) =>
-        n.status === NotificationStatus.Pending &&
-        !n.isInformation
-    )
+    if (!counts) return 'none'
 
-    const hasPostponed = notifications.some(
-      (n) => n.status === NotificationStatus.Postponed
-    )
-
-    const hasOnlySystem =
-      notifications.length > 0 &&
-      notifications.every((n) => n.isInformation)
-
-    if (hasActiveNonSystem) return 'red'
-    if (hasPostponed) return 'blue'
-    if (hasOnlySystem) return 'gray'
+    if (counts.hasActiveNonSystem) return 'red'
+    if (counts.hasPostponed) return 'blue'
+    if (counts.hasOnlySystem) return 'gray'
 
     return 'none'
   },
@@ -135,6 +121,8 @@ export const useNotificationsStore = create<NotificationsState>((set, get) => ({
   },
 
   setCounts: (counts) => {
+    console.debug('[Notifications DEBUG][SET_COUNTS]', counts)
+
     set((state) => {
       if (
         state.counts &&
@@ -162,11 +150,6 @@ export const useNotificationsStore = create<NotificationsState>((set, get) => ({
           existingTime >= incomingTime
 
         if (isStatusRollback) {
-          console.warn('[NOTIFICATION][SKIP_ROLLBACK]', {
-            id: item.id,
-            existingStatus: existing.status,
-            incomingStatus: item.status,
-          })
           return state
         }
 
@@ -244,32 +227,23 @@ export const useNotificationsStore = create<NotificationsState>((set, get) => ({
   },
 
   selectSidebarBadge: () => {
-    const notifications = get().notifications
+    const counts = get().counts
 
-    const active = notifications.filter(
-      (n) => n.status === NotificationStatus.Pending
-    )
+    if (!counts) {
+      return { count: 0, color: 'none' as const }
+    }
 
-    const postponed = notifications.filter(
-      (n) => n.status === NotificationStatus.Postponed
-    )
-
-    const total = active.length + postponed.length
+    const total = counts.active + counts.postponed
 
     if (total === 0) {
       return { count: 0, color: 'none' as const }
     }
 
-    const hasActiveNonSystem = active.some((n) => !n.isInformation)
-    const hasPostponed = postponed.length > 0
-    const hasOnlySystem =
-      total > 0 && active.every((n) => n.isInformation)
-
     let color: BadgeColor = 'none'
 
-    if (hasActiveNonSystem) color = 'red'
-    else if (hasPostponed) color = 'blue'
-    else if (hasOnlySystem) color = 'gray'
+    if (counts.hasActiveNonSystem) color = 'red'
+    else if (counts.hasPostponed) color = 'blue'
+    else if (counts.hasOnlySystem) color = 'gray'
 
     return {
       count: total,

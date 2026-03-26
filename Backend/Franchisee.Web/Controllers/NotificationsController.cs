@@ -297,8 +297,26 @@ public class NotificationsController : ControllerBase
 
         try
         {
+            // Проверяем роль пользователя
+            bool isAdminOrSuperAdmin = User.IsInRole("Admin") || User.IsInRole("SuperAdmin");
+            
+            // Для админов блокировка всегда false
+            if (isAdminOrSuperAdmin)
+            {
+                _logger.LogInformation("[Blocking] UserId={UserId} is Admin/SuperAdmin, blocking disabled", userId);
+                
+                return Ok(new
+                {
+                    isBlocked = false,
+                    blockingCount = 0,
+                    message = (string?)null,
+                    timestamp = DateTime.UtcNow
+                });
+            }
+            
+            // Для обычных пользователей — стандартная логика
             var blockingCount = await _notificationService.GetBlockingNotificationsCount(userId);
-            _logger.LogInformation("[Blocking] OrderId={OrderId} Result={IsBlocked}", 0, blockingCount > 0);
+            _logger.LogInformation("[Blocking] UserId={UserId} Result={IsBlocked}", userId, blockingCount > 0);
 
             return Ok(new
             {

@@ -32,6 +32,80 @@
 }
 
 /* ======================================================
+  ICON
+====================================================== */
+
+.actionIcon {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  opacity: 0.9;
+  transition: all 0.2s ease;
+}
+
+.actionIcon svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+
+  color: inherit;
+}
+
+.btn:hover .actionIcon {
+  transform: translateY(-1px) scale(1.05);
+  opacity: 1;
+}
+
+.btn:active .actionIcon {
+  transform: scale(0.95);
+}
+
+.btnLoading .actionIcon {
+  opacity: 0;
+}
+
+.backBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.backIcon {
+  width: 18px;
+  height: 18px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  opacity: 0.9;
+  transition: all 0.2s ease;
+}
+
+.backIcon svg {
+  width: 100%;
+  height: 100%;
+}
+
+.backBtn:hover .backIcon {
+  transform: translateX(-4px);
+  opacity: 1;
+}
+
+.backBtn:active .backIcon {
+  transform: translateX(-2px) scale(0.95);
+}
+
+.backBtn:hover {
+  letter-spacing: 0.02em;
+}
+
+/* ======================================================
    MENU BUTTON
 ====================================================== */
 
@@ -181,146 +255,6 @@
 
 .detailsBackButton:active {
   transform: translateY(0);
-}
-
-
-/* ======================================================
-   GLASS BUTTON
-====================================================== */
-
-.glassButton {
-  padding: 8px 16px;
-  min-height: 40px;
-
-  font-size: 14px;
-  font-weight: 500;
-
-  border-radius: 14px;
-  border: 1px solid rgba(137, 179, 239, 0.35);
-  background: rgba(17, 43, 80, 0.72);
-
-  color: #dff0ff;
-
-  cursor: pointer;
-
-  backdrop-filter: blur(12px);
-
-  transition:
-    background 0.45s cubic-bezier(.22,.9,.32,1),
-    border-color 0.45s cubic-bezier(.22,.9,.32,1),
-    box-shadow 0.45s cubic-bezier(.22,.9,.32,1),
-    color 0.3s ease;
-  
-  box-shadow:
-    inset 0 1px 0 rgba(255,255,255,0.25),
-    0 6px 18px rgba(0,0,0,0.25);
-}
-
-.glassButton:hover:not(:disabled) {
-  background: linear-gradient(
-    145deg,
-    rgba(123, 188, 255, 0.22),
-    rgba(94, 147, 223, 0.14)
-  );
-
-  border-color: rgba(152, 204, 255, 0.55);
-
-  box-shadow:
-    0 8px 22px rgba(90, 140, 220, 0.35),
-    inset 0 1px 0 rgba(255, 255, 255, 0.3);
-
-  transform: translateY(-2px);
-}
-
-.glassButton:active:not(:disabled) {
-  transform: translateY(0);
-}
-
-.glassButton:disabled {
-  opacity: 0.55;
-  cursor: not-allowed;
-}
-
-.glassButtonTwo {
-  padding: 8px 16px;
-  min-height: 40px;
-
-  font-size: 14px;
-  font-weight: 500;
-
-  border-radius: 14px;
-
-  backdrop-filter: blur(16px);
-
-  border: 1px solid var(--btn-border);
-
-  background: linear-gradient(
-    145deg,
-    var(--btn-bg1),
-    var(--btn-bg2)
-  );
-
-  color: var(--btn-text);
-
-  cursor: pointer;
-
-  transition:
-    background 0.45s cubic-bezier(.22,.9,.32,1),
-    border-color 0.45s cubic-bezier(.22,.9,.32,1),
-    box-shadow 0.45s cubic-bezier(.22,.9,.32,1),
-    color 0.35s ease,
-    transform 0.2s ease;
-
-  box-shadow:
-    inset 0 1px 0 rgba(255,255,255,0.25),
-    0 6px 18px rgba(0,0,0,0.25);
-}
-
-.glassButtonGreen {
-
-  --btn-bg1: rgba(86,220,160,0.28);
-  --btn-bg2: rgba(40,170,110,0.16);
-
-  --btn-border: rgba(110,255,200,0.45);
-
-  --btn-text: #eafff6;
-
-  box-shadow:
-    inset 0 1px 0 rgba(255,255,255,0.35),
-    0 6px 16px rgba(60,220,140,0.22);
-}
-
-.glassButtonRed {
-  --btn-bg1: rgba(255,120,120,0.25);
-  --btn-bg2: rgba(200,70,70,0.14);
-
-  --btn-border: rgba(255,140,140,0.35);
-
-  --btn-text: rgba(255,230,230,0.9);
-
-  box-shadow:
-    inset 0 1px 0 rgba(255,255,255,0.2),
-    0 4px 20px rgba(60,220,140,0.22);
-
-  filter: saturate(0.7);
-
-  opacity: 0.75;
-
-  cursor: not-allowed;
-}
-
-.glassButton:disabled {
-  transform: none;
-  pointer-events: none;
-}
-
-.glassButtonGreen:hover {
-
-  transform: translateY(-2px);
-
-  box-shadow:
-    inset 0 1px 0 rgba(255,255,255,0.4),
-    0 6px 28px rgba(60,220,140,0.28);
 }
 
 .detailsTitleButtonWrapper {

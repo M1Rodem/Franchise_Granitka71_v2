@@ -1694,9 +1694,9 @@ namespace Franchisee.Web.Services.Notifications.Core
                 .Where(nr => nr.UserId == userId &&
                             nr.Notification.IsInfluencing &&
                             (nr.Status == NotificationStatus.Pending ||
-                             (nr.Status == NotificationStatus.Postponed &&
-                              nr.ReturnsAt.HasValue &&
-                              nr.ReturnsAt <= now)))
+                            (nr.Status == NotificationStatus.Postponed &&
+                            nr.ReturnsAt.HasValue &&
+                            nr.ReturnsAt <= now)))
                 .CountAsync();
         }
 

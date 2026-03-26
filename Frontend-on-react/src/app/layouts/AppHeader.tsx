@@ -7,15 +7,21 @@ import { cn } from '@/shared/lib/cn'
 import { useEffect, useState } from 'react'
 import { signalRService } from '@/shared/lib/signalr/signalr.service'
 import buttonStyles from '@/shared/ui/button.module.css'
+import { ordersApi } from '@/modules/orders/api/orders.api'
+import { useParams } from 'react-router-dom'
+import { tempMessage } from '@/shared/ui/temp-message.service'
+import { AppIcon } from '@/shared/ui/AppIcon'
 
 export function AppHeader() {
   const navigate = useNavigate();
   const location = useLocation();
-
+  const { id } = useParams<{ id: string }>()
+  const orderId = Number(id)
   const openMobileSidebar = useUiStore((state) => state.openMobileSidebar);
   const header = useUiStore((state) => state.header)
   const submitDisabled = header.submitDisabled
   const openPlotCreateModal = useUiStore((state) => state.openPlotCreateModal);
+  const [loading, setLoading] = useState<'print' | 'excel' | null>(null)
 
   const defaultTitle = resolveRouteTitle(
     location.pathname,
@@ -70,27 +76,89 @@ export function AppHeader() {
           <button
             type="button"
             onClick={() => navigate(-1)}
-            className={cn(buttonStyles.btn, buttonStyles.btnNeutral)}
+            className={cn(
+              buttonStyles.btn,
+              buttonStyles.btnNeutral,
+              styles.backBtn
+            )}
           >
-            ← Назад
+            <span className={styles.backIcon}>
+              <AppIcon name="arrowLeft" />
+            </span>
+            Назад
           </button>
 
           <div className={styles.detailsActions}>
             <button
               type="button"
-              className={cn(buttonStyles.btn, buttonStyles.btnNeutral)}
-              disabled
-            >
+              onClick={async () => {
+                if (!orderId) {
+                  tempMessage.error('Не удалось определить ID заказа')
+                  return
+                }
+
+                try {
+                  setLoading('print')
+
+                  const blob = await ordersApi.printOrderHtml(orderId)
+
+                  const url = URL.createObjectURL(blob)
+                  window.open(url, '_blank')
+
+                  setTimeout(() => URL.revokeObjectURL(url), 5000)
+                } catch (e) {
+                  console.error(e)
+                  tempMessage.error('Ошибка при открытии печати')
+                } finally {
+                  setLoading(null)
+                }
+              }}
+              className={cn(buttonStyles.btn, buttonStyles.btnPrint, buttonStyles.btnWithIcon)}>
+              <span className={styles.actionIcon}>
+                <AppIcon name="print" />
+              </span>
               Печать
             </button>
 
             <button
               type="button"
-              className={cn(buttonStyles.btn, buttonStyles.btnNeutral)}
-              disabled
-            >
-              Excel
-            </button>
+              onClick={async () => {
+                if (!orderId) {
+                  tempMessage.error('Не удалось определить ID заказа')
+                  return
+                }
+
+                try {
+                  setLoading('excel')
+
+                  const blob = await ordersApi.downloadOrderExcel(orderId)
+
+                  const url = URL.createObjectURL(blob)
+
+                  const a = document.createElement('a')
+                  a.href = url
+                  a.download = `order_${header.orderNumber}.xlsx`
+
+                  document.body.appendChild(a)
+                  a.click()
+                  a.remove()
+
+                  URL.revokeObjectURL(url)
+
+                  tempMessage.success('Excel скачан')
+                } catch (e) {
+                  console.error(e)
+                  tempMessage.error('Ошибка при скачивании Excel')
+                } finally {
+                  setLoading(null)
+                }
+              }}
+              className={cn(buttonStyles.btn, buttonStyles.btnExcel, buttonStyles.btnWithIcon)}>
+                <span className={styles.actionIcon}>
+                  <AppIcon name="download" />
+                </span>
+                Excel
+              </button>
           </div>
         </>
       )}
@@ -101,9 +169,16 @@ export function AppHeader() {
           <button
             type="button"
             onClick={() => navigate(-1)}
-            className={cn(buttonStyles.btn, buttonStyles.btnNeutral)}
+            className={cn(
+              buttonStyles.btn,
+              buttonStyles.btnNeutral,
+              styles.backBtn
+            )}
           >
-            ← Назад
+            <span className={styles.backIcon}>
+              <AppIcon name="arrowLeft" />
+            </span>
+            Назад
           </button>
 
           <div className={styles.detailsTitleButtonWrapper}>
@@ -133,9 +208,16 @@ export function AppHeader() {
           <button
             type="button"
             onClick={() => navigate(-1)}
-            className={cn(buttonStyles.btn, buttonStyles.btnNeutral)}
+            className={cn(
+              buttonStyles.btn,
+              buttonStyles.btnNeutral,
+              styles.backBtn
+            )}
           >
-            ← Назад
+            <span className={styles.backIcon}>
+              <AppIcon name="arrowLeft" />
+            </span>
+            Назад
           </button>
 
           <div className={styles.detailsTitleButtonWrapper}>
@@ -165,9 +247,16 @@ export function AppHeader() {
           <button
             type="button"
             onClick={() => navigate('/admin')}
-            className={cn(buttonStyles.btn, buttonStyles.btnNeutral)}
+            className={cn(
+              buttonStyles.btn,
+              buttonStyles.btnNeutral,
+              styles.backBtn
+            )}
           >
-            ← Назад
+            <span className={styles.backIcon}>
+              <AppIcon name="arrowLeft" />
+            </span>
+            Назад
           </button>
 
           <h1 className={styles.detailsTitle}>
@@ -195,9 +284,16 @@ export function AppHeader() {
           <button
             type="button"
             onClick={() => navigate('/admin')}
-            className={cn(buttonStyles.btn, buttonStyles.btnNeutral)}
+            className={cn(
+              buttonStyles.btn,
+              buttonStyles.btnNeutral,
+              styles.backBtn
+            )}
           >
-            ← Назад
+            <span className={styles.backIcon}>
+              <AppIcon name="arrowLeft" />
+            </span>
+            Назад
           </button>
 
           <h1 className={styles.detailsTitle}>
@@ -227,9 +323,16 @@ export function AppHeader() {
           <button
             type="button"
             onClick={() => navigate('/admin')}
-            className={cn(buttonStyles.btn, buttonStyles.btnNeutral)}
+            className={cn(
+              buttonStyles.btn,
+              buttonStyles.btnNeutral,
+              styles.backBtn
+            )}
           >
-            ← Назад
+            <span className={styles.backIcon}>
+              <AppIcon name="arrowLeft" />
+            </span>
+            Назад
           </button>
 
           <h1 className={styles.detailsTitle}>

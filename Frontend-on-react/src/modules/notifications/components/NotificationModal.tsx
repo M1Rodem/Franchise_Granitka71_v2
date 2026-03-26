@@ -10,6 +10,8 @@ import { getNotificationTypeLabel } from '../utils/notification-type'
 import scrollStyles from '@/shared/ui/scroll.module.css'
 import { useNavigate } from 'react-router-dom'
 import buttonStyles from '@/shared/ui/button.module.css'
+import { isSystemNotification as isSystem } from '../utils/notification-type'
+import { useNotificationActions } from '../hooks/useNotificationActions'
 
 interface Props {
   notification: NotificationResponseDto | null
@@ -22,7 +24,9 @@ export function NotificationModal({
   isOpen,
   onClose,
 }: Props) {
-
+  const { accept } = useNotificationActions({
+    notificationId: notification?.id ?? 0,
+  })
 
   const { data, isLoading } = useQuery({
     queryKey: ['notification-details', notification?.id],
@@ -37,7 +41,9 @@ export function NotificationModal({
     (data as any)?.description ||
     null
   const navigate = useNavigate()
-  const isSystemNotification = data?.type === 'System'
+  const isSystemNotification = data?.type
+    ? isSystem(data.type)
+    : false
   return (
     <FormModal
       isOpen={isOpen}
@@ -48,7 +54,7 @@ export function NotificationModal({
         notification && (
           <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
 
-            {/* PRIMARY ACTION */}
+            {/* ПЕРЕЙТИ */}
             <button
               className={`${buttonStyles.btn} ${buttonStyles.btnPrimary}`}
               onClick={() => {
@@ -60,16 +66,29 @@ export function NotificationModal({
               Перейти в заказ
             </button>
 
-            {/* ACTIONS */}
-            <NotificationActions
-              notificationId={notification.id}
-              status={notification.status}
-              canPostpone={notification.canPostpone}
-              type={notification.type}
-              onDone={onClose}
-            />
+            {/* SYSTEM */}
+            {isSystemNotification ? (
+              <button
+                className={`${buttonStyles.btn} ${buttonStyles.btnPrimary}`}
+                onClick={() => {
+                  if (!notification) return
+                  accept()
+                  onClose()
+                }}
+              >
+                Пометить как прочитанное
+              </button>
+            ) : (
+              <NotificationActions
+                notificationId={notification.id}
+                status={notification.status}
+                canPostpone={notification.canPostpone}
+                type={notification.type}
+                onDone={onClose}
+              />
+            )}
 
-            {/* DISMISS */}
+            {/* ЗАКРЫТЬ */}
             <button
               className={`${buttonStyles.btn} ${buttonStyles.btnNeutral}`}
               onClick={onClose}

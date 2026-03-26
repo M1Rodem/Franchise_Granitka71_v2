@@ -322,22 +322,31 @@ export function UserModal({
             <div className={styles.editActions}>
 
               <button
-                className={`${button.btn} ${button.btnSecondary}`}
-                onClick={() => setEditMode(false)}
-              >
-                Отмена
-              </button>
-
-              <button
                 className={`${button.btn} ${button.btnSuccess}`}
                 onClick={handleSave}
+                style={{ 
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center"
+                }}
                 disabled={!hasChanges || updateMutation.isPending}
               >
                 {updateMutation.isPending
                   ? "Сохранение..."
                   : "Сохранить"}
               </button>
-
+              
+              <button
+                className={`${button.btn} ${button.btnSecondary}`}
+                onClick={() => setEditMode(false)}
+                style={{ 
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center"
+                }}
+              >
+                Отмена
+              </button>
             </div>
 
         ) : (
@@ -349,13 +358,23 @@ export function UserModal({
                 <button
                   className={`${button.btn} ${button.btnPrimary}`}
                   onClick={() => setEditMode(true)}
+                  style={{ 
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center"
+                   }}
                 >
                   Редактировать
                 </button>
 
                 <button
-                  className={`${button.btn} ${button.btnDanger}`}
+                  className={`${button.btn} ${button.btnWarning}`}
                   onClick={handleBlockToggle}
+                  style={{ 
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center"
+                   }}
                 >
                   {user?.isBlocked
                     ? "Разблокировать"
@@ -365,8 +384,20 @@ export function UserModal({
                 <button
                   className={`${button.btn} ${button.btnDanger}`}
                   onClick={handleDeleteUser}
+                  style={{ 
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center"
+                   }}
                 >
                   Удалить
+                </button>
+
+                <button
+                  className={`${button.btn} ${button.btnSecondary}`}
+                  onClick={handleCloseRequest}
+                >
+                  Отмена
                 </button>
 
               </div>
@@ -379,6 +410,11 @@ export function UserModal({
                   <button
                     className={`${button.btn} ${button.btnDanger}`}
                     onClick={handleBlockToggle}
+                    style={{ 
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center"
+                    }}
                   >
                     {user?.isBlocked
                       ? "Разблокировать"
@@ -388,6 +424,11 @@ export function UserModal({
                   <button
                     className={`${button.btn} ${button.btnDanger}`}
                     onClick={handleDeleteUser}
+                    style={{ 
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center"
+                    }}
                   >
                     Удалить
                   </button>
@@ -397,6 +438,11 @@ export function UserModal({
                 <button
                   className={`${button.btn} ${button.btnPrimary} ${styles.mobileEdit}`}
                   onClick={() => setEditMode(true)}
+                  style={{ 
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center"
+                  }}
                 >
                   Редактировать
                 </button>

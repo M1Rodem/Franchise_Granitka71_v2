@@ -3,35 +3,56 @@
 .field {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 6px; /* было 8 */
 }
 
 .label {
   font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.03em;
   color: #bad4f5;
+  transition: color 0.2s ease;
+}
+
+.field:focus-within .label {
+  color: #d4e6ff;
 }
 
 /* ===== BASE INPUT ===== */
 
 .input {
   width: 100%;
-  min-height: 42px;
-  border-radius: 12px;
-  border: 1px solid rgba(126, 164, 220, 0.33);
-  background: rgba(12, 31, 64, 0.72);
+  min-height: 42px; /* было 44 */
+  border-radius: 12px; /* было 14 */
+  border: 1px solid rgba(126, 164, 220, 0.3);
+  background: linear-gradient(
+    135deg,
+    rgba(12, 31, 64, 0.75),
+    rgba(8, 24, 52, 0.68)
+  );
+  backdrop-filter: blur(12px) saturate(160%);
+  -webkit-backdrop-filter: blur(12px) saturate(160%);
   color: #ecf6ff;
-  padding: 0 14px;
-  transition: border 0.18s ease, box-shadow 0.18s ease;
+  font-size: 14px;
+  font-weight: 500;
+  padding: 0 14px; /* было 16 */
+  transition: all 0.22s cubic-bezier(0.22, 1, 0.36, 1);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
+}
+
+.input::placeholder {
+  color: rgba(186, 212, 245, 0.4);
+  font-weight: 400;
 }
 
 .textarea {
   composes: input;
-  padding: 12px 14px;
-    resize: vertical;
-
+  padding: 12px 14px; /* было 12px 16px */
+  resize: vertical;
+  min-height: 80px;
   max-height: 447px;
-
   overflow-y: auto;
+  line-height: 1.5;
 }
 
 /* ===== INTERACTION ===== */
@@ -39,45 +60,232 @@
 .input:hover,
 .textarea:hover {
   border-color: rgba(150, 190, 255, 0.55);
-  box-shadow: 0 6px 18px rgba(90, 140, 220, 0.18);
+  background: linear-gradient(
+    135deg,
+    rgba(15, 35, 70, 0.8),
+    rgba(10, 28, 56, 0.72)
+  );
+  box-shadow: 
+    inset 0 1px 0 rgba(255, 255, 255, 0.05),
+    0 6px 18px rgba(90, 140, 220, 0.2);
+  transform: translateY(-1px);
 }
 
 .input:focus,
 .textarea:focus {
   outline: none;
-  border-color: rgba(150, 190, 255, 0.7);
-  box-shadow: 0 0 0 2px rgba(90, 140, 220, 0.35);
+  border-color: rgba(150, 190, 255, 0.75);
+  background: linear-gradient(
+    135deg,
+    rgba(18, 42, 82, 0.85),
+    rgba(12, 32, 68, 0.78)
+  );
+  box-shadow: 
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    0 0 0 3px rgba(90, 140, 220, 0.25),
+    0 8px 24px rgba(90, 140, 220, 0.2);
+  transform: translateY(-1px);
 }
 
-/* ===== ERROR ===== */
+/* ===== ERROR STATE ===== */
+
+.inputError,
+.textareaError {
+  border-color: rgba(239, 68, 68, 0.55);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
+}
+
+.inputError:hover,
+.textareaError:hover {
+  border-color: rgba(239, 68, 68, 0.7);
+  box-shadow: 0 6px 18px rgba(239, 68, 68, 0.18);
+}
+
+.inputError:focus,
+.textareaError:focus {
+  border-color: rgba(239, 68, 68, 0.8);
+  box-shadow: 
+    inset 0 1px 0 rgba(255, 255, 255, 0.05),
+    0 0 0 3px rgba(239, 68, 68, 0.25);
+}
 
 .error {
   font-size: 12px;
+  font-weight: 500;
   color: #ff7b7b;
+  padding-left: 4px;
+  letter-spacing: 0.02em;
 }
 
+/* ===== SEARCH INPUT ===== */
+
 .searchInput {
-  min-height: 42px;
+  min-height: 42px; /* было 44 */
   flex: 1;
   min-width: 260px;
-  border-radius: 12px;
-  border: 1px solid rgba(126, 164, 220, 0.33);
-  background: rgba(12, 31, 64, 0.72);
+  border-radius: 12px; /* было 14 */
+  border: 1px solid rgba(126, 164, 220, 0.3);
+  background: linear-gradient(
+    135deg,
+    rgba(12, 31, 64, 0.75),
+    rgba(8, 24, 52, 0.68)
+  );
+  backdrop-filter: blur(12px) saturate(160%);
+  -webkit-backdrop-filter: blur(12px) saturate(160%);
   color: #ecf6ff;
-  padding: 0 12px;
-  transition: all 0.2s ease;
+  font-size: 14px;
+  padding: 0 12px; /* было 16 */
+  transition: all 0.22s cubic-bezier(0.22, 1, 0.36, 1);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
+}
+
+.searchInput::placeholder {
+  color: rgba(186, 212, 245, 0.4);
 }
 
 .searchInput:hover {
   border-color: rgba(150, 190, 255, 0.55);
-  box-shadow: 0 6px 18px rgba(90, 140, 220, 0.18);
+  background: linear-gradient(
+    135deg,
+    rgba(15, 35, 70, 0.8),
+    rgba(10, 28, 56, 0.72)
+  );
+  box-shadow: 
+    inset 0 1px 0 rgba(255, 255, 255, 0.05),
+    0 6px 18px rgba(90, 140, 220, 0.2);
+  transform: translateY(-1px);
 }
 
 .searchInput:focus {
   outline: none;
-  border-color: rgba(150, 190, 255, 0.7);
-  box-shadow: 0 0 0 2px rgba(90, 140, 220, 0.35);
+  border-color: rgba(150, 190, 255, 0.75);
+  background: linear-gradient(
+    135deg,
+    rgba(18, 42, 82, 0.85),
+    rgba(12, 32, 68, 0.78)
+  );
+  box-shadow: 
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    0 0 0 3px rgba(90, 140, 220, 0.25),
+    0 8px 24px rgba(90, 140, 220, 0.2);
+  transform: translateY(-1px);
 }
+
+/* ===== DISABLED STATE ===== */
+
+.input:disabled,
+.textarea:disabled,
+.searchInput:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+  pointer-events: none;
+}
+
+/* ===== READONLY STATE ===== */
+
+.input:read-only,
+.textarea:read-only {
+  opacity: 0.7;
+  cursor: default;
+  background: linear-gradient(
+    135deg,
+    rgba(8, 24, 48, 0.6),
+    rgba(6, 18, 38, 0.55)
+  );
+}
+
+/* ===== SELECT (DROPDOWN) ===== */
+
+.select {
+  composes: input;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2380b0ff' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 14px center;
+  padding-right: 40px;
+  cursor: pointer;
+}
+
+.select:hover {
+  cursor: pointer;
+}
+
+/* ===== CHECKBOX & RADIO (Glass Style) ===== */
+
+.checkboxWrapper {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+}
+
+.checkbox {
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  cursor: pointer;
+  accent-color: #5a8cdc;
+  border-radius: 5px;
+  transition: all 0.2s ease;
+}
+
+.radio {
+  composes: checkbox;
+  border-radius: 50%;
+}
+
+.checkboxLabel,
+.radioLabel {
+  font-size: 14px;
+  color: #eaf4ff;
+  cursor: pointer;
+  transition: color 0.2s ease;
+}
+
+.checkboxWrapper:hover .checkboxLabel,
+.checkboxWrapper:hover .radioLabel {
+  color: #ffffff;
+}
+
+/* ===== INPUT GROUP (with icon) ===== */
+
+.inputGroup {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.inputIcon {
+  position: absolute;
+  left: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #80b0ff;
+  opacity: 0.6;
+  transition: opacity 0.2s ease;
+}
+
+.inputGroup .input {
+  padding-left: 42px;
+}
+
+.inputGroup:focus-within .inputIcon {
+  opacity: 1;
+}
+
+.inputIconRight {
+  left: auto;
+  right: 14px;
+}
+
+.inputGroup .inputWithIconRight {
+  padding-right: 42px;
+  padding-left: 16px;
+}
+
+/* ===== NUMBER INPUT ===== */
 
 /* Убираем стрелочки в Chrome */
 input[type="number"]::-webkit-outer-spin-button,
@@ -90,4 +298,48 @@ input[type="number"]::-webkit-inner-spin-button {
 input[type="number"] {
   appearance: textfield;
   -moz-appearance: textfield;
+}
+
+/* ===== MOBILE ADAPTATION ===== */
+
+@media (max-width: 768px) {
+  .input,
+  .textarea,
+  .searchInput,
+  .select {
+    min-height: 38px; /* было 40, вернул как было ~42 на десктопе, на мобилке чуть меньше */
+    font-size: 13px;
+    padding: 0 12px;
+    border-radius: 10px; /* было 12 */
+  }
+  
+  .textarea {
+    padding: 10px 12px;
+  }
+  
+  .label {
+    font-size: 11px;
+  }
+  
+  .inputGroup .input {
+    padding-left: 36px;
+  }
+  
+  .inputIcon {
+    left: 12px;
+    width: 16px;
+    height: 16px;
+  }
+}
+
+/* ===== ACCESSIBILITY ===== */
+
+@media (prefers-reduced-motion: reduce) {
+  .input,
+  .textarea,
+  .searchInput,
+  .select {
+    transition: none;
+    transform: none !important;
+  }
 }

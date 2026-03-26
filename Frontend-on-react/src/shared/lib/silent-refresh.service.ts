@@ -31,7 +31,6 @@ export async function performRefresh(): Promise<void> {
 
   refreshPromise = (async () => {
     try {
-      console.info('[AUTH] Token refresh initiated')
       lastRefreshTime = now
 
       const store = useAuthStore.getState()
@@ -55,10 +54,6 @@ export async function performRefresh(): Promise<void> {
       store.updateSession({
         user: currentUser,
         token,
-      })
-
-      console.info('[AUTH] Token refresh succeeded', {
-        expiresAt: useAuthStore.getState().sessionExpiresAt,
       })
     } catch (error) {
       let status: number | null = null

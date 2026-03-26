@@ -233,7 +233,7 @@ export function LocationSection() {
           window.open(url, '_blank')
         }}
       >
-        Открыть в навигаторе
+        Открыть в Яндекс.Навигаторе
       </button>
     </div>
   )

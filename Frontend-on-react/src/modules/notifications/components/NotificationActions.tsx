@@ -3,6 +3,7 @@ import { useNotificationActions } from '../hooks/useNotificationActions'
 import { NotificationStatus } from '../types/notifications.types'
 import buttonStyles from '@/shared/ui/button.module.css'
 import { NotificationActionModal } from './NotificationActionModal'
+import { isSystemNotification } from '../utils/notification-type'
 
 interface Props {
   notificationId: number
@@ -28,7 +29,7 @@ export function NotificationActions({
     status === NotificationStatus.Pending ||
     status === NotificationStatus.Postponed
 
-  const isSystem = type === 1
+  const isSystem = isSystemNotification(type)
 
   if (!canAct) return null
 

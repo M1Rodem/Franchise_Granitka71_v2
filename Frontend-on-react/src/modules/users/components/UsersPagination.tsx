@@ -1,6 +1,7 @@
 import { memo } from "react"
 
 import styles from "@/modules/orders/components/orders-pagination.module.css"
+import button from '@/shared/ui/button.module.css'
 
 interface UsersPaginationProps {
   page: number
@@ -35,6 +36,7 @@ export const UsersPagination = memo(function UsersPagination({
 
         <button
           type="button"
+          className={`${button.btn} ${button.btnPrimary}`}
           onClick={() => onPageChange(page - 1)}
           disabled={!canGoPrev || isFetching}
         >
@@ -47,6 +49,7 @@ export const UsersPagination = memo(function UsersPagination({
 
         <button
           type="button"
+          className={`${button.btn} ${button.btnPrimary}`}
           onClick={() => onPageChange(page + 1)}
           disabled={!canGoNext || isFetching}
         >

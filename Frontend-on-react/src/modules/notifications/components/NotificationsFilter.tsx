@@ -3,7 +3,6 @@ import styles from '@/shared/ui/button.module.css'
 import { NotificationBadge } from '@/shared/ui/badge/NotificationBadge'
 import surface from '@/shared/ui/surface.module.css'
 import { useNotificationsStore } from '../store/notifications.store'
-import { NotificationStatus } from '../types/notifications.types'
 
 interface Props {
   value: NotificationFilter
@@ -14,28 +13,7 @@ export function NotificationsFilter({
   value,
   onChange,
 }: Props){
-  const notifications = useNotificationsStore((s) => s.notifications)
-
-  // 1. группировки
-  const active = notifications.filter(
-    (n) => n.status === NotificationStatus.Pending
-  )
-
-  const postponed = notifications.filter(
-    (n) => n.status === NotificationStatus.Postponed
-  )
-
-  const history = notifications.filter(
-    (n) =>
-      n.status === NotificationStatus.Approved ||
-      n.status === NotificationStatus.Rejected
-  )
-
-  // 2. флаги
-  const hasActiveNonSystem = active.some((n) => !n.isInformation)
-  const hasActive = active.length > 0
-  const hasPostponed = postponed.length > 0
-  const hasHistory = history.length > 0
+  const counts = useNotificationsStore((s) => s.counts)
 
   // 3. filters
   const filters: {
@@ -47,30 +25,34 @@ export function NotificationsFilter({
     {
       key: 'active',
       label: 'Активные',
-      count: active.length,
-      badgeColor: hasActiveNonSystem
+      count: counts?.active ?? 0,
+      badgeColor: counts?.hasActiveNonSystem
         ? 'red'
-        : hasActive
+        : counts?.hasOnlySystem
         ? 'gray'
-        : 'none',
+        : 'none'
     },
     {
       key: 'postponed',
       label: 'Отложенные',
-      count: postponed.length,
-      badgeColor: hasPostponed ? 'blue' : 'none',
+      count: counts?.postponed ?? 0,
+      badgeColor: counts?.hasActiveNonSystem
+        ? 'blue'
+        : counts?.hasOnlySystem
+        ? 'gray'
+        : 'none'
     },
     {
       key: 'all',
       label: 'История',
-      count: history.length,
-      badgeColor: hasActiveNonSystem
+      count: counts?.all ?? 0,
+      badgeColor: counts?.hasActiveNonSystem
         ? 'red'
-        : hasPostponed
+        : counts?.hasPostponed
         ? 'blue'
-        : hasHistory
+        : counts?.hasOnlySystem
         ? 'gray'
-        : 'none',
+        : 'none'
     },
   ]
 

@@ -31,9 +31,11 @@ export function NotificationsList({ items }: Props) {
             <span className={surfaceStyles.dateGroup}>{title}</span>
           </div>
 
-          {list.map((n) => (
-            <NotificationItem key={n.id} notification={n} />
-          ))}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            {list.map((n) => (
+              <NotificationItem key={n.id} notification={n} />
+            ))}
+          </div>
         </div>
       ))}
     </div>

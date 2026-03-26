@@ -115,7 +115,7 @@ export function NotificationsFilter({
                   onChange(f.key)
                 }}
                 className={`${styles.btn} ${
-                  isActive ? styles.btnPrimary : styles.btnSecondary
+                  isActive ? styles.btnPrimary : styles.btnNeutral
                 }`}
                 style={{
                   display: 'inline-flex',

@@ -40,10 +40,11 @@ export function NotificationActions({
             className={`${buttonStyles.btn} ${buttonStyles.btnPrimary}`}
             onClick={() => {
               accept()
+              onDone?.()
             }}
             disabled={isLoading}
           >
-            Закрыть уведомление
+            Пометить как прочитанное
           </button>
         ) : (
           <>
@@ -60,16 +61,16 @@ export function NotificationActions({
               onClick={() => setModalType('reject')}
               disabled={isLoading}
             >
-              Отменить
+              Отклонить
             </button>
 
             {canPostpone && status === NotificationStatus.Pending && (
               <button
-                className={`${buttonStyles.btn} ${buttonStyles.btnSecondary}`}
+                className={`${buttonStyles.btn} ${buttonStyles.btnWarning}`}
                 onClick={() => snooze(30)}
                 disabled={isLoading}
               >
-                Отложить (на 30 минут)
+                Отложить (30 мин)
               </button>
             )}
           </>

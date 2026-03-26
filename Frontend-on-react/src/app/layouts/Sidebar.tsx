@@ -10,6 +10,7 @@ import logo from '@/shared/assets/g71-logo.png'
 import { useEffect, useState } from 'react'
 import { useNotificationsStore } from '@/modules/notifications/store/notifications.store'
 import { NotificationBadge } from '@/shared/ui/badge/NotificationBadge'
+import button from '@/shared/ui/button.module.css'
 
 export function Sidebar() {
   const user = useAuthStore((state) => state.user)
@@ -158,7 +159,7 @@ export function Sidebar() {
 
         <button
           type="button"
-          className={styles.logoutButton}
+          className={`${button.btn} ${button.btnDanger}`}
           onClick={() => void logout()}
         >
           {isSidebarCollapsed ? '✕' : 'Выход'}

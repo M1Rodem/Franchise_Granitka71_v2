@@ -29,6 +29,7 @@ export function NotificationActionModal({
       title={isAccept ? 'Принять уведомление' : 'Отклонить уведомление'}
       footer={
         <div style={{ display: 'flex', gap: 10 }}>
+
           <button
             className={`${buttonStyles.btn} ${
               isAccept ? buttonStyles.btnSuccess : buttonStyles.btnDanger
@@ -40,12 +41,12 @@ export function NotificationActionModal({
           </button>
 
           <button
-            className={`${buttonStyles.btn} ${buttonStyles.btnSecondary}`}
+            className={`${buttonStyles.btn} ${buttonStyles.btnNeutral}`}
             onClick={onClose}
           >
             Отмена
           </button>
-        </div>
+</div>
       }
     >
       <div className={inputStyles.field}>

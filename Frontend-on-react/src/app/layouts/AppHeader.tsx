@@ -6,6 +6,7 @@ import styles from '@/app/layouts/app-header.module.css';
 import { cn } from '@/shared/lib/cn'
 import { useEffect, useState } from 'react'
 import { signalRService } from '@/shared/lib/signalr/signalr.service'
+import buttonStyles from '@/shared/ui/button.module.css'
 
 export function AppHeader() {
   const navigate = useNavigate();
@@ -69,7 +70,7 @@ export function AppHeader() {
           <button
             type="button"
             onClick={() => navigate(-1)}
-            className={styles.detailsBackButton}
+            className={cn(buttonStyles.btn, buttonStyles.btnNeutral)}
           >
             ← Назад
           </button>
@@ -77,7 +78,7 @@ export function AppHeader() {
           <div className={styles.detailsActions}>
             <button
               type="button"
-              className={styles.glassButton}
+              className={cn(buttonStyles.btn, buttonStyles.btnNeutral)}
               disabled
             >
               Печать
@@ -85,7 +86,7 @@ export function AppHeader() {
 
             <button
               type="button"
-              className={styles.glassButton}
+              className={cn(buttonStyles.btn, buttonStyles.btnNeutral)}
               disabled
             >
               Excel
@@ -100,7 +101,7 @@ export function AppHeader() {
           <button
             type="button"
             onClick={() => navigate(-1)}
-            className={styles.detailsBackButton}
+            className={cn(buttonStyles.btn, buttonStyles.btnNeutral)}
           >
             ← Назад
           </button>
@@ -112,10 +113,10 @@ export function AppHeader() {
               disabled={submitDisabled}
               className={cn(
                 styles.detailsActionTitleButton,
-                styles.glassButtonTwo,
+                buttonStyles.btn,
                 submitDisabled
-                  ? styles.glassButtonRed
-                  : styles.glassButtonGreen
+                  ? buttonStyles.btnNeutral
+                  : buttonStyles.btnSuccess
               )}
             >
               {header.title}
@@ -132,7 +133,7 @@ export function AppHeader() {
           <button
             type="button"
             onClick={() => navigate(-1)}
-            className={styles.detailsBackButton}
+            className={cn(buttonStyles.btn, buttonStyles.btnNeutral)}
           >
             ← Назад
           </button>
@@ -144,10 +145,10 @@ export function AppHeader() {
               disabled={submitDisabled}
               className={cn(
                 styles.detailsActionTitleButton,
-                styles.glassButtonTwo,
+                buttonStyles.btn,
                 submitDisabled
-                  ? styles.glassButtonRed
-                  : styles.glassButtonGreen
+                  ? buttonStyles.btnNeutral
+                  : buttonStyles.btnSuccess
               )}
             >
               {header.title} №{header.orderNumber}
@@ -164,7 +165,7 @@ export function AppHeader() {
           <button
             type="button"
             onClick={() => navigate('/admin')}
-            className={styles.detailsBackButton}
+            className={cn(buttonStyles.btn, buttonStyles.btnNeutral)}
           >
             ← Назад
           </button>
@@ -177,10 +178,8 @@ export function AppHeader() {
             <button
               type="button"
               className={cn(
-                styles.glassButtonTwo,
-                submitDisabled
-                  ? styles.glassButtonRed
-                  : styles.glassButtonGreen
+                buttonStyles.btn,
+                buttonStyles.btnSuccess
               )}
               onClick={openPlotCreateModal}
             >
@@ -196,7 +195,7 @@ export function AppHeader() {
           <button
             type="button"
             onClick={() => navigate('/admin')}
-            className={styles.detailsBackButton}
+            className={cn(buttonStyles.btn, buttonStyles.btnNeutral)}
           >
             ← Назад
           </button>
@@ -209,10 +208,8 @@ export function AppHeader() {
             <button
               type="button"
               className={cn(
-                styles.glassButtonTwo,
-                submitDisabled
-                  ? styles.glassButtonRed
-                  : styles.glassButtonGreen
+                buttonStyles.btn,
+                buttonStyles.btnSuccess
               )}
               onClick={() => {
                 useUiStore.getState().openUserCreateModal()
@@ -230,7 +227,7 @@ export function AppHeader() {
           <button
             type="button"
             onClick={() => navigate('/admin')}
-            className={styles.detailsBackButton}
+            className={cn(buttonStyles.btn, buttonStyles.btnNeutral)}
           >
             ← Назад
           </button>

@@ -47,9 +47,10 @@ export function NotificationModal({
       footer={
         notification && (
           <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-            
+
+            {/* PRIMARY ACTION */}
             <button
-              className={buttonStyles.navigatorButton}
+              className={`${buttonStyles.btn} ${buttonStyles.btnPrimary}`}
               onClick={() => {
                 if (!data?.order?.id) return
                 navigate(`/orders/${data.order.id}`)
@@ -59,6 +60,7 @@ export function NotificationModal({
               Перейти в заказ
             </button>
 
+            {/* ACTIONS */}
             <NotificationActions
               notificationId={notification.id}
               status={notification.status}
@@ -66,6 +68,14 @@ export function NotificationModal({
               type={notification.type}
               onDone={onClose}
             />
+
+            {/* DISMISS */}
+            <button
+              className={`${buttonStyles.btn} ${buttonStyles.btnNeutral}`}
+              onClick={onClose}
+            >
+              Закрыть
+            </button>
           </div>
         )
       }

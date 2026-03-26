@@ -34,7 +34,7 @@ export function OrderCommentModal({
           </button>
 
           <button
-            className={`${buttonStyles.btn} ${buttonStyles.btnSecondary}`}
+            className={`${buttonStyles.btn} ${buttonStyles.btnDismiss}`}
             onClick={onClose}
           >
             Отмена

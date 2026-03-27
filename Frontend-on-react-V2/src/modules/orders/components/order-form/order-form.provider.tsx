@@ -100,8 +100,14 @@ export function OrderFormProvider({
     control: methods.control
   })
 
+  const currentDiscount = methods.getValues("discountPercent")
+  const initialDiscount = defaultValues.discountPercent
+
+  const isDiscountChanged =
+    Number(currentDiscount) !== Number(initialDiscount)
+
   const hasRealChanges =
-    Object.keys(dirtyFields).length > 0
+    Object.keys(dirtyFields).length > 0 || isDiscountChanged
   
   const shouldBlock = hasRealChanges && !isSaving
 
@@ -371,7 +377,9 @@ function mapFormToUpdateDto(values: OrderFormModel, dirtyFields: any) {
     removedPhotoIds: values.media.removedPhotoIds,
     removedVideoIds: values.media.removedVideoIds,
   }
-
+  console.log('UPDATE DTO', {
+    discount: values.discountPercent,
+  })
   if (dirtyFields?.works) {
     payload.workItems = values.works.map((w) => ({
       workDescription: w.workDescription,

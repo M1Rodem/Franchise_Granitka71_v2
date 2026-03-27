@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { notificationsApi } from '../api/notifications.api'
 import type {
@@ -16,8 +16,6 @@ interface Params {
 }
 
 export function useNotifications({ filter, page, pageSize }: Params) {
-  const storeNotifications = useNotificationsStore((s) => s.notifications)
-
   const query = useQuery<PagingResponse<NotificationResponseDto>>({
     queryKey: ['notifications', filter, page, pageSize],
     queryFn: () => notificationsApi.getNotifications(filter, page, pageSize),
@@ -49,27 +47,39 @@ export function useNotifications({ filter, page, pageSize }: Params) {
     })
   }, [query.data])
 
-  const aggregation = storeNotifications.reduce(
-    (acc, n) => {
-      if (n.isActionRequired) acc.hasActionRequired = true
-      if (n.status === NotificationStatus.Postponed) acc.hasPostponed = true
-      if (n.isInformation) acc.hasInformation = true
-      return acc
-    },
-    {
-      hasActionRequired: false,
-      hasPostponed: false,
-      hasInformation: false,
-    }
+  const notifications = useNotificationsStore((s) => s.notifications)
+
+  const active = useMemo(
+    () => notifications.filter(n => n.status === NotificationStatus.Pending),
+    [notifications]
   )
 
-  const filteredItems = query.data?.items ?? []
+  const postponed = useMemo(
+    () => notifications.filter(n => n.status === NotificationStatus.Postponed),
+    [notifications]
+  )
+
+  const history = useMemo(
+    () =>
+      notifications.filter(
+        (n) =>
+          n.status === NotificationStatus.Approved ||
+          n.status === NotificationStatus.Rejected
+      ),
+    [notifications]
+  )
+
+  const filteredItems =
+    filter === 'active'
+      ? active
+      : filter === 'postponed'
+      ? postponed
+      : history
 
   return {
-    items: filteredItems,
+    items: filteredItems, // из store
     totalPages: query.data?.totalPages ?? 0,
     total: query.data?.totalCount ?? 0,
     isLoading: query.isLoading,
-    aggregation,
   }
 }

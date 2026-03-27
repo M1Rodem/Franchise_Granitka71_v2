@@ -60,8 +60,6 @@ export function useNotificationActions({ notificationId }: Params) {
       if (response?.notification) {
         store.upsertNotification(response.notification)
       }
-
-      store.removeNotification(notificationId)
     },
   })
 
@@ -76,8 +74,6 @@ export function useNotificationActions({ notificationId }: Params) {
         (n) => n.id === notificationId
       )
       if (!prev) return
-
-      getStore().removeNotification(notificationId)
 
       getStore().upsertNotification({
         ...prev,
@@ -107,8 +103,6 @@ export function useNotificationActions({ notificationId }: Params) {
       if (response?.notification) {
         store.upsertNotification(response.notification)
       }
-
-      store.removeNotification(notificationId)
     },
   })
 

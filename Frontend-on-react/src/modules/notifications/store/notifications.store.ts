@@ -196,20 +196,42 @@ export const useNotificationsStore = create<NotificationsState>((set, get) => ({
   },
 
   handleResolved: (payload) => {
-    const existing = get().notifications.find((n) => n.id === payload.notificationId)
-    if (!existing) return
+    set((state) => {
+      const existing = state.notifications.find(
+        (n) => n.id === payload.notificationId
+      )
+      if (!existing) return state
 
-    get().upsertNotification({
-      ...existing,
-      status: payload.status,
-      resolvedAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
+      const updated = {
+        ...existing,
+        status: payload.status,
+        resolvedAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      }
+
+      const notifications = state.notifications.map((n) =>
+        n.id === payload.notificationId ? updated : n
+      )
+
+      let counts = state.counts
+
+      if (counts && existing.status === NotificationStatus.Pending) {
+        counts = {
+          ...counts,
+          active: Math.max(0, counts.active - 1),
+          history: counts.history + 1,
+        }
+      }
+
+      return { notifications, counts }
     })
   },
 
   handlePostponed: ({ notificationId, returnsAt }) => {
     set((state) => {
-      const existing = state.notifications.find((n) => n.id === notificationId)
+      const existing = state.notifications.find(
+        (n) => n.id === notificationId
+      )
       if (!existing) return state
 
       const updated = {
@@ -219,10 +241,21 @@ export const useNotificationsStore = create<NotificationsState>((set, get) => ({
         updatedAt: new Date().toISOString(),
       }
 
-      return {
-        notifications: state.notifications
-          .map((n) => (n.id === notificationId ? updated : n))
+      const notifications = state.notifications.map((n) =>
+        n.id === notificationId ? updated : n
+      )
+
+      let counts = state.counts
+
+      if (counts && existing.status === NotificationStatus.Pending) {
+        counts = {
+          ...counts,
+          active: Math.max(0, counts.active - 1),
+          postponed: counts.postponed + 1,
+        }
       }
+
+      return { notifications, counts }
     })
   },
 

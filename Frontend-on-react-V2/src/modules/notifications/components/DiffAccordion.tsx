@@ -7,6 +7,7 @@ import { MapDiff } from './fields/MapDiff'
 import { WorksDiff } from './fields/WorksDiff'
 import { PaymentsDiff } from './fields/PaymentsDiff'
 import { MediaDiff } from './fields/MediaDiff'
+import { FinanceDiff } from './fields/FinanceDiff'
 
 interface Props {
   changes: NotificationChangesDto
@@ -88,6 +89,18 @@ export function DiffAccordion({ changes }: Props) {
           onClick={() => toggle('payments')}
         >
           <PaymentsDiff data={changes.payments} />
+        </AccordionItem>
+      ) : null}
+
+      {/* FINANCE */}
+      {changes.finance ? (
+        <AccordionItem
+          title="Финансы"
+          count={1}
+          isOpen={openSections.has('finance')}
+          onClick={() => toggle('finance')}
+        >
+          <FinanceDiff data={changes.finance} />
         </AccordionItem>
       ) : null}
 

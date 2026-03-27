@@ -285,3 +285,56 @@
     display: inline;
   }
 }
+/* ===== GROUP ===== */
+
+.diffGroup {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+
+  padding: 14px 14px 12px 14px;
+  border-radius: 16px;
+
+  border: 1px solid rgba(184, 212, 237, 0.08);
+
+  background: rgba(15, 28, 44, 0.35);
+  backdrop-filter: blur(12px);
+
+  transition: all 0.18s ease;
+}
+
+.diffGroup:hover {
+  border-color: rgba(119, 175, 233, 0.18);
+  background: rgba(15, 28, 44, 0.45);
+}
+
+/* ===== GROUP TITLE ===== */
+
+.diffGroupTitle {
+  display: flex;
+  align-items: center;
+
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+
+  color: rgba(184, 212, 237, 0.65);
+
+  padding: 0 4px;
+}
+
+/* маленькая линия под заголовком */
+.diffGroupTitle::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  margin-left: 8px;
+
+  background: linear-gradient(
+    90deg,
+    rgba(119, 175, 233, 0.25),
+    transparent
+  );
+}

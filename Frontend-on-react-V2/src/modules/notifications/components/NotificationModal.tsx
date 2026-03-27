@@ -80,7 +80,7 @@ export function NotificationModal({ notification, isOpen, onClose }: Props) {
             )}
 
             <button className={`${buttonStyles.btn} ${buttonStyles.btnNeutral}`} onClick={onClose}>
-              Отклонить
+              Закрыть
             </button>
           </div>
         )

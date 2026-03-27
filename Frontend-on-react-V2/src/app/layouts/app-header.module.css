@@ -229,49 +229,73 @@
   .header {
     display: grid;
     grid-template-columns: auto 1fr auto;
+    grid-auto-rows: auto;
     gap: 10px;
+
     margin: 16px 16px 0;
     padding: 14px;
     border-radius: 20px;
   }
 
+  /* ===== ROW 1 ===== */
+
+  .menuButton {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
   .title,
   .detailsTitle,
-  .detailsTitleButtonWrapper,
-  .detailsContainer,
+  .detailsTitleButtonWrapper {
+    grid-column: 2;
+    grid-row: 1;
+    text-align: center;
+  }
+
+  .realtimeDot {
+    grid-column: 3;
+    grid-row: 1;
+    justify-self: end;
+  }
+
+  /* ===== ROW 2 (ACTIONS) ===== */
+
   .detailsActions {
     grid-column: 1 / -1;
-  }
+    grid-row: 2;
 
-  .title,
-  .detailsTitle {
-    text-align: left;
-    font-size: 18px;
-    white-space: normal;
-  }
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
 
-  .detailsActions {
-    justify-content: flex-start;
     margin-left: 0;
   }
 
   .detailsActions > * {
-    flex: 1 1 180px;
-  }
-
-  .detailsTitleButtonWrapper {
-    justify-content: stretch;
-  }
-
-  .detailsTitleButtonWrapper > * {
     width: 100%;
   }
 
-  .realtimeStatus {
-    justify-self: end;
-    min-width: 42px;
-    min-height: 42px;
-    border-radius: 14px;
+  /* если кнопок мало — они не ломаются */
+  .detailsActions:empty {
+    display: none;
+  }
+
+  /* title нормальный */
+  .title,
+  .detailsTitle {
+    flex: unset;
+    width: 100%;
+    text-align: center;
+    font-size: 18px;
+    white-space: normal;
+  }
+
+  /* back кнопка */
+  .backBtn {
+    grid-column: 1 / -1; 
+    grid-row: 3;
+    width: 100%;
+    justify-content: center;
   }
 }
 

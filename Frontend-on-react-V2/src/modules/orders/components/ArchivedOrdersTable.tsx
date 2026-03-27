@@ -124,7 +124,7 @@ export function ArchivedOrdersTable({ orders, onOpenOrder }: ArchivedOrdersTable
 
             <span data-label="До удаления">
               {daysLeft !== null && (
-                <StatusBadge style={getDaysLeftStyle(daysLeft)}>{daysLeft} РґРЅ.</StatusBadge>
+                <StatusBadge style={getDaysLeftStyle(daysLeft)}>{daysLeft} дней.</StatusBadge>
               )}
             </span>
           </div>

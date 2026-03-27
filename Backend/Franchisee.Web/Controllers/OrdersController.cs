@@ -845,6 +845,14 @@ namespace Franchisee.Web.Controllers
 
             if (request.Status.HasValue && request.Status.Value != order.Status)
                 changes["Status"] = new { old = order.Status.ToString(), @new = request.Status.Value.ToString() };
+            if (request.DiscountPercent.HasValue && request.DiscountPercent.Value != order.DiscountPercent)
+            {
+                changes["DiscountPercent"] = new 
+                { 
+                    old = order.DiscountPercent, 
+                    @new = request.DiscountPercent.Value 
+                };
+            }
         }
 
         private void CollectWorkItemsChanges(Order order, UpdateOrderRequest request, Dictionary<string, object> changes)

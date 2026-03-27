@@ -21,17 +21,25 @@
 }
 
 @media (max-width: 640px) {
-  .footerActions,
-  .footerActionsCompact,
-  .actionsRow {
+  .footerActions {
     display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
     width: 100%;
-    grid-template-columns: 1fr;
   }
 
-  .footerActions > *,
-  .footerActionsCompact > *,
-  .actionsRow > * {
+  /* кнопки */
+  .footerActions > * {
     width: 100%;
+  }
+
+  /* Закрыть — на всю ширину */
+  .footerActions > *:last-child {
+    grid-column: span 2;
+  }
+
+  /* === ВАЖНО: actionsRow внутри === */
+  .actionsRow {
+    display: contents;
   }
 }

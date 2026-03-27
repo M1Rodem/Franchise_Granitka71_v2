@@ -6,6 +6,44 @@ interface Props {
   items: FieldChangeDto[]
 }
 
+function resolveGroup(label: string): string {
+  if (
+    ['ФИО', 'Email', 'Телефон', 'Адрес'].includes(label)
+  ) {
+    return 'Клиент'
+  }
+
+  if (label === 'Покойный') {
+    return 'Покойный'
+  }
+
+  if (['Монумент', 'Размер', 'Тип'].includes(label)) {
+    return 'Монумент'
+  }
+
+  if (label === 'Примечание') {
+    return 'Дополнительно'
+  }
+
+  return 'Прочее'
+}
+
+function groupItems(items: FieldChangeDto[]): Record<string, FieldChangeDto[]> {
+  const result: Record<string, FieldChangeDto[]> = {}
+
+  items.forEach((item) => {
+    const group = resolveGroup(item.label)
+
+    if (!result[group]) {
+      result[group] = []
+    }
+
+    result[group].push(item)
+  })
+
+  return result
+}
+
 export function TextFieldDiff({ items }: Props) {
   const normalizeValue = (value: string | null | undefined): string => {
     if (value === null || value === undefined || value === '') {
@@ -13,6 +51,7 @@ export function TextFieldDiff({ items }: Props) {
     }
     return value
   }
+
   type DiffType = 'added' | 'removed' | 'changed' | 'none'
 
   const getDiffType = (oldVal: string, newVal: string): DiffType => {
@@ -48,66 +87,83 @@ export function TextFieldDiff({ items }: Props) {
         return ''
     }
   }
-  return (
+
+  const grouped = groupItems(items)
+
+    return (
     <div className={surfaceStyles.diffList}>
-      {items.map((item) => {
-        const oldValue = normalizeValue(item.oldValue)
-        const newValue = normalizeValue(item.newValue)
-
-        const diffType = getDiffType(oldValue, newValue)
-        const diffLabel = getDiffLabel(diffType)
-
-
-        return (
-          <div key={item.field} className={surfaceStyles.diffCard}>
-            {/* TITLE */}
-            <div
-              style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-              }}
-            >
-              <div className={surfaceStyles.diffTitle}>
-                {item.label}
-              </div>
-
-              {diffLabel && (
-                <span
-                  className={`${surfaceStyles.diffBadge} ${getDiffClass(diffType)}`}
-                >
-                  {diffLabel}
-                </span>
-              )}
+      {Object.entries(grouped).map(
+        ([groupName, groupItems]: [string, FieldChangeDto[]]) => (
+          <div
+            key={groupName}
+            className={surfaceStyles.diffGroup}
+            data-group={groupName}
+          >
+            {/* GROUP TITLE */}
+            <div className={surfaceStyles.diffGroupTitle}>
+              {groupName}
             </div>
 
-            {/* VALUE */}
-            <div className={surfaceStyles.diffField}>
-              <div className={surfaceStyles.diffLabel}>
-                Значение
-              </div>
+            {groupItems.map((item: FieldChangeDto) => {
+              const oldValue = normalizeValue(item.oldValue)
+              const newValue = normalizeValue(item.newValue)
 
-              <div className={surfaceStyles.diffValues}>
-                <span className={surfaceStyles.diffOldChanged}>
-                  <span className={surfaceStyles.hideOnDesktop}>
-                    Было:{' '}
-                  </span>
-                  {oldValue}
-                </span>
+              const diffType = getDiffType(oldValue, newValue)
+              const diffLabel = getDiffLabel(diffType)
 
-                <span className={surfaceStyles.diffArrow}>→</span>
+              return (
+                <div key={item.field} className={surfaceStyles.diffCard}>
+                  {/* TITLE */}
+                  <div
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                    }}
+                  >
+                    <div className={surfaceStyles.diffTitle}>
+                      {item.label}
+                    </div>
 
-                <span className={surfaceStyles.diffNewChanged}>
-                  <span className={surfaceStyles.hideOnDesktop}>
-                    Стало:{' '}
-                  </span>
-                  {newValue}
-                </span>
-              </div>
-            </div>
+                    {diffLabel && (
+                      <span
+                        className={`${surfaceStyles.diffBadge} ${getDiffClass(diffType)}`}
+                      >
+                        {diffLabel}
+                      </span>
+                    )}
+                  </div>
+
+                  {/* VALUE */}
+                  <div className={surfaceStyles.diffField}>
+                    <div className={surfaceStyles.diffLabel}>
+                      Значение
+                    </div>
+
+                    <div className={surfaceStyles.diffValues}>
+                      <span className={surfaceStyles.diffOldChanged}>
+                        <span className={surfaceStyles.hideOnDesktop}>
+                          Было:{' '}
+                        </span>
+                        {oldValue}
+                      </span>
+
+                      <span className={surfaceStyles.diffArrow}>→</span>
+
+                      <span className={surfaceStyles.diffNewChanged}>
+                        <span className={surfaceStyles.hideOnDesktop}>
+                          Стало:{' '}
+                        </span>
+                        {newValue}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              )
+            })}
           </div>
         )
-      })}
+      )}
     </div>
   )
 }

@@ -260,6 +260,37 @@ export function OrdersDateInput({ label, isoValue, onCommit }: OrdersDateInputPr
     });
   };
 
+  const getPopoverPosition = () => {
+    const rect = rootRef.current?.getBoundingClientRect()
+    if (!rect) return {}
+
+    const POPUP_WIDTH = 280
+    const POPUP_HEIGHT = 320
+    const MARGIN = 8
+
+    let left = rect.left + rect.width / 2 - POPUP_WIDTH / 2
+
+    // ограничение справа
+    if (left + POPUP_WIDTH > window.innerWidth - MARGIN) {
+      left = window.innerWidth - POPUP_WIDTH - MARGIN
+    }
+
+    // ограничение слева
+    if (left < MARGIN) {
+      left = MARGIN
+    }
+
+    // вниз / вверх
+    const isOverflowBottom =
+      rect.bottom + POPUP_HEIGHT > window.innerHeight
+
+    const top = isOverflowBottom
+      ? rect.top - POPUP_HEIGHT - 8
+      : rect.bottom + 8
+
+    return { top, left }
+  }
+
   return (
     <label className={styles.field}>
       {label && <span>{label}</span>}
@@ -309,8 +340,7 @@ export function OrdersDateInput({ label, isoValue, onCommit }: OrdersDateInputPr
               transition={{ duration: 0.2 }}
               style={{
                 position: 'fixed',
-                top: rootRef.current?.getBoundingClientRect().bottom ?? 0,
-                left: rootRef.current?.getBoundingClientRect().left ?? 0,
+                ...getPopoverPosition()
               }}
             >
               <div className={styles.calendarHeader}>

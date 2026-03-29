@@ -157,8 +157,7 @@ export function PaymentsSection() {
       </div>
 
       <div
-        className={table.dataTable}
-        style={{ position: 'relative', zIndex: 5 }}
+        className={`${table.dataTable} ${styles.dataTableFix}`}
       >
         <div
           className={table.dataHeader}
@@ -186,18 +185,17 @@ export function PaymentsSection() {
           return (
             <div
               key={field.id}
-              className={table.dataRow}
+              className={`${table.dataRow} ${styles.mobileCard}`}
               style={{
                 gridTemplateColumns: GRID,
               }}
             >
+              {/* Тип */}
               <div
-                data-label="Тип"
-                style={{
-                  position: 'relative',
-                  zIndex: 100,
-                }}
+                className={styles.mobileRow}
               >
+                <span>Тип</span>
+
                 <Controller
                   control={control}
                   name={`payments.${index}.paymentType`}
@@ -205,77 +203,80 @@ export function PaymentsSection() {
                     <AnimatedSelect
                       value={field.value}
                       options={PAYMENT_TYPES}
-                      onChange={
-                        field.onChange
-                      }
+                      onChange={field.onChange}
                     />
                   )}
                 />
               </div>
 
-              <div data-label="Сумма">
-                <input
-                  type="number"
-                  step="0.01"
-                  inputMode="decimal"
-                  placeholder="Сумма"
-                  {...register(`payments.${index}.amount`, {
-                    valueAsNumber: true,
-                    onChange: (e) => {
+              {/* Сумма + Дата */}
+              <div className={styles.mobileGrid2}>
 
-                      let value = Number(e.target.value) || 0
+                <div className={styles.mobileRow}>
+                  <span>Сумма</span>
 
-                      // ограничение 2 знаков после запятой
-                      value = Math.round(value * 100) / 100
+                  <input
+                    type="number"
+                    step="0.01"
+                    inputMode="decimal"
+                    placeholder="Сумма"
+                    {...register(`payments.${index}.amount`, {
+                      valueAsNumber: true,
+                      onChange: (e) => {
 
-                      const max = getMaxForPayment(index)
+                        let value = Number(e.target.value) || 0
 
-                      if (value > max) {
+                        // 2 знака после запятой
+                        value = Math.round(value * 100) / 100
 
-                        value = max
+                        const max = getMaxForPayment(index)
 
-                        showTempMessage(
-                          'warning',
-                          `Максимальная сумма этого платежа: ${max.toLocaleString('ru-RU', {
-                            minimumFractionDigits: 2,
-                            maximumFractionDigits: 2
-                          })} ₽`
+                        if (value > max) {
+                          value = max
+
+                          showTempMessage(
+                            'warning',
+                            `Максимальная сумма этого платежа: ${max.toLocaleString('ru-RU', {
+                              minimumFractionDigits: 2,
+                              maximumFractionDigits: 2
+                            })} ₽`
+                          )
+                        }
+
+                        setValue(
+                          `payments.${index}.amount`,
+                          value,
+                          { shouldDirty: true }
                         )
-
                       }
+                    })}
+                    className={input.input}
+                    max={getMaxForPayment(index)}
+                  />
+                </div>
 
-                      setValue(
-                        `payments.${index}.amount`,
-                        value,
-                        { shouldDirty: true }
-                      )
+                <div className={styles.mobileRow}>
+                  <span>Дата</span>
 
-                    }
-                  })}
-                  className={input.input}
-                  max={getMaxForPayment(index)}
-                />
+                  <Controller
+                    control={control}
+                    name={`payments.${index}.paymentDate`}
+                    render={({ field }) => (
+                      <OrdersDateInput
+                        label=""
+                        isoValue={field.value}
+                        onCommit={field.onChange}
+                      />
+                    )}
+                  />
+                </div>
+
               </div>
 
-              <div data-label="Дата" className={styles.dateCell}>
-                <Controller
-                  control={control}
-                  name={`payments.${index}.paymentDate`}
-                  render={({ field }) => (
-                    <OrdersDateInput
-                      label=""
-                      isoValue={
-                        field.value
-                      }
-                      onCommit={
-                        field.onChange
-                      }
-                    />
-                  )}
-                />
-              </div>
+              {/* Примечание */}
+              <div className={styles.mobileRow}>
+                <span>Примечание</span>
 
-              <div data-label="Примечание">
                 <input
                   placeholder="Комментарий"
                   {...register(`payments.${index}.note`)}
@@ -283,17 +284,13 @@ export function PaymentsSection() {
                 />
               </div>
 
-              <div data-label="Действия">
+              {/* Действия */}
+              <div className={styles.mobileActions}>
                 <button
                   type="button"
-                  onClick={() =>
-                    remove(index)
-                  }
-                  disabled={
-                    fields.length === 1 ||
-                    isOnlyAdvance
-                  }
-                  className={`${button.btn} ${button.btnDanger} ${styles.deleteButton}`}
+                  onClick={() => remove(index)}
+                  disabled={fields.length === 1 || isOnlyAdvance}
+                  className={`${button.btn} ${button.btnDanger} ${styles.fullWidthButton}`}
                 >
                   Удалить
                 </button>

@@ -38,6 +38,14 @@ export const httpClient = axios.create({
   withCredentials: true,
 })
 
+httpClient.interceptors.request.use((config) => {
+  if (config.url) {
+    config.url = config.url.replace(/^\/api/, '')
+  }
+
+  return config
+})
+
 httpClient.interceptors.request.use(async (config: CustomAxiosRequestConfig) => {
   const token = useAuthStore.getState().token
 

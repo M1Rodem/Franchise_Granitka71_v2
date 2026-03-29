@@ -566,87 +566,77 @@ namespace Franchisee.Web.Controllers
             var userId = GetCurrentUserId();
             _logger.LogInformation("Мягкое удаление заказа {OrderId} пользователем {UserId}", id, userId);
 
-            // Загружаем заказ (без фильтра удаленных)
-            var order = await _context.Orders
-                .Include(o => o.WorkItems)
-                .Include(o => o.Payments)
-                .Include(o => o.Photos)
-                .FirstOrDefaultAsync(o => o.Id == id);
-
-            if (order == null)
-            {
-                _logger.LogWarning("Заказ {OrderId} не найден", id);
-                return NotFound("Заказ не найден");
-            }
-
-            // Проверка прав
-            if (!IsAdminOrHigher() && order.ManagerId != userId)
-            {
-                _logger.LogWarning("Пользователь {UserId} пытается удалить чужой заказ {OrderId}", userId, id);
-                return Forbid("Нет прав на удаление этого заказа");
-            }
-
-            // Если заказ уже в архиве, не даем повторно мягко удалять
-            if (order.IsDeleted)
-            {
-                _logger.LogWarning("Заказ {OrderId} уже находится в архиве", id);
-                return BadRequest(new
-                {
-                    success = false,
-                    message = "Заказ уже в архиве. Используйте полное удаление если нужно удалить навсегда."
-                });
-            }
-
-            using var transaction = await _context.Database.BeginTransactionAsync();
-
             try
             {
-                // 1. Удаляем ВСЕ уведомления, связанные с заказом (ПОЛНОСТЬЮ)
-                var notifications = await _context.Notifications
-                    .Where(n => n.OrderId == id)
-                    .Include(n => n.Recipients)  // Загружаем получателей для удаления
-                    .ToListAsync();
+                // Загружаем заказ
+                var order = await _context.Orders
+                    .FirstOrDefaultAsync(o => o.Id == id);
 
-                if (notifications.Any())
+                if (order == null)
                 {
-                    _logger.LogInformation("Удаляем {Count} уведомлений, связанных с заказом {OrderId}",
-                        notifications.Count, id);
-
-                    // Recipients удалятся каскадно благодаря настройкам в БД
-                    _context.Notifications.RemoveRange(notifications);
-                    await _context.SaveChangesAsync();
+                    _logger.LogWarning("Заказ {OrderId} не найден", id);
+                    return NotFound(new { success = false, message = "Заказ не найден" });
                 }
 
-                // 2. Помечаем заказ как удаленный (мягкое удаление)
-                order.IsDeleted = true;
-                order.DeletedAt = DateTime.UtcNow;
-                order.UpdatedAt = DateTime.UtcNow;
-
-                await _context.SaveChangesAsync();
-                await transaction.CommitAsync();
-
-                _logger.LogInformation("Заказ {OrderId} перемещен в архив. Удалено уведомлений: {NotifCount}",
-                    id, notifications.Count);
-
-                return Ok(new
+                // Проверка прав: админы могут всё, менеджеры только свои заказы
+                if (!IsAdminOrHigher() && order.ManagerId != userId)
                 {
-                    success = true,
-                    message = "Заказ перемещен в архив",
-                    deletedNotifications = notifications.Count,
-                    orderId = id,
-                    orderNumber = order.OrderNumber
-                });
+                    _logger.LogWarning("Менеджер {UserId} пытается удалить чужой заказ {OrderId}", userId, id);
+                    // Исправлено: возвращаем StatusCode 403 с сообщением, а не Forbid()
+                    return StatusCode(403, new { success = false, message = "Можно удалять только свои заказы" });
+                }
+
+                // Если заказ уже в архиве
+                if (order.IsDeleted)
+                {
+                    _logger.LogWarning("Заказ {OrderId} уже в архиве", id);
+                    return BadRequest(new { success = false, message = "Заказ уже в архиве" });
+                }
+
+                using var transaction = await _context.Database.BeginTransactionAsync();
+
+                try
+                {
+                    // Удаляем уведомления, связанные с заказом
+                    var notifications = await _context.Notifications
+                        .Where(n => n.OrderId == id)
+                        .ToListAsync();
+
+                    if (notifications.Any())
+                    {
+                        _logger.LogInformation("Удаляем {Count} уведомлений для заказа {OrderId}", notifications.Count, id);
+                        _context.Notifications.RemoveRange(notifications);
+                    }
+
+                    // Мягкое удаление
+                    order.IsDeleted = true;
+                    order.DeletedAt = DateTime.UtcNow;
+                    order.UpdatedAt = DateTime.UtcNow;
+
+                    await _context.SaveChangesAsync();
+                    await transaction.CommitAsync();
+
+                    _logger.LogInformation("Заказ {OrderId} успешно перемещен в архив", id);
+
+                    return Ok(new
+                    {
+                        success = true,
+                        message = "Заказ перемещен в архив",
+                        orderId = id,
+                        orderNumber = order.OrderNumber
+                    });
+                }
+                catch (Exception ex)
+                {
+                    await transaction.RollbackAsync();
+                    _logger.LogError(ex, "Ошибка при сохранении заказа {OrderId} в архив", id);
+                    return StatusCode(500, new { success = false, message = "Ошибка при удалении заказа" });
+                }
             }
             catch (Exception ex)
             {
-                await transaction.RollbackAsync();
-                _logger.LogError(ex, "Ошибка при мягком удалении заказа {OrderId}", id);
-                return StatusCode(500, new
-                {
-                    success = false,
-                    message = "Ошибка при удалении заказа",
-                    error = ex.Message
-                });
+                _logger.LogError(ex, "Необработанная ошибка при удалении заказа {OrderId}", id);
+                return StatusCode(500, new { success = false, message = "Внутренняя ошибка сервера" });
             }
         }
 
@@ -1156,39 +1146,38 @@ namespace Franchisee.Web.Controllers
                 // Ищем заказ в архиве
                 var order = await _context.Orders
                     .IgnoreQueryFilters()
-                    .Include(o => o.Photos)  // ← Добавил Include для фото
+                    .Include(o => o.Photos)
+                    .Include(o => o.WorkItems)
+                    .Include(o => o.Payments)
                     .FirstOrDefaultAsync(o => o.Id == id && o.IsDeleted);
 
                 if (order == null)
-                    return NotFound("Архивный заказ не найден");
+                {
+                    _logger.LogWarning("Архивный заказ {OrderId} не найден", id);
+                    return NotFound(new { success = false, message = "Архивный заказ не найден" });
+                }
+
+                // Проверка прав: админы могут всё, менеджеры только свои заказы
+                if (!IsAdminOrHigher() && order.ManagerId != userId)
+                {
+                    _logger.LogWarning("Менеджер {UserId} пытается удалить чужой архивный заказ {OrderId}", userId, id);
+                    // Исправлено: возвращаем StatusCode 403 с сообщением, а не Forbid()
+                    return StatusCode(403, new { success = false, message = "Можно удалять из архива только свои заказы" });
+                }
 
                 using var transaction = await _context.Database.BeginTransactionAsync();
 
                 try
                 {
+                    // Удаляем папку с файлами
                     var orderFolderPath = Path.Combine(_env.WebRootPath, "uploads", "orders", id.ToString());
-
-                    bool folderDeleted = false;
 
                     try
                     {
                         if (Directory.Exists(orderFolderPath))
                         {
                             Directory.Delete(orderFolderPath, true);
-
-                            folderDeleted = true;
-
-                            _logger.LogInformation(
-                                "Папка заказа {OrderId} удалена полностью",
-                                id
-                            );
-                        }
-                        else
-                        {
-                            _logger.LogWarning(
-                                "Папка заказа {OrderId} не найдена при удалении",
-                                id
-                            );
+                            _logger.LogInformation("Папка заказа {OrderId} удалена", id);
                         }
                     }
                     catch (Exception ex)
@@ -1196,19 +1185,23 @@ namespace Franchisee.Web.Controllers
                         _logger.LogError(ex, "Ошибка удаления папки заказа {OrderId}", id);
                     }
 
-                    _context.OrderPhotos.RemoveRange(order.Photos);
+                    // Удаляем фото
+                    if (order.Photos.Any())
+                    {
+                        _context.OrderPhotos.RemoveRange(order.Photos);
+                    }
 
                     // Удаляем work items
-                    var workItems = await _context.OrderWorkItems
-                        .Where(w => w.OrderId == id)
-                        .ToListAsync();
-                    _context.OrderWorkItems.RemoveRange(workItems);
+                    if (order.WorkItems.Any())
+                    {
+                        _context.OrderWorkItems.RemoveRange(order.WorkItems);
+                    }
 
                     // Удаляем payments
-                    var payments = await _context.OrderPayments
-                        .Where(p => p.OrderId == id)
-                        .ToListAsync();
-                    _context.OrderPayments.RemoveRange(payments);
+                    if (order.Payments.Any())
+                    {
+                        _context.OrderPayments.RemoveRange(order.Payments);
+                    }
 
                     // Удаляем сам заказ
                     _context.Orders.Remove(order);
@@ -1217,24 +1210,24 @@ namespace Franchisee.Web.Controllers
                     await transaction.CommitAsync();
 
                     _logger.LogInformation("Заказ {OrderId} полностью удален из архива пользователем {UserId}", id, userId);
+
                     return Ok(new
                     {
-                        message = "Заказ полностью удален из архива",
-                        folderDeleted = folderDeleted,
-
+                        success = true,
+                        message = "Заказ полностью удален из архива"
                     });
                 }
                 catch (Exception ex)
                 {
                     await transaction.RollbackAsync();
                     _logger.LogError(ex, "Ошибка полного удаления заказа {OrderId}", id);
-                    return StatusCode(500, "Ошибка полного удаления заказа");
+                    return StatusCode(500, new { success = false, message = "Ошибка полного удаления заказа" });
                 }
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Ошибка при попытке полного удаления заказа {OrderId}", id);
-                return StatusCode(500, "Внутренняя ошибка");
+                _logger.LogError(ex, "Необработанная ошибка при полном удалении заказа {OrderId}", id);
+                return StatusCode(500, new { success = false, message = "Внутренняя ошибка сервера" });
             }
         }
 

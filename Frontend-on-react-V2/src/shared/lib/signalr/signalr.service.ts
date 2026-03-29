@@ -111,11 +111,12 @@ class SignalRService {
         withCredentials: true,
       })
       .withAutomaticReconnect([0, 2000, 10000, 30000])
-      .configureLogging(LogLevel.Information)
+      .configureLogging(LogLevel.None)
       .build()
   }
-
+  
   async connect(): Promise<void> {
+    console.log('SIGNALR URL:', env.signalRUrl)
     if (!this.isAuthenticated()) return
     await this.waitForValidToken()
     if (this.connection?.state === HubConnectionState.Connected) return

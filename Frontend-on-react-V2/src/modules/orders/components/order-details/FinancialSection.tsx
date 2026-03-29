@@ -13,7 +13,9 @@ interface Props {
   discountAmount: number
   totalPrice: number
   payments: Payment[]
+  paymentStatus: number
 }
+
 
 function formatMoney(value: number) {
   return new Intl.NumberFormat('ru-RU', {
@@ -30,6 +32,7 @@ export function FinancialSection({
   discountAmount,
   totalPrice,
   payments,
+  paymentStatus,
 }: Props) {
 
   const paid = payments.reduce(
@@ -37,11 +40,15 @@ export function FinancialSection({
     0
   )
 
-  const paymentStatusInfo =
-    getPaymentStatusInfo(0)
-
   const remaining = totalPrice - paid
 
+  const paymentStatusInfo =
+    getPaymentStatusInfo(
+      typeof paymentStatus === 'number'
+        ? paymentStatus
+        : 0
+    )
+  
   return (
     <section className={surface.surface}>
       <div

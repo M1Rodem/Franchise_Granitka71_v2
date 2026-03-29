@@ -10,6 +10,9 @@ import { useConfirmModalStore } from '@/shared/ui/modal/modal.store'
 import surface from '@/shared/ui/surface.module.css'
 import button from '@/shared/ui/button.module.css'
 
+import { isAxiosError } from 'axios'
+import type { ApiErrorResponse } from '@/shared/types/api'
+
 interface Props {
   orderId: number
 }
@@ -31,8 +34,8 @@ export function ArchivedOrderActions({ orderId }: Props) {
       navigate(`/orders/${orderId}`)
     },
 
-    onError: () => {
-      showTempMessage('error', 'Ошибка восстановления заказа')
+    onError: (_: unknown) => {
+      showTempMessage('error', 'Ошибка удаления заказа')
     },
   })
 
@@ -47,7 +50,23 @@ export function ArchivedOrderActions({ orderId }: Props) {
       navigate('/orders/archived')
     },
 
-    onError: () => {
+    onError: (error: unknown) => {
+
+      if (isAxiosError<ApiErrorResponse>(error)) {
+        const rawMessage = error.response?.data?.message ?? ''
+        const message = rawMessage.toLowerCase()
+
+        if (message.includes('архив')) {
+          showTempMessage('error', 'Нельзя удалить не свой заказ из архива')
+          return
+        }
+
+        if (error.response?.status === 403) {
+          showTempMessage('error', rawMessage || 'Нет доступа')
+          return
+        }
+      }
+
       showTempMessage('error', 'Ошибка удаления заказа')
     },
   })

@@ -18,12 +18,19 @@ export default defineConfig({
   },
 
   server: {
+    host: true,
+    port: 5173,
+    allowedHosts: true,
     proxy: {
       '/api': {
         target: 'http://localhost:5000',
         changeOrigin: true,
-        ws: true
+        ws: true,
       },
+      '/uploads': {
+        target: 'http://localhost:5000',
+        changeOrigin: true,
+      }
     },
   },
 })

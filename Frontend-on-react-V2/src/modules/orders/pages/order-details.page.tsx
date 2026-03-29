@@ -184,6 +184,11 @@ export default function OrderDetailsPage() {
         discountAmount={data.discountAmount}
         totalPrice={data.totalPrice}
         payments={data.payments}
+        paymentStatus={
+          typeof data.paymentStatus === 'number'
+            ? data.paymentStatus
+            : Number(data.paymentStatus) || 0
+        }
       />
 
       <PaymentsSection items={data.payments} />

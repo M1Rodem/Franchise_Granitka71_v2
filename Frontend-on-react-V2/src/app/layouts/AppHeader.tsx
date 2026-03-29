@@ -11,6 +11,7 @@ import { ordersApi } from '@/modules/orders/api/orders.api'
 import { useParams } from 'react-router-dom'
 import { tempMessage } from '@/shared/ui/temp-message.service'
 import { AppIcon } from '@/shared/ui/AppIcon'
+import { PrintTypeModal } from '@/modules/orders/components/PrintTypeModal'
 
 export function AppHeader() {
   const navigate = useNavigate();
@@ -21,8 +22,11 @@ export function AppHeader() {
   const header = useUiStore((state) => state.header)
   const submitDisabled = header.submitDisabled
   const openPlotCreateModal = useUiStore((state) => state.openPlotCreateModal);
-  const [, setLoading] = useState<'print' | 'excel' | null>(null)
-
+  const [printModalOpen, setPrintModalOpen] = useState(false)
+  const [, setPrintType] = useState<'default' | 'worker' | null>(null)
+  const [isPrinting, setIsPrinting] = useState(false)
+  const [excelModalOpen, setExcelModalOpen] = useState(false)
+  const [isDownloading, setIsDownloading] = useState(false)
   const defaultTitle = resolveRouteTitle(
     location.pathname,
     routeTitles,
@@ -47,6 +51,58 @@ export function AppHeader() {
 
     return unsub
   }, [])
+
+  const handlePrint = async (type: 'default' | 'worker') => {
+    if (!orderId) {
+      tempMessage.error('Не удалось определить ID заказа')
+      return
+    }
+
+    setIsPrinting(true)
+
+    try {
+      const blob = await ordersApi.printOrderHtml(orderId, type)
+      const url = URL.createObjectURL(blob)
+      window.open(url, '_blank')
+      setTimeout(() => URL.revokeObjectURL(url), 5000)
+    } catch (e) {
+      console.error(e)
+      tempMessage.error('Ошибка при открытии печати')
+    } finally {
+      setIsPrinting(false)
+      setPrintModalOpen(false)
+      setPrintType(null)
+    }
+  }
+
+  const handleExcelDownload = async (type: 'default' | 'worker') => {
+    if (!orderId) {
+      tempMessage.error('Не удалось определить ID заказа')
+      return
+    }
+
+    setIsDownloading(true)
+
+    try {
+      const blob = await ordersApi.downloadOrderExcel(orderId, type)
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      const fileType = type === 'worker' ? 'worker' : 'order'
+      a.download = `${fileType}_${header.orderNumber}_${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.xlsx`
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+      URL.revokeObjectURL(url)
+      tempMessage.success(type === 'worker' ? 'Excel для рабочих скачан' : 'Excel скачан')
+    } catch (e) {
+      console.error(e)
+      tempMessage.error('Ошибка при скачивании Excel')
+    } finally {
+      setIsDownloading(false)
+      setExcelModalOpen(false)
+    }
+  }
 
   return (
     <header className={styles.header}>
@@ -90,77 +146,47 @@ export function AppHeader() {
           </h1>
 
           <div className={styles.detailsActions}>
+            {/* Кнопка печати с модальным окном */}
             <button
               type="button"
-              onClick={async () => {
-                if (!orderId) {
-                  tempMessage.error('Не удалось определить ID заказа')
-                  return
-                }
-
-                try {
-                  setLoading('print')
-
-                  const blob = await ordersApi.printOrderHtml(orderId)
-
-                  const url = URL.createObjectURL(blob)
-                  window.open(url, '_blank')
-
-                  setTimeout(() => URL.revokeObjectURL(url), 5000)
-                } catch (e) {
-                  console.error(e)
-                  tempMessage.error('Ошибка при открытии печати')
-                } finally {
-                  setLoading(null)
-                }
-              }}
-              className={cn(buttonStyles.btn, buttonStyles.btnPrint, buttonStyles.btnWithIcon)}>
+              onClick={() => setPrintModalOpen(true)}
+              className={cn(buttonStyles.btn, buttonStyles.btnPrint, buttonStyles.btnWithIcon)}
+              disabled={isPrinting}
+            >
               <span className={styles.actionIcon}>
                 <AppIcon name="print" />
               </span>
-              Печать
+              {isPrinting ? 'Загрузка...' : 'Печать'}
             </button>
 
+            {/* Кнопка Excel */}
             <button
               type="button"
-              onClick={async () => {
-                if (!orderId) {
-                  tempMessage.error('Не удалось определить ID заказа')
-                  return
-                }
-
-                try {
-                  setLoading('excel')
-
-                  const blob = await ordersApi.downloadOrderExcel(orderId)
-
-                  const url = URL.createObjectURL(blob)
-
-                  const a = document.createElement('a')
-                  a.href = url
-                  a.download = `order_${header.orderNumber}.xlsx`
-
-                  document.body.appendChild(a)
-                  a.click()
-                  a.remove()
-
-                  URL.revokeObjectURL(url)
-
-                  tempMessage.success('Excel скачан')
-                } catch (e) {
-                  console.error(e)
-                  tempMessage.error('Ошибка при скачивании Excel')
-                } finally {
-                  setLoading(null)
-                }
-              }}
-              className={cn(buttonStyles.btn, buttonStyles.btnExcel, buttonStyles.btnWithIcon)}>
-                <span className={styles.actionIcon}>
-                  <AppIcon name="download" />
-                </span>
-                Excel
-              </button>
+              onClick={() => setExcelModalOpen(true)}
+              className={cn(buttonStyles.btn, buttonStyles.btnExcel, buttonStyles.btnWithIcon)}
+              disabled={isDownloading}
+            >
+              <span className={styles.actionIcon}>
+                <AppIcon name="download" />
+              </span>
+              {isDownloading ? 'Загрузка...' : 'Excel'}
+            </button>
           </div>
+
+          {/* Модальное окно выбора типа печати */}
+          <PrintTypeModal
+            isOpen={printModalOpen}
+            onClose={() => setPrintModalOpen(false)}
+            onSelect={handlePrint}
+            isLoading={isPrinting}
+          />
+          <PrintTypeModal
+            isOpen={excelModalOpen}
+            title="Выберите тип Excel документа"
+            onClose={() => setExcelModalOpen(false)}
+            onSelect={handleExcelDownload}
+            isLoading={isDownloading}
+          />
         </>
       )}
 

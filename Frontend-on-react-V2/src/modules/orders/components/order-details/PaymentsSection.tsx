@@ -78,7 +78,10 @@ export function PaymentsSection({ items }: Props) {
                   )}
                 </span>
 
-                <span data-label="Примечание">
+                <span
+                  data-label="Примечание"
+                  className={table.noteCell}
+                >
                   {item.note || '—'}
                 </span>
               </div>

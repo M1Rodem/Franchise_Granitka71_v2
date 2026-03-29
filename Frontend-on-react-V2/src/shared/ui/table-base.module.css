@@ -30,7 +30,7 @@
 
 .dataHeader,
 .dataRow {
-  width: max-content;
+  width: 100%;
   min-width: 100%;
 }
 
@@ -84,6 +84,7 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  min-width: 0; /* 🔴 КРИТИЧЕСКИ ВАЖНО */
 }
 
 .descriptionCell,
@@ -97,6 +98,9 @@
   color: var(--text-muted);
   font-size: 13px;
   line-height: 1.5;
+  white-space: normal !important;
+  word-break: break-word;
+  overflow-wrap: anywhere;
 }
 
 .primaryCell {
@@ -219,6 +223,18 @@
 
 @media (max-width: 768px) {
   .dataTable {
+    padding: 0 !important;
+    border: none !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    backdrop-filter: none !important;
+  }
+
+  .dataTable::before {
+    display: none !important;
+  }
+  
+  .dataTable {
     gap: 10px;
     padding: 12px;
     border-radius: 20px;
@@ -243,13 +259,28 @@
     white-space: normal !important;
   }
 
+  .descriptionCell,
+  .noteCell {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: flex-start;
+    gap: 6px;
+  }
+
+  .descriptionCell::before,
+  .noteCell::before {
+    align-self: flex-start;
+  }
+
   .dataRow > [data-label] {
-    display: grid;
-    gap: 8px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
   }
 
   .dataRow > [data-label]::before {
-    content: attr(data-label);
+    content: attr(data-label) ":";
     color: var(--text-muted);
     font-size: 11px;
     font-weight: 700;

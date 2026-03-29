@@ -16,6 +16,10 @@
   color: var(--text-secondary);
 }
 
+.lockedTextarea {
+  cursor: default;
+}
+
 .input {
   width: 100%;
   min-height: 42px;

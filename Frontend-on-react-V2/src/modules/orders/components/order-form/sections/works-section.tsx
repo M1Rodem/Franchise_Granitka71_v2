@@ -46,62 +46,71 @@ export function WorksSection() {
         </div>
 
         {/* ROWS */}
-        {fields.map((field, index) => (
-          <div
-            key={field.id}
-            className={table.dataRow}
-            style={{ gridTemplateColumns: GRID }}
-          >
-            <div data-label="Работа">
-              <input
-                {...register(`works.${index}.workDescription`)}
-                placeholder="Название работы"
-                className={input.input}
-              />
-            </div>
+        {fields.map((field, index) => {
+          const isDistanceRow = field.workDescription === 'Расстояние'
 
-            <div data-label="Цена">
-              <input
-                type="number"
-                step="0.01"
-                inputMode="decimal"
-                {...register(`works.${index}.price`, { valueAsNumber: true })}
-                placeholder="Цена"
-                className={input.input}
-              />
-            </div>
+          return (
+            <div
+              key={field.id}
+              className={`${table.dataRow} ${styles.mobileCard}`}
+              style={{ gridTemplateColumns: GRID }}
+            >
+              {/* Работа */}
+              <div className={styles.mobileRow}>
+                <span className={table.label}>Работа</span>
+                <input
+                  {...register(`works.${index}.workDescription`)}
+                  className={input.input}
+                  disabled={isDistanceRow}
+                />
+              </div>
 
-            <div data-label="Кол-во">
-              <input
-                type="number"
-                step="0.01"
-                inputMode="decimal"
-                {...register(`works.${index}.quantity`, { valueAsNumber: true })}
-                placeholder="Количество"
-                className={input.input}
-              />
-            </div>
+              {/* Цена + Кол-во */}
+              <div className={styles.mobileGrid2}>
+                <div className={styles.mobileRow}>
+                  <span className={table.label}>Цена</span>
+                  <input
+                    type="number"
+                    {...register(`works.${index}.price`, { valueAsNumber: true })}
+                    className={input.input}
+                  />
+                </div>
 
-            <div data-label="Примечание">
-              <input
-                {...register(`works.${index}.note`)}
-                placeholder="Комментарий"
-                className={input.input}
-              />
-            </div>
+                <div className={styles.mobileRow}>
+                  <span className={table.label}>Кол-во</span>
+                  <input
+                    type="number"
+                    {...register(`works.${index}.quantity`, { valueAsNumber: true })}
+                    className={input.input}
+                    disabled={isDistanceRow}
+                  />
+                </div>
+              </div>
 
-            <div data-label="Действия">
-              <button
-                type="button"
-                onClick={() => remove(index)}
-                disabled={fields.length === 1}
-                  className={`${button.btn} ${button.btnDanger} ${styles.deleteButton}`}
-              >
-                Удалить
-              </button>
+              {/* Примечание */}
+              <div className={styles.mobileRow}>
+                <span className={table.label}>Примечание</span>
+                <textarea
+                  {...register(`works.${index}.note`)}
+                  className={`${input.textarea} ${styles.compactTextarea}`}
+                  readOnly={isDistanceRow}
+                />
+              </div>
+
+              {/* Действия */}
+              <div className={styles.mobileActions}>
+                <button
+                  type="button"
+                  onClick={() => remove(index)}
+                  disabled={fields.length === 1 || isDistanceRow}
+                  className={`${button.btn} ${button.btnDanger} ${styles.fullWidthButton}`}
+                >
+                  Удалить
+                </button>
+              </div>
             </div>
-          </div>
-        ))}
+          )
+        })}
 
       </div>
 

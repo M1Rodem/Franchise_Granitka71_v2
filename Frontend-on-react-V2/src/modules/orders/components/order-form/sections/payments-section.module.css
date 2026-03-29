@@ -1,5 +1,8 @@
+/* ================= DESKTOP ================= */
+
 .dateCell {
   width: 100%;
+  position: relative;
 }
 
 .dateCell label {
@@ -16,53 +19,128 @@
   height: 42px;
 }
 
+.mobileCard {
+  display: grid;
+  align-items: center;
+}
+
+.mobileRow {
+  display: contents; 
+}
+
+.mobileGrid2 {
+  display: contents;
+}
+
+.mobileActions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+@media (min-width: 769px) {
+  .mobileRow span {
+    display: none;
+  }
+}
+
+/* ================= MOBILE ================= */
+
 @media (max-width: 768px) {
-  .deleteButton {
+
+  .dataTableFix {
+    overflow: visible !important;
+  }
+
+  .mobileCard {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+
+    padding: 16px;
+    border-radius: 18px;
+    border: 1px solid rgba(184, 212, 237, 0.12);
+    background: var(--surface-gradient-soft);
+
+    overflow: visible;
+  }
+
+  .mobileRow {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    width: 100%;
+  }
+
+  .mobileGrid2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+
+  .mobileActions {
+    width: 100%;
+    margin-top: 8px;
+  }
+
+  .deleteButton,
+  .fullWidthButton {
     width: 100%;
     justify-content: center;
   }
 }
 
-.headerRow{
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-  gap:16px;
+/* ================= HEADER ================= */
+
+.headerRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
 }
 
-.advanceHint{
+.advanceHint {
+  display: flex;
+  align-items: center;
+  gap: 14px;
 
-  display:flex;
-  align-items:center;
-  gap:14px;
+  padding: 6px 10px;
+  border-radius: 12px;
 
-  padding:6px 10px;
+  background: rgba(16, 42, 78, 0.55);
+  border: 1px solid rgba(126, 164, 220, 0.25);
 
-  border-radius:12px;
-
-  background:rgba(16,42,78,0.55);
-
-  border:1px solid rgba(126,164,220,0.25);
-
-  backdrop-filter:blur(12px);
+  backdrop-filter: blur(12px);
 }
 
-.advanceText{
-  font-size:13px;
-  color:#cfe6ff;
+.advanceText {
+  font-size: 13px;
+  color: #cfe6ff;
 }
-@media (max-width:640px){
 
-  .headerRow{
-    flex-direction:column;
-    align-items:flex-start;
-    gap:10px;
+@media (max-width: 640px) {
+  .headerRow {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
   }
 
-  .advanceHint{
-    width:100%;
-    flex-direction:column;
-    align-items:flex-start;
+  .advanceHint {
+    width: 100%;
+    flex-direction: column;
+    align-items: flex-start;
   }
+}
 
+/* ================= TEXTAREA ================= */
+
+.compactTextarea {
+  height: 42px;
+  min-height: 42px;
+  max-height: 200px;
+
+  padding: 8px 12px;
+  line-height: 1.4;
+
+  resize: vertical;
+  overflow-y: auto;
 }

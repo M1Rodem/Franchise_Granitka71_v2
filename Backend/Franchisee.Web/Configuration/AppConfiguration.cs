@@ -14,6 +14,9 @@ using Franchisee.Web.Models.Shared;
 using Franchisee.Web.Services.Notifications.Dispatch;
 using Franchisee.Web.Services.Notifications.Background;
 using Franchisee.Web.Services.Media.Background;
+using Franchisee.Web.Services.Print.Core;
+using Franchisee.Web.Services.Print.Builders;
+using Franchisee.Web.Services.Print.Strategies;
 
 namespace Franchisee.Web.Configuration
 {
@@ -28,43 +31,11 @@ namespace Franchisee.Web.Configuration
             {
                 options.AddPolicy("AllowFrontend", policy =>
                 {
-                    var allowedOrigins = new List<string>
-                    {
-                        "http://localhost:3000",
-                        "https://localhost:3000",
-                        "http://localhost:5173",
-                        "https://localhost:5173",
-                        "http://localhost:5000",
-                        "https://localhost:5001",
-                        "https://a2zsulyprv.localto.net",
-                    };
-
-                    // Добавляем WebSocket origins
-                    allowedOrigins.AddRange(new[]
-                    {
-                        "ws://localhost:3000",
-                        "wss://localhost:3000",
-                        "ws://localhost:5000",
-                        "wss://localhost:5000"
-                    });
-
-                    // Добавляем продакшен домены
-                    if (env.IsProduction())
-                    {
-                        allowedOrigins.AddRange(new[]
-                        {
-                            "https://granit71.ru",
-                            "https://www.granit71.ru",
-                            "http://granit71.ru",
-                            "http://www.granit71.ru"
-                        });
-                    }
-
-                    policy.WithOrigins(allowedOrigins.ToArray())
-                          .AllowAnyHeader()
-                          .AllowAnyMethod()
-                          .AllowCredentials()
-                          .SetIsOriginAllowedToAllowWildcardSubdomains();
+                    policy
+                        .AllowAnyHeader()
+                        .AllowAnyMethod()
+                        .AllowCredentials()
+                        .SetIsOriginAllowed(_ => true);
                 });
             });
 
@@ -232,13 +203,18 @@ namespace Franchisee.Web.Configuration
                 options.UseNpgsql(configuration.GetConnectionString("DefaultConnection")));
 
             // Репозитории и сервисы
-            // УБИРАЕМ: services.AddScoped<IPhotoService, PhotoService>(); - заменено на IMediaService в Program.cs
             services.AddScoped<Franchisee.Web.Services.Users.Repositories.IManagerRepository, Franchisee.Web.Services.Users.Repositories.ManagerRepository>();
             services.AddScoped<Franchisee.Web.Services.Orders.Repositories.IOrderRepository, Franchisee.Web.Services.Orders.Repositories.OrderRepository>();
 
             // Регистрация сервисов
             services.AddScoped<Franchisee.Web.Services.Notifications.Core.INotificationService, Franchisee.Web.Services.Notifications.Core.NotificationService>();
-            services.AddScoped<Franchisee.Web.Services.Print.Core.IPrintService, Franchisee.Web.Services.Print.Core.PrintService>();
+
+            // Регистрация стратегий печати 
+            services.AddScoped<IPrintStrategy, DefaultPrintStrategy>();
+            services.AddScoped<IPrintStrategy, WorkerPrintStrategy>();
+
+            // Регистрация фабрики стратегий
+            services.AddScoped<PrintStrategyFactory>();
 
             // Фоновые сервисы
             services.AddHostedService<OldNotificationsCleanupService>();
@@ -246,6 +222,14 @@ namespace Franchisee.Web.Configuration
 
             // Обновляем сервис очистки временных файлов для работы с MediaService
             services.AddHostedService<ExpiredTempCleanupService>();
+
+            services.AddScoped<ExcelDocumentBuilder>();
+            services.AddScoped<HtmlDocumentBuilder>();
+            services.AddScoped<IPrintDocumentBuilder, ExcelDocumentBuilder>(sp => sp.GetRequiredService<ExcelDocumentBuilder>());
+            services.AddScoped<IPrintDocumentBuilder, HtmlDocumentBuilder>(sp => sp.GetRequiredService<HtmlDocumentBuilder>());
+
+            // Регистрируем сервис печати
+            services.AddScoped<IPrintService, PrintService>();
         }
 
         public static void ConfigurePipeline(IApplicationBuilder app, IWebHostEnvironment env)

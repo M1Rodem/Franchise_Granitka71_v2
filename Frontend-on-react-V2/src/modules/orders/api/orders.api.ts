@@ -116,16 +116,18 @@ export const ordersApi = {
     return ordersPagedResultSchema.parse(response.data);
   },
 
-  async printOrderHtml(id: number): Promise<Blob> {
+  async printOrderHtml(id: number, type: 'default' | 'worker' = 'default'): Promise<Blob> {
     const response = await httpClient.get(`/api/Print/order/${id}/html-print`, {
+      params: { type },
       responseType: 'blob',
     })
 
     return response.data
   },
 
-  async downloadOrderExcel(id: number): Promise<Blob> {
+  async downloadOrderExcel(id: number, type: 'default' | 'worker' = 'default'): Promise<Blob> {
     const response = await httpClient.get(`/api/Print/order/${id}/download`, {
+      params: { type },
       responseType: 'blob',
     })
 
@@ -211,6 +213,6 @@ export const ordersApi = {
   },
 
   async deleteArchivedOrder(id: number): Promise<void> {
-    await httpClient.delete(`/api/orders/archived/${id}`);
+    return httpClient.delete(`/api/orders/archived/${id}`);
   },
 };

@@ -6,6 +6,8 @@ import { showTempMessage } from '@/shared/ui/temp-message.service'
 import { useConfirmModalStore } from '@/shared/ui/modal/modal.store'
 import surface from '@/shared/ui/surface.module.css'
 import button from '@/shared/ui/button.module.css'
+import { isAxiosError } from 'axios'
+import type { ApiErrorResponse } from '@/shared/types/api'
 
 interface Props {
   orderId: number
@@ -23,7 +25,27 @@ export function OrderActions({ orderId }: Props) {
       queryClient.invalidateQueries({ queryKey: ordersKeys.all })
       navigate('/orders')
     },
-    onError: () => {
+    onError: (error: unknown) => {
+      if (isAxiosError<ApiErrorResponse>(error)) {
+        const rawMessage = error.response?.data?.message ?? ''
+        const message = rawMessage.toLowerCase()
+
+        if (message.includes('свои заказы')) {
+          showTempMessage('error', 'Нельзя удалить не свой заказ')
+          return
+        }
+
+        if (message.includes('в архиве')) {
+          showTempMessage('error', 'Нельзя удалить заказ из архива')
+          return
+        }
+
+        if (error.response?.status === 403) {
+          showTempMessage('error', rawMessage || 'Нет доступа')
+          return
+        }
+      }
+
       showTempMessage('error', 'Ошибка при удалении заказа')
     },
   })

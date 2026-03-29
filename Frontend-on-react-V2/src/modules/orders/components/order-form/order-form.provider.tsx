@@ -377,9 +377,6 @@ function mapFormToUpdateDto(values: OrderFormModel, dirtyFields: any) {
     removedPhotoIds: values.media.removedPhotoIds,
     removedVideoIds: values.media.removedVideoIds,
   }
-  console.log('UPDATE DTO', {
-    discount: values.discountPercent,
-  })
   if (dirtyFields?.works) {
     payload.workItems = values.works.map((w) => ({
       workDescription: w.workDescription,

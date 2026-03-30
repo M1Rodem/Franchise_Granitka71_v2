@@ -4,26 +4,26 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(2, 6, 14, 0.76);
-  backdrop-filter: blur(10px);
+  background: var(--tone-rgb-2-6-14-76);
+  backdrop-filter: blur(var(--size-10));
   z-index: 1000;
 }
 
 .modal {
   width: min(92%, 420px);
-  padding: 24px;
+  padding: var(--size-24);
   display: flex;
   flex-direction: column;
-  gap: 18px;
-  border-radius: 22px;
-  border: 1px solid rgba(148, 163, 184, 0.14);
-  background: rgba(17, 24, 39, 0.98);
-  box-shadow: 0 30px 60px rgba(0, 0, 0, 0.42);
+  gap: var(--size-18);
+  border-radius: var(--size-22);
+  border: var(--size-1) solid var(--tone-rgb-148-163-184-14);
+  background: var(--tone-rgb-17-24-39-98);
+  box-shadow: 0 var(--size-30) 60px var(--tone-rgb-0-0-0-42);
 }
 
 .title {
   margin: 0;
-  font-size: 18px;
+  font-size: var(--size-18);
   font-weight: 700;
   color: var(--text-primary);
 }
@@ -31,44 +31,44 @@
 .message {
   margin: 0;
   color: var(--text-secondary);
-  font-size: 14px;
+  font-size: var(--size-14);
   line-height: 1.6;
 }
 
 .actions {
   display: flex;
   justify-content: flex-end;
-  gap: 12px;
+  gap: var(--size-12);
 }
 
 .cancelButton,
 .confirmButton {
-  min-height: 40px;
-  padding: 0 16px;
-  border-radius: 14px;
-  border: 1px solid var(--border-primary);
+  min-height: var(--size-40);
+  padding: 0 var(--size-16);
+  border-radius: var(--size-14);
+  border: var(--size-1) solid var(--border-primary);
   cursor: pointer;
   transition: all 0.18s ease;
 }
 
 .cancelButton {
-  background: rgba(31, 41, 55, 0.9);
+  background: var(--tone-rgb-31-41-55-90);
   color: var(--text-secondary);
 }
 
 .cancelButton:hover {
-  background: rgba(51, 65, 85, 0.96);
+  background: var(--tone-rgb-51-65-85-96);
   color: var(--text-primary);
 }
 
 .confirmButton {
-  background: rgba(153, 27, 27, 0.96);
-  border-color: rgba(248, 113, 113, 0.28);
-  color: #fef2f2;
+  background: var(--tone-rgb-153-27-27-96);
+  border-color: var(--tone-rgb-248-113-113-28);
+  color: var(--tone-fef2f2);
 }
 
 .confirmButton:hover {
-  background: rgba(185, 28, 28, 1);
+  background: var(--tone-rgb-185-28-28-100);
 }
 
 .modalWide {

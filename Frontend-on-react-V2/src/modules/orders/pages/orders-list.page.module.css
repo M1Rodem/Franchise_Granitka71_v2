@@ -1,17 +1,17 @@
 .page {
   display: grid;
-  gap: 20px;
+  gap: var(--size-20);
 }
 
 .toolbar {
-  padding: 16px;
+  padding: var(--size-16);
   position: relative;
   z-index: 20;
 }
 
 .results {
   display: grid;
-  gap: 16px;
+  gap: var(--size-16);
   position: relative;
   z-index: 1;
 }
@@ -23,15 +23,15 @@
 .filterSurface {
   position: relative;
   z-index: 20;
-  gap: 22px;
+  gap: var(--size-22);
 }
 
 @media (max-width: 768px) {
   .page {
-    gap: 16px;
+    gap: var(--size-16);
   }
 
   .results {
-    gap: 14px;
+    gap: var(--size-14);
   }
 }

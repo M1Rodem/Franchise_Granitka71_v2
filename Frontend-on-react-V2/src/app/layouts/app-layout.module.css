@@ -2,7 +2,7 @@
   min-height: 100vh;
   display: flex;
   position: relative;
-  background: transparent;
+  background: var(--color-transparent);
   overflow: clip;
 }
 
@@ -16,21 +16,11 @@
 }
 
 .shell::before {
-  background:
-    radial-gradient(circle at 18% 12%, rgba(119, 175, 233, 0.1), transparent 24%),
-    radial-gradient(circle at 85% 10%, rgba(111, 190, 183, 0.08), transparent 20%);
+  background: var(--gradient-app-shell);
 }
 
 .shell::after {
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.02), transparent 16%),
-    linear-gradient(
-      90deg,
-      rgba(255, 255, 255, 0.018),
-      transparent 28%,
-      transparent 72%,
-      rgba(255, 255, 255, 0.012)
-    );
+  background: var(--gradient-app-shell-overlay);
 }
 
 .contentArea {
@@ -40,13 +30,13 @@
   flex-direction: column;
   position: relative;
   z-index: 1;
-  padding-left: 16px;
-  padding-right: 16px;
+  padding-left: var(--size-16);
+  padding-right: var(--size-16);
 }
 
 .mainContent {
   flex: 1;
-  padding: 22px 0 34px;
+  padding: var(--size-22) 0 var(--size-34);
 }
 
 .overlay {
@@ -54,13 +44,13 @@
   inset: 0;
   z-index: 40;
   border: 0;
-  background: rgba(2, 6, 14, 0.72);
-  backdrop-filter: blur(8px);
+  background: var(--tone-rgb-2-6-14-72);
+  backdrop-filter: blur(var(--size-8));
 }
 
 @media (min-width: 961px) {
   .mainContent {
-    padding: 24px 0 36px;
+    padding: var(--size-24) 0 36px;
   }
 
   .overlay {
@@ -79,6 +69,6 @@
   }
 
   .mainContent {
-    padding: 0 16px 28px;
+    padding: 0 var(--size-16) var(--size-28);
   }
 }

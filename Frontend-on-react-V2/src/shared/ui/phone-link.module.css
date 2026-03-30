@@ -1,15 +1,15 @@
 .phoneLink {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--size-6);
 
   color: inherit;
   text-decoration: none;
 
   cursor: pointer;
 
-  border-radius: 6px;
-  padding: 2px 4px;
+  border-radius: var(--size-6);
+  padding: var(--size-2) var(--size-4);
 
   transition:
     background 0.18s ease,
@@ -17,7 +17,7 @@
 }
 
 .phoneLink:hover {
-  background: rgba(134, 188, 255, 0.12);
+  background: var(--tone-rgb-134-188-255-12);
   transform: translateY(-1px);
 }
 
@@ -26,6 +26,6 @@
 }
 
 .icon {
-  font-size: 13px;
+  font-size: var(--size-13);
   opacity: 0.75;
 }

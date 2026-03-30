@@ -1,21 +1,21 @@
 .header {
   position: sticky;
-  top: 14px;
+  top: var(--size-14);
   z-index: 39;
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: 14px;
+  gap: var(--size-14);
   min-height: 72px;
-  margin: 16px 0 0;
-  padding: 14px 18px;
-  border-radius: 24px;
-  border: 1px solid rgba(184, 212, 237, 0.16);
+  margin: var(--size-16) 0 0;
+  padding: var(--size-14) var(--size-18);
+  border-radius: var(--size-24);
+  border: var(--size-1) solid var(--tone-rgb-184-212-237-16);
   background: var(--surface-gradient);
-  backdrop-filter: blur(22px);
+  backdrop-filter: blur(var(--size-22));
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.08),
-    0 24px 44px rgba(1, 9, 20, 0.26);
+    inset 0 var(--size-1) 0 var(--border-white-soft),
+    0 var(--size-24) var(--size-44) var(--tone-rgb-1-9-20-26);
   overflow: hidden;
 }
 
@@ -37,13 +37,13 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 18px;
-  height: 18px;
+  width: var(--size-18);
+  height: var(--size-18);
 }
 
 .actionIcon {
-  width: 20px;
-  height: 20px;
+  width: var(--size-20);
+  height: var(--size-20);
 }
 
 .actionIcon svg,
@@ -55,7 +55,7 @@
 .backBtn {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--size-8);
 }
 
 .backBtn:hover .backIcon {
@@ -63,29 +63,29 @@
 }
 
 .menuButton {
-  width: 40px;
-  height: 40px;
+  width: var(--size-40);
+  height: var(--size-40);
   display: inline-flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 4px;
-  border-radius: 14px;
-  border: 1px solid rgba(184, 212, 237, 0.14);
-  background: rgba(8, 18, 29, 0.74);
+  gap: var(--size-4);
+  border-radius: var(--size-14);
+  border: var(--size-1) solid var(--border-soft);
+  background: var(--glass-button-surface);
   cursor: pointer;
   transition: all 0.18s ease;
 }
 
 .menuButton:hover {
-  border-color: rgba(119, 175, 233, 0.24);
-  background: rgba(14, 26, 40, 0.88);
+  border-color: var(--tone-rgb-119-175-233-24);
+  background: var(--glass-button-surface-hover);
 }
 
 .menuButton span {
-  width: 18px;
-  height: 2px;
-  border-radius: 999px;
+  width: var(--size-18);
+  height: var(--size-2);
+  border-radius: var(--radius-pill);
   background: var(--text-primary);
 }
 
@@ -95,7 +95,7 @@
   min-width: 0;
   flex: 1 1 280px;
   color: var(--text-primary);
-  font-size: clamp(20px, 2vw, 24px);
+  font-size: clamp(var(--size-20), 2vw, var(--size-24));
   font-weight: 700;
   letter-spacing: -0.04em;
   white-space: nowrap;
@@ -112,32 +112,37 @@
 }
 
 .badgeContainer {
-  min-width: 40px;
-  height: 40px;
+  min-width: var(--size-40);
+  height: var(--size-40);
   display: grid;
   place-items: center;
-  border-radius: 14px;
-  border: 1px solid rgba(184, 212, 237, 0.12);
-  background: rgba(8, 18, 29, 0.56);
+  border-radius: var(--size-14);
+  border: var(--size-1) solid var(--border-subtle);
+  background: var(--overlay-surface-56);
 }
 
 .badgeValue {
   color: var(--text-primary);
-  font-size: 13px;
+  font-size: var(--size-13);
   font-weight: 700;
 }
 
 .detailsActions {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: var(--size-10);
   flex-wrap: wrap;
   justify-content: flex-end;
   margin-left: auto;
 }
 
+.stretchActionButton {
+  width: 100%;
+  justify-content: center;
+}
+
 .detailsBackButton {
-  min-height: 40px;
+  min-height: var(--size-40);
 }
 
 .detailsTitleButtonWrapper {
@@ -147,8 +152,8 @@
 }
 
 .detailsActionTitleButton {
-  min-height: 46px;
-  padding-inline: 20px;
+  min-height: var(--size-46);
+  padding-inline: var(--size-20);
   font-size: 15px;
 }
 
@@ -156,7 +161,7 @@
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: 12px;
+  gap: var(--size-12);
   width: 100%;
 }
 
@@ -164,18 +169,18 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  min-width: 48px;
-  min-height: 48px;
-  border-radius: 16px;
-  border: 1px solid rgba(184, 212, 237, 0.12);
-  background: rgba(8, 18, 29, 0.52);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  min-width: var(--size-48);
+  min-height: var(--size-48);
+  border-radius: var(--size-16);
+  border: var(--size-1) solid var(--border-subtle);
+  background: var(--glass-soft-surface);
+  box-shadow: inset 0 var(--size-1) 0 var(--overlay-white-04);
 }
 
 .realtimeDot {
-  width: 12px;
-  height: 12px;
-  border-radius: 999px;
+  width: var(--size-12);
+  height: var(--size-12);
+  border-radius: var(--radius-pill);
   cursor: pointer;
   transition:
     transform 0.18s ease,
@@ -187,19 +192,19 @@
 }
 
 .connected {
-  background: #42b883;
+  background: var(--glass-indicator-success);
   box-shadow:
-    0 0 0 6px rgba(66, 184, 131, 0.12),
-    0 0 14px rgba(66, 184, 131, 0.34);
+    0 0 0 var(--size-6) var(--tone-rgb-66-184-131-12),
+    0 0 var(--size-14) var(--tone-rgb-66-184-131-34);
 }
 
 .connecting {
-  background: #f59e0b;
+  background: var(--glass-indicator-warning);
   animation: pulse 1.4s infinite;
 }
 
 .disconnected {
-  background: #ef4444;
+  background: var(--glass-indicator-danger);
   animation: pulse 1.6s infinite;
 }
 
@@ -230,11 +235,11 @@
     display: grid;
     grid-template-columns: auto 1fr auto;
     grid-auto-rows: auto;
-    gap: 10px;
+    gap: var(--size-10);
 
-    margin: 16px 16px 0;
-    padding: 14px;
-    border-radius: 20px;
+    margin: var(--size-16) var(--size-16) 0;
+    padding: var(--size-14);
+    border-radius: var(--size-20);
   }
 
   /* ===== ROW 1 ===== */
@@ -266,7 +271,7 @@
 
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 10px;
+    gap: var(--size-10);
 
     margin-left: 0;
   }
@@ -275,22 +280,26 @@
     width: 100%;
   }
 
-  /* если кнопок мало — они не ломаются */
+  .singleActionGroup {
+    grid-template-columns: 1fr;
+  }
+
+  /* Р В Р’В Р вЂ™Р’ВµР В Р Р‹Р В РЎвЂњР В Р’В Р вЂ™Р’В»Р В Р’В Р РЋРІР‚В Р В Р’В Р РЋРІР‚СњР В Р’В Р В РІР‚В¦Р В Р’В Р РЋРІР‚СћР В Р’В Р РЋРІР‚вЂќР В Р’В Р РЋРІР‚СћР В Р’В Р РЋРІР‚Сњ Р В Р’В Р РЋР’ВР В Р’В Р вЂ™Р’В°Р В Р’В Р вЂ™Р’В»Р В Р’В Р РЋРІР‚Сћ Р В Р вЂ Р В РІР‚С™Р Р†Р вЂљРЎСљ Р В Р’В Р РЋРІР‚СћР В Р’В Р В РІР‚В¦Р В Р’В Р РЋРІР‚В Р В Р’В Р В РІР‚В¦Р В Р’В Р вЂ™Р’Вµ Р В Р’В Р вЂ™Р’В»Р В Р’В Р РЋРІР‚СћР В Р’В Р РЋР’ВР В Р’В Р вЂ™Р’В°Р В Р Р‹Р В РІР‚в„–Р В Р Р‹Р Р†Р вЂљРЎв„ўР В Р Р‹Р В РЎвЂњР В Р Р‹Р В Р РЏ */
   .detailsActions:empty {
     display: none;
   }
 
-  /* title нормальный */
+  /* title Р В Р’В Р В РІР‚В¦Р В Р’В Р РЋРІР‚СћР В Р Р‹Р В РІР‚С™Р В Р’В Р РЋР’ВР В Р’В Р вЂ™Р’В°Р В Р’В Р вЂ™Р’В»Р В Р Р‹Р В Р вЂ°Р В Р’В Р В РІР‚В¦Р В Р Р‹Р Р†Р вЂљРІвЂћвЂ“Р В Р’В Р Р†РІР‚С›РІР‚вЂњ */
   .title,
   .detailsTitle {
     flex: unset;
     width: 100%;
     text-align: center;
-    font-size: 18px;
+    font-size: var(--size-18);
     white-space: normal;
   }
 
-  /* back кнопка */
+  /* back Р В Р’В Р РЋРІР‚СњР В Р’В Р В РІР‚В¦Р В Р’В Р РЋРІР‚СћР В Р’В Р РЋРІР‚вЂќР В Р’В Р РЋРІР‚СњР В Р’В Р вЂ™Р’В° */
   .backBtn {
     grid-column: 1 / -1; 
     grid-row: 3;

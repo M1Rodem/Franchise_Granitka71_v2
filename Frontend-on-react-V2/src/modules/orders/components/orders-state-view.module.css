@@ -1,26 +1,26 @@
 .state {
   display: grid;
-  gap: 10px;
+  gap: var(--size-10);
   max-width: 560px;
 }
 
 .state h3 {
   margin: 0;
-  color: #e7f3ff;
+  color: var(--tone-e7f3ff);
 }
 
 .state p {
   margin: 0;
-  color: #c2d8f4;
+  color: var(--tone-c2d8f4);
 }
 
 .state button {
   justify-self: start;
-  min-height: 38px;
-  border-radius: 10px;
-  border: 1px solid rgba(128, 170, 228, 0.35);
-  background: rgba(18, 46, 84, 0.82);
-  color: #e1efff;
-  padding: 0 12px;
+  min-height: var(--size-38);
+  border-radius: var(--size-10);
+  border: var(--size-1) solid var(--tone-rgb-128-170-228-35);
+  background: var(--tone-rgb-18-46-84-82);
+  color: var(--tone-e1efff);
+  padding: 0 var(--size-12);
   cursor: pointer;
 }

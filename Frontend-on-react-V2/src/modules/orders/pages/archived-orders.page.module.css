@@ -1,29 +1,29 @@
 .page {
   display: grid;
-  gap: 20px;
+  gap: var(--size-20);
 }
 
 .filterSurface {
-  gap: 22px;
+  gap: var(--size-22);
 }
 
 .helper {
   color: var(--text-secondary);
-  font-size: 14px;
+  font-size: var(--size-14);
   line-height: 1.7;
-  padding: 16px 18px;
-  border-radius: 16px;
-  border: 1px solid rgba(184, 212, 237, 0.12);
-  background: rgba(8, 18, 29, 0.42);
+  padding: var(--size-16) var(--size-18);
+  border-radius: var(--size-16);
+  border: var(--size-1) solid var(--border-subtle);
+  background: var(--tone-rgb-8-18-29-42);
 }
 
 @media (max-width: 720px) {
   .page {
-    gap: 16px;
+    gap: var(--size-16);
   }
 
   .helper {
-    font-size: 13px;
-    padding: 12px 14px;
+    font-size: var(--size-13);
+    padding: var(--size-12) var(--size-14);
   }
 }

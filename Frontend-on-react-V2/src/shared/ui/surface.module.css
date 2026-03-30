@@ -2,10 +2,10 @@
   position: relative;
   display: flex;
   flex-direction: column;
-  gap: 18px;
-  padding: 24px;
-  border-radius: 24px;
-  border: 1px solid var(--border-primary);
+  gap: var(--size-18);
+  padding: var(--size-24);
+  border-radius: var(--size-24);
+  border: var(--size-1) solid var(--border-primary);
   background: var(--surface-gradient);
   backdrop-filter: blur(var(--glass-blur));
   box-shadow: var(--glass-highlight), var(--glass-shadow);
@@ -30,9 +30,9 @@
 }
 
 .surface::after {
-  inset: auto 24px 0 24px;
-  height: 1px;
-  background: linear-gradient(90deg, transparent, rgba(184, 212, 237, 0.18), transparent);
+  inset: auto var(--size-24) 0 var(--size-24);
+  height: var(--size-1);
+  background: var(--gradient-surface-divider);
 }
 
 .surface > * {
@@ -41,16 +41,16 @@
 }
 
 .surface:hover {
-  border-color: rgba(119, 175, 233, 0.22);
+  border-color: var(--tone-rgb-119-175-233-22);
   transform: translateY(-1px);
   box-shadow:
     var(--glass-highlight),
-    0 30px 72px rgba(1, 9, 20, 0.4);
+    0 var(--size-30) 72px var(--tone-rgb-1-9-20-40);
 }
 
 .sectionTitle {
   margin: 0;
-  font-size: 18px;
+  font-size: var(--size-18);
   font-weight: 700;
   letter-spacing: -0.02em;
   color: var(--text-primary);
@@ -59,48 +59,48 @@
 .dateGroup {
   display: inline-flex;
   align-items: center;
-  min-height: 34px;
-  padding: 0 14px;
-  border-radius: 999px;
-  border: 1px solid rgba(119, 175, 233, 0.22);
-  background: linear-gradient(180deg, rgba(119, 175, 233, 0.16), rgba(119, 175, 233, 0.08));
-  color: #d9e8fb;
-  font-size: 12px;
+  min-height: var(--size-34);
+  padding: 0 var(--size-14);
+  border-radius: var(--radius-pill);
+  border: var(--size-1) solid var(--tone-rgb-119-175-233-22);
+  background: var(--gradient-surface-accent-soft);
+  color: var(--text-info-soft);
+  font-size: var(--size-12);
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  box-shadow: inset 0 var(--size-1) 0 var(--border-white-soft);
 }
 
 .mapChanges {
-  margin-top: 8px;
-  padding-top: 16px;
-  border-top: 1px solid rgba(148, 163, 184, 0.12);
+  margin-top: var(--size-8);
+  padding-top: var(--size-16);
+  border-top: var(--size-1) solid var(--border-neutral-soft);
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: var(--size-12);
 }
 
 .mapChangeItem,
 .diffCard,
 .infoRow {
-  border: 1px solid rgba(184, 212, 237, 0.12);
-  background: rgba(8, 18, 29, 0.48);
-  backdrop-filter: blur(18px);
+  border: var(--size-1) solid var(--border-subtle);
+  background: var(--tone-rgb-8-18-29-48);
+  backdrop-filter: blur(var(--size-18));
 }
 
 .mapChangeItem {
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  padding: 14px 16px;
-  border-radius: 16px;
+  gap: var(--size-6);
+  padding: var(--size-14) var(--size-16);
+  border-radius: var(--size-16);
 }
 
 .mapChangeLabel,
 .diffLabel,
 .infoLabel {
-  font-size: 11px;
+  font-size: var(--size-11);
   font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -111,17 +111,17 @@
 .diffValues {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: var(--size-12);
   flex-wrap: wrap;
   color: var(--text-secondary);
-  font-size: 14px;
+  font-size: var(--size-14);
 }
 
 .mapOld,
 .diffOld {
-  padding: 6px 10px;
-  border-radius: 10px;
-  background: rgba(30, 41, 59, 0.78);
+  padding: var(--size-6) var(--size-10);
+  border-radius: var(--size-10);
+  background: var(--tone-rgb-30-41-59-78);
   color: var(--text-muted);
 }
 
@@ -129,38 +129,38 @@
 .diffNew,
 .diffNewChanged,
 .infoValueStrong {
-  padding: 6px 10px;
-  border-radius: 10px;
-  border: 1px solid rgba(119, 175, 233, 0.2);
-  background: rgba(119, 175, 233, 0.12);
-  color: #eef7ff;
+  padding: var(--size-6) var(--size-10);
+  border-radius: var(--size-10);
+  border: var(--size-1) solid var(--tone-rgb-119-175-233-20);
+  background: var(--tone-rgb-119-175-233-12);
+  color: var(--tone-eef7ff);
 }
 
 .mapArrow,
 .diffArrow {
   color: var(--text-muted);
-  font-size: 12px;
+  font-size: var(--size-12);
 }
 
 .diffList {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: var(--size-12);
 }
 
 .diffCard {
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  padding: 18px;
-  border-radius: 18px;
+  gap: var(--size-12);
+  padding: var(--size-18);
+  border-radius: var(--size-18);
 }
 
 .diffTitle {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: var(--size-8);
   margin: 0;
   font-size: 15px;
   font-weight: 700;
@@ -170,66 +170,66 @@
 .diffBadge {
   display: inline-flex;
   align-items: center;
-  min-height: 24px;
-  padding: 0 10px;
-  border-radius: 999px;
-  font-size: 11px;
+  min-height: var(--size-24);
+  padding: 0 var(--size-10);
+  border-radius: var(--radius-pill);
+  font-size: var(--size-11);
   font-weight: 700;
 }
 
 .diffBadgeAdded {
-  background: rgba(34, 197, 94, 0.14);
-  color: #86efac;
+  background: var(--tone-rgb-34-197-94-14);
+  color: var(--tone-86efac);
 }
 
 .diffBadgeRemoved {
-  background: rgba(239, 68, 68, 0.14);
-  color: #fca5a5;
+  background: var(--tone-rgb-239-68-68-14);
+  color: var(--text-danger-soft);
 }
 
 .diffBadgeChanged {
-  background: rgba(96, 165, 250, 0.14);
-  color: #93c5fd;
+  background: var(--tone-rgb-96-165-250-14);
+  color: var(--tone-93c5fd);
 }
 
 .diffField + .diffField {
-  border-top: 1px solid rgba(148, 163, 184, 0.12);
-  padding-top: 12px;
+  border-top: var(--size-1) solid var(--border-neutral-soft);
+  padding-top: var(--size-12);
 }
 
 .diffField {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--size-8);
 }
 
 .diffOldChanged {
-  padding: 6px 10px;
-  border-radius: 10px;
-  background: rgba(127, 29, 29, 0.22);
-  color: #fecaca;
+  padding: var(--size-6) var(--size-10);
+  border-radius: var(--size-10);
+  background: var(--tone-rgb-127-29-29-22);
+  color: var(--tone-fecaca);
 }
 
 .infoGrid {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: var(--size-10);
 }
 
 .infoRow {
   display: grid;
   grid-template-columns: minmax(120px, 180px) 1fr;
   align-items: center;
-  gap: 12px;
-  padding: 14px 16px;
-  border-radius: 16px;
+  gap: var(--size-12);
+  padding: var(--size-14) var(--size-16);
+  border-radius: var(--size-16);
 }
 
 .infoValue,
 .infoValueStrong {
   justify-self: end;
   text-align: right;
-  font-size: 14px;
+  font-size: var(--size-14);
 }
 
 .infoValue {
@@ -242,27 +242,27 @@
 
 @media (max-width: 768px) {
   .surface {
-    padding: 18px;
-    gap: 16px;
-    border-radius: 20px;
+    padding: var(--size-18);
+    gap: var(--size-16);
+    border-radius: var(--size-20);
   }
 
   .sectionTitle {
-    font-size: 16px;
+    font-size: var(--size-16);
   }
 
   .diffCard,
   .infoRow,
   .mapChangeItem {
-    padding: 14px;
-    border-radius: 14px;
+    padding: var(--size-14);
+    border-radius: var(--size-14);
   }
 
   .mapChangeValues,
   .diffValues {
     flex-direction: column;
     align-items: flex-start;
-    gap: 8px;
+    gap: var(--size-8);
   }
 
   .mapArrow,
@@ -291,22 +291,22 @@
   position: relative;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: var(--size-10);
 
-  padding: 14px 14px 12px 14px;
-  border-radius: 16px;
+  padding: var(--size-14) var(--size-14) var(--size-12) var(--size-14);
+  border-radius: var(--size-16);
 
-  border: 1px solid rgba(184, 212, 237, 0.08);
+  border: var(--size-1) solid var(--border-faint);
 
-  background: rgba(15, 28, 44, 0.35);
-  backdrop-filter: blur(12px);
+  background: var(--tone-rgb-15-28-44-35);
+  backdrop-filter: blur(var(--size-12));
 
   transition: all 0.18s ease;
 }
 
 .diffGroup:hover {
-  border-color: rgba(119, 175, 233, 0.18);
-  background: rgba(15, 28, 44, 0.45);
+  border-color: var(--tone-rgb-119-175-233-18);
+  background: var(--tone-rgb-15-28-44-45);
 }
 
 /* ===== GROUP TITLE ===== */
@@ -315,26 +315,22 @@
   display: flex;
   align-items: center;
 
-  font-size: 11px;
+  font-size: var(--size-11);
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
 
-  color: rgba(184, 212, 237, 0.65);
+  color: var(--tone-rgb-184-212-237-65);
 
-  padding: 0 4px;
+  padding: 0 var(--size-4);
 }
 
-/* маленькая линия под заголовком */
+/* Р В Р’В Р РЋР’ВР В Р’В Р вЂ™Р’В°Р В Р’В Р вЂ™Р’В»Р В Р’В Р вЂ™Р’ВµР В Р’В Р В РІР‚В¦Р В Р Р‹Р В Р вЂ°Р В Р’В Р РЋРІР‚СњР В Р’В Р вЂ™Р’В°Р В Р Р‹Р В Р РЏ Р В Р’В Р вЂ™Р’В»Р В Р’В Р РЋРІР‚ВР В Р’В Р В РІР‚В¦Р В Р’В Р РЋРІР‚ВР В Р Р‹Р В Р РЏ Р В Р’В Р РЋРІР‚вЂќР В Р’В Р РЋРІР‚СћР В Р’В Р СћРІР‚В Р В Р’В Р вЂ™Р’В·Р В Р’В Р вЂ™Р’В°Р В Р’В Р РЋРІР‚вЂњР В Р’В Р РЋРІР‚СћР В Р’В Р вЂ™Р’В»Р В Р’В Р РЋРІР‚СћР В Р’В Р В РІР‚В Р В Р’В Р РЋРІР‚СњР В Р’В Р РЋРІР‚СћР В Р’В Р РЋР’В */
 .diffGroupTitle::after {
   content: '';
   flex: 1;
-  height: 1px;
-  margin-left: 8px;
+  height: var(--size-1);
+  margin-left: var(--size-8);
 
-  background: linear-gradient(
-    90deg,
-    rgba(119, 175, 233, 0.25),
-    transparent
-  );
+  background: var(--gradient-current-fade);
 }

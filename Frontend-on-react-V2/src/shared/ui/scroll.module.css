@@ -4,41 +4,41 @@
   overflow-y: auto;
   overflow-x: hidden;
 
-  /* ключевые фиксы */
-  background: transparent;
+  /* Р В Р’В Р РЋРІР‚СњР В Р’В Р вЂ™Р’В»Р В Р Р‹Р В РІР‚в„–Р В Р Р‹Р Р†Р вЂљР Р‹Р В Р’В Р вЂ™Р’ВµР В Р’В Р В РІР‚В Р В Р Р‹Р Р†Р вЂљРІвЂћвЂ“Р В Р’В Р вЂ™Р’Вµ Р В Р Р‹Р Р†Р вЂљРЎвЂєР В Р’В Р РЋРІР‚ВР В Р’В Р РЋРІР‚СњР В Р Р‹Р В РЎвЂњР В Р Р‹Р Р†Р вЂљРІвЂћвЂ“ */
+  background: var(--glass-scroll-track);
   scrollbar-gutter: stable both-edges;
 }
 
 .scrollContent {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: var(--size-12);
 
-  padding-right: 12px; /* ← вот сюда переносим */
+  padding-right: var(--size-12); /* Р В Р вЂ Р Р†Р вЂљР’В Р РЋРІР‚в„ў Р В Р’В Р В РІР‚В Р В Р’В Р РЋРІР‚СћР В Р Р‹Р Р†Р вЂљРЎв„ў Р В Р Р‹Р В РЎвЂњР В Р Р‹Р В РІР‚в„–Р В Р’В Р СћРІР‚ВР В Р’В Р вЂ™Р’В° Р В Р’В Р РЋРІР‚вЂќР В Р’В Р вЂ™Р’ВµР В Р Р‹Р В РІР‚С™Р В Р’В Р вЂ™Р’ВµР В Р’В Р В РІР‚В¦Р В Р’В Р РЋРІР‚СћР В Р Р‹Р В РЎвЂњР В Р’В Р РЋРІР‚ВР В Р’В Р РЋР’В */
 }
 
 /* ===== SCROLLBAR (WEBKIT) ===== */
 
 .scroll::-webkit-scrollbar {
-  width: 8px;
+  width: var(--size-8);
 }
 
 .scroll::-webkit-scrollbar-track {
-  background: transparent;
+  background: var(--glass-scroll-track);
 }
 
 .scroll::-webkit-scrollbar-thumb {
-  background: rgba(120, 160, 220, 0.35);
-  border-radius: 10px;
+  background: var(--glass-scroll-thumb);
+  border-radius: var(--size-10);
 }
 
 .scroll::-webkit-scrollbar-thumb:hover {
-  background: rgba(120, 160, 220, 0.55);
+  background: var(--glass-scroll-thumb-hover);
 }
 
 /* ===== FIREFOX ===== */
 
 .scroll {
   scrollbar-width: thin;
-  scrollbar-color: rgba(120, 160, 220, 0.4) transparent;
+  scrollbar-color: var(--glass-scroll-thumb-active) var(--glass-scroll-track);
 }

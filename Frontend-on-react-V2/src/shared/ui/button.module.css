@@ -1,20 +1,23 @@
 .btn {
-  --btn-overlay: var(--interactive-gloss);
-  --btn-base: rgba(12, 23, 37, 0.74);
-  --btn-hover-overlay: var(--interactive-gloss-strong);
-  --btn-hover-base: rgba(18, 31, 47, 0.8);
+  --btn-background: var(--glass-button-surface);
+  --btn-background-hover: var(--glass-button-surface-hover);
+  --btn-border: var(--glass-button-border);
+  --btn-border-hover: var(--glass-button-border-hover);
+  --btn-shadow: var(--glass-button-shadow);
+  --btn-shadow-hover: var(--glass-button-shadow-hover);
+  --btn-shadow-active: var(--glass-button-shadow-active);
   position: relative;
   overflow: hidden;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-height: 42px;
-  padding: 0 16px;
-  border-radius: 14px;
-  border: 1px solid var(--border-primary);
-  background: var(--btn-overlay), var(--btn-base);
+  min-height: var(--size-42);
+  padding: 0 var(--size-16);
+  border-radius: var(--size-14);
+  border: var(--size-1) solid var(--btn-border);
+  background: var(--btn-background);
   color: var(--text-primary);
-  font-size: 14px;
+  font-size: var(--size-14);
   font-weight: 600;
   line-height: 1.2;
   text-align: center;
@@ -26,17 +29,15 @@
     background 0.2s ease,
     box-shadow 0.2s ease,
     color 0.2s ease;
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.09),
-    0 12px 26px rgba(1, 8, 18, 0.18);
-  backdrop-filter: blur(14px);
+  box-shadow: var(--btn-shadow);
+  backdrop-filter: blur(calc(var(--glass-blur) - var(--size-4)));
 }
 
 .btn::before {
   content: '';
   position: absolute;
   inset: 0;
-  background: linear-gradient(120deg, transparent 20%, rgba(255, 255, 255, 0.1), transparent 75%);
+  background: var(--gradient-sheen-strong);
   opacity: 0;
   transform: translateX(-100%);
   transition:
@@ -47,10 +48,9 @@
 
 .btn:hover:not(:disabled) {
   transform: translateY(-1px) scale(1.01);
-  border-color: rgba(184, 212, 237, 0.22);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.12),
-    0 16px 34px rgba(1, 8, 18, 0.24);
+  border-color: var(--btn-border-hover);
+  background: var(--btn-background-hover);
+  box-shadow: var(--btn-shadow-hover);
 }
 
 .btn:hover:not(:disabled)::before {
@@ -60,9 +60,7 @@
 
 .btn:active:not(:disabled) {
   transform: scale(0.98);
-  box-shadow:
-    inset 0 2px 8px rgba(0, 0, 0, 0.22),
-    0 6px 14px rgba(0, 0, 0, 0.18);
+  box-shadow: var(--btn-shadow-active);
 }
 
 .btn:disabled {
@@ -73,84 +71,46 @@
 
 .btn:focus-visible {
   outline: none;
-  box-shadow:
-    0 0 0 1px rgba(108, 165, 235, 0.56),
-    0 0 0 4px rgba(108, 165, 235, 0.15),
-    0 12px 28px rgba(1, 8, 18, 0.2);
+  box-shadow: var(--glass-button-focus);
 }
 
 .btnPrimary,
 .btnNavigation,
 .btnPrint {
-  --btn-overlay: var(--accent-gradient-primary);
-  --btn-base: rgba(24, 52, 82, 0.82);
-  --btn-hover-overlay: linear-gradient(180deg, rgba(132, 186, 242, 0.2), rgba(132, 186, 242, 0.09));
-  --btn-hover-base: rgba(29, 58, 90, 0.9);
-  border-color: rgba(119, 175, 233, 0.28);
-  color: #f8fafc;
-}
-
-.btnPrimary:hover:not(:disabled),
-.btnNavigation:hover:not(:disabled),
-.btnPrint:hover:not(:disabled) {
-  background: var(--btn-hover-overlay), var(--btn-hover-base);
-  border-color: rgba(153, 196, 241, 0.32);
-  box-shadow: 0 18px 34px rgba(66, 108, 156, 0.2);
+  --btn-background: var(--gradient-glass-shell), var(--accent-gradient-primary), var(--tone-rgb-24-52-82-82);
+  --btn-background-hover: var(--gradient-glass-shell-hover), var(--gradient-glass-primary-hover), var(--overlay-panel-90);
+  --btn-border: var(--tone-rgb-119-175-233-28);
+  --btn-border-hover: var(--tone-rgb-153-196-241-32);
+  --btn-shadow-hover: 0 var(--size-18) var(--size-34) var(--tone-rgb-66-108-156-20);
+  color: var(--color-text);
 }
 
 .btnSuccess,
 .btnExcel {
-  --btn-overlay: var(--accent-gradient-success);
-  --btn-base: rgba(19, 55, 43, 0.86);
-  --btn-hover-overlay: linear-gradient(180deg, rgba(105, 201, 154, 0.2), rgba(105, 201, 154, 0.09));
-  --btn-hover-base: rgba(22, 63, 49, 0.94);
-  border-color: rgba(93, 193, 145, 0.26);
-  color: #f0fdf4;
-}
-
-.btnSuccess:hover:not(:disabled),
-.btnExcel:hover:not(:disabled) {
-  background: var(--btn-hover-overlay), var(--btn-hover-base);
-  border-color: rgba(136, 221, 183, 0.34);
-  box-shadow: 0 18px 34px rgba(36, 112, 80, 0.18);
+  --btn-background: var(--gradient-glass-shell), var(--accent-gradient-success), var(--tone-rgb-19-55-43-86);
+  --btn-background-hover: var(--gradient-glass-shell-hover), var(--gradient-glass-success-hover), var(--tone-rgb-22-63-49-94);
+  --btn-border: var(--tone-rgb-93-193-145-26);
+  --btn-border-hover: var(--tone-rgb-136-221-183-34);
+  --btn-shadow-hover: 0 var(--size-18) var(--size-34) var(--tone-rgb-36-112-80-18);
+  color: var(--tone-f0fdf4);
 }
 
 .btnDanger {
-  --btn-overlay: var(--accent-gradient-danger);
-  --btn-base: rgba(62, 21, 31, 0.86);
-  --btn-hover-overlay: linear-gradient(
-    180deg,
-    rgba(236, 132, 144, 0.19),
-    rgba(236, 132, 144, 0.08)
-  );
-  --btn-hover-base: rgba(72, 24, 36, 0.94);
-  border-color: rgba(233, 123, 136, 0.28);
-  color: #fef2f2;
-}
-
-.btnDanger:hover:not(:disabled) {
-  background: var(--btn-hover-overlay), var(--btn-hover-base);
-  border-color: rgba(245, 163, 172, 0.38);
-  box-shadow: 0 18px 34px rgba(131, 48, 63, 0.18);
+  --btn-background: var(--gradient-glass-shell), var(--accent-gradient-danger), var(--tone-rgb-62-21-31-86);
+  --btn-background-hover: var(--gradient-glass-shell-hover), var(--gradient-glass-danger-hover), var(--tone-rgb-72-24-36-94);
+  --btn-border: var(--tone-rgb-233-123-136-28);
+  --btn-border-hover: var(--tone-rgb-245-163-172-38);
+  --btn-shadow-hover: 0 var(--size-18) var(--size-34) var(--tone-rgb-131-48-63-18);
+  color: var(--tone-fef2f2);
 }
 
 .btnWarning {
-  --btn-overlay: var(--accent-gradient-warning);
-  --btn-base: rgba(67, 42, 16, 0.84);
-  --btn-hover-overlay: linear-gradient(
-    180deg,
-    rgba(247, 192, 114, 0.19),
-    rgba(247, 192, 114, 0.08)
-  );
-  --btn-hover-base: rgba(78, 50, 20, 0.9);
-  border-color: rgba(251, 191, 36, 0.32);
-  color: #fffbeb;
-}
-
-.btnWarning:hover:not(:disabled) {
-  background: var(--btn-hover-overlay), var(--btn-hover-base);
-  border-color: rgba(252, 211, 77, 0.42);
-  box-shadow: 0 16px 30px rgba(148, 102, 31, 0.18);
+  --btn-background: var(--gradient-glass-shell), var(--accent-gradient-warning), var(--tone-rgb-67-42-16-84);
+  --btn-background-hover: var(--gradient-glass-shell-hover), var(--gradient-glass-warning-hover), var(--tone-rgb-78-50-20-90);
+  --btn-border: var(--tone-rgb-251-191-36-32);
+  --btn-border-hover: var(--tone-rgb-252-211-77-42);
+  --btn-shadow-hover: 0 var(--size-16) var(--size-30) var(--tone-rgb-148-102-31-18);
+  color: var(--text-warning-pale);
 }
 
 .btnNeutral,
@@ -160,61 +120,38 @@
 .btnGlass,
 .btnGhost,
 .btnOutline {
-  --btn-overlay: var(--interactive-gloss);
-  --btn-base: rgba(12, 23, 37, 0.66);
-  --btn-hover-overlay: var(--interactive-gloss-strong);
-  --btn-hover-base: rgba(18, 31, 47, 0.8);
-  border-color: rgba(184, 212, 237, 0.14);
+  --btn-background: var(--glass-button-surface);
+  --btn-background-hover: var(--glass-button-surface-hover);
+  --btn-border: var(--border-soft);
+  --btn-border-hover: var(--tone-rgb-184-212-237-22);
   color: var(--text-secondary);
 }
 
-.btnNeutral:hover:not(:disabled),
-.btnSecondary:hover:not(:disabled),
-.btnDismiss:hover:not(:disabled),
-.btnDark:hover:not(:disabled),
-.btnGlass:hover:not(:disabled),
-.btnGhost:hover:not(:disabled),
-.btnOutline:hover:not(:disabled) {
-  background: var(--btn-hover-overlay), var(--btn-hover-base);
-  border-color: rgba(184, 212, 237, 0.22);
-  color: var(--text-primary);
-}
-
 .btnInfo {
-  --btn-overlay: var(--accent-gradient-info);
-  --btn-base: rgba(17, 49, 68, 0.86);
-  --btn-hover-overlay: linear-gradient(
-    180deg,
-    rgba(127, 205, 247, 0.19),
-    rgba(127, 205, 247, 0.08)
-  );
-  --btn-hover-base: rgba(19, 56, 79, 0.92);
-  border-color: rgba(114, 193, 244, 0.28);
-  color: #eff6ff;
-}
-
-.btnInfo:hover:not(:disabled) {
-  background: var(--btn-hover-overlay), var(--btn-hover-base);
-  border-color: rgba(150, 212, 249, 0.38);
-  box-shadow: 0 16px 30px rgba(44, 104, 140, 0.18);
+  --btn-background: var(--gradient-glass-shell), var(--accent-gradient-info), var(--tone-rgb-17-49-68-86);
+  --btn-background-hover: var(--gradient-glass-shell-hover), var(--gradient-glass-info-hover), var(--tone-rgb-19-56-79-92);
+  --btn-border: var(--tone-rgb-114-193-244-28);
+  --btn-border-hover: var(--tone-rgb-150-212-249-38);
+  --btn-shadow-hover: 0 var(--size-16) var(--size-30) var(--tone-rgb-44-104-140-18);
+  color: var(--tone-eff6ff);
 }
 
 .mapToggle {
   display: inline-flex;
-  gap: 6px;
-  padding: 4px;
-  border-radius: 16px;
-  border: 1px solid rgba(184, 212, 237, 0.14);
-  background: rgba(8, 18, 29, 0.62);
-  backdrop-filter: blur(12px);
+  gap: var(--size-6);
+  padding: var(--size-4);
+  border-radius: var(--size-16);
+  border: var(--size-1) solid var(--border-soft);
+  background: var(--glass-soft-surface);
+  backdrop-filter: blur(var(--size-12));
 }
 
 .mapToggleBtn {
-  min-height: 38px;
-  padding: 0 16px;
-  border-radius: 12px;
-  border: 1px solid transparent;
-  background: transparent;
+  min-height: var(--size-38);
+  padding: 0 var(--size-16);
+  border-radius: var(--size-12);
+  border: var(--size-1) solid var(--color-transparent);
+  background: var(--color-transparent);
   color: var(--text-muted);
   cursor: pointer;
   transition: all 0.18s ease;
@@ -222,39 +159,39 @@
 
 .mapToggleBtn:hover {
   color: var(--text-primary);
-  background: rgba(119, 175, 233, 0.12);
+  background: var(--tone-rgb-119-175-233-12);
 }
 
 .mapToggleBtnActive {
-  background: rgba(119, 175, 233, 0.18);
-  border-color: rgba(119, 175, 233, 0.24);
-  color: #f8fafc;
+  background: var(--tone-rgb-119-175-233-18);
+  border-color: var(--tone-rgb-119-175-233-24);
+  color: var(--color-text);
 }
 
 .mapLinkBtn,
 .navigatorButton {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  padding: 10px 16px;
-  border-radius: 14px;
+  gap: var(--size-8);
+  padding: var(--size-10) var(--size-16);
+  border-radius: var(--size-14);
   text-decoration: none;
 }
 
 .mapLinkBtn {
-  background: rgba(8, 18, 29, 0.82);
-  border: 1px solid rgba(114, 193, 244, 0.22);
-  color: #dbeafe;
+  background: var(--glass-button-surface);
+  border: var(--size-1) solid var(--tone-rgb-114-193-244-22);
+  color: var(--tone-dbeafe);
 }
 
 .mapLinkBtn:hover {
   transform: translateY(-1px);
-  box-shadow: 0 14px 28px rgba(59, 130, 246, 0.18);
+  box-shadow: 0 var(--size-14) var(--size-28) var(--tone-rgb-59-130-246-18);
 }
 
 .navigatorButton {
-  background: rgba(11, 21, 34, 0.82);
-  border: 1px solid rgba(184, 212, 237, 0.16);
+  background: var(--glass-button-surface);
+  border: var(--size-1) solid var(--tone-rgb-184-212-237-16);
   color: var(--text-secondary);
   transition: all 0.2s ease;
 }
@@ -265,34 +202,34 @@
 }
 
 .btnLarge {
-  min-height: 48px;
-  padding: 0 20px;
-  border-radius: 16px;
+  min-height: var(--size-48);
+  padding: 0 var(--size-20);
+  border-radius: var(--size-16);
   font-size: 15px;
 }
 
 .btnSmall {
-  min-height: 34px;
-  padding: 0 12px;
-  border-radius: 12px;
-  font-size: 13px;
+  min-height: var(--size-34);
+  padding: 0 var(--size-12);
+  border-radius: var(--size-12);
+  font-size: var(--size-13);
 }
 
 .btnIcon {
-  width: 42px;
-  min-width: 42px;
+  width: var(--size-42);
+  min-width: var(--size-42);
   padding: 0;
   justify-content: center;
 }
 
 .btnIcon.btnSmall {
-  width: 34px;
-  min-width: 34px;
+  width: var(--size-34);
+  min-width: var(--size-34);
 }
 
 .btnIcon.btnLarge {
-  width: 48px;
-  min-width: 48px;
+  width: var(--size-48);
+  min-width: var(--size-48);
 }
 
 .btnBlock {
@@ -304,16 +241,16 @@
 .btnWithIcon {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--size-8);
 }
 
 .btnPill {
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
 }
 
 .btnLoading {
   position: relative;
-  color: transparent;
+  color: var(--color-transparent);
   pointer-events: none;
 }
 
@@ -322,18 +259,18 @@
   position: absolute;
   top: 50%;
   left: 50%;
-  width: 16px;
-  height: 16px;
+  width: var(--size-16);
+  height: var(--size-16);
   margin: -8px 0 0 -8px;
   border-radius: 50%;
-  border: 2px solid rgba(255, 255, 255, 0.22);
-  border-top-color: rgba(255, 255, 255, 0.9);
+  border: var(--size-2) solid var(--tone-rgb-255-255-255-22);
+  border-top-color: var(--tone-rgb-255-255-255-90);
   animation: spin 0.8s linear infinite;
 }
 
 .btnGroup {
   display: inline-flex;
-  gap: 8px;
+  gap: var(--size-8);
 }
 
 @keyframes spin {

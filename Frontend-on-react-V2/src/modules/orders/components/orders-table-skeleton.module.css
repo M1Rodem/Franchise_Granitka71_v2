@@ -1,18 +1,18 @@
 .card {
   display: grid;
-  gap: 10px;
-  padding: 16px;
-  border-radius: 20px;
-  border: 1px solid var(--border-primary);
-  background: rgba(17, 24, 39, 0.92);
+  gap: var(--size-10);
+  padding: var(--size-16);
+  border-radius: var(--size-20);
+  border: var(--size-1) solid var(--border-primary);
+  background: var(--tone-rgb-17-24-39-92);
   box-shadow: var(--shadow-md);
 }
 
 .row {
-  height: 52px;
-  border-radius: 14px;
+  height: var(--size-52);
+  border-radius: var(--size-14);
   background:
-    linear-gradient(90deg, rgba(31, 41, 55, 0.92), rgba(51, 65, 85, 0.98), rgba(31, 41, 55, 0.92));
+    var(--gradient-table-skeleton);
   background-size: 200% 100%;
   animation: shimmer 1.4s linear infinite;
 }

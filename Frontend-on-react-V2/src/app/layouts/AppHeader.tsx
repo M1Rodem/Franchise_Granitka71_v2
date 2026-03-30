@@ -290,12 +290,13 @@ export function AppHeader() {
             {header.title}
           </h1>
 
-          <div className={styles.detailsActions}>
+          <div className={cn(styles.detailsActions, styles.singleActionGroup)}>
             <button
               type="button"
               className={cn(
                 buttonStyles.btn,
-                buttonStyles.btnSuccess
+                buttonStyles.btnSuccess,
+                styles.stretchActionButton
               )}
               onClick={openPlotCreateModal}
             >
@@ -327,12 +328,13 @@ export function AppHeader() {
             {header.title}
           </h1>
 
-          <div className={styles.detailsActions}>
+          <div className={cn(styles.detailsActions, styles.singleActionGroup)}>
             <button
               type="button"
               className={cn(
                 buttonStyles.btn,
-                buttonStyles.btnSuccess
+                buttonStyles.btnSuccess,
+                styles.stretchActionButton
               )}
               onClick={() => {
                 useUiStore.getState().openUserCreateModal()

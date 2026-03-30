@@ -1,48 +1,48 @@
 .section {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: var(--size-20);
 }
 
 .title {
   margin: 0;
-  font-size: 18px;
+  font-size: var(--size-18);
   font-weight: 600;
-  color: #eaf4ff;
+  color: var(--text-accent-soft);
 }
 
 .actions {
   display: flex;
-  gap: 16px;
+  gap: var(--size-16);
   flex-wrap: wrap;
 }
 
 .editButton,
 .deleteButton {
-  padding: 10px 18px;
-  border-radius: 14px;
-  border: 1px solid rgba(137, 179, 239, 0.35);
-  background: rgba(17, 43, 80, 0.72);
-  color: #dff0ff;
+  padding: var(--size-10) var(--size-18);
+  border-radius: var(--size-14);
+  border: var(--size-1) solid var(--tone-rgb-137-179-239-35);
+  background: var(--tone-rgb-17-43-80-72);
+  color: var(--tone-dff0ff);
   cursor: pointer;
   transition: all 0.25s ease;
-  backdrop-filter: blur(10px);
+  backdrop-filter: blur(var(--size-10));
 }
 
 .editButton:hover {
-  background: rgba(90, 140, 220, 0.22);
-  box-shadow: 0 8px 24px rgba(90, 140, 220, 0.35);
+  background: var(--tone-rgb-90-140-220-22);
+  box-shadow: 0 var(--size-8) var(--size-24) var(--tone-rgb-90-140-220-35);
   transform: translateY(-2px);
 }
 
 .deleteButton {
-  border-color: rgba(255, 120, 120, 0.4);
-  background: rgba(120, 30, 30, 0.5);
+  border-color: var(--tone-rgb-255-120-120-40);
+  background: var(--tone-rgb-120-30-30-50);
 }
 
 .deleteButton:hover {
-  background: rgba(200, 60, 60, 0.6);
-  box-shadow: 0 8px 24px rgba(255, 80, 80, 0.4);
+  background: var(--tone-rgb-200-60-60-60);
+  box-shadow: 0 var(--size-8) var(--size-24) var(--tone-rgb-255-80-80-40);
   transform: translateY(-2px);
 }
 

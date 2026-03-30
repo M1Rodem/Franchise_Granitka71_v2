@@ -2,36 +2,36 @@
 .options {
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  padding: 8px 0;
+  gap: var(--size-12);
+  padding: var(--size-8) 0;
 }
 
 .optionBtn {
   display: flex !important;
   align-items: center;
-  gap: 16px;
-  padding: 16px !important;
+  gap: var(--size-16);
+  padding: var(--size-16) !important;
   width: 100%;
   justify-content: flex-start !important;
   text-align: left;
 }
 
 .optionIcon {
-  font-size: 28px;
+  font-size: var(--size-28);
 }
 
 .optionContent {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: var(--size-4);
 }
 
 .optionContent strong {
-  font-size: 16px;
+  font-size: var(--size-16);
 }
 
 .optionContent small {
-  font-size: 12px;
+  font-size: var(--size-12);
   opacity: 0.7;
 }
 

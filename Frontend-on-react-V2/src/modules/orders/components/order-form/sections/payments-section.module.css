@@ -16,7 +16,7 @@
 
 .dateCell input {
   width: 100%;
-  height: 42px;
+  height: var(--size-42);
 }
 
 .mobileCard {
@@ -54,11 +54,11 @@
   .mobileCard {
     display: flex;
     flex-direction: column;
-    gap: 14px;
+    gap: var(--size-14);
 
-    padding: 16px;
-    border-radius: 18px;
-    border: 1px solid rgba(184, 212, 237, 0.12);
+    padding: var(--size-16);
+    border-radius: var(--size-18);
+    border: var(--size-1) solid var(--border-subtle);
     background: var(--surface-gradient-soft);
 
     overflow: visible;
@@ -67,19 +67,19 @@
   .mobileRow {
     display: flex;
     flex-direction: column;
-    gap: 6px;
+    gap: var(--size-6);
     width: 100%;
   }
 
   .mobileGrid2 {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 12px;
+    gap: var(--size-12);
   }
 
   .mobileActions {
     width: 100%;
-    margin-top: 8px;
+    margin-top: var(--size-8);
   }
 
   .deleteButton,
@@ -95,33 +95,33 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 16px;
+  gap: var(--size-16);
 }
 
 .advanceHint {
   display: flex;
   align-items: center;
-  gap: 14px;
+  gap: var(--size-14);
 
-  padding: 6px 10px;
-  border-radius: 12px;
+  padding: var(--size-6) var(--size-10);
+  border-radius: var(--size-12);
 
-  background: rgba(16, 42, 78, 0.55);
-  border: 1px solid rgba(126, 164, 220, 0.25);
+  background: var(--tone-rgb-16-42-78-55);
+  border: var(--size-1) solid var(--tone-rgb-126-164-220-25);
 
-  backdrop-filter: blur(12px);
+  backdrop-filter: blur(var(--size-12));
 }
 
 .advanceText {
-  font-size: 13px;
-  color: #cfe6ff;
+  font-size: var(--size-13);
+  color: var(--tone-cfe6ff);
 }
 
 @media (max-width: 640px) {
   .headerRow {
     flex-direction: column;
     align-items: flex-start;
-    gap: 10px;
+    gap: var(--size-10);
   }
 
   .advanceHint {
@@ -134,11 +134,11 @@
 /* ================= TEXTAREA ================= */
 
 .compactTextarea {
-  height: 42px;
-  min-height: 42px;
+  height: var(--size-42);
+  min-height: var(--size-42);
   max-height: 200px;
 
-  padding: 8px 12px;
+  padding: var(--size-8) var(--size-12);
   line-height: 1.4;
 
   resize: vertical;

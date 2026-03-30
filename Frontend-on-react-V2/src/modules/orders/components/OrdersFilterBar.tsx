@@ -4,6 +4,7 @@ import type { OrdersFilterParams, PlotFilterOption } from '@/modules/orders/type
 import styles from '@/modules/orders/components/orders-filter-bar.module.css';
 import { motion } from 'framer-motion';
 import { AnimatedSelect } from '@/shared/ui/AnimatedSelect'
+import button from '@/shared/ui/button.module.css'
 
 interface OrdersFilterBarProps {
   filters: OrdersFilterParams;
@@ -88,7 +89,7 @@ export function OrdersFilterBar({
           className={styles.searchInput}
           placeholder="Поиск: номер, телефон, клиент или менеджер"
         />
-        <button type="button" className={styles.clearButton} onClick={onReset} disabled={isFetching}>
+        <button type="button" className={`${button.btn} ${button.btnSecondary}`} onClick={onReset} disabled={isFetching}>
           Сброс
         </button>
       </div>

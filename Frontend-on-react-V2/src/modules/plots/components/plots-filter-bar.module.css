@@ -5,8 +5,8 @@
   flex-wrap: wrap;
 }
 
-.selectWrap {
-  width: 220px;
+.controls > :first-child {
+  flex: 1 1 320px;
 }
 
 @media (max-width: 720px) {
@@ -15,10 +15,6 @@
   }
 
   .controls > * {
-    width: 100%;
-  }
-
-  .selectWrap {
     width: 100%;
   }
 }

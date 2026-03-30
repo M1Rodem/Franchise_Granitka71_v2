@@ -2,13 +2,13 @@ import { useState, useEffect } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { useMutation } from '@tanstack/react-query'
 
-import surface from '@/shared/ui/surface.module.css'
 import button from '@/shared/ui/button.module.css'
 import input from '@/shared/ui/input.module.css'
 
 import { queryClient } from '@/app/providers/query-client'
 import { plotsApi } from '@/modules/plots/api/plots.api'
 import { usePlotsPage } from '@/modules/plots/hooks/use-plots-options'
+import { PlotsFilterBar } from '@/modules/plots/components/PlotsFilterBar'
 import { PlotsTable } from '@/modules/plots/components/PlotsTable'
 import type { PlotDto } from '@/modules/plots/types/plots.types'
 
@@ -27,19 +27,18 @@ import {
 } from '@/shared/lib/yandex-map'
 
 import styles from './plots.page.module.css'
-import btn1 from '@/modules/orders/components/orders-filter-bar.module.css';
 
 export default function PlotsPage() {
   const [search, setSearch] = useState('')
   const [page, setPage] = useState(1)
-  
+
   const pageSize = 10
 
   const plotsQuery = usePlotsPage(page, search)
 
   const items = plotsQuery.data?.items ?? []
   const total = plotsQuery.data?.total ?? 0
-  const totalPages = Math.ceil(total / pageSize)  
+  const totalPages = Math.ceil(total / pageSize)
 
   const isFetching = plotsQuery.isFetching
   const openConfirm = useConfirmModalStore((state) => state.open)
@@ -80,6 +79,7 @@ export default function PlotsPage() {
 
   const onReset = () => {
     setSearch('')
+    setPage(1)
   }
 
   const handleCreate = async () => {
@@ -102,23 +102,15 @@ export default function PlotsPage() {
 
   return (
     <div className={styles.pageWrapper}>
-      <section className={surface.surface}>
-        <div className={styles.searchContainer}>
-          <input
-            type="text"
-            placeholder="Поиск участка или адреса..."
-            className={input.input}
-            value={search}
-            onChange={(e) => {
-              setSearch(e.target.value)
-              setPage(1)
-            }}
-          />
-          <button type="button" className={btn1.clearButton} onClick={onReset} disabled={isFetching}>
-            Сброс
-          </button>
-        </div>
-      </section>
+      <PlotsFilterBar
+        search={search}
+        isFetching={isFetching}
+        onSearchChange={(value) => {
+          setSearch(value)
+          setPage(1)
+        }}
+        onReset={onReset}
+      />
 
       {plotsQuery.isError && (
         <OrdersStateView
@@ -127,8 +119,7 @@ export default function PlotsPage() {
         />
       )}
 
-      {!plotsQuery.isPending &&
-      items.length > 0 && (
+      {!plotsQuery.isPending && items.length > 0 && (
         <AnimatePresence mode="wait">
           <motion.div
             key="plots-table"
@@ -162,9 +153,8 @@ export default function PlotsPage() {
             />
           </motion.div>
         </AnimatePresence>
-    )}
+      )}
 
-      {/* CREATE MODAL */}
       <FormModal
         isOpen={isCreateOpen}
         title="Добавить участок"
@@ -196,9 +186,7 @@ export default function PlotsPage() {
         }
       >
         <div className={styles.modalContent}>
-
           <div className={styles.modalForm}>
-
             <div className={styles.formRow}>
               <input
                 type="text"
@@ -224,55 +212,53 @@ export default function PlotsPage() {
             </div>
 
             <div className={styles.mapContainer}>
-            <YandexMapProvider>
-              <MapView
-                center={[55.75, 37.57]}
-                onReady={(map) => {
-                  const searchControl = new window.ymaps.control.SearchControl({
-                    options: {
-                      noPlacemark: true,
-                    },
-                  })
-
-                  map.controls.add(searchControl)
-
-                  searchControl.events.add('resultselect', () => {
-                    const index = searchControl.getSelectedIndex()
-                    const result = searchControl.getResult(index)
-
-                    result.then((res: any) => {
-                      const coords = res.geometry.getCoordinates()
-
-                      setLatitude(coords[0])
-                      setLongitude(coords[1])
-                      setAddress(res.getAddressLine())
-
-                      map.setCenter(coords)
+              <YandexMapProvider>
+                <MapView
+                  center={[55.75, 37.57]}
+                  onReady={(map) => {
+                    const searchControl = new window.ymaps.control.SearchControl({
+                      options: {
+                        noPlacemark: true,
+                      },
                     })
-                  })
-                }}
-                onSelect={(coords) => {
-                  setLatitude(coords[0])
-                  setLongitude(coords[1])
 
-                  window.ymaps.geocode(coords).then((res: any) => {
-                    const first = res.geoObjects.get(0)
-                    setAddress(first?.getAddressLine() ?? '')
-                  })
-                }}
-              >
-                {/* Маркер теперь внутри MapView, получит доступ к контексту */}
-                {latitude !== null && longitude !== null && (
-                  <MapMarker coords={[latitude, longitude]} />
-                )}
-              </MapView>
-            </YandexMapProvider>
+                    map.controls.add(searchControl)
+
+                    searchControl.events.add('resultselect', () => {
+                      const index = searchControl.getSelectedIndex()
+                      const result = searchControl.getResult(index)
+
+                      result.then((res: any) => {
+                        const coords = res.geometry.getCoordinates()
+
+                        setLatitude(coords[0])
+                        setLongitude(coords[1])
+                        setAddress(res.getAddressLine())
+
+                        map.setCenter(coords)
+                      })
+                    })
+                  }}
+                  onSelect={(coords) => {
+                    setLatitude(coords[0])
+                    setLongitude(coords[1])
+
+                    window.ymaps.geocode(coords).then((res: any) => {
+                      const first = res.geoObjects.get(0)
+                      setAddress(first?.getAddressLine() ?? '')
+                    })
+                  }}
+                >
+                  {latitude !== null && longitude !== null && (
+                    <MapMarker coords={[latitude, longitude]} />
+                  )}
+                </MapView>
+              </YandexMapProvider>
+            </div>
           </div>
-        </div>
         </div>
       </FormModal>
 
-      {/* VIEW MAP MODAL */}
       <MapPreviewModal
         isOpen={!!mapPlot}
         onClose={() => setMapPlot(null)}
@@ -288,7 +274,6 @@ export default function PlotsPage() {
                 center={[mapPlot.latitude, mapPlot.longitude]}
                 readOnly
               >
-                {/* Маркер теперь внутри MapView */}
                 <MapMarker coords={[mapPlot.latitude, mapPlot.longitude]} />
               </MapView>
             </YandexMapProvider>

@@ -4,6 +4,6 @@
 
 @media (max-width: 768px) {
   .page {
-    gap: 16px;
+    gap: var(--size-16);
   }
 }

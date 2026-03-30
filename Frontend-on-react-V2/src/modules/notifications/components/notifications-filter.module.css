@@ -1,15 +1,15 @@
 .controls {
   display: flex;
   flex-wrap: wrap;
-  gap: 10px;
+  gap: var(--size-10);
 }
 
 .filterButton {
-  min-height: 44px;
+  min-height: var(--size-44);
 }
 
 .filterLabel {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--size-8);
 }

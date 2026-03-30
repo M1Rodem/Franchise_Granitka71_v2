@@ -2,16 +2,16 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  gap: var(--size-12);
   flex-wrap: wrap;
-  padding: 16px 18px;
-  border-radius: 20px;
-  border: 1px solid var(--border-primary);
+  padding: var(--size-16) var(--size-18);
+  border-radius: var(--size-20);
+  border: var(--size-1) solid var(--border-primary);
   background: var(--surface-gradient);
-  backdrop-filter: blur(18px);
+  backdrop-filter: blur(var(--size-18));
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.06),
-    0 18px 34px rgba(1, 8, 18, 0.2);
+    inset 0 var(--size-1) 0 var(--overlay-white-06),
+    0 var(--size-18) var(--size-34) var(--overlay-dark-20);
 }
 
 .meta {
@@ -22,16 +22,16 @@
 .controls {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--size-8);
   flex-wrap: wrap;
 }
 
 .controls button {
-  min-height: 38px;
-  padding: 0 14px;
-  border-radius: 12px;
-  border: 1px solid rgba(184, 212, 237, 0.14);
-  background: rgba(8, 18, 29, 0.64);
+  min-height: var(--size-38);
+  padding: 0 var(--size-14);
+  border-radius: var(--size-12);
+  border: var(--size-1) solid var(--border-soft);
+  background: var(--tone-rgb-8-18-29-64);
   color: var(--text-secondary);
   cursor: pointer;
   transition: all 0.18s ease;
@@ -39,7 +39,7 @@
 
 .controls button:hover:not(:disabled) {
   color: var(--text-primary);
-  background: rgba(14, 26, 40, 0.9);
+  background: var(--tone-rgb-14-26-40-90);
   transform: translateY(-1px);
 }
 
@@ -55,7 +55,7 @@
 
 @media (max-width: 640px) {
   .pagination {
-    padding: 14px 16px;
+    padding: var(--size-14) var(--size-16);
   }
 
   .controls {

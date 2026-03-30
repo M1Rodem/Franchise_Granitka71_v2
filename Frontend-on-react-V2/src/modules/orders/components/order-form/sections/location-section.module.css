@@ -1,22 +1,18 @@
 .mapBlock {
-  margin-top: 16px;
+  margin-top: var(--size-16);
   height: 220px;
-  border-radius: 18px;
-  border: 1px solid rgba(125, 162, 219, 0.3);
-  background: linear-gradient(
-    145deg,
-    rgba(8, 24, 48, 0.7),
-    rgba(12, 36, 69, 0.6)
-  );
+  border-radius: var(--size-18);
+  border: var(--size-1) solid var(--tone-rgb-125-162-219-30);
+  background: var(--gradient-location-panel);
   display: grid;
   place-items: center;
-  color: #9bb8e8;
-  font-size: 14px;
+  color: var(--text-soft);
+  font-size: var(--size-14);
 }
 
 .mapContainer {
   width: 100%;
   height: 420px;
-  border-radius: 16px;
+  border-radius: var(--size-16);
   overflow: hidden;
 }

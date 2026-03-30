@@ -4,10 +4,10 @@
 
 .page h2 {
   margin-top: 0;
-  color: #eff7ff;
+  color: var(--tone-eff7ff);
 }
 
 .page p {
   margin-bottom: 0;
-  color: #c0d6f1;
+  color: var(--tone-c0d6f1);
 }

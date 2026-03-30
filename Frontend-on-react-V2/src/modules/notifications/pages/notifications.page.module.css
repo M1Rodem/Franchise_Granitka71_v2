@@ -1,29 +1,24 @@
 .page {
   display: grid;
-  gap: 20px;
+  gap: var(--size-20);
 }
 
 .loadingBlock {
   display: grid;
-  gap: 14px;
-  padding: 20px;
-  border-radius: 24px;
-  border: 1px solid rgba(184, 212, 237, 0.12);
+  gap: var(--size-14);
+  padding: var(--size-20);
+  border-radius: var(--size-24);
+  border: var(--size-1) solid var(--border-subtle);
   background: var(--surface-gradient);
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.06),
-    0 20px 36px rgba(1, 8, 18, 0.2);
+    inset 0 var(--size-1) 0 var(--overlay-white-06),
+    0 var(--size-20) 36px var(--overlay-dark-20);
 }
 
 .loadingRow {
   height: 76px;
-  border-radius: 18px;
-  background: linear-gradient(
-    90deg,
-    rgba(14, 26, 40, 0.92),
-    rgba(33, 46, 61, 0.98),
-    rgba(14, 26, 40, 0.92)
-  );
+  border-radius: var(--size-18);
+  background: var(--gradient-loading-row);
   background-size: 200% 100%;
   animation: shimmer 1.4s linear infinite;
 }
@@ -39,11 +34,11 @@
 
 @media (max-width: 768px) {
   .page {
-    gap: 16px;
+    gap: var(--size-16);
   }
 
   .loadingBlock {
-    padding: 16px;
-    border-radius: 20px;
+    padding: var(--size-16);
+    border-radius: var(--size-20);
   }
 }

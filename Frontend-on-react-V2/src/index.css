@@ -8,114 +8,549 @@
     BlinkMacSystemFont,
     'Segoe UI',
     sans-serif;
-  --bg-app: #07111b;
-  --bg-app-strong: #0b1725;
-  --bg-elevated: rgba(9, 19, 31, 0.92);
+  --color-bg: #08131f;
+  --color-surface: rgba(13, 26, 42, 0.72);
+  --color-border: rgba(145, 179, 213, 0.2);
+  --color-text: #f4f8fe;
+  --color-muted: #8fa4bd;
+  --color-primary: #7fb3ec;
+  --color-success: #4cc086;
+  --color-warning: #f4a42a;
+  --color-danger: #ed7681;
+  --color-accent: #7cc7f6;
+  --color-transparent: transparent;
 
-  --bg-surface: rgba(8, 18, 30, 0.78);
-  --bg-surface-soft: rgba(12, 23, 38, 0.58);
-  --bg-surface-strong: rgba(6, 14, 24, 0.92);
-  --bg-panel: rgba(255, 255, 255, 0.038);
-  --bg-panel-strong: rgba(255, 255, 255, 0.07);
-  --border-primary: rgba(145, 179, 213, 0.16);
-  --border-strong: rgba(184, 212, 237, 0.28);
+  --space-2xs: 4px;
+  --space-xs: 8px;
+  --space-sm: 12px;
+  --space-md: 16px;
+  --space-lg: 20px;
+  --space-xl: 24px;
+  --space-2xl: 28px;
+  --space-3xl: 32px;
 
-  --text-primary: #f3f7fb;
-  --text-secondary: #c7d4e2;
-  --text-muted: #8598ad;
-  --accent-primary: #77afe9;
-  --accent-primary-strong: #5997e0;
-  --accent-primary-soft: rgba(119, 175, 233, 0.28);
-  --accent-secondary: #6fbeb7;
-  --accent-secondary-soft: rgba(111, 190, 183, 0.26);
-  --accent-success: #42b883;
-  --accent-success-soft: rgba(66, 184, 131, 0.28);
-  --accent-danger: #eb6a75;
-  --accent-danger-soft: rgba(235, 106, 117, 0.28);
-  --accent-warning: #f59e0b;
-  --accent-warning-soft: rgba(245, 158, 11, 0.28);
-  --accent-info: #72c1f4;
-  --accent-info-soft: rgba(114, 193, 244, 0.28);
+  --size-1: 1px;
+  --size-2: 2px;
+  --size-4: 4px;
+  --size-6: 6px;
+  --size-8: 8px;
+  --size-10: 10px;
+  --size-11: 11px;
+  --size-12: 12px;
+  --size-13: 13px;
+  --size-14: 14px;
+  --size-16: 16px;
+  --size-18: 18px;
+  --size-20: 20px;
+  --size-22: 22px;
+  --size-24: 24px;
+  --size-26: 26px;
+  --size-28: 28px;
+  --size-30: 30px;
+  --size-32: 32px;
+  --size-34: 34px;
+  --size-38: 38px;
+  --size-40: 40px;
+  --size-42: 42px;
+  --size-44: 44px;
+  --size-46: 46px;
+  --size-48: 48px;
+  --size-52: 52px;
 
-  --surface-gradient-soft: linear-gradient(135deg, rgba(10, 22, 38, 0.75), rgba(4, 12, 22, 0.85));
-  --surface-gradient: linear-gradient(135deg, rgba(12, 25, 43, 0.8), rgba(5, 13, 23, 0.88));
-  --surface-gradient-strong: linear-gradient(135deg, rgba(14, 28, 48, 0.85), rgba(4, 12, 22, 0.94));
+  --radius-sm: 11px;
+  --radius-md: 14px;
+  --radius-lg: 18px;
+  --radius-xl: 22px;
+  --radius-pill: 999px;
+
+  --font-size-xs: 11px;
+  --font-size-sm: 12px;
+  --font-size-md: 13px;
+  --font-size-base: 14px;
+  --font-size-lg: 16px;
+  --font-size-xl: 18px;
+
+  --border-width-sm: 1px;
+  --border-width-md: 2px;
+
+  --transition-fast: 150ms ease;
+  --transition-normal: 220ms ease;
+
+  --bg-app: #08131f;
+  --bg-app-strong: #0e1c2c;
+  --bg-elevated: rgba(14, 27, 43, 0.9);
+
+  --bg-surface: rgba(13, 26, 42, 0.72);
+  --bg-surface-soft: rgba(17, 32, 50, 0.52);
+  --bg-surface-strong: rgba(10, 20, 34, 0.88);
+  --bg-panel: rgba(255, 255, 255, 0.048);
+  --bg-panel-strong: rgba(255, 255, 255, 0.085);
+  --border-primary: rgba(145, 179, 213, 0.2);
+  --border-strong: rgba(184, 212, 237, 0.32);
+  --border-soft: rgba(184, 212, 237, 0.18);
+  --border-subtle: rgba(184, 212, 237, 0.15);
+  --border-faint: rgba(184, 212, 237, 0.1);
+  --border-contrast-soft: rgba(173, 204, 233, 0.18);
+  --border-neutral-soft: rgba(148, 163, 184, 0.15);
+  --border-white-soft: rgba(255, 255, 255, 0.1);
+  --border-black-soft: rgba(1, 8, 18, 0.2);
+
+  --text-primary: #f4f8fe;
+  --text-secondary: #cedfef;
+  --text-muted: #8fa4bd;
+  --text-soft: #a5c2ed;
+  --text-info-soft: #e0edfe;
+  --text-accent-soft: #eef5ff;
+  --text-danger-soft: #feb0b8;
+  --text-danger-pale: #fff4f5;
+  --text-warning-pale: #fffcf0;
+  --accent-primary: #7fb3ec;
+  --accent-primary-strong: #68a1e6;
+  --accent-primary-soft: rgba(127, 179, 236, 0.3);
+  --accent-secondary: #75c4bc;
+  --accent-secondary-soft: rgba(117, 196, 188, 0.29);
+  --accent-success: #4cc086;
+  --accent-success-soft: rgba(76, 192, 134, 0.3);
+  --accent-danger: #ed7681;
+  --accent-danger-soft: rgba(237, 118, 129, 0.3);
+  --accent-warning: #f4a42a;
+  --accent-warning-soft: rgba(244, 164, 42, 0.3);
+  --accent-info: #7cc7f6;
+  --accent-info-soft: rgba(124, 199, 246, 0.3);
+
+  --surface-gradient-soft: linear-gradient(135deg, rgba(15, 30, 48, 0.7), rgba(8, 20, 34, 0.8));
+  --surface-gradient: linear-gradient(135deg, rgba(17, 33, 52, 0.75), rgba(7, 19, 33, 0.83));
+  --surface-gradient-strong: linear-gradient(135deg, rgba(19, 36, 58, 0.8), rgba(6, 18, 32, 0.9));
 
   --surface-overlay: 
-    radial-gradient(circle at 25% 20%, rgba(100, 150, 200, 0.06), transparent 45%),
-    radial-gradient(circle at 75% 70%, rgba(80, 140, 180, 0.04), transparent 40%),
-    linear-gradient(125deg, rgba(255, 255, 255, 0.022), transparent 68%);
+    radial-gradient(circle at 25% 20%, rgba(110, 165, 225, 0.09), transparent 45%),
+    radial-gradient(circle at 75% 70%, rgba(90, 150, 190, 0.06), transparent 40%),
+    linear-gradient(125deg, rgba(255, 255, 255, 0.03), transparent 68%);
 
   --surface-overlay-accent: 
-    radial-gradient(circle at 15% 75%, rgba(80, 145, 210, 0.08), transparent 52%),
-    radial-gradient(circle at 85% 25%, rgba(70, 160, 150, 0.06), transparent 48%),
-    linear-gradient(145deg, rgba(255, 255, 255, 0.028), transparent 62%);
+    radial-gradient(circle at 15% 75%, rgba(90, 155, 220, 0.11), transparent 52%),
+    radial-gradient(circle at 85% 25%, rgba(80, 170, 160, 0.09), transparent 48%),
+    linear-gradient(145deg, rgba(255, 255, 255, 0.04), transparent 62%);
 
   --interactive-gloss: linear-gradient(
     145deg,
-    rgba(255, 255, 255, 0.035) 0%,
-    rgba(255, 255, 255, 0.01) 45%,
-    rgba(255, 255, 255, 0.022) 100%
+    rgba(255, 255, 255, 0.055) 0%,
+    rgba(255, 255, 255, 0.02) 45%,
+    rgba(255, 255, 255, 0.04) 100%
   );
 
   --interactive-gloss-strong: linear-gradient(
     135deg,
-    rgba(255, 255, 255, 0.045) 0%,
-    rgba(255, 255, 255, 0.012) 40%,
-    rgba(255, 255, 255, 0.03) 90%
+    rgba(255, 255, 255, 0.07) 0%,
+    rgba(255, 255, 255, 0.025) 40%,
+    rgba(255, 255, 255, 0.055) 90%
   );
 
   --accent-gradient-primary: linear-gradient(
     180deg,
-    rgba(119, 175, 233, 0.18),
-    rgba(119, 175, 233, 0.08)
+    rgba(127, 179, 236, 0.21),
+    rgba(127, 179, 236, 0.1)
   );
   --accent-gradient-success: linear-gradient(
     180deg,
-    rgba(91, 182, 138, 0.18),
-    rgba(91, 182, 138, 0.08)
+    rgba(76, 192, 134, 0.21),
+    rgba(76, 192, 134, 0.1)
   );
   --accent-gradient-danger: linear-gradient(
     180deg,
-    rgba(226, 113, 126, 0.17),
-    rgba(226, 113, 126, 0.08)
+    rgba(237, 118, 129, 0.21),
+    rgba(237, 118, 129, 0.1)
   );
   --accent-gradient-warning: linear-gradient(
     180deg,
-    rgba(240, 179, 91, 0.18),
-    rgba(240, 179, 91, 0.08)
+    rgba(244, 164, 42, 0.21),
+    rgba(244, 164, 42, 0.1)
   );
   --accent-gradient-info: linear-gradient(
     180deg,
-    rgba(113, 191, 243, 0.18),
-    rgba(113, 191, 243, 0.08)
+    rgba(124, 199, 246, 0.21),
+    rgba(124, 199, 246, 0.1)
   );
 
   --accent-gloss: linear-gradient(
     135deg,
-    rgba(255, 255, 255, 0.18) 0%,
-    rgba(255, 255, 255, 0.04) 50%,
-    rgba(255, 255, 255, 0.1) 100%
+    rgba(255, 255, 255, 0.2) 0%,
+    rgba(255, 255, 255, 0.05) 50%,
+    rgba(255, 255, 255, 0.12) 100%
   );
 
-  --accent-shadow: 0 8px 20px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(255, 255, 255, 0.05) inset;
-  --accent-hover-shadow: 0 12px 28px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.08) inset;
+  --accent-shadow: 0 8px 20px rgba(0, 0, 0, 0.27), 0 0 0 1px rgba(255, 255, 255, 0.065) inset;
+  --accent-hover-shadow: 0 12px 28px rgba(0, 0, 0, 0.35), 0 0 0 1px rgba(255, 255, 255, 0.1) inset;
 
-  --shadow-sm: 0 14px 30px rgba(1, 7, 16, 0.22);
-  --shadow-md: 0 22px 48px rgba(1, 7, 16, 0.28);
-  --shadow-lg: 0 32px 72px rgba(1, 7, 16, 0.36);
+  --shadow-sm: 0 14px 30px rgba(1, 7, 16, 0.2);
+  --shadow-md: 0 22px 48px rgba(1, 7, 16, 0.25);
+  --shadow-lg: 0 32px 72px rgba(1, 7, 16, 0.32);
+  --shadow-overlay: 0 20px 50px rgba(0, 0, 0, 0.55);
 
-  --glass-blur: 24px;
-  --glass-highlight: inset 0 0.5px 0 rgba(255, 255, 255, 0.07), inset 0 -0.5px 0 rgba(0, 0, 0, 0.25);
-  --glass-shadow: 0 28px 62px rgba(0, 0, 0, 0.55), 0 2px 8px rgba(0, 0, 0, 0.3);
+  --overlay-white-015: rgba(255, 255, 255, 0.022);
+  --overlay-white-04: rgba(255, 255, 255, 0.06);
+  --overlay-white-05: rgba(255, 255, 255, 0.075);
+  --overlay-white-06: rgba(255, 255, 255, 0.09);
+  --overlay-white-08: rgba(255, 255, 255, 0.11);
+  --overlay-primary-12: rgba(108, 165, 235, 0.16);
+  --overlay-primary-24: rgba(108, 165, 235, 0.28);
+  --overlay-primary-32: rgba(108, 165, 235, 0.36);
+  --overlay-primary-46: rgba(108, 165, 235, 0.48);
+  --overlay-surface-68: rgba(11, 24, 38, 0.68);
+  --overlay-surface-56: rgba(11, 24, 38, 0.56);
+  --overlay-surface-88: rgba(17, 31, 49, 0.88);
+  --overlay-neutral-70: rgba(156, 163, 175, 0.72);
+  --overlay-dark-20: rgba(1, 8, 18, 0.22);
+  --overlay-dark-24: rgba(1, 8, 18, 0.26);
+  --overlay-panel-80: rgba(23, 42, 64, 0.8);
+  --overlay-panel-90: rgba(34, 64, 96, 0.9);
+  --overlay-thumb: rgba(140, 168, 198, 0.32);
+  --overlay-thumb-hover: rgba(160, 188, 218, 0.44);
+  --overlay-thumb-active: rgba(184, 212, 237, 0.54);
+  
+
+  --tone-0f172a: #0f172a;
+  --tone-1e3a8a: #1e3a8a;
+  --tone-4ade80: #4ade80;
+  --tone-60a5fa: #60a5fa;
+  --tone-7dffc3: #7dffc3;
+  --tone-86efac: #86efac;
+  --tone-93c5fd: #93c5fd;
+  --tone-9fb4d9: #9fb4d9;
+  --tone-c0d6f1: #c0d6f1;
+  --tone-c2d8f4: #c2d8f4;
+  --tone-c6defd: #c6defd;
+  --tone-cfe3ff: #cfe3ff;
+  --tone-cfe6ff: #cfe6ff;
+  --tone-d2e7fb: #d2e7fb;
+  --tone-d6e8fb: #d6e8fb;
+  --tone-d9f0ff: #d9f0ff;
+  --tone-dbe8f7: #dbe8f7;
+  --tone-dbeafe: #dbeafe;
+  --tone-dc2626: #dc2626;
+  --tone-dff0ff: #dff0ff;
+  --tone-e1efff: #e1efff;
+  --tone-e2e8f0: #e2e8f0;
+  --tone-e3f0ff: #e3f0ff;
+  --tone-e7f3ff: #e7f3ff;
+  --tone-e8f3ff: #e8f3ff;
+  --tone-eef2ff: #eef2ff;
+  --tone-eef7ff: #eef7ff;
+  --tone-ef4444: #ef4444;
+  --tone-eff6ff: #eff6ff;
+  --tone-eff7ff: #eff7ff;
+  --tone-f0f6ff: #f0f6ff;
+  --tone-f0fdf4: #f0fdf4;
+  --tone-f87171: #f87171;
+  --tone-fbbf24: #fbbf24;
+  --tone-fecaca: #fecaca;
+  --tone-fef2f2: #fef2f2;
+  --tone-ff7b7b: #ff7b7b;
+  --tone-ff9a9a: #ff9a9a;
+  --tone-ffb4b4: #ffb4b4;
+  --tone-ffdede: #ffdede;
+
+  --tone-rgb-0-0-0-18: rgba(0, 0, 0, 0.18);
+  --tone-rgb-0-0-0-22: rgba(0, 0, 0, 0.22);
+  --tone-rgb-0-0-0-35: rgba(0, 0, 0, 0.35);
+  --tone-rgb-0-0-0-42: rgba(0, 0, 0, 0.42);
+  --tone-rgb-0-0-0-60: rgba(0, 0, 0, 0.6);
+  --tone-rgb-2-6-14-72: rgba(2, 6, 14, 0.72);
+  --tone-rgb-2-6-14-76: rgba(2, 6, 14, 0.76);
+  --tone-rgb-1-8-18-16: rgba(1, 8, 18, 0.16);
+  --tone-rgb-1-9-20-26: rgba(1, 9, 20, 0.26);
+  --tone-rgb-1-9-20-34: rgba(1, 9, 20, 0.34);
+  --tone-rgb-1-9-20-40: rgba(1, 9, 20, 0.4);
+  --tone-rgb-4-14-30-45: rgba(4, 14, 30, 0.45);
+  --tone-rgb-6-18-40-45: rgba(6, 18, 40, 0.45);
+  --tone-rgb-8-18-29-28: rgba(8, 18, 29, 0.28);
+  --tone-rgb-8-18-29-42: rgba(8, 18, 29, 0.42);
+  --tone-rgb-8-18-29-46: rgba(8, 18, 29, 0.46);
+  --tone-rgb-8-18-29-48: rgba(8, 18, 29, 0.48);
+  --tone-rgb-8-18-29-52: rgba(8, 18, 29, 0.52);
+  --tone-rgb-8-18-29-62: rgba(8, 18, 29, 0.62);
+  --tone-rgb-8-18-29-64: rgba(8, 18, 29, 0.64);
+  --tone-rgb-8-18-29-72: rgba(8, 18, 29, 0.72);
+  --tone-rgb-8-18-29-74: rgba(8, 18, 29, 0.74);
+  --tone-rgb-8-18-29-78: rgba(8, 18, 29, 0.78);
+  --tone-rgb-8-18-29-82: rgba(8, 18, 29, 0.82);
+  --tone-rgb-8-18-29-92: rgba(8, 18, 29, 0.92);
+  --tone-rgb-8-24-48-54: rgba(8, 24, 48, 0.54);
+  --tone-rgb-8-24-48-60: rgba(8, 24, 48, 0.6);
+  --tone-rgb-8-24-48-70: rgba(8, 24, 48, 0.7);
+  --tone-rgb-8-24-48-72: rgba(8, 24, 48, 0.72);
+  --tone-rgb-8-24-48-75: rgba(8, 24, 48, 0.75);
+  --tone-rgb-9-19-31-94: rgba(9, 19, 31, 0.94);
+  --tone-rgb-10-20-32-80: rgba(10, 20, 32, 0.8);
+  --tone-rgb-10-21-34-84: rgba(10, 21, 34, 0.84);
+  --tone-rgb-10-21-34-92: rgba(10, 21, 34, 0.92);
+  --tone-rgb-10-21-34-94: rgba(10, 21, 34, 0.94);
+  --tone-rgb-10-29-57-60: rgba(10, 29, 57, 0.6);
+  --tone-rgb-10-30-60-75: rgba(10, 30, 60, 0.75);
+  --tone-rgb-11-21-34-82: rgba(11, 21, 34, 0.82);
+  --tone-rgb-11-22-36-72: rgba(11, 22, 36, 0.72);
+  --tone-rgb-12-23-37-46: rgba(12, 23, 37, 0.46);
+  --tone-rgb-12-23-37-66: rgba(12, 23, 37, 0.66);
+  --tone-rgb-12-23-37-74: rgba(12, 23, 37, 0.74);
+  --tone-rgb-12-23-37-82: rgba(12, 23, 37, 0.82);
+  --tone-rgb-12-31-64-55: rgba(12, 31, 64, 0.55);
+  --tone-rgb-12-36-69-54: rgba(12, 36, 69, 0.54);
+  --tone-rgb-12-36-69-60: rgba(12, 36, 69, 0.6);
+  --tone-rgb-14-26-40-82: rgba(14, 26, 40, 0.82);
+  --tone-rgb-14-26-40-90: rgba(14, 26, 40, 0.9);
+  --tone-rgb-14-26-40-92: rgba(14, 26, 40, 0.92);
+  --tone-rgb-15-23-42-72: rgba(15, 23, 42, 0.72);
+  --tone-rgb-15-28-44-35: rgba(15, 28, 44, 0.35);
+  --tone-rgb-15-28-44-45: rgba(15, 28, 44, 0.45);
+  --tone-rgb-16-42-78-55: rgba(16, 42, 78, 0.55);
+  --tone-rgb-16-42-78-75: rgba(16, 42, 78, 0.75);
+  --tone-rgb-17-24-39-92: rgba(17, 24, 39, 0.92);
+  --tone-rgb-17-24-39-98: rgba(17, 24, 39, 0.98);
+  --tone-rgb-17-29-44-72: rgba(17, 29, 44, 0.72);
+  --tone-rgb-17-43-80-72: rgba(17, 43, 80, 0.72);
+  --tone-rgb-17-49-68-86: rgba(17, 49, 68, 0.86);
+  --tone-rgb-18-31-47-82: rgba(18, 31, 47, 0.82);
+  --tone-rgb-18-46-84-82: rgba(18, 46, 84, 0.82);
+  --tone-rgb-19-34-51-88: rgba(19, 34, 51, 0.88);
+  --tone-rgb-19-43-67-84: rgba(19, 43, 67, 0.84);
+  --tone-rgb-19-55-43-86: rgba(19, 55, 43, 0.86);
+  --tone-rgb-19-56-79-92: rgba(19, 56, 79, 0.92);
+  --tone-rgb-22-63-49-94: rgba(22, 63, 49, 0.94);
+  --tone-rgb-24-52-82-82: rgba(24, 52, 82, 0.82);
+  --tone-rgb-24-52-82-86: rgba(24, 52, 82, 0.86);
+  --tone-rgb-30-41-59-78: rgba(30, 41, 59, 0.78);
+  --tone-rgb-31-41-55-90: rgba(31, 41, 55, 0.9);
+  --tone-rgb-31-41-55-92: rgba(31, 41, 55, 0.92);
+  --tone-rgb-31-41-55-96: rgba(31, 41, 55, 0.96);
+  --tone-rgb-32-61-91-18: rgba(32, 61, 91, 0.18);
+  --tone-rgb-32-61-91-20: rgba(32, 61, 91, 0.2);
+  --tone-rgb-32-61-91-24: rgba(32, 61, 91, 0.24);
+  --tone-rgb-33-46-61-78: rgba(33, 46, 61, 0.78);
+  --tone-rgb-33-46-61-86: rgba(33, 46, 61, 0.86);
+  --tone-rgb-33-46-61-98: rgba(33, 46, 61, 0.98);
+  --tone-rgb-34-197-94-14: rgba(34, 197, 94, 0.14);
+  --tone-rgb-36-112-80-18: rgba(36, 112, 80, 0.18);
+  --tone-rgb-36-112-80-20: rgba(36, 112, 80, 0.2);
+  --tone-rgb-44-104-140-18: rgba(44, 104, 140, 0.18);
+  --tone-rgb-51-65-85-96: rgba(51, 65, 85, 0.96);
+  --tone-rgb-51-65-85-98: rgba(51, 65, 85, 0.98);
+  --tone-rgb-58-21-31-86: rgba(58, 21, 31, 0.86);
+  --tone-rgb-59-130-246-18: rgba(59, 130, 246, 0.18);
+  --tone-rgb-60-220-140-18: rgba(60, 220, 140, 0.18);
+  --tone-rgb-60-220-140-35: rgba(60, 220, 140, 0.35);
+  --tone-rgb-62-21-31-86: rgba(62, 21, 31, 0.86);
+  --tone-rgb-66-108-156-20: rgba(66, 108, 156, 0.2);
+  --tone-rgb-66-184-131-12: rgba(66, 184, 131, 0.12);
+  --tone-rgb-66-184-131-34: rgba(66, 184, 131, 0.34);
+  --tone-rgb-67-42-16-84: rgba(67, 42, 16, 0.84);
+  --tone-rgb-72-24-36-94: rgba(72, 24, 36, 0.94);
+  --tone-rgb-78-50-20-90: rgba(78, 50, 20, 0.9);
+  --tone-rgb-90-140-220-08: rgba(90, 140, 220, 0.08);
+  --tone-rgb-90-140-220-15: rgba(90, 140, 220, 0.15);
+  --tone-rgb-90-140-220-22: rgba(90, 140, 220, 0.22);
+  --tone-rgb-90-140-220-35: rgba(90, 140, 220, 0.35);
+  --tone-rgb-90-140-220-45: rgba(90, 140, 220, 0.45);
+  --tone-rgb-93-193-145-24: rgba(93, 193, 145, 0.24);
+  --tone-rgb-93-193-145-26: rgba(93, 193, 145, 0.26);
+  --tone-rgb-96-165-250-14: rgba(96, 165, 250, 0.14);
+  --tone-rgb-99-102-241-14: rgba(99, 102, 241, 0.14);
+  --tone-rgb-99-102-241-22: rgba(99, 102, 241, 0.22);
+  --tone-rgb-105-201-154-09: rgba(105, 201, 154, 0.09);
+  --tone-rgb-105-201-154-20: rgba(105, 201, 154, 0.2);
+  --tone-rgb-108-165-235-10: rgba(108, 165, 235, 0.1);
+  --tone-rgb-108-165-235-14: rgba(108, 165, 235, 0.14);
+  --tone-rgb-108-165-235-15: rgba(108, 165, 235, 0.15);
+  --tone-rgb-108-165-235-16: rgba(108, 165, 235, 0.16);
+  --tone-rgb-108-165-235-18: rgba(108, 165, 235, 0.18);
+  --tone-rgb-108-165-235-22: rgba(108, 165, 235, 0.22);
+  --tone-rgb-108-165-235-48: rgba(108, 165, 235, 0.48);
+  --tone-rgb-108-165-235-50: rgba(108, 165, 235, 0.5);
+  --tone-rgb-108-165-235-56: rgba(108, 165, 235, 0.56);
+  --tone-rgb-110-171-247-15: rgba(110, 171, 247, 0.15);
+  --tone-rgb-111-190-183-08: rgba(111, 190, 183, 0.08);
+  --tone-rgb-114-193-244-14: rgba(114, 193, 244, 0.14);
+  --tone-rgb-114-193-244-16: rgba(114, 193, 244, 0.16);
+  --tone-rgb-114-193-244-22: rgba(114, 193, 244, 0.22);
+  --tone-rgb-114-193-244-24: rgba(114, 193, 244, 0.24);
+  --tone-rgb-114-193-244-28: rgba(114, 193, 244, 0.28);
+  --tone-rgb-118-167-220-24: rgba(118, 167, 220, 0.24);
+  --tone-rgb-118-167-220-26: rgba(118, 167, 220, 0.26);
+  --tone-rgb-119-175-233-08: rgba(119, 175, 233, 0.08);
+  --tone-rgb-119-175-233-09: rgba(119, 175, 233, 0.09);
+  --tone-rgb-119-175-233-10: rgba(119, 175, 233, 0.1);
+  --tone-rgb-119-175-233-12: rgba(119, 175, 233, 0.12);
+  --tone-rgb-119-175-233-14: rgba(119, 175, 233, 0.14);
+  --tone-rgb-119-175-233-16: rgba(119, 175, 233, 0.16);
+  --tone-rgb-119-175-233-18: rgba(119, 175, 233, 0.18);
+  --tone-rgb-119-175-233-20: rgba(119, 175, 233, 0.2);
+  --tone-rgb-119-175-233-22: rgba(119, 175, 233, 0.22);
+  --tone-rgb-119-175-233-24: rgba(119, 175, 233, 0.24);
+  --tone-rgb-119-175-233-25: rgba(119, 175, 233, 0.25);
+  --tone-rgb-119-175-233-28: rgba(119, 175, 233, 0.28);
+  --tone-rgb-119-175-233-50: rgba(119, 175, 233, 0.5);
+  --tone-rgb-120-30-30-50: rgba(120, 30, 30, 0.5);
+  --tone-rgb-120-160-220-35: rgba(120, 160, 220, 0.35);
+  --tone-rgb-120-160-220-40: rgba(120, 160, 220, 0.4);
+  --tone-rgb-120-160-220-55: rgba(120, 160, 220, 0.55);
+  --tone-rgb-125-162-219-25: rgba(125, 162, 219, 0.25);
+  --tone-rgb-125-162-219-30: rgba(125, 162, 219, 0.3);
+  --tone-rgb-126-164-220-22: rgba(126, 164, 220, 0.22);
+  --tone-rgb-126-164-220-25: rgba(126, 164, 220, 0.25);
+  --tone-rgb-126-164-220-33: rgba(126, 164, 220, 0.33);
+  --tone-rgb-126-164-220-35: rgba(126, 164, 220, 0.35);
+  --tone-rgb-127-29-29-22: rgba(127, 29, 29, 0.22);
+  --tone-rgb-127-205-247-08: rgba(127, 205, 247, 0.08);
+  --tone-rgb-127-205-247-19: rgba(127, 205, 247, 0.19);
+  --tone-rgb-128-170-228-35: rgba(128, 170, 228, 0.35);
+  --tone-rgb-129-140-248-22: rgba(129, 140, 248, 0.22);
+  --tone-rgb-129-140-248-26: rgba(129, 140, 248, 0.26);
+  --tone-rgb-131-48-63-18: rgba(131, 48, 63, 0.18);
+  --tone-rgb-132-186-242-09: rgba(132, 186, 242, 0.09);
+  --tone-rgb-132-186-242-20: rgba(132, 186, 242, 0.2);
+  --tone-rgb-134-188-255-12: rgba(134, 188, 255, 0.12);
+  --tone-rgb-134-188-255-25: rgba(134, 188, 255, 0.25);
+  --tone-rgb-136-221-183-34: rgba(136, 221, 183, 0.34);
+  --tone-rgb-137-179-239-35: rgba(137, 179, 239, 0.35);
+  --tone-rgb-145-55-71-12: rgba(145, 55, 71, 0.12);
+  --tone-rgb-145-175-225-25: rgba(145, 175, 225, 0.25);
+  --tone-rgb-148-102-31-18: rgba(148, 102, 31, 0.18);
+  --tone-rgb-148-163-184-14: rgba(148, 163, 184, 0.14);
+  --tone-rgb-148-163-184-24: rgba(148, 163, 184, 0.24);
+  --tone-rgb-148-163-184-38: rgba(148, 163, 184, 0.38);
+  --tone-rgb-150-190-255-08: rgba(150, 190, 255, 0.08);
+  --tone-rgb-150-190-255-45: rgba(150, 190, 255, 0.45);
+  --tone-rgb-150-212-249-38: rgba(150, 212, 249, 0.38);
+  --tone-rgb-153-27-27-96: rgba(153, 27, 27, 0.96);
+  --tone-rgb-153-196-241-32: rgba(153, 196, 241, 0.32);
+  --tone-rgb-173-204-233-10: rgba(173, 204, 233, 0.1);
+  --tone-rgb-173-204-233-12: rgba(173, 204, 233, 0.12);
+  --tone-rgb-173-204-233-16: rgba(173, 204, 233, 0.16);
+  --tone-rgb-173-204-233-20: rgba(173, 204, 233, 0.2);
+  --tone-rgb-184-212-237-10: rgba(184, 212, 237, 0.1);
+  --tone-rgb-184-212-237-16: rgba(184, 212, 237, 0.16);
+  --tone-rgb-184-212-237-18: rgba(184, 212, 237, 0.18);
+  --tone-rgb-184-212-237-22: rgba(184, 212, 237, 0.22);
+  --tone-rgb-184-212-237-65: rgba(184, 212, 237, 0.65);
+  --tone-rgb-185-28-28-100: rgba(185, 28, 28, 1);
+  --tone-rgb-200-60-60-60: rgba(200, 60, 60, 0.6);
+  --tone-rgb-210-230-255-75: rgba(210, 230, 255, 0.75);
+  --tone-rgb-220-80-80-18: rgba(220, 80, 80, 0.18);
+  --tone-rgb-220-80-80-35: rgba(220, 80, 80, 0.35);
+  --tone-rgb-220-235-255-55: rgba(220, 235, 255, 0.55);
+  --tone-rgb-220-235-255-60: rgba(220, 235, 255, 0.6);
+  --tone-rgb-233-123-136-10: rgba(233, 123, 136, 0.1);
+  --tone-rgb-233-123-136-18: rgba(233, 123, 136, 0.18);
+  --tone-rgb-233-123-136-24: rgba(233, 123, 136, 0.24);
+  --tone-rgb-233-123-136-28: rgba(233, 123, 136, 0.28);
+  --tone-rgb-233-123-136-30: rgba(233, 123, 136, 0.3);
+  --tone-rgb-236-132-144-08: rgba(236, 132, 144, 0.08);
+  --tone-rgb-236-132-144-19: rgba(236, 132, 144, 0.19);
+  --tone-rgb-239-68-68-12: rgba(239, 68, 68, 0.12);
+  --tone-rgb-239-68-68-14: rgba(239, 68, 68, 0.14);
+  --tone-rgb-239-68-68-50: rgba(239, 68, 68, 0.5);
+  --tone-rgb-245-158-11-22: rgba(245, 158, 11, 0.22);
+  --tone-rgb-245-163-172-38: rgba(245, 163, 172, 0.38);
+  --tone-rgb-247-192-114-08: rgba(247, 192, 114, 0.08);
+  --tone-rgb-247-192-114-19: rgba(247, 192, 114, 0.19);
+  --tone-rgb-248-113-113-28: rgba(248, 113, 113, 0.28);
+  --tone-rgb-248-113-113-70: rgba(248, 113, 113, 0.7);
+  --tone-rgb-248-113-113-78: rgba(248, 113, 113, 0.78);
+  --tone-rgb-251-191-36-32: rgba(251, 191, 36, 0.32);
+  --tone-rgb-252-211-77-42: rgba(252, 211, 77, 0.42);
+  --tone-rgb-255-80-80-10: rgba(255, 80, 80, 0.1);
+  --tone-rgb-255-80-80-15: rgba(255, 80, 80, 0.15);
+  --tone-rgb-255-80-80-18: rgba(255, 80, 80, 0.18);
+  --tone-rgb-255-80-80-25: rgba(255, 80, 80, 0.25);
+  --tone-rgb-255-80-80-28: rgba(255, 80, 80, 0.28);
+  --tone-rgb-255-80-80-40: rgba(255, 80, 80, 0.4);
+  --tone-rgb-255-120-120-18: rgba(255, 120, 120, 0.18);
+  --tone-rgb-255-120-120-25: rgba(255, 120, 120, 0.25);
+  --tone-rgb-255-120-120-35: rgba(255, 120, 120, 0.35);
+  --tone-rgb-255-120-120-40: rgba(255, 120, 120, 0.4);
+  --tone-rgb-255-255-255-012: rgba(255, 255, 255, 0.012);
+  --tone-rgb-255-255-255-016: rgba(255, 255, 255, 0.016);
+  --tone-rgb-255-255-255-018: rgba(255, 255, 255, 0.018);
+  --tone-rgb-255-255-255-020: rgba(255, 255, 255, 0.02);
+  --tone-rgb-255-255-255-045: rgba(255, 255, 255, 0.045);
+  --tone-rgb-255-255-255-09: rgba(255, 255, 255, 0.09);
+  --tone-rgb-255-255-255-10: rgba(255, 255, 255, 0.1);
+  --tone-rgb-255-255-255-12: rgba(255, 255, 255, 0.12);
+  --tone-rgb-255-255-255-18: rgba(255, 255, 255, 0.18);
+  --tone-rgb-255-255-255-22: rgba(255, 255, 255, 0.22);
+  --tone-rgb-255-255-255-25: rgba(255, 255, 255, 0.25);
+  --tone-rgb-255-255-255-30: rgba(255, 255, 255, 0.3);
+  --tone-rgb-255-255-255-90: rgba(255, 255, 255, 0.9);
+
+  --gradient-field-surface: linear-gradient(180deg, var(--overlay-white-04), var(--overlay-white-015)), var(--overlay-surface-68);
+  --gradient-field-surface-strong: linear-gradient(180deg, var(--overlay-white-04), var(--overlay-white-015)), var(--tone-rgb-8-18-29-72);
+  --gradient-page-toolbar-chip: linear-gradient(180deg, var(--overlay-white-04), var(--tone-rgb-255-255-255-016)), var(--tone-rgb-8-18-29-42);
+  --gradient-sheen-strong: linear-gradient(120deg, transparent 20%, var(--tone-rgb-255-255-255-10), transparent 75%);
+  --gradient-toast-surface: linear-gradient(180deg, var(--tone-rgb-18-31-47-82), var(--tone-rgb-8-18-29-92));
+  --gradient-toast-sheen: linear-gradient(120deg, var(--tone-rgb-255-255-255-045), transparent 50%);
+  --gradient-toast-overlay: radial-gradient(circle at top right, var(--border-white-soft), transparent 26%), var(--gradient-toast-sheen);
+  --gradient-table-selected: linear-gradient(180deg, var(--tone-rgb-17-29-44-72), var(--tone-rgb-10-20-32-80));
+  --gradient-table-skeleton: linear-gradient(90deg, var(--tone-rgb-31-41-55-92), var(--tone-rgb-51-65-85-98), var(--tone-rgb-31-41-55-92));
+  --gradient-loading-row: linear-gradient(90deg, var(--tone-rgb-14-26-40-92), var(--tone-rgb-33-46-61-98), var(--tone-rgb-14-26-40-92));
+  --gradient-surface-accent-soft: linear-gradient(180deg, var(--tone-rgb-119-175-233-16), var(--tone-rgb-119-175-233-08));
+  --gradient-surface-divider: linear-gradient(90deg, transparent, var(--tone-rgb-184-212-237-18), transparent);
+  --gradient-sidebar-overlay: radial-gradient(circle at 18% 10%, var(--tone-rgb-119-175-233-09), transparent 26%), linear-gradient(180deg, var(--overlay-white-015), transparent 22%);
+  --gradient-sidebar-shine: linear-gradient(120deg, var(--overlay-white-05), transparent 42%);
+  --gradient-app-shell: radial-gradient(circle at 18% 12%, var(--tone-rgb-119-175-233-10), transparent 24%), radial-gradient(circle at 85% 10%, var(--tone-rgb-111-190-183-08), transparent 20%);
+  --gradient-app-shell-overlay: linear-gradient(180deg, var(--tone-rgb-255-255-255-020), transparent 16%), linear-gradient(135deg, var(--tone-rgb-255-255-255-018), transparent 35%, var(--tone-rgb-255-255-255-012) 100%);
+  --gradient-page-animation-shimmer: linear-gradient(90deg, transparent 0%, var(--tone-rgb-90-140-220-08) 25%, var(--tone-rgb-90-140-220-15) 50%, var(--tone-rgb-90-140-220-08) 75%, transparent 100%);
+  --gradient-notification-card: linear-gradient(180deg, var(--tone-rgb-19-34-51-88), var(--tone-rgb-9-19-31-94));
+  --gradient-notification-accent-primary: linear-gradient(120deg, var(--tone-rgb-108-165-235-18), transparent 50%);
+  --gradient-notification-accent-info: linear-gradient(120deg, var(--tone-rgb-114-193-244-16), transparent 50%);
+  --gradient-notification-accent-muted: linear-gradient(120deg, var(--tone-rgb-173-204-233-10), transparent 50%);
+  --gradient-danger-panel: linear-gradient(180deg, var(--tone-rgb-255-120-120-25), var(--tone-rgb-255-80-80-15));
+  --gradient-danger-panel-soft: linear-gradient(180deg, var(--tone-rgb-255-120-120-18), var(--tone-rgb-255-80-80-10));
+  --gradient-location-panel: linear-gradient(145deg, var(--tone-rgb-8-24-48-70), var(--tone-rgb-12-36-69-60));
+  --gradient-location-panel-strong: linear-gradient(145deg, var(--tone-rgb-8-24-48-72), var(--tone-rgb-12-36-69-54));
+  --gradient-notification-sheen: linear-gradient(120deg, var(--border-white-soft), transparent 45%);
+  --gradient-glass-primary-hover: linear-gradient(180deg, var(--tone-rgb-132-186-242-20), var(--tone-rgb-132-186-242-09));
+  --gradient-glass-success-hover: linear-gradient(180deg, var(--tone-rgb-105-201-154-20), var(--tone-rgb-105-201-154-09));
+  --gradient-glass-danger-hover: linear-gradient(180deg, var(--tone-rgb-236-132-144-19), var(--tone-rgb-236-132-144-08));
+  --gradient-glass-warning-hover: linear-gradient(180deg, var(--tone-rgb-247-192-114-19), var(--tone-rgb-247-192-114-08));
+  --gradient-glass-info-hover: linear-gradient(180deg, var(--tone-rgb-127-205-247-19), var(--tone-rgb-127-205-247-08));
+  --gradient-current-fade: linear-gradient(90deg, currentColor, transparent 95%);
+  --gradient-glass-shell: linear-gradient(180deg, var(--tone-rgb-255-255-255-045), var(--tone-rgb-255-255-255-018));
+  --gradient-glass-shell-hover: linear-gradient(180deg, var(--tone-rgb-255-255-255-09), var(--tone-rgb-255-255-255-020));
+  --gradient-glass-shell-strong: linear-gradient(180deg, var(--tone-rgb-255-255-255-12), var(--tone-rgb-255-255-255-020));
+
+  --glass-blur: 22px;
+  --glass-highlight: inset 0 0.5px 0 rgba(255, 255, 255, 0.09), inset 0 -0.5px 0 rgba(0, 0, 0, 0.22);
+  --glass-shadow: 0 28px 62px rgba(0, 0, 0, 0.5), 0 2px 8px rgba(0, 0, 0, 0.26);
+  --glass-button-surface: linear-gradient(180deg, var(--tone-rgb-255-255-255-045), var(--tone-rgb-255-255-255-018)), var(--tone-rgb-12-23-37-66);
+  --glass-button-surface-hover: linear-gradient(180deg, var(--tone-rgb-255-255-255-09), var(--tone-rgb-255-255-255-020)), var(--overlay-panel-80);
+  --glass-button-border: var(--border-soft);
+  --glass-button-border-hover: var(--tone-rgb-184-212-237-22);
+  --glass-button-shadow: inset 0 var(--size-1) 0 var(--tone-rgb-255-255-255-09), 0 var(--size-12) var(--size-26) var(--border-black-soft);
+  --glass-button-shadow-hover: inset 0 var(--size-1) 0 var(--tone-rgb-255-255-255-12), 0 var(--size-18) var(--size-34) var(--overlay-dark-24);
+  --glass-button-shadow-active: inset 0 var(--size-2) var(--size-8) var(--tone-rgb-0-0-0-22), 0 var(--size-6) var(--size-14) var(--tone-rgb-0-0-0-18);
+  --glass-button-focus: 0 0 0 var(--size-1) var(--tone-rgb-108-165-235-56), 0 0 0 var(--size-4) var(--tone-rgb-108-165-235-15), 0 var(--size-12) var(--size-28) var(--overlay-dark-20);
+  --glass-control-surface: linear-gradient(180deg, var(--overlay-white-04), var(--overlay-white-015)), var(--overlay-surface-68);
+  --glass-control-surface-hover: linear-gradient(180deg, var(--overlay-white-05), var(--tone-rgb-255-255-255-020)), var(--tone-rgb-10-21-34-84);
+  --glass-control-surface-focus: linear-gradient(180deg, var(--overlay-white-06), var(--tone-rgb-255-255-255-020)), var(--tone-rgb-10-21-34-94);
+  --glass-control-shadow: inset 0 var(--size-1) 0 var(--overlay-white-06);
+  --glass-control-shadow-focus: 0 0 0 var(--size-1) var(--tone-rgb-108-165-235-50), 0 0 0 var(--size-4) var(--overlay-primary-12), 0 var(--size-12) var(--size-24) var(--tone-rgb-1-8-18-16);
+  --glass-soft-surface: linear-gradient(180deg, var(--overlay-white-04), var(--tone-rgb-255-255-255-016)), var(--tone-rgb-8-18-29-28);
+  --glass-soft-surface-hover: linear-gradient(180deg, var(--overlay-white-05), var(--tone-rgb-255-255-255-018)), var(--tone-rgb-119-175-233-10);
+  --glass-indicator-success: var(--color-success);
+  --glass-indicator-warning: var(--color-warning);
+  --glass-indicator-danger: var(--color-danger);
+  --glass-icon-muted: var(--overlay-neutral-70);
+  --glass-scroll-track: var(--color-transparent);
+  --glass-scroll-thumb: var(--tone-rgb-120-160-220-35);
+  --glass-scroll-thumb-hover: var(--tone-rgb-120-160-220-55);
+  --glass-scroll-thumb-active: var(--overlay-thumb-active);
 
   --app-background:
-    radial-gradient(circle at 18% 16%, rgba(119, 175, 233, 0.17), transparent 26%),
-    radial-gradient(circle at 84% 8%, rgba(111, 190, 183, 0.12), transparent 18%),
-    radial-gradient(circle at 50% 102%, rgba(45, 84, 136, 0.24), transparent 30%),
-    linear-gradient(180deg, #07111b 0%, #091522 48%, #07101a 100%);
+    radial-gradient(circle at 18% 16%, rgba(119, 175, 233, 0.19), transparent 27%),
+    radial-gradient(circle at 84% 8%, rgba(111, 190, 183, 0.15), transparent 20%),
+    radial-gradient(circle at 50% 102%, rgba(55, 95, 148, 0.26), transparent 32%),
+    linear-gradient(180deg, #08131f 0%, #0c1a2a 48%, #08121e 100%);
   background: var(--app-background);
-  color: var(--text-primary);
+  color: var(--color-text);
   font-synthesis: none;
   line-height: 1.55;
   text-rendering: optimizeLegibility;
@@ -138,7 +573,7 @@ body {
   min-width: 320px;
   min-height: 100vh;
   background: var(--app-background) fixed;
-  color: var(--text-primary);
+  color: var(--color-text);
   letter-spacing: -0.01em;
 }
 
@@ -162,8 +597,8 @@ a {
 }
 
 ::selection {
-  background: rgba(108, 165, 235, 0.34);
-  color: #f8fafc;
+  background: color-mix(in srgb, var(--color-primary) 37%, transparent);
+  color: var(--color-text);
 }
 
 #root {
@@ -172,20 +607,22 @@ a {
 }
 
 ::-webkit-scrollbar {
-  width: 10px;
-  height: 10px;
+  width: var(--radius-sm);
+  height: var(--radius-sm);
 }
 
 ::-webkit-scrollbar-track {
-  background: rgba(9, 18, 30, 0.78);
+  background: var(--bg-surface);
+  backdrop-filter: blur(4px);
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(130, 156, 184, 0.28);
-  border: 2px solid rgba(9, 18, 30, 0.78);
-  border-radius: 999px;
+  background: var(--overlay-thumb);
+  border: var(--border-width-md) solid var(--bg-surface);
+  border-radius: var(--radius-pill);
+  backdrop-filter: blur(4px);
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(149, 177, 207, 0.4);
+  background: var(--overlay-thumb-hover);
 }

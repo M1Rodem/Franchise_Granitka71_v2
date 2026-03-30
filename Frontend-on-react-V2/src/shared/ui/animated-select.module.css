@@ -6,13 +6,11 @@
 .trigger {
   position: relative;
   width: 100%;
-  min-height: 42px;
-  padding: 0 36px 0 14px;
-  border-radius: 14px;
-  border: 1px solid var(--border-primary);
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.015)),
-    rgba(8, 18, 29, 0.68);
+  min-height: var(--size-42);
+  padding: 0 36px 0 var(--size-14);
+  border-radius: var(--size-14);
+  border: var(--size-1) solid var(--border-primary);
+  background: var(--glass-control-surface);
   color: var(--text-primary);
   text-align: left;
   cursor: pointer;
@@ -27,33 +25,32 @@
   content: '';
   position: absolute;
   top: 50%;
-  right: 14px;
-  width: 16px;
-  height: 16px;
+  right: var(--size-14);
+  width: var(--size-16);
+  height: var(--size-16);
   transform: translateY(-50%);
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%239ca3af' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+  background-image: url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E\");
   background-repeat: no-repeat;
   background-position: center;
+  color: var(--glass-icon-muted);
 }
 
 .trigger:hover,
 .trigger:focus-visible {
   outline: none;
-  border-color: rgba(108, 165, 235, 0.32);
-  background: rgba(10, 21, 34, 0.92);
-  box-shadow:
-    0 0 0 1px rgba(108, 165, 235, 0.46),
-    0 0 0 4px rgba(108, 165, 235, 0.12);
+  border-color: var(--overlay-primary-32);
+  background: var(--glass-control-surface-focus);
+  box-shadow: var(--glass-control-shadow-focus);
   transform: translateY(-1px);
 }
 
 .portalDropdown {
-  padding: 6px;
-  border-radius: 16px;
-  border: 1px solid rgba(173, 204, 233, 0.12);
+  padding: var(--size-6);
+  border-radius: var(--size-16);
+  border: var(--size-1) solid var(--tone-rgb-173-204-233-12);
   background: var(--surface-gradient-strong);
   box-shadow: var(--shadow-lg);
-  backdrop-filter: blur(20px);
+  backdrop-filter: blur(var(--size-20));
 }
 
 .dropdown {
@@ -62,8 +59,8 @@
 
 .option {
   position: relative;
-  padding: 10px 14px;
-  border-radius: 12px;
+  padding: var(--size-10) var(--size-14);
+  border-radius: var(--size-12);
   color: var(--text-secondary);
   cursor: pointer;
   transition:
@@ -73,28 +70,28 @@
 }
 
 .option:hover {
-  background: rgba(108, 165, 235, 0.12);
+  background: var(--overlay-primary-12);
   color: var(--text-primary);
-  transform: translateX(2px);
+  transform: translateX(var(--size-2));
 }
 
 .selected {
-  background: rgba(108, 165, 235, 0.16);
-  color: #eef2ff;
+  background: var(--glass-soft-surface-hover);
+  color: var(--tone-eef2ff);
 }
 
 .selected::after {
-  content: '✓';
+  content: 'Р В Р вЂ Р РЋРЎв„ўР Р†Р вЂљРЎС™';
   position: absolute;
   top: 50%;
-  right: 14px;
+  right: var(--size-14);
   transform: translateY(-50%);
-  color: #d9e8fb;
+  color: var(--text-info-soft);
 }
 
 .optionGroup {
-  padding: 8px 12px 4px;
-  font-size: 11px;
+  padding: var(--size-8) var(--size-12) var(--size-4);
+  font-size: var(--size-11);
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.05em;
@@ -102,13 +99,13 @@
 }
 
 .divider {
-  height: 1px;
-  margin: 6px 8px;
-  background: rgba(148, 163, 184, 0.12);
+  height: var(--size-1);
+  margin: var(--size-6) var(--size-8);
+  background: var(--border-neutral-soft);
 }
 
 .empty {
-  padding: 24px 14px;
+  padding: var(--size-24) var(--size-14);
   text-align: center;
   color: var(--text-muted);
 }
@@ -120,8 +117,8 @@
 
 @media (max-width: 768px) {
   .trigger {
-    min-height: 40px;
-    font-size: 13px;
-    border-radius: 12px;
+    min-height: var(--size-40);
+    font-size: var(--size-13);
+    border-radius: var(--size-12);
   }
 }

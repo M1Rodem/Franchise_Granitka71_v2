@@ -4,7 +4,7 @@
   display: grid;
 
   grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-  gap: 16px;
+  gap: var(--size-16);
 
   width: 100%;
 }
@@ -13,8 +13,8 @@
 
 .empty {
   opacity: 0.6;
-  font-size: 14px;
-  color: rgba(220, 235, 255, 0.6);
+  font-size: var(--size-14);
+  color: var(--tone-rgb-220-235-255-60);
 }
 
 /* ===== RESPONSIVE ===== */
@@ -22,13 +22,13 @@
 @media (max-width: 768px) {
   .grid {
     grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-    gap: 14px;
+    gap: var(--size-14);
   }
 }
 
 @media (max-width: 480px) {
   .grid {
     grid-template-columns: repeat(2, 1fr);
-    gap: 12px;
+    gap: var(--size-12);
   }
 }

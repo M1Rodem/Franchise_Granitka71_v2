@@ -15,7 +15,6 @@ const GRID_TEMPLATE = '1.4fr 1fr 200px'
 export function PlotsTable({ plots, onDelete, onShowMap }: Props) {
   return (
     <div className={table.dataTable}>
-      {/* HEADER */}
       <div
         className={table.dataHeader}
         style={{ gridTemplateColumns: GRID_TEMPLATE }}
@@ -25,7 +24,6 @@ export function PlotsTable({ plots, onDelete, onShowMap }: Props) {
         <span>Действия</span>
       </div>
 
-      {/* ROWS */}
       {plots.map((plot) => (
         <div
           key={plot.id}
@@ -33,7 +31,7 @@ export function PlotsTable({ plots, onDelete, onShowMap }: Props) {
           style={{ gridTemplateColumns: GRID_TEMPLATE }}
         >
           <span
-            data-label="Название"
+            data-label="Участок"
             className={table.descriptionCell}
           >
             {plot.name}
@@ -43,7 +41,7 @@ export function PlotsTable({ plots, onDelete, onShowMap }: Props) {
             data-label="Адрес"
             className={table.noteCell}
           >
-            {plot.description ?? '—'}
+            {plot.description?.trim() || 'Адрес не указан'}
           </span>
 
           <span

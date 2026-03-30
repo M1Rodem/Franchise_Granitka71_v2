@@ -3,8 +3,8 @@
   display: grid;
   place-items: center;
   position: relative;
-  padding: 24px;
-  background: transparent;
+  padding: var(--size-24);
+  background: var(--color-transparent);
 }
 
 .backdrop {
@@ -20,7 +20,7 @@
 
 @media (max-width: 640px) {
   .wrapper {
-    padding: 16px;
+    padding: var(--size-16);
   }
 
   .content {

@@ -2,7 +2,7 @@
    PAGE ANIMATIONS (Liquid Glass)
 ========================================================= */
 
-/* Контейнер страницы */
+/* Р В Р’В Р РЋРІвЂћСћР В Р’В Р РЋРІР‚СћР В Р’В Р В РІР‚В¦Р В Р Р‹Р Р†Р вЂљРЎв„ўР В Р’В Р вЂ™Р’ВµР В Р’В Р Р†РІР‚С›РІР‚вЂњР В Р’В Р В РІР‚В¦Р В Р’В Р вЂ™Р’ВµР В Р Р‹Р В РІР‚С™ Р В Р Р‹Р В РЎвЂњР В Р Р‹Р Р†Р вЂљРЎв„ўР В Р Р‹Р В РІР‚С™Р В Р’В Р вЂ™Р’В°Р В Р’В Р В РІР‚В¦Р В Р’В Р РЋРІР‚ВР В Р Р‹Р Р†Р вЂљР’В Р В Р Р‹Р Р†Р вЂљРІвЂћвЂ“ */
 .pageContainer {
   flex: 1;
   animation: pageFadeIn 0.4s cubic-bezier(0.22, 1, 0.36, 1);
@@ -11,7 +11,7 @@
 @keyframes pageFadeIn {
   from {
     opacity: 0;
-    transform: translateY(20px) scale(0.98);
+    transform: translateY(var(--size-20)) scale(0.98);
   }
   to {
     opacity: 1;
@@ -19,7 +19,7 @@
   }
 }
 
-/* Появление элементов с задержкой */
+/* Р В Р’В Р РЋРЎСџР В Р’В Р РЋРІР‚СћР В Р Р‹Р В Р РЏР В Р’В Р В РІР‚В Р В Р’В Р вЂ™Р’В»Р В Р’В Р вЂ™Р’ВµР В Р’В Р В РІР‚В¦Р В Р’В Р РЋРІР‚ВР В Р’В Р вЂ™Р’Вµ Р В Р Р‹Р В Р Р‰Р В Р’В Р вЂ™Р’В»Р В Р’В Р вЂ™Р’ВµР В Р’В Р РЋР’ВР В Р’В Р вЂ™Р’ВµР В Р’В Р В РІР‚В¦Р В Р Р‹Р Р†Р вЂљРЎв„ўР В Р’В Р РЋРІР‚СћР В Р’В Р В РІР‚В  Р В Р Р‹Р В РЎвЂњ Р В Р’В Р вЂ™Р’В·Р В Р’В Р вЂ™Р’В°Р В Р’В Р СћРІР‚ВР В Р’В Р вЂ™Р’ВµР В Р Р‹Р В РІР‚С™Р В Р’В Р вЂ™Р’В¶Р В Р’В Р РЋРІР‚СњР В Р’В Р РЋРІР‚СћР В Р’В Р Р†РІР‚С›РІР‚вЂњ */
 .fadeInUp {
   animation: fadeInUp 0.4s cubic-bezier(0.22, 1, 0.36, 1) forwards;
   opacity: 0;
@@ -75,7 +75,7 @@
 @keyframes slideInRight {
   from {
     opacity: 0;
-    transform: translateX(20px);
+    transform: translateX(var(--size-20));
   }
   to {
     opacity: 1;
@@ -108,15 +108,10 @@
 }
 
 .skeleton {
-  background: linear-gradient(
-    90deg,
-    rgba(90, 140, 220, 0.08) 25%,
-    rgba(90, 140, 220, 0.15) 50%,
-    rgba(90, 140, 220, 0.08) 75%
-  );
+  background: var(--gradient-page-animation-shimmer);
   background-size: 200% 100%;
   animation: shimmer 1.5s infinite;
-  border-radius: 12px;
+  border-radius: var(--size-12);
 }
 
 /* Reduced motion */

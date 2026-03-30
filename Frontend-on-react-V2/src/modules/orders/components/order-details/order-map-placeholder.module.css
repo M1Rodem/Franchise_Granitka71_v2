@@ -1,14 +1,10 @@
 .placeholder {
   height: 220px;
-  border-radius: 18px;
-  border: 1px solid rgba(145, 175, 225, 0.25);
-  background: linear-gradient(
-    145deg,
-    rgba(8, 24, 48, 0.72),
-    rgba(12, 36, 69, 0.54)
-  );
+  border-radius: var(--size-18);
+  border: var(--size-1) solid var(--tone-rgb-145-175-225-25);
+  background: var(--gradient-location-panel-strong);
   display: grid;
   place-items: center;
-  color: #c6defd;
-  font-size: 14px;
+  color: var(--tone-c6defd);
+  font-size: var(--size-14);
 }

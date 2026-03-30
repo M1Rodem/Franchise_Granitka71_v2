@@ -1,18 +1,18 @@
 .group {
   display: grid;
-  gap: 14px;
+  gap: var(--size-14);
 }
 
 .group + .group {
-  margin-top: 24px;
+  margin-top: var(--size-24);
 }
 
 .groupHeader {
-  margin: 10px 0 0;
-  padding-left: 4px;
+  margin: var(--size-10) 0 0;
+  padding-left: var(--size-4);
 }
 
 .items {
   display: grid;
-  gap: 14px;
+  gap: var(--size-14);
 }

@@ -1,30 +1,30 @@
 .pagination {
-  margin-top: 20px;
+  margin-top: var(--size-20);
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 10px;
+  gap: var(--size-10);
   flex-wrap: wrap;
 }
 
 .meta {
   margin: 0;
-  color: #c2d8f4;
+  color: var(--tone-c2d8f4);
 }
 
 .controls {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--size-8);
 }
 
 .controls button {
   min-height: 36px;
-  border-radius: 10px;
-  border: 1px solid rgba(126, 164, 220, 0.33);
-  background: rgba(16, 42, 78, 0.75);
-  color: #e3f0ff;
-  padding: 0 10px;
+  border-radius: var(--size-10);
+  border: var(--size-1) solid var(--tone-rgb-126-164-220-33);
+  background: var(--tone-rgb-16-42-78-75);
+  color: var(--tone-e3f0ff);
+  padding: 0 var(--size-10);
   cursor: pointer;
 }
 
@@ -34,5 +34,5 @@
 }
 
 .controls span {
-  color: #e8f3ff;
+  color: var(--tone-e8f3ff);
 }

@@ -11,6 +11,7 @@
 *.sln.docstates
 *.env
 Frontend/
+Frontend-on-react/
 
 # User-specific files (MonoDevelop/Xamarin Studio)
 *.userprefs

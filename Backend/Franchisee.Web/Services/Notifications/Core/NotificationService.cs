@@ -1115,7 +1115,7 @@ namespace Franchisee.Web.Services.Notifications.Core
                         if (photoTempIds.Any())
                         {
                             int currentPhotoCount = order.Photos.Count(p => p.MediaType == MediaType.Photo);
-                            int maxPhotos = 10; // MaxPhotosPerOrder
+                            int maxPhotos = 5; // MaxPhotosPerOrder
 
                             if (currentPhotoCount + photoTempIds.Count > maxPhotos)
                             {

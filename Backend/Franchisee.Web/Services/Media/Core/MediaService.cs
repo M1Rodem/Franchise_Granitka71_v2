@@ -1,13 +1,13 @@
 ﻿using Microsoft.EntityFrameworkCore;
-using SixLabors.ImageSharp;
-using SixLabors.ImageSharp.Formats.Jpeg;
 using System.Security.Cryptography;
 using Franchisee.Web.Configuration;
 using Franchisee.Web.Models.Entities.Media;
 using Franchisee.Web.Models.Entities.Orders;
 using Franchisee.Web.Models.DTOs.Orders;
 using Franchisee.Web.Models.DTOs.Media;
-
+using SixLabors.ImageSharp;
+using SixLabors.ImageSharp.Processing;
+using SixLabors.ImageSharp.Formats.Jpeg;
 
 namespace Franchisee.Web.Services.Media.Core
 {
@@ -20,9 +20,10 @@ namespace Franchisee.Web.Services.Media.Core
 
         // Увеличиваем лимит до 500 МБ
         private const long MaxFileSize = 500 * 1024 * 1024;
-        private const int MaxPhotosPerOrder = 10;
-        private const int MaxVideosPerOrder = 5; // Новый лимит для видео
+        private const int MaxPhotosPerOrder = 5;
+        private const int MaxVideosPerOrder = 4;
         private const int MaxDimension = 4096;
+        private const long MaxVideoSize = 100 * 1024 * 1024; // 100MB
 
         private static readonly string[] AllowedImageMimeTypes = {
             "image/jpeg",
@@ -98,41 +99,76 @@ namespace Franchisee.Web.Services.Media.Core
             }
         }
 
-        private async Task<TempUploadDto?> ProcessImageUploadAsync(IFormFile file, int uploaderId, string contentType)
+        private async Task<TempUploadDto?> ProcessImageUploadAsync(
+            IFormFile file,
+            int uploaderId,
+            string contentType)
         {
             using var tempStream = file.OpenReadStream();
+
             try
             {
                 using var image = await Image.LoadAsync(tempStream);
-                var size = image.Size;
-                _logger.LogInformation("ProcessImageUploadAsync: Изображение загружено - Размеры: {W}x{H}", size.Width, size.Height);
 
-                if (size.Width > MaxDimension || size.Height > MaxDimension)
+                var originalWidth = image.Width;
+                var originalHeight = image.Height;
+
+                _logger.LogInformation(
+                    "Image loaded: {W}x{H}, Size: {Size}B",
+                    originalWidth,
+                    originalHeight,
+                    file.Length
+                );
+
+                const int maxSize = 1920;
+
+                if (image.Width > maxSize || image.Height > maxSize)
                 {
-                    _logger.LogWarning("ProcessImageUploadAsync: Размеры слишком большие {W}x{H} > {Max} для {Name}",
-                        size.Width, size.Height, MaxDimension, file.FileName);
-                    return null;
+                    var ratio = Math.Min(
+                        (double)maxSize / image.Width,
+                        (double)maxSize / image.Height
+                    );
+
+                    var newWidth = (int)(image.Width * ratio);
+                    var newHeight = (int)(image.Height * ratio);
+
+                    image.Mutate(x => x.Resize(newWidth, newHeight));
+
+                    _logger.LogInformation(
+                        "Image resized: {OldW}x{OldH} → {NewW}x{NewH}",
+                        originalWidth,
+                        originalHeight,
+                        newWidth,
+                        newHeight
+                    );
                 }
 
-                var decodedFormat = image.Metadata.DecodedImageFormat?.Name?.ToLowerInvariant() ?? "";
-                var finalContentType = !string.IsNullOrEmpty(decodedFormat) ? $"image/{decodedFormat}" : contentType;
+                int quality;
 
-                if (!AllowedImageMimeTypes.Contains(finalContentType))
-                {
-                    _logger.LogWarning("ProcessImageUploadAsync: Неверный декодированный тип «{Decoded}» для {Name}", finalContentType, file.FileName);
-                    return null;
-                }
+                if (file.Length > 10_000_000) // >10MB
+                    quality = 65;
+                else if (file.Length > 5_000_000)
+                    quality = 70;
+                else if (file.Length > 2_000_000)
+                    quality = 75;
+                else
+                    quality = 80;
 
-                var ext = MimeToExt.GetValueOrDefault(finalContentType, ".jpg");
-                var fileName = $"{Guid.NewGuid():N}{ext}";
+                var fileName = $"{Guid.NewGuid():N}.jpg";
                 var tempDir = Path.Combine(_env.WebRootPath, "uploads", "temp");
                 Directory.CreateDirectory(tempDir);
+
                 var filePath = Path.Combine(tempDir, fileName);
-                long savedSize = 0;
+
+                long savedSize;
 
                 await using (var outStream = new FileStream(filePath, FileMode.Create))
                 {
-                    await image.SaveAsJpegAsync(outStream, new JpegEncoder { Quality = 85 });
+                    await image.SaveAsJpegAsync(outStream, new JpegEncoder
+                    {
+                        Quality = quality
+                    });
+
                     savedSize = outStream.Length;
                 }
 
@@ -142,10 +178,10 @@ namespace Franchisee.Web.Services.Media.Core
                 var tempUpload = new TempUpload
                 {
                     FilePath = filePath,
-                    ContentType = finalContentType,
+                    ContentType = "image/jpeg", // фикс
                     Checksum = checksum,
-                    Width = size.Width,
-                    Height = size.Height,
+                    Width = image.Width,   // после resize
+                    Height = image.Height,
                     OriginalFileName = file.FileName,
                     Size = savedSize,
                     MediaType = MediaType.Photo,
@@ -157,8 +193,12 @@ namespace Franchisee.Web.Services.Media.Core
                 _context.TempUploads.Add(tempUpload);
                 await _context.SaveChangesAsync();
 
-                _logger.LogInformation("ProcessImageUploadAsync: временная загрузка {Id} создана для пользователя {UserId}, путь: {Path}",
-                    tempUpload.Id, uploaderId, filePath);
+                _logger.LogInformation(
+                    "Temp image saved: {Id}, Size: {Size}B (original: {Original}B)",
+                    tempUpload.Id,
+                    savedSize,
+                    file.Length
+                );
 
                 return new TempUploadDto
                 {
@@ -172,33 +212,59 @@ namespace Franchisee.Web.Services.Media.Core
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "ProcessImageUploadAsync: Ошибка обработки файла {Name}: {Message}", file.FileName, ex.Message);
+                _logger.LogError(ex,
+                    "ProcessImageUploadAsync error: {File} - {Message}",
+                    file.FileName,
+                    ex.Message
+                );
+
                 return null;
             }
         }
 
-        private async Task<TempUploadDto?> ProcessVideoUploadAsync(IFormFile file, int uploaderId, string contentType)
+        private async Task<TempUploadDto?> ProcessVideoUploadAsync(
+            IFormFile file,
+            int uploaderId,
+            string contentType)
         {
+            if (file.Length > MaxVideoSize)
+            {
+                _logger.LogWarning("Video too large: {Size}", file.Length);
+                return null;
+            }
+
             var ext = MimeToExt.GetValueOrDefault(contentType, ".mp4");
+            if (string.IsNullOrEmpty(ext))
+                ext = ".mp4";
+
             var fileName = $"{Guid.NewGuid():N}{ext}";
             var tempDir = Path.Combine(_env.WebRootPath, "uploads", "temp", "videos");
             Directory.CreateDirectory(tempDir);
+
             var filePath = Path.Combine(tempDir, fileName);
 
             try
             {
-                await using var fileStream = new FileStream(filePath, FileMode.Create);
-                await file.CopyToAsync(fileStream);
+                await using (var fileStream = new FileStream(filePath, FileMode.Create))
+                {
+                    await file.CopyToAsync(fileStream);
+                    await fileStream.FlushAsync();
+                }
 
-                fileStream.Position = 0;
-                var checksum = await ComputeSha256Async(fileStream);
-                
+                await using var readStream = new FileStream(filePath, FileMode.Open, FileAccess.Read);
+                var checksum = await ComputeSha256Async(readStream);
+
+                _logger.LogInformation(
+                    "Video uploaded: {SizeMB} MB",
+                    Math.Round(file.Length / 1024.0 / 1024.0, 2)
+                );
+
                 var tempUpload = new TempUpload
                 {
                     FilePath = filePath,
                     ContentType = contentType,
                     Checksum = checksum,
-                    Width = null, // Для видео не определяем размеры
+                    Width = null,
                     Height = null,
                     OriginalFileName = file.FileName,
                     Size = file.Length,
@@ -210,9 +276,6 @@ namespace Franchisee.Web.Services.Media.Core
 
                 _context.TempUploads.Add(tempUpload);
                 await _context.SaveChangesAsync();
-
-                _logger.LogInformation("ProcessVideoUploadAsync: временная загрузка видео {Id} создана для пользователя {UserId}, путь: {Path}",
-                    tempUpload.Id, uploaderId, filePath);
 
                 return new TempUploadDto
                 {
@@ -226,13 +289,14 @@ namespace Franchisee.Web.Services.Media.Core
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "ProcessVideoUploadAsync: Ошибка сохранения видео {Name}: {Message}", file.FileName, ex.Message);
+                _logger.LogError(ex,
+                    "ProcessVideoUploadAsync error: {File} - {Message}",
+                    file.FileName,
+                    ex.Message
+                );
 
-                // Удаляем файл если он был создан
                 if (File.Exists(filePath))
-                {
                     File.Delete(filePath);
-                }
 
                 return null;
             }

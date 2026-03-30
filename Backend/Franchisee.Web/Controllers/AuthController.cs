@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
@@ -31,10 +31,16 @@ namespace Franchisee.Web.Controllers
         private readonly IManagerRepository _managerRepository;
         private readonly IConfiguration _config;
         private readonly ILogger<AuthController> _logger;
+        
         private string GetClientKey(string username)
         {
             var ip = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
             return $"{username.ToLower()}_{ip}";
+        }
+
+        private string GetClientIp()
+        {
+            return HttpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
         }
 
         public AuthController(IManagerRepository managerRepository, IConfiguration config, ILogger<AuthController> logger)
@@ -49,7 +55,8 @@ namespace Franchisee.Web.Controllers
         [HttpPost("login")]
         public async Task<IActionResult> Login([FromBody] LoginDto loginDto)
         {
-            _logger.LogInformation("Попытка входа для пользователя: {Username}", loginDto.Username);
+            var clientIp = GetClientIp();
+            _logger.LogInformation("Login attempt for user: {Username} from IP: {IP}", loginDto.Username, clientIp);
 
             try
             {
@@ -65,10 +72,10 @@ namespace Franchisee.Web.Controllers
 
                         Response.Headers["Retry-After"] = retryAfter.ToString();
                         _logger.LogWarning(
-                            "Попытка входа во время активной блокировки. Username: {Username}, IP: {IP}, TimeUtc: {Time}",
+                            "Login attempt during active lockout. Username: {Username}, IP: {IP}, LockedUntil: {LockedUntil}",
                             loginDto.Username,
                             ip,
-                            now
+                            attemptInfo.LockedUntil.Value
                         );
                         return StatusCode(429, new
                         {
@@ -86,16 +93,22 @@ namespace Franchisee.Web.Controllers
 
                     info.FailedAttempts++;
 
+                    _logger.LogDebug(
+                        "Failed login attempt #{Attempts} for user: {Username} from IP: {IP}",
+                        info.FailedAttempts,
+                        loginDto.Username,
+                        ip
+                    );
+
                     if (info.FailedAttempts >= MaxAttempts)
                     {
                         info.FailedAttempts = 0;
                         info.LockedUntil = now.Add(LockDuration);
 
                         _logger.LogWarning(
-                            "Блокировка входа. Username: {Username}, IP: {IP}, TimeUtc: {Time}, LockUntil: {LockUntil}",
+                            "Account locked due to multiple failed attempts. Username: {Username}, IP: {IP}, LockUntil: {LockUntil}",
                             loginDto.Username,
                             ip,
-                            now,
                             info.LockedUntil
                         );
 
@@ -115,7 +128,12 @@ namespace Franchisee.Web.Controllers
 
                 if (user.IsBlocked)
                 {
-                    _logger.LogWarning("Заблокированный пользователь пытается войти: {Username}", user.Username);
+                    _logger.LogWarning(
+                        "Blocked user attempted to login. Username: {Username}, IP: {IP}, UserId: {UserId}",
+                        user.Username,
+                        ip,
+                        user.Id
+                    );
                     return Unauthorized(new { message = "Аккаунт заблокирован" });
                 }
 
@@ -126,11 +144,22 @@ namespace Franchisee.Web.Controllers
                     UserRole.Admin => "Admin",
                     _ => "Manager"
                 };
-                _logger.LogInformation("Успешный вход для пользователя: {Username} с ролью: {Role}", user.Username, role);
+                
+                _logger.LogInformation(
+                    "Successful login. Username: {Username}, Role: {Role}, UserId: {UserId}, IP: {IP}",
+                    user.Username,
+                    role,
+                    user.Id,
+                    ip
+                );
 
-                var key = _config["Jwt:Key"];
+                var key = Environment.GetEnvironmentVariable("JWT_KEY");
+
                 if (string.IsNullOrEmpty(key))
-                    throw new ArgumentNullException(nameof(key), "JWT Key не может быть пустым.");
+                {
+                    _logger.LogError("JWT_KEY environment variable is missing");
+                    throw new Exception("JWT_KEY не задан");
+                }
 
                 var keyBytes = Encoding.ASCII.GetBytes(key);
                 var tokenHandler = new JwtSecurityTokenHandler();
@@ -151,12 +180,19 @@ namespace Franchisee.Web.Controllers
                     SigningCredentials = new SigningCredentials(
                         new SymmetricSecurityKey(keyBytes),
                         SecurityAlgorithms.HmacSha256Signature),
-                    Issuer = _config["Jwt:Issuer"] ?? "Franchisee.Web",
-                    Audience = _config["Jwt:Audience"] ?? "Franchisee.WebUsers"
+                    Issuer = Environment.GetEnvironmentVariable("JWT_ISSUER") ?? "Franchisee.Web",
+                    Audience = Environment.GetEnvironmentVariable("JWT_AUDIENCE") ?? "Franchisee.WebUsers"
                 };
 
                 var token = tokenHandler.CreateToken(tokenDescriptor);
                 var tokenString = tokenHandler.WriteToken(token);
+
+                _logger.LogDebug(
+                    "JWT token generated for user {UserId} (Username: {Username}), expires in {ExpiresMinutes} minutes",
+                    user.Id,
+                    user.Username,
+                    _accessLifetimeMinutes
+                );
 
                 var refreshToken = GenerateRefreshToken();
 
@@ -177,6 +213,13 @@ namespace Franchisee.Web.Controllers
 
                 LoginAttempts.TryRemove(loginKey, out _);
 
+                _logger.LogInformation(
+                    "Login completed successfully. UserId: {UserId}, Username: {Username}, IP: {IP}",
+                    user.Id,
+                    user.Username,
+                    ip
+                );
+
                 return Ok(new
                 {
                     id = user.Id,
@@ -189,7 +232,7 @@ namespace Franchisee.Web.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Ошибка при авторизации пользователя: {Username}", loginDto.Username);
+                _logger.LogError(ex, "Unexpected error during login for user: {Username}, IP: {IP}", loginDto.Username, GetClientIp());
                 return StatusCode(500, new { message = "Внутренняя ошибка сервера" });
             }
         }
@@ -198,13 +241,22 @@ namespace Franchisee.Web.Controllers
         [HttpPost("logout")]
         public async Task<IActionResult> Logout()
         {
+            var clientIp = GetClientIp();
             var userIdClaim = User.FindFirst("UserId");
 
             if (userIdClaim == null)
+            {
+                _logger.LogWarning("Logout attempted without valid UserId claim from IP: {IP}", clientIp);
                 return Unauthorized();
+            }
 
             if (!int.TryParse(userIdClaim.Value, out var userId))
+            {
+                _logger.LogWarning("Logout attempted with invalid UserId format: {UserIdClaim} from IP: {IP}", userIdClaim.Value, clientIp);
                 return Unauthorized();
+            }
+
+            _logger.LogDebug("Logout requested for UserId: {UserId} from IP: {IP}", userId, clientIp);
 
             var user = await _managerRepository.GetByIdAsync(userId);
 
@@ -214,12 +266,21 @@ namespace Franchisee.Web.Controllers
                 user.RefreshTokenExpiryTime = null;
 
                 await _managerRepository.UpdateAsync(user);
+                
+                _logger.LogInformation(
+                    "User logged out successfully. UserId: {UserId}, Username: {Username}, IP: {IP}",
+                    userId,
+                    user.Username,
+                    clientIp
+                );
+            }
+            else
+            {
+                _logger.LogWarning("Logout attempted for non-existent UserId: {UserId} from IP: {IP}", userId, clientIp);
             }
 
             Response.Cookies.Delete("refreshToken");
             Response.Cookies.Delete("media_auth");
-
-            _logger.LogInformation("[Token] Revoked UserId={UserId}", userId);
 
             return Ok(new { message = "Logged out" });
         }
@@ -233,13 +294,16 @@ namespace Franchisee.Web.Controllers
         [HttpPost("refresh")]
         public async Task<IActionResult> Refresh([FromBody] RefreshRequest request)
         {
+            var clientIp = GetClientIp();
             var refreshToken = Request.Cookies["refreshToken"] ?? request.RefreshToken;
 
             if (string.IsNullOrEmpty(refreshToken))
             {
-                _logger.LogWarning("[TokenRefresh] UserId={UserId} Failed Reason={Reason}", 0, "RefreshTokenMissing");
+                _logger.LogWarning("Token refresh failed: Refresh token missing from IP: {IP}", clientIp);
                 return Unauthorized();
             }
+
+            _logger.LogDebug("Token refresh requested from IP: {IP}", clientIp);
 
             var existingUser = await _managerRepository.GetByRefreshTokenAsync(refreshToken);
             var existingUserId = existingUser?.Id ?? 0;
@@ -247,7 +311,12 @@ namespace Franchisee.Web.Controllers
 
             if (existingUser != null && existingUser.RefreshTokenExpiryTime <= DateTime.UtcNow)
             {
-                _logger.LogWarning("[Token] Expired UserId={UserId} At={Time}", existingUser.Id, existingUser.RefreshTokenExpiryTime);
+                _logger.LogWarning(
+                    "Token refresh with expired refresh token. UserId: {UserId}, ExpiredAt: {Expiry}, IP: {IP}",
+                    existingUser.Id,
+                    existingUser.RefreshTokenExpiryTime,
+                    clientIp
+                );
             }
 
             var newRefreshToken = GenerateRefreshToken();
@@ -259,7 +328,6 @@ namespace Franchisee.Web.Controllers
                 newExpiry
             );
 
-
             if (user == null || user.IsBlocked || user.RefreshTokenExpiryTime <= DateTime.UtcNow)
             {
                 var reason = user == null
@@ -268,12 +336,22 @@ namespace Franchisee.Web.Controllers
                         ? "UserBlocked"
                         : "RefreshTokenExpired";
 
-                _logger.LogWarning("[TokenRefresh] UserId={UserId} Failed Reason={Reason}", existingUserId, reason);
+                _logger.LogWarning(
+                    "Token refresh failed. UserId: {UserId}, Reason: {Reason}, IP: {IP}",
+                    existingUserId,
+                    reason,
+                    clientIp
+                );
                 return Unauthorized();
             }
 
-            var key = _config["Jwt:Key"]
-                ?? throw new InvalidOperationException("JWT Key не настроен");
+            var key = Environment.GetEnvironmentVariable("JWT_KEY");
+
+            if (string.IsNullOrEmpty(key))
+            {
+                _logger.LogError("JWT_KEY environment variable is missing during token refresh");
+                throw new Exception("JWT_KEY не задан");
+            }
 
             var keyBytes = Encoding.ASCII.GetBytes(key);
             var tokenHandler = new JwtSecurityTokenHandler();
@@ -301,8 +379,8 @@ namespace Franchisee.Web.Controllers
                 SigningCredentials = new SigningCredentials(
                     new SymmetricSecurityKey(keyBytes),
                     SecurityAlgorithms.HmacSha256Signature),
-                Issuer = _config["Jwt:Issuer"],
-                Audience = _config["Jwt:Audience"]
+                Issuer = Environment.GetEnvironmentVariable("JWT_ISSUER") ?? "Franchisee.Web",
+                Audience = Environment.GetEnvironmentVariable("JWT_AUDIENCE") ?? "Franchisee.WebUsers"
             };
 
             var token = tokenHandler.CreateToken(tokenDescriptor);
@@ -315,10 +393,13 @@ namespace Franchisee.Web.Controllers
             );
 
             _logger.LogInformation(
-                "[TokenRefresh] UserId={UserId} Success OldExpiry={Old} NewExpiry={New}",
+                "Token refresh successful. UserId: {UserId}, Username: {Username}, OldExpiry: {OldExpiry}, NewExpiry: {NewExpiry}, IP: {IP}",
                 user.Id,
+                user.Username,
                 oldExpiry,
-                user.RefreshTokenExpiryTime);
+                user.RefreshTokenExpiryTime,
+                clientIp
+            );
 
             return Ok(new
             {
@@ -336,6 +417,7 @@ namespace Franchisee.Web.Controllers
 
             return Convert.ToBase64String(randomNumber);
         }
+        
         private CookieOptions GetRefreshCookieOptions(DateTime expiry)
         {
             return new CookieOptions

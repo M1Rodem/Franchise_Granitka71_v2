@@ -160,7 +160,7 @@ export function MediaSection({ existing = [] }: Props) {
           !m.uploading &&
           m.markedForDelete
         ) {
-          httpClient.delete(`/api/media/temp/${m.id}`)
+          httpClient.delete(`/media/temp/${m.id}`)
         }
       })
     }

@@ -26,7 +26,7 @@ export const mediaApi = {
     formData.append('file', finalFile)
 
     const response = await httpClient.post<TempUploadDto>(
-      `/api/media/upload-temp?type=${type}`,
+      `/media/upload-temp?type=${type}`,
       formData,
       {
         headers: {
@@ -39,6 +39,6 @@ export const mediaApi = {
   },
 
   async deleteTemp(tempId: number) {
-    await httpClient.delete(`/api/media/temp/${tempId}`)
+    await httpClient.delete(`/media/temp/${tempId}`)
   },
 }

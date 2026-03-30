@@ -35,7 +35,7 @@ export async function performRefresh(): Promise<void> {
 
       const store = useAuthStore.getState()
       const res = await httpClient.post(
-        '/api/auth/refresh',
+        '/auth/refresh',
         {},
         {
           headers: {

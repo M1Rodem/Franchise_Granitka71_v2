@@ -15,7 +15,7 @@ export const notificationsApi = {
     page: number,
     pageSize: number
   ): Promise<PagingResponse<NotificationResponseDto>> {
-    const response = await httpClient.get('/api/Notifications/list', {
+    const response = await httpClient.get('/Notifications/list', {
       params: {
         status,
         page,
@@ -26,7 +26,7 @@ export const notificationsApi = {
   },
 
   async getNotificationDetails(id: number): Promise<NotificationDetailsDto> {
-    const response = await httpClient.get(`/api/Notifications/${id}`)
+    const response = await httpClient.get(`/Notifications/${id}`)
     return response.data
   },
 
@@ -38,7 +38,7 @@ export const notificationsApi = {
   notification: NotificationResponseDto
   }> {
     const response = await httpClient.post(
-      `/api/Notifications/${id}/resolve`,
+      `/Notifications/${id}/resolve`,
       payload
     )
     return response.data
@@ -52,7 +52,7 @@ export const notificationsApi = {
     notification: NotificationResponseDto
   }> {
     const response = await httpClient.post(
-      `/api/Notifications/${id}/postpone`,
+      `/Notifications/${id}/postpone`,
       null,
       {
         params: { minutes },
@@ -62,12 +62,12 @@ export const notificationsApi = {
   },
 
   async getBadge(): Promise<NotificationBadgeDto> {
-    const response = await httpClient.get('/api/Notifications/count')
+    const response = await httpClient.get('/Notifications/count')
     return response.data
   },
 
   async getCounts(): Promise<NotificationCountsDto> {
-    const response = await httpClient.get('/api/Notifications/counts')
+    const response = await httpClient.get('/Notifications/counts')
     return response.data
   }
 }

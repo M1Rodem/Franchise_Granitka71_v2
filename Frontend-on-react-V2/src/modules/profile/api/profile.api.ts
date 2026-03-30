@@ -7,13 +7,13 @@ import type {
 
 export const profileApi = {
   async getProfile(): Promise<ManagerResponseDto> {
-    const response = await httpClient.get('/api/profile')
+    const response = await httpClient.get('/profile')
     return response.data
   },
 
   async updateProfile(payload: UpdateProfileDto): Promise<ManagerResponseDto> {
     const response = await httpClient.put(
-      '/api/profile/update-profile',
+      '/profile/update-profile',
       payload,
     )
 
@@ -22,7 +22,7 @@ export const profileApi = {
 
   async changePassword(payload: ChangePasswordDto): Promise<string> {
     const response = await httpClient.post(
-      '/api/profile/change-password',
+      '/profile/change-password',
       payload,
     )
 

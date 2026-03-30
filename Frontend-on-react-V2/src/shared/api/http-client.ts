@@ -40,7 +40,15 @@ export const httpClient = axios.create({
 
 httpClient.interceptors.request.use((config) => {
   if (config.url) {
-    config.url = config.url.replace(/^\/api/, '')
+    if (config.url.includes('notificationhub')) {
+      return config
+    }
+
+    config.url = config.url.replace(/^\/api\/api/, '/api')
+
+    if (config.url.startsWith('/api/')) {
+      config.url = config.url.replace('/api/', '/')
+    }
   }
 
   return config
@@ -49,7 +57,7 @@ httpClient.interceptors.request.use((config) => {
 httpClient.interceptors.request.use(async (config: CustomAxiosRequestConfig) => {
   const token = useAuthStore.getState().token
 
-  if (token && !config.url?.includes('/api/auth/refresh')) {
+  if (token && !config.url?.includes('/auth/refresh')) {
     const { checkAndRefreshIfNeeded } = await import('@/shared/lib/silent-refresh.service')
     await checkAndRefreshIfNeeded()
   }
@@ -76,8 +84,8 @@ httpClient.interceptors.response.use(
     }
 
     const status = error.response?.status
-    const isLoginRequest = originalRequest.url?.includes('/api/auth/login')
-    const isRefreshRequest = originalRequest.url?.includes('/api/auth/refresh')
+    const isLoginRequest = originalRequest.url?.includes('/auth/login')
+    const isRefreshRequest = originalRequest.url?.includes('/auth/refresh')
 
     if (status === 401 && !isLoginRequest && !isRefreshRequest) {
       if (originalRequest._retry) {

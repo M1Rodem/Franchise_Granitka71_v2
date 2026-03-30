@@ -8,7 +8,7 @@ export const plotsApi = {
     search?: string,
     includeInactive = false
   ): Promise<{ items: PlotDto[]; total: number }> {
-    const response = await httpClient.get('/api/plots', {
+    const response = await httpClient.get('/plots', {
       params: {
         page,
         pageSize,
@@ -21,7 +21,7 @@ export const plotsApi = {
   },
 
   async deletePlot(id: number) {
-    await httpClient.delete(`/api/plots/${id}`)
+    await httpClient.delete(`/plots/${id}`)
   },
 
   async createPlot(data: {
@@ -31,7 +31,7 @@ export const plotsApi = {
     longitude: number
     isActive?: boolean
   }) {
-    const response = await httpClient.post('/api/plots', {
+    const response = await httpClient.post('/plots', {
       name: data.name,
       description: data.description ?? null,
       latitude: data.latitude,
@@ -42,7 +42,7 @@ export const plotsApi = {
     return response.data
   },
   async getPlotsOptions(): Promise<PlotDto[]> {
-    const response = await httpClient.get('/api/plots', {
+    const response = await httpClient.get('/plots', {
       params: {
         page: 1,
         pageSize: 1000,
@@ -52,7 +52,7 @@ export const plotsApi = {
     return response.data.items
   },
   async getAllPlots(): Promise<PlotDto[]> {
-    const response = await httpClient.get('/api/plots/all')
+    const response = await httpClient.get('/plots/all')
     return response.data
   }
 };

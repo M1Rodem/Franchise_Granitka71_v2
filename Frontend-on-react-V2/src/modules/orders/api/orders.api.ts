@@ -100,7 +100,7 @@ export const ordersApi = {
   async getOrders(params: OrdersListQueryParams): Promise<OrdersPagedResultDto> {
     const normalized = normalizeOrdersListParams(params);
 
-    const response = await httpClient.get('/api/orders/list', {
+    const response = await httpClient.get('/orders/list', {
       params: {
         SearchQuery: normalized.searchQuery,
         OrderDateFrom: normalized.dateFrom,
@@ -117,7 +117,7 @@ export const ordersApi = {
   },
 
   async printOrderHtml(id: number, type: 'default' | 'worker' = 'default'): Promise<Blob> {
-    const response = await httpClient.get(`/api/Print/order/${id}/html-print`, {
+    const response = await httpClient.get(`/Print/order/${id}/html-print`, {
       params: { type },
       responseType: 'blob',
     })
@@ -126,7 +126,7 @@ export const ordersApi = {
   },
 
   async downloadOrderExcel(id: number, type: 'default' | 'worker' = 'default'): Promise<Blob> {
-    const response = await httpClient.get(`/api/Print/order/${id}/download`, {
+    const response = await httpClient.get(`/Print/order/${id}/download`, {
       params: { type },
       responseType: 'blob',
     })
@@ -135,7 +135,7 @@ export const ordersApi = {
   },
 
   async getById(id: number): Promise<OrderDetailsDto> {
-    const response = await httpClient.get(`/api/orders/${id}`);
+    const response = await httpClient.get(`/orders/${id}`);
     const parsed = orderDetailsSchema.safeParse(response.data);
 
     if (!parsed.success) {
@@ -147,7 +147,7 @@ export const ordersApi = {
   },
 
   async createOrder(payload: CreateOrderRequestDto): Promise<OrderDetailsDto> {
-    const response = await httpClient.post('/api/orders', payload);
+    const response = await httpClient.post('/orders', payload);
     const parsed = orderDetailsSchema.safeParse(response.data);
 
     if (!parsed.success) {
@@ -159,14 +159,14 @@ export const ordersApi = {
   },
 
   async deleteOrder(id: number): Promise<void> {
-    await httpClient.delete(`/api/orders/${id}`);
+    await httpClient.delete(`/orders/${id}`);
   },
 
   async updateOrder(
     id: number,
     payload: UpdateOrderRequestDto
   ): Promise<UpdateOrderResponse> {
-    const response = await httpClient.put(`/api/orders/${id}`, payload)
+    const response = await httpClient.put(`/orders/${id}`, payload)
     
     // Возвращаем как есть, разбор будет в provider
     return response.data
@@ -179,7 +179,7 @@ export const ordersApi = {
   async getArchivedOrders(params: OrdersListQueryParams): Promise<OrdersPagedResultDto> {
     const normalized = normalizeOrdersListParams(params);
 
-    const response = await httpClient.get('/api/orders/archived/list', {
+    const response = await httpClient.get('/orders/archived/list', {
       params: {
         SearchQuery: normalized.searchQuery,
         OrderDateFrom: normalized.dateFrom,
@@ -196,7 +196,7 @@ export const ordersApi = {
   },
 
   async getArchivedById(id: number): Promise<OrderDetailsDto> {
-    const response = await httpClient.get(`/api/orders/archived/${id}`);
+    const response = await httpClient.get(`/orders/archived/${id}`);
 
     const parsed = orderDetailsSchema.safeParse(response.data);
 
@@ -209,10 +209,10 @@ export const ordersApi = {
   },
 
   async restoreOrder(id: number): Promise<void> {
-    await httpClient.post(`/api/orders/${id}/restore`);
+    await httpClient.post(`/orders/${id}/restore`);
   },
 
   async deleteArchivedOrder(id: number): Promise<void> {
-    return httpClient.delete(`/api/orders/archived/${id}`);
+    return httpClient.delete(`/orders/archived/${id}`);
   },
 };

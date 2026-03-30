@@ -8,6 +8,7 @@ using Franchisee.Web.Models.DTOs.Media;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.Processing;
 using SixLabors.ImageSharp.Formats.Jpeg;
+using Serilog;
 
 namespace Franchisee.Web.Services.Media.Core
 {
@@ -17,13 +18,13 @@ namespace Franchisee.Web.Services.Media.Core
         private readonly IWebHostEnvironment _env;
         private readonly ILogger<MediaService> _logger;
         private readonly IHttpContextAccessor _httpContextAccessor;
-
-        // Увеличиваем лимит до 500 МБ
-        private const long MaxFileSize = 500 * 1024 * 1024;
-        private const int MaxPhotosPerOrder = 5;
-        private const int MaxVideosPerOrder = 4;
+        
+        private readonly long _maxFileSize;
+        private readonly int _maxPhotosPerOrder;
+        private readonly int _maxVideosPerOrder;
+        private readonly long _maxVideoSize;
+        
         private const int MaxDimension = 4096;
-        private const long MaxVideoSize = 100 * 1024 * 1024; // 100MB
 
         private static readonly string[] AllowedImageMimeTypes = {
             "image/jpeg",
@@ -32,22 +33,19 @@ namespace Franchisee.Web.Services.Media.Core
             "image/webp"
         };
 
-        // Новые MIME-типы для видео
         private static readonly string[] AllowedVideoMimeTypes = {
             "video/mp4",
             "video/webm",
-            "video/quicktime", // mov
-            "video/x-msvideo"  // avi
+            "video/quicktime",
+            "video/x-msvideo"
         };
 
         private static readonly Dictionary<string, string> MimeToExt = new()
         {
-            // Изображения
             { "image/jpeg", ".jpg" },
             { "image/png", ".png" },
             { "image/gif", ".gif" },
             { "image/webp", ".webp" },
-            // Видео
             { "video/mp4", ".mp4" },
             { "video/webm", ".webm" },
             { "video/quicktime", ".mov" },
@@ -58,12 +56,21 @@ namespace Franchisee.Web.Services.Media.Core
             ApplicationDbContext context,
             IWebHostEnvironment env,
             ILogger<MediaService> logger,
-            IHttpContextAccessor httpContextAccessor)
+            IHttpContextAccessor httpContextAccessor,
+            IConfiguration configuration)
         {
             _context = context;
             _env = env;
             _logger = logger;
             _httpContextAccessor = httpContextAccessor;
+            
+            _maxFileSize = configuration.GetValue<long>("Media:MaxFileSize", 500 * 1024 * 1024);
+            _maxPhotosPerOrder = configuration.GetValue<int>("Media:MaxPhotosPerOrder", 5);
+            _maxVideosPerOrder = configuration.GetValue<int>("Media:MaxVideosPerOrder", 4);
+            _maxVideoSize = configuration.GetValue<long>("Media:MaxVideoSize", 100 * 1024 * 1024);
+            
+            Log.Information("MediaService configured: MaxFileSize={MaxFileSize}, MaxPhotos={MaxPhotos}, MaxVideos={MaxVideos}, MaxVideoSize={MaxVideoSize}",
+                _maxFileSize, _maxPhotosPerOrder, _maxVideosPerOrder, _maxVideoSize);
         }
 
         public async Task<TempUploadDto?> UploadTempAsync(IFormFile file, int uploaderId, MediaType mediaType)
@@ -71,10 +78,10 @@ namespace Franchisee.Web.Services.Media.Core
             _logger.LogInformation("UploadTempAsync: Файл получен - Имя: {Name}, Размер: {Size}B, Тип: {Type}, MediaType: {MediaType}",
                 file?.FileName ?? "null", file?.Length ?? 0, file?.ContentType ?? "null", mediaType);
 
-            if (file == null || file.Length == 0 || file.Length > MaxFileSize)
+            if (file == null || file.Length == 0 || file.Length > _maxFileSize)
             {
                 _logger.LogWarning("UploadTempAsync: Файл null/пустой или слишком большой ({Size} > {Max}B)",
-                    file?.Length ?? 0, MaxFileSize);
+                    file?.Length ?? 0, _maxFileSize);
                 return null;
             }
 
@@ -83,8 +90,20 @@ namespace Franchisee.Web.Services.Media.Core
 
             if (!allowedTypes.Contains(fileContentType))
             {
-                _logger.LogWarning("UploadTempAsync: Неверный MIME '{Type}' для {Name} (не в {Allowed})",
-                    fileContentType, file.FileName, string.Join(", ", allowedTypes));
+                _logger.LogWarning("UploadTempAsync: Invalid MIME type '{Type}' for {Name}", 
+                    fileContentType, file.FileName);
+                return null;
+            }
+
+            var fileExtension = Path.GetExtension(file.FileName).ToLowerInvariant();
+            var allowedExtensions = mediaType == MediaType.Photo 
+                ? new[] { ".jpg", ".jpeg", ".png", ".gif", ".webp" }
+                : new[] { ".mp4", ".webm", ".mov", ".avi" };
+
+            if (!allowedExtensions.Contains(fileExtension))
+            {
+                _logger.LogWarning("UploadTempAsync: Invalid file extension '{Ext}' for {Name}", 
+                    fileExtension, file.FileName);
                 return null;
             }
 
@@ -227,7 +246,7 @@ namespace Franchisee.Web.Services.Media.Core
             int uploaderId,
             string contentType)
         {
-            if (file.Length > MaxVideoSize)
+            if (file.Length > _maxVideoSize)
             {
                 _logger.LogWarning("Video too large: {Size}", file.Length);
                 return null;
@@ -313,13 +332,13 @@ namespace Franchisee.Web.Services.Media.Core
             }
 
             // Проверяем лимиты в зависимости от типа медиа
-            if (mediaType == MediaType.Photo && order.Photos.Count(p => p.MediaType == MediaType.Photo) + tempIds.Count > MaxPhotosPerOrder)
+            if (mediaType == MediaType.Photo && order.Photos.Count(p => p.MediaType == MediaType.Photo) + tempIds.Count > _maxPhotosPerOrder)
             {
                 _logger.LogWarning("CommitTempToOrderAsync: превышен лимит фото для заказа {Id}", orderId);
                 return 0;
             }
 
-            if (mediaType == MediaType.Video && order.Photos.Count(p => p.MediaType == MediaType.Video) + tempIds.Count > MaxVideosPerOrder)
+            if (mediaType == MediaType.Video && order.Photos.Count(p => p.MediaType == MediaType.Video) + tempIds.Count > _maxVideosPerOrder)
             {
                 _logger.LogWarning("CommitTempToOrderAsync: превышен лимит видео для заказа {Id}", orderId);
                 return 0;

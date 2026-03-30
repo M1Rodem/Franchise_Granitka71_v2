@@ -21,7 +21,7 @@ using Franchisee.Web.Services.Print.Strategies;
 namespace Franchisee.Web.Configuration
 {
     public static class AppConfiguration
-    {
+    {   
         public static void ConfigureServices(IServiceCollection services, IConfiguration configuration, IWebHostEnvironment env)
         {
             services.Configure<AppSettings>(configuration.GetSection("AppSettings"));
@@ -31,34 +31,70 @@ namespace Franchisee.Web.Configuration
             {
                 options.AddPolicy("AllowFrontend", policy =>
                 {
-                    policy
-                        .AllowAnyHeader()
-                        .AllowAnyMethod()
-                        .AllowCredentials()
-                        .SetIsOriginAllowed(_ => true);
+                    var originsEnv = Environment.GetEnvironmentVariable("ALLOWED_ORIGINS");
+                    string[] origins;
+
+                    if (string.IsNullOrWhiteSpace(originsEnv))
+                    {
+                        Log.Warning("ALLOWED_ORIGINS is not set. CORS will not allow any external origins.");
+                        origins = Array.Empty<string>();
+                    }
+                    else
+                    {
+                        origins = originsEnv
+                            .Split(',', StringSplitOptions.RemoveEmptyEntries)
+                            .Select(o => o.Trim())
+                            .ToArray();
+                        
+                        Log.Information("CORS allowed origins: {Origins}", string.Join(", ", origins));
+                    }
+
+                    if (origins.Length > 0)
+                    {
+                        policy.WithOrigins(origins)
+                            .AllowAnyHeader()
+                            .AllowAnyMethod()
+                            .AllowCredentials();
+                    }
+                    else
+                    {
+                        // No origins specified - CORS will deny all cross-origin requests
+                        Log.Warning("CORS policy created with no allowed origins. Cross-origin requests will be rejected.");
+                    }
                 });
             });
 
             services.AddHttpContextAccessor();
             
-            // Поддержка больших файлов - УВЕЛИЧИВАЕМ ДО 500 МБ
+            // Upload limits - вынесены в ENV
+            int maxUploadSizeBytes = 100_000_000; // default 100 MB
+            var maxUploadSizeEnv = Environment.GetEnvironmentVariable("MAX_UPLOAD_SIZE_BYTES");
+            if (!string.IsNullOrWhiteSpace(maxUploadSizeEnv) && int.TryParse(maxUploadSizeEnv, out var parsedSize))
+            {
+                maxUploadSizeBytes = parsedSize;
+                Log.Information("Max upload size configured: {MaxUploadSizeBytes} bytes", maxUploadSizeBytes);
+            }
+            else
+            {
+                Log.Information("Using default max upload size: {MaxUploadSizeBytes} bytes", maxUploadSizeBytes);
+            }
+
             services.Configure<FormOptions>(options =>
             {
-                options.MultipartBodyLengthLimit = 500_000_000; // 500 MB
+                options.MultipartBodyLengthLimit = maxUploadSizeBytes;
                 options.ValueLengthLimit = int.MaxValue;
                 options.MultipartBoundaryLengthLimit = int.MaxValue;
                 options.MemoryBufferThreshold = int.MaxValue;
             });
 
-            // Поддержка больших файлов для Kestrel
             services.Configure<IISServerOptions>(options =>
             {
-                options.MaxRequestBodySize = 500_000_000; // 500 MB
+                options.MaxRequestBodySize = maxUploadSizeBytes;
             });
 
             services.Configure<KestrelServerOptions>(options =>
             {
-                options.Limits.MaxRequestBodySize = 500_000_000; // 500 MB
+                options.Limits.MaxRequestBodySize = maxUploadSizeBytes;
             });
 
             // Основные сервисы MVC
@@ -103,18 +139,25 @@ namespace Franchisee.Web.Configuration
                     }
                 });
 
-                // загрузки файлов в Swagger
                 c.OperationFilter<FileUploadOperationFilter>();
-
-                // Добавляем поддержку enum как строк
                 c.UseInlineDefinitionsForEnums();
             });
 
             // JWT Authentication
-            var key = configuration["Jwt:Key"];
+            var key = Environment.GetEnvironmentVariable("JWT_KEY");
             if (string.IsNullOrEmpty(key))
-                throw new ArgumentNullException(nameof(key), "JWT Key не может быть пустым.");
+                throw new ArgumentNullException(nameof(key), "JWT_KEY не задан в ENV.");
+
+            // Проверка длины JWT ключа (минимум 32 байта для безопасности)
+            if (Encoding.ASCII.GetBytes(key).Length < 32)
+            {
+                Log.Warning("JWT_KEY is weak. Recommended length is at least 32 bytes. Current length: {Length} bytes", Encoding.ASCII.GetBytes(key).Length);
+            }
+
             var keyBytes = Encoding.ASCII.GetBytes(key);
+            var issuer = Environment.GetEnvironmentVariable("JWT_ISSUER");
+            var audience = Environment.GetEnvironmentVariable("JWT_AUDIENCE");
+
             services.AddAuthentication(options =>
             {
                 options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
@@ -128,8 +171,14 @@ namespace Franchisee.Web.Configuration
                 {
                     ValidateIssuerSigningKey = true,
                     IssuerSigningKey = new SymmetricSecurityKey(keyBytes),
-                    ValidateIssuer = false,
-                    ValidateAudience = false,
+
+                    ValidateIssuer = true,
+                    ValidateAudience = true,
+
+                    ValidIssuer = issuer,
+                    ValidAudience = audience ?? "Franchisee.WebUsers",
+
+                    ValidateLifetime = true,
                     ClockSkew = TimeSpan.Zero
                 };
 
@@ -137,7 +186,6 @@ namespace Franchisee.Web.Configuration
                 {
                     OnTokenValidated = context =>
                     {
-                        // Просто проверяем что claim существует, без запроса в БД
                         var userIdClaim = context.Principal?.FindFirst("UserId");
                         
                         if (userIdClaim == null)
@@ -146,7 +194,6 @@ namespace Franchisee.Web.Configuration
                             return Task.CompletedTask;
                         }
                         
-                        // Здесь можно добавить кэширование статуса блокировки
                         return Task.CompletedTask;
                     },
 
@@ -154,7 +201,6 @@ namespace Franchisee.Web.Configuration
                     {
                         var path = context.HttpContext.Request.Path;
 
-                        // SignalR token support
                         var accessToken = context.Request.Query["access_token"].FirstOrDefault();
 
                         if (!string.IsNullOrEmpty(accessToken) &&
@@ -164,7 +210,6 @@ namespace Franchisee.Web.Configuration
                             return Task.CompletedTask;
                         }
 
-                        // Authorization header
                         var authHeader = context.Request.Headers["Authorization"].FirstOrDefault();
 
                         if (!string.IsNullOrEmpty(authHeader) &&
@@ -174,7 +219,6 @@ namespace Franchisee.Web.Configuration
                             return Task.CompletedTask;
                         }
 
-                        // Cookie fallback
                         if (path.StartsWithSegments("/api/media") &&
                             context.Request.Cookies.TryGetValue("media_auth", out var cookieToken))
                         {
@@ -198,43 +242,54 @@ namespace Franchisee.Web.Configuration
                 options.AddPolicy("ManagerOrHigher", policy => policy.RequireRole("Manager", "Admin", "SuperAdmin"));
             });
 
-            // Регистрируем контекст БД
+            // Регистрируем контекст БД с проверкой ENV
+            var host = Environment.GetEnvironmentVariable("DB_HOST");
+            var port = Environment.GetEnvironmentVariable("DB_PORT");
+            var db = Environment.GetEnvironmentVariable("DB_NAME");
+            var user = Environment.GetEnvironmentVariable("DB_USER");
+            var pass = Environment.GetEnvironmentVariable("DB_PASSWORD");
+
+            // Проверка наличия всех переменных БД
+            var missingDbVars = new List<string>();
+            if (string.IsNullOrWhiteSpace(host)) missingDbVars.Add("DB_HOST");
+            if (string.IsNullOrWhiteSpace(port)) missingDbVars.Add("DB_PORT");
+            if (string.IsNullOrWhiteSpace(db)) missingDbVars.Add("DB_NAME");
+            if (string.IsNullOrWhiteSpace(user)) missingDbVars.Add("DB_USER");
+            if (string.IsNullOrWhiteSpace(pass)) missingDbVars.Add("DB_PASSWORD");
+
+            if (missingDbVars.Any())
+            {
+                var error = $"Missing database environment variables: {string.Join(", ", missingDbVars)}";
+                Log.Error(error);
+                throw new InvalidOperationException(error);
+            }
+
+            var connectionString = $"Host={host};Port={port};Database={db};Username={user};Password={pass};";
+            
+            Log.Information("Database connection configured for: {Host}:{Port}/{Database}", host, port, db);
+
             services.AddDbContext<ApplicationDbContext>(options =>
-                options.UseNpgsql(configuration.GetConnectionString("DefaultConnection")));
+                options.UseNpgsql(connectionString));
 
             // Репозитории и сервисы
             services.AddScoped<Franchisee.Web.Services.Users.Repositories.IManagerRepository, Franchisee.Web.Services.Users.Repositories.ManagerRepository>();
             services.AddScoped<Franchisee.Web.Services.Orders.Repositories.IOrderRepository, Franchisee.Web.Services.Orders.Repositories.OrderRepository>();
-
-            // Регистрация сервисов
             services.AddScoped<Franchisee.Web.Services.Notifications.Core.INotificationService, Franchisee.Web.Services.Notifications.Core.NotificationService>();
-
-            // Регистрация стратегий печати 
             services.AddScoped<IPrintStrategy, DefaultPrintStrategy>();
             services.AddScoped<IPrintStrategy, WorkerPrintStrategy>();
-
-            // Регистрация фабрики стратегий
             services.AddScoped<PrintStrategyFactory>();
-
-            // Фоновые сервисы
             services.AddHostedService<OldNotificationsCleanupService>();
             services.AddHostedService<PostponedNotificationCleanupService>();
-
-            // Обновляем сервис очистки временных файлов для работы с MediaService
             services.AddHostedService<ExpiredTempCleanupService>();
-
             services.AddScoped<ExcelDocumentBuilder>();
             services.AddScoped<HtmlDocumentBuilder>();
             services.AddScoped<IPrintDocumentBuilder, ExcelDocumentBuilder>(sp => sp.GetRequiredService<ExcelDocumentBuilder>());
             services.AddScoped<IPrintDocumentBuilder, HtmlDocumentBuilder>(sp => sp.GetRequiredService<HtmlDocumentBuilder>());
-
-            // Регистрируем сервис печати
             services.AddScoped<IPrintService, PrintService>();
         }
 
         public static void ConfigurePipeline(IApplicationBuilder app, IWebHostEnvironment env)
         {
-            // СОЗДАЕМ ПАПКИ ДЛЯ ЗАГРУЗОК
             CreateUploadDirectories(app, env);
 
             if (env.IsDevelopment())
@@ -255,17 +310,11 @@ namespace Franchisee.Web.Configuration
                 FileProvider = new PhysicalFileProvider(
                 Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "uploads")),
                 RequestPath = "/uploads",
-
-                // Увеличиваем лимиты для статических файлов
-                ServeUnknownFileTypes = true,
                 DefaultContentType = "application/octet-stream"
             });
 
             app.UseRouting();
-
-            // CORS
             app.UseCors("AllowFrontend");
-
             app.UseAuthentication();
             app.UseAuthorization();
 
@@ -273,7 +322,6 @@ namespace Franchisee.Web.Configuration
             {
                 endpoints.MapControllers();
 
-                // SignalR endpoint
                 endpoints.MapHub<NotificationHub>("/api/notificationhub", options =>
                 {
                     options.Transports =
@@ -296,22 +344,22 @@ namespace Franchisee.Web.Configuration
             if (!Directory.Exists(uploadsPath))
             {
                 Directory.CreateDirectory(uploadsPath);
-                Log.Information("Создана папка для загрузок: {UploadsPath}", uploadsPath);
+                Log.Information("Created upload directory: {UploadsPath}", uploadsPath);
             }
             if (!Directory.Exists(tempPath))
             {
                 Directory.CreateDirectory(tempPath);
-                Log.Information("Создана папка для временных файлов: {TempPath}", tempPath);
+                Log.Information("Created temp directory: {TempPath}", tempPath);
             }
             if (!Directory.Exists(tempVideosPath))
             {
                 Directory.CreateDirectory(tempVideosPath);
-                Log.Information("Создана папка для временных видео: {TempVideosPath}", tempVideosPath);
+                Log.Information("Created temp videos directory: {TempVideosPath}", tempVideosPath);
             }
             if (!Directory.Exists(ordersPath))
             {
                 Directory.CreateDirectory(ordersPath);
-                Log.Information("Создана папка для заказов: {OrdersPath}", ordersPath);
+                Log.Information("Created orders directory: {OrdersPath}", ordersPath);
             }
         }
     }
@@ -337,7 +385,7 @@ namespace Franchisee.Web.Configuration
                                     ["file"] = new OpenApiSchema {
                                         Type = "string",
                                         Format = "binary",
-                                        Description = "Выберите файл для загрузки"
+                                        Description = "Select file to upload"
                                     }
                                 },
                                 Required = new HashSet<string> { "file" }

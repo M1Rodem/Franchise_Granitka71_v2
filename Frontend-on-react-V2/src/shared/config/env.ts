@@ -5,10 +5,11 @@ const getEnvString = (key: string): string | null => {
   return typeof value === 'string' && value.trim().length > 0 ? value : null;
 };
 
-const apiBaseUrl = '/api';
+const apiBaseUrl = getEnvString('VITE_API_BASE_URL') ?? '/api';
+const signalRUrl = getEnvString('VITE_SIGNALR_URL') ?? `${apiBaseUrl}/notificationhub`;
 
 export const env = {
   apiBaseUrl,
-  signalRUrl: `${apiBaseUrl}/notificationhub`,
+  signalRUrl,
   yandexMapApiKey: getEnvString('VITE_YANDEX_MAP_API_KEY'),
 } as const;

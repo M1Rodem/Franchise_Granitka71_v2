@@ -97,7 +97,15 @@ class SignalRService {
   }
 
   private getToken(): string | null {
-    return useAuthStore.getState().token
+    const raw = localStorage.getItem('auth-session')
+    if (!raw) return null
+
+    try {
+      const parsed = JSON.parse(raw)
+      return parsed.token
+    } catch {
+      return null
+    }
   }
 
   private isAuthenticated(): boolean {

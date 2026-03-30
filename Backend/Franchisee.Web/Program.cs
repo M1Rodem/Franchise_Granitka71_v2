@@ -6,13 +6,41 @@ using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using Serilog;
 using Serilog.Events;
+using DotNetEnv;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Инициализация Serilog
+if (builder.Environment.IsDevelopment())
+{
+    Env.Load();
+}
+
+string[] requiredEnv = {
+    "JWT_KEY",
+    "JWT_ISSUER",
+    "JWT_AUDIENCE",
+    "JWT_EXPIRE_MINUTES",
+    "DB_HOST",
+    "DB_PORT",
+    "DB_NAME",
+    "DB_USER",
+    "DB_PASSWORD",
+    "ALLOWED_ORIGINS"
+};
+
+foreach (var key in requiredEnv)
+{
+    var value = Environment.GetEnvironmentVariable(key);
+    if (string.IsNullOrWhiteSpace(value))
+    {
+        throw new Exception($"ENV {key} is missing. Application cannot start.");
+    }
+}
+
 Log.Logger = new LoggerConfiguration()
-    .MinimumLevel.Debug()
+    .MinimumLevel.Information()
     .MinimumLevel.Override("Microsoft", LogEventLevel.Warning)
+    .MinimumLevel.Override("System", LogEventLevel.Warning)
     .Enrich.FromLogContext()
     .Destructure.ByTransforming<LoginDto>(dto => new { dto.Username })
     .Destructure.ByTransforming<CreateManagerDto>(dto => new { dto.Username, dto.FullName, dto.Role })
@@ -22,103 +50,92 @@ Log.Logger = new LoggerConfiguration()
     .WriteTo.File(
         "logs/app.log",
         rollingInterval: RollingInterval.Day,
+        retainedFileCountLimit: 7,
         outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] {Message:lj}{NewLine}{Exception}"
     )
     .CreateLogger();
+
 builder.Host.UseSerilog();
 
-// 1. SignalR ДОБАВЛЯЕМ ПЕРВЫМ
-builder.Services.AddSignalR(options =>
-{
-    options.EnableDetailedErrors = true;
-    options.MaximumReceiveMessageSize = 102400; // 100KB
-    options.KeepAliveInterval = TimeSpan.FromSeconds(15);
-    options.ClientTimeoutInterval = TimeSpan.FromSeconds(30);
-    options.HandshakeTimeout = TimeSpan.FromSeconds(30);
-
-    if (builder.Environment.IsDevelopment())
-    {
-        options.EnableDetailedErrors = true;
-    }
-});
-
-// 2. Основная конфигурация сервисов
-AppConfiguration.ConfigureServices(builder.Services, builder.Configuration, builder.Environment);
-
-// 3. Регистрация новых сервисов
-builder.Services.AddScoped<Franchisee.Web.Services.Plots.Repositories.IPlotRepository, Franchisee.Web.Services.Plots.Repositories.PlotRepository>();
-
-builder.Services.AddScoped<Franchisee.Web.Services.Media.Core.IMediaService, Franchisee.Web.Services.Media.Core.MediaService>();
-
-var app = builder.Build();
-
-// СОЗДАНИЕ АДМИНА ПРИ ПЕРВОМ ЗАПУСКЕ (УДАЛИ ПОСЛЕ НАСТРОЙКИ)
 try
 {
-    using var scope = app.Services.CreateScope();
-    var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-    var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+    Log.Information("Application starting up...");
+    Log.Information("Environment: {Environment}", builder.Environment.EnvironmentName);
 
-    // Ждем пока БД будет готова
-    await context.Database.MigrateAsync();
-
-    // Проверяем есть ли админ
-    var hasAdmin = await context.Managers
-        .AnyAsync(m => m.Role == UserRole.SuperAdmin && !m.IsBlocked);
-
-    if (!hasAdmin)
+    builder.Services.AddSignalR(options =>
     {
-        var adminUser = new Manager
+        // EnableDetailedErrors только в development
+        options.EnableDetailedErrors = builder.Environment.IsDevelopment();
+        options.MaximumReceiveMessageSize = 102400; // 100KB
+        options.KeepAliveInterval = TimeSpan.FromSeconds(15);
+        options.ClientTimeoutInterval = TimeSpan.FromSeconds(30);
+        options.HandshakeTimeout = TimeSpan.FromSeconds(30);
+    });
+
+    AppConfiguration.ConfigureServices(builder.Services, builder.Configuration, builder.Environment);
+
+    builder.Services.AddScoped<Franchisee.Web.Services.Plots.Repositories.IPlotRepository, Franchisee.Web.Services.Plots.Repositories.PlotRepository>();
+    builder.Services.AddScoped<Franchisee.Web.Services.Media.Core.IMediaService, Franchisee.Web.Services.Media.Core.MediaService>();
+
+    var app = builder.Build();
+
+    app.MapGet("/health", async (ApplicationDbContext db) =>
+    {
+        try
         {
-            Username = "superadmin",
-            PasswordHash = BCrypt.Net.BCrypt.HashPassword("superadmin"),
-            FullName = "Системный администратор",
-            Role = UserRole.SuperAdmin,
-            IsBlocked = false
-        };
+            var canConnect = await db.Database.CanConnectAsync();
+            return canConnect
+                ? Results.Ok(new { status = "healthy" })
+                : Results.StatusCode(500);
+        }
+        catch
+        {
+            return Results.StatusCode(500);
+        }
+    })
+    .AllowAnonymous();
 
-        context.Managers.Add(adminUser);
-        await context.SaveChangesAsync();
-
-        logger.LogInformation("Создан системный администратор: superadmin / superadmin");
-        logger.LogWarning("НЕ ЗАБУДЬ СМЕНИТЬ ПАРОЛЬ и УДАЛИТЬ ЭТОТ КОД!");
-    }
-    else
+    if (!app.Environment.IsDevelopment())
     {
-        logger.LogInformation("Администратор уже существует в системе");
+        app.UseExceptionHandler(exceptionHandlerApp =>
+        {
+            exceptionHandlerApp.Run(async context =>
+            {
+                context.Response.StatusCode = 500;
+                context.Response.ContentType = "application/json";
+                await context.Response.WriteAsJsonAsync(new { message = "Произошла внутренняя ошибка сервера" });
+            });
+        });
     }
+
+    AppConfiguration.ConfigurePipeline(app, app.Environment);
+
+    var allowedOrigins = Environment.GetEnvironmentVariable("ALLOWED_ORIGINS")?
+    .Split(',', StringSplitOptions.RemoveEmptyEntries)
+    .Select(o => o.Trim())
+    .ToArray() ?? Array.Empty<string>();
+
+    Log.Information("WebSocket allowed origins: {Origins}", string.Join(", ", allowedOrigins));
+
+    var webSocketOptions = new WebSocketOptions
+    {
+        KeepAliveInterval = TimeSpan.FromSeconds(120)
+    };
+
+    foreach (var origin in allowedOrigins)
+    {
+        webSocketOptions.AllowedOrigins.Add(origin);
+    }
+
+    app.UseWebSockets(webSocketOptions);
+    app.Run();
 }
 catch (Exception ex)
 {
-    var logger = app.Services.GetRequiredService<ILogger<Program>>();
-    logger.LogError(ex, "Ошибка при создании администратора");
+    Log.Fatal(ex, "Application terminated unexpectedly");
+    throw;
 }
-
-// Исправленный порядок middleware
-
-// Обработка ошибок
-if (!app.Environment.IsDevelopment())
+finally
 {
-    app.UseExceptionHandler(exceptionHandlerApp =>
-    {
-        exceptionHandlerApp.Run(async context =>
-        {
-            context.Response.StatusCode = 500;
-            context.Response.ContentType = "application/json";
-            await context.Response.WriteAsJsonAsync(new { message = "Произошла внутренняя ошибка сервера" });
-        });
-    });
+    Log.CloseAndFlush();
 }
-
-// Основной конвейер из AppConfiguration
-AppConfiguration.ConfigurePipeline(app, app.Environment);
-
-// WebSocket для SignalR
-app.UseWebSockets(new WebSocketOptions
-{
-    KeepAliveInterval = TimeSpan.FromSeconds(120),
-    AllowedOrigins = { "http://localhost:3000", "https://localhost:3000", "http://localhost:5000", "https://localhost:5001", "https://a2zsulyprv.localto.net" }
-});
-
-// Запуск приложения
-app.Run();

@@ -9,7 +9,7 @@ type CheckBlockingResponse = {
 }
 
 async function fetchBlocking(): Promise<CheckBlockingResponse> {
-  const { data } = await httpClient.get('/api/notifications/check-blocking')
+  const { data } = await httpClient.get('/notifications/check-blocking')
   return data
 }
 

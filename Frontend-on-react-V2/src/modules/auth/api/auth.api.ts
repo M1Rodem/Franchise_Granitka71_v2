@@ -6,6 +6,6 @@ export const authApi = {
     return httpClient.post<LoginResponse>('/auth/login', payload).then((response) => response.data);
   },
   logout(): Promise<void> {
-    return httpClient.post('/api/auth/logout').then(() => undefined);
+    return httpClient.post('/auth/logout').then(() => undefined);
   },
 };

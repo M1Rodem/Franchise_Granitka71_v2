@@ -16,7 +16,7 @@ export const usersApi = {
     params: UsersListQueryParams
   ): Promise<PagedResponse<UserDto>> {
 
-    const response = await httpClient.get("/api/Users/paged", {
+    const response = await httpClient.get("/Users/paged", {
       params: {
         searchQuery: params.searchQuery || undefined,
         role: params.role || undefined,
@@ -30,14 +30,14 @@ export const usersApi = {
 
   async getUserById(id: number): Promise<UserDetailsDto> {
 
-    const response = await httpClient.get(`/api/Users/${id}`)
+    const response = await httpClient.get(`/Users/${id}`)
 
     return response.data
   },
 
   async createUser(payload: CreateUserDto): Promise<void> {
 
-    await httpClient.post("/api/Users", payload)
+    await httpClient.post("/Users", payload)
   },
 
   async updateUser(
@@ -45,12 +45,12 @@ export const usersApi = {
     payload: UpdateUserDto
   ): Promise<void> {
 
-    await httpClient.put(`/api/Users/${id}`, payload)
+    await httpClient.put(`/Users/${id}`, payload)
   },
 
   async deleteUser(id: number): Promise<void> {
 
-    await httpClient.delete(`/api/Users/${id}`)
+    await httpClient.delete(`/Users/${id}`)
   },
 
   async changeRole(
@@ -59,18 +59,18 @@ export const usersApi = {
   ): Promise<void> {
 
     await httpClient.post(
-      `/api/Users/${id}/change-role`,
+      `/Users/${id}/change-role`,
       payload
     )
   },
 
   async blockUser(id: number): Promise<void> {
 
-    await httpClient.post(`/api/Users/${id}/block`)
+    await httpClient.post(`/Users/${id}/block`)
   },
 
   async unblockUser(id: number): Promise<void> {
 
-    await httpClient.post(`/api/Users/${id}/unblock`)
+    await httpClient.post(`/Users/${id}/unblock`)
   },
 }

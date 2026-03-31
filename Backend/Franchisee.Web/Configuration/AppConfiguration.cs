@@ -298,11 +298,7 @@ namespace Franchisee.Web.Configuration
                 app.UseSwaggerUI();
             }
 
-            if (env.IsProduction())
-            {
-                app.UseHttpsRedirection();
-            }
-
+            
             // Статические файлы
             app.UseStaticFiles();
             app.UseStaticFiles(new StaticFileOptions

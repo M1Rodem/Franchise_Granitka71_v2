@@ -10,11 +10,13 @@ using DotNetEnv;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Загружаем .env СРАЗУ, в самом начале
 if (builder.Environment.IsDevelopment())
 {
     Env.Load();
 }
 
+// Проверяем переменные ТОЛЬКО после загрузки
 string[] requiredEnv = {
     "JWT_KEY",
     "JWT_ISSUER",

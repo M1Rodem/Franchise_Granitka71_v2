@@ -41,3 +41,47 @@
   scrollbar-width: thin;
   scrollbar-color: var(--glass-scroll-thumb-active) var(--glass-scroll-track);
 }
+
+/* ===== CUSTOM SCROLL ===== */
+
+.scroll {
+  overflow-y: auto;
+  overflow-x: hidden;
+
+  background: var(--glass-scroll-track);
+  scrollbar-gutter: stable both-edges;
+}
+
+.scrollContent {
+  display: flex;
+  flex-direction: column;
+  gap: var(--size-12);
+
+  padding-right: var(--size-12); 
+}
+
+/* ===== SCROLLBAR (WEBKIT) ===== */
+
+.scroll::-webkit-scrollbar {
+  width: var(--size-8);
+}
+
+.scroll::-webkit-scrollbar-track {
+  background: var(--glass-scroll-track);
+}
+
+.scroll::-webkit-scrollbar-thumb {
+  background: var(--glass-scroll-thumb);
+  border-radius: var(--size-10);
+}
+
+.scroll::-webkit-scrollbar-thumb:hover {
+  background: var(--glass-scroll-thumb-hover);
+}
+
+/* ===== FIREFOX ===== */
+
+.scroll {
+  scrollbar-width: thin;
+  scrollbar-color: var(--glass-scroll-thumb-active) var(--glass-scroll-track);
+}

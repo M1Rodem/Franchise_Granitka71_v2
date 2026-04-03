@@ -37,8 +37,6 @@ package-lock.json
 # Environment files (secrets)
 .env
 .env.*
-!.env.example
-!.env.development
 Backend/.env
 
 # Uploaded files

@@ -26,7 +26,7 @@ packages/
 project.lock.json
 artifacts/
 
-# Node.js / React
+# Node.js / React (только зависимости и сборка)
 node_modules/
 dist/
 .tmp/
@@ -34,10 +34,17 @@ dist/
 .node_repl_history
 package-lock.json
 
-# Environment files (secrets)
+# Environment files (секреты и настройки окружения)
 .env
 .env.*
+!.env.example
 Backend/.env
+*.development
+*.local
+
+# Настройки запуска (НЕ ТЯНЕМ В GIT!)
+**/Properties/launchSettings.json
+**/appsettings.Development.json
 
 # Uploaded files
 **/wwwroot/uploads/
@@ -49,9 +56,8 @@ Backend/.env
 *.bak
 *.backup
 
-# Entity Framework Migrations (keep in repo)
+# Entity Framework Migrations (сохраняем в репозитории)
 # Migrations are version controlled
-
 # EF Migrations
 **/Migrations/
 !**/Migrations/*.cs
@@ -76,4 +82,4 @@ Frontend-on-react/
 
 # Frontend build cache
 .eslintcache
-*.tsbuildinfo"Frontend-on-react-V2/.env.development" 
+*.tsbuildinfo

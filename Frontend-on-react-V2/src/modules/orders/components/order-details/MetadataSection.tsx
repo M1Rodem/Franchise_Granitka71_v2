@@ -7,15 +7,17 @@ import layout from '@/shared/ui/form-layout.module.css'
 interface Props {
   manager: string
   orderDate: string
-  createdAt: string
   updatedAt: string
+  dateOnly?: boolean
 }
 
-function formatDate(dateString: string) {
+function formatDate(dateString: string, dateOnly?: boolean) {
   try {
-    return format(new Date(dateString), 'dd.MM.yyyy HH:mm', {
-      locale: ru,
-    })
+    return format(
+      new Date(dateString),
+      dateOnly ? 'dd.MM.yyyy' : 'dd.MM.yyyy HH:mm',
+      { locale: ru }
+    )
   } catch {
     return dateString
   }
@@ -24,8 +26,8 @@ function formatDate(dateString: string) {
 export function MetadataSection({
   manager,
   orderDate,
-  createdAt,
   updatedAt,
+  dateOnly,
 }: Props) {
   return (
     <section className={surface.surface}>
@@ -39,17 +41,12 @@ export function MetadataSection({
 
         <div className={layout.field}>
           <span className={layout.label}>Дата заказа</span>
-          <span className={layout.value}>{formatDate(orderDate)}</span>
-        </div>
-
-        <div className={layout.field}>
-          <span className={layout.label}>Создан</span>
-          <span className={layout.value}>{formatDate(createdAt)}</span>
+          <span className={layout.value}>{formatDate(orderDate, dateOnly)}</span>
         </div>
 
         <div className={layout.field}>
           <span className={layout.label}>Обновлён</span>
-          <span className={layout.value}>{formatDate(updatedAt)}</span>
+          <span className={layout.value}>{formatDate(updatedAt, dateOnly)}</span>
         </div>
       </div>
     </section>

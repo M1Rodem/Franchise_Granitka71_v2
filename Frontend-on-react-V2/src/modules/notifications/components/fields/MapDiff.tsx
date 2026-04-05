@@ -73,9 +73,9 @@ export function MapDiff({ data }: Props) {
     const a =
       Math.sin(dLat / 2) * Math.sin(dLat / 2) +
       Math.sin(dLon / 2) *
-        Math.sin(dLon / 2) *
-        Math.cos(lat1) *
-        Math.cos(lat2)
+      Math.sin(dLon / 2) *
+      Math.cos(lat1) *
+      Math.cos(lat2)
 
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
 
@@ -130,8 +130,7 @@ export function MapDiff({ data }: Props) {
 
   if (plotChanged) {
     changes.push(
-      `Участок: ${oldMap.plot || 'не выбран'} → ${
-        newMap.plot || 'не выбран'
+      `Участок: ${oldMap.plot || 'не выбран'} → ${newMap.plot || 'не выбран'
       }`
     )
   }
@@ -152,16 +151,14 @@ export function MapDiff({ data }: Props) {
 
   if (inspectionPlaceChanged) {
     changes.push(
-      `Место смотрел: ${oldMap.inspectionPlace || 'не указано'} → ${
-        newMap.inspectionPlace || 'не указано'
+      `Кто смотрел место: ${oldMap.inspectionPlace || 'не указано'} → ${newMap.inspectionPlace || 'не указано'
       }`
     )
   }
 
   if (distanceChanged) {
     changes.push(
-      `Расстояние: ${
-        oldMap.distanceKm?.toFixed(2) || '0'
+      `Расстояние: ${oldMap.distanceKm?.toFixed(2) || '0'
       } км → ${newMap.distanceKm?.toFixed(2) || '0'} км`
     )
   }
@@ -186,10 +183,9 @@ export function MapDiff({ data }: Props) {
       diffNumber !== null ? diffNumber.toFixed(2) : null
 
     changes.push(
-      `Расстояние между точками: ${oldVal} км → ${newVal} км${
-        diff
-          ? ` (${diffNumber! > 0 ? '+' : ''}${diff} км)`
-          : ''
+      `Расстояние между точками: ${oldVal} км → ${newVal} км${diff
+        ? ` (${diffNumber! > 0 ? '+' : ''}${diff} км)`
+        : ''
       }`
     )
   }
@@ -230,15 +226,15 @@ export function MapDiff({ data }: Props) {
     return (
       <YandexMapProvider>
         <MapView center={center} zoom={14} readOnly>
-          {hasPlot && <MapMarker coords={plotCoords!} />}
+          {hasPlot && <MapMarker coords={plotCoords} />}
           {hasDestination && (
-            <MapMarker coords={destCoords!} />
+            <MapMarker coords={destCoords} />
           )}
 
           {hasRoute && (
             <RouteBuilder
-              from={plotCoords!}
-              to={destCoords!}
+              from={plotCoords}
+              to={destCoords}
             />
           )}
         </MapView>
@@ -254,18 +250,16 @@ export function MapDiff({ data }: Props) {
           <div className={buttonStyles.mapToggle}>
             <button
               onClick={() => setShowOldMap(true)}
-              className={`${buttonStyles.mapToggleBtn} ${
-                showOldMap ? buttonStyles.mapToggleBtnActive : ''
-              }`}
+              className={`${buttonStyles.mapToggleBtn} ${showOldMap ? buttonStyles.mapToggleBtnActive : ''
+                }`}
             >
               Было
             </button>
 
             <button
               onClick={() => setShowOldMap(false)}
-              className={`${buttonStyles.mapToggleBtn} ${
-                !showOldMap ? buttonStyles.mapToggleBtnActive : ''
-              }`}
+              className={`${buttonStyles.mapToggleBtn} ${!showOldMap ? buttonStyles.mapToggleBtnActive : ''
+                }`}
             >
               Стало
             </button>
@@ -308,88 +302,88 @@ export function MapDiff({ data }: Props) {
 
       {/* текстовые изменения */}
       {changes.length > 0 && (
-          <div className={surfaceStyles.diffList}>
-            {changes.map((change, index) => {
-              const [label, value = ''] = change.split(': ')
+        <div className={surfaceStyles.diffList}>
+          {changes.map((change, index) => {
+            const [label, value = ''] = change.split(': ')
 
-              let from = ''
-              let to = ''
-              let diffRaw = ''
-              let diffNumber: number | null = null
+            let from = ''
+            let to = ''
+            let diffRaw = ''
+            let diffNumber: number | null = null
 
-              if (value.includes('(')) {
-                const mainPart = value.split(' (')[0]
-                diffRaw = value.match(/\((.*?)\)/)?.[1] || ''
+            if (value.includes('(')) {
+              const mainPart = value.split(' (')[0]
+              diffRaw = value.match(/\((.*?)\)/)?.[1] || ''
 
-                const parsed = parseFloat(diffRaw.replace('км', '').trim())
-                diffNumber = isNaN(parsed) ? null : parsed
+              const parsed = parseFloat(diffRaw.replace('км', '').trim())
+              diffNumber = isNaN(parsed) ? null : parsed
 
-                const parts = mainPart.split(' → ')
-                from = parts[0]
-                to = parts[1]
-              } else {
-                const parts = value.split(' → ')
-                from = parts[0]
-                to = parts[1]
-              }
+              const parts = mainPart.split(' → ')
+              from = parts[0]
+              to = parts[1]
+            } else {
+              const parts = value.split(' → ')
+              from = parts[0]
+              to = parts[1]
+            }
 
-              const isPositive = diffNumber !== null && diffNumber > 0
+            const isPositive = diffNumber !== null && diffNumber > 0
 
-              return (
-                <div key={index} className={surfaceStyles.diffCard}>
-                  {/* TITLE */}
-                  <div
-                    style={{
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'center',
-                    }}
-                  >
-                    <div className={surfaceStyles.diffTitle}>
-                      {label}
-                    </div>
-
-                    <span className={`${surfaceStyles.diffBadge} ${surfaceStyles.diffBadgeChanged}`}>
-                      Изменено
-                    </span>
+            return (
+              <div key={index} className={surfaceStyles.diffCard}>
+                {/* TITLE */}
+                <div
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                  }}
+                >
+                  <div className={surfaceStyles.diffTitle}>
+                    {label}
                   </div>
 
-                  {/* VALUE */}
-                  <div className={surfaceStyles.diffField}>
-                    <div className={surfaceStyles.diffLabel}>
-                      Значение
-                    </div>
+                  <span className={`${surfaceStyles.diffBadge} ${surfaceStyles.diffBadgeChanged}`}>
+                    Изменено
+                  </span>
+                </div>
 
-                    <div className={surfaceStyles.diffValues}>
-                      <span className={surfaceStyles.diffOldChanged}>
-                        <span className={surfaceStyles.hideOnDesktop}>Было: </span>
-                        {from}
+                {/* VALUE */}
+                <div className={surfaceStyles.diffField}>
+                  <div className={surfaceStyles.diffLabel}>
+                    Значение
+                  </div>
+
+                  <div className={surfaceStyles.diffValues}>
+                    <span className={surfaceStyles.diffOldChanged}>
+                      <span className={surfaceStyles.hideOnDesktop}>Было: </span>
+                      {from}
+                    </span>
+
+                    <span className={surfaceStyles.diffArrow}>→</span>
+
+                    <span className={surfaceStyles.diffNewChanged}>
+                      <span className={surfaceStyles.hideOnDesktop}>Стало: </span>
+                      {to}
+                    </span>
+
+                    {diffRaw && diffNumber !== null && (
+                      <span
+                        style={{
+                          fontSize: 12,
+                          color: isPositive ? '#6ee7b7' : '#fca5a5',
+                          marginLeft: 6,
+                        }}
+                      >
+                        ({diffRaw})
                       </span>
-
-                      <span className={surfaceStyles.diffArrow}>→</span>
-
-                      <span className={surfaceStyles.diffNewChanged}>
-                        <span className={surfaceStyles.hideOnDesktop}>Стало: </span>
-                        {to}
-                      </span>
-
-                      {diffRaw && diffNumber !== null && (
-                        <span
-                          style={{
-                            fontSize: 12,
-                            color: isPositive ? '#6ee7b7' : '#fca5a5',
-                            marginLeft: 6,
-                          }}
-                        >
-                          ({diffRaw})
-                        </span>
-                      )}
-                    </div>
+                    )}
                   </div>
                 </div>
-              )
-            })}
-          </div>
+              </div>
+            )
+          })}
+        </div>
       )}
     </div>
   )

@@ -1,6 +1,6 @@
 import type { PaymentsChangeDto } from '../../types/notifications.types'
 import surfaceStyles from '@/shared/ui/surface.module.css'
-import { formatNotificationDateTime } from '../../utils/date'
+import { formatNotificationDateOnly } from '../../utils/date'
 
 interface Props {
   data: PaymentsChangeDto
@@ -18,94 +18,94 @@ export function PaymentsDiff({ data }: Props) {
           .filter(item => item.oldPayment || item.newPayment)
           .map(({ oldPayment, newPayment }, index) => {
 
-          // тип изменения
-          const isAdded = !oldPayment && !!newPayment
-          const isRemoved = !!oldPayment && !newPayment
-          const isChanged =
-            oldPayment &&
-            newPayment &&
-            (
-              oldPayment.amount !== newPayment.amount ||
-              oldPayment.note !== newPayment.note ||
-              oldPayment.paymentDate !== newPayment.paymentDate
-            )
+            // тип изменения
+            const isAdded = !oldPayment && !!newPayment
+            const isRemoved = !!oldPayment && !newPayment
+            const isChanged =
+              oldPayment &&
+              newPayment &&
+              (
+                oldPayment.amount !== newPayment.amount ||
+                oldPayment.note !== newPayment.note ||
+                oldPayment.paymentDate !== newPayment.paymentDate
+              )
 
-          const title =
-            newPayment?.paymentType ||
-            oldPayment?.paymentType ||
-            '—'
+            const title =
+              newPayment?.paymentType ||
+              oldPayment?.paymentType ||
+              '—'
 
-          return (
-            <div key={index} className={surfaceStyles.diffCard}>
-              
-              {/* HEADER */}
-              <div
-                style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                }}
-              >
-                <div className={surfaceStyles.diffTitle}>
-                  {title}
+            return (
+              <div key={index} className={surfaceStyles.diffCard}>
+
+                {/* HEADER */}
+                <div
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                  }}
+                >
+                  <div className={surfaceStyles.diffTitle}>
+                    {title}
+                  </div>
+
+                  {isAdded && (
+                    <span className={`${surfaceStyles.diffBadge} ${surfaceStyles.diffBadgeAdded}`}>
+                      Добавлено
+                    </span>
+                  )}
+
+                  {isRemoved && (
+                    <span className={`${surfaceStyles.diffBadge} ${surfaceStyles.diffBadgeRemoved}`}>
+                      Удалено
+                    </span>
+                  )}
+
+                  {isChanged && (
+                    <span className={`${surfaceStyles.diffBadge} ${surfaceStyles.diffBadgeChanged}`}>
+                      Изменено
+                    </span>
+                  )}
                 </div>
 
-                {isAdded && (
-                  <span className={`${surfaceStyles.diffBadge} ${surfaceStyles.diffBadgeAdded}`}>
-                    Добавлено
-                  </span>
+                {/* СУММА */}
+                {oldPayment?.amount !== newPayment?.amount && (
+                  <DiffRow
+                    label="Сумма"
+                    oldValue={oldPayment?.amount}
+                    newValue={newPayment?.amount}
+                  />
                 )}
 
-                {isRemoved && (
-                  <span className={`${surfaceStyles.diffBadge} ${surfaceStyles.diffBadgeRemoved}`}>
-                    Удалено
-                  </span>
+                {/* ДАТА */}
+                {oldPayment?.paymentDate !== newPayment?.paymentDate && (
+                  <DiffRow
+                    label="Дата"
+                    oldValue={
+                      oldPayment?.paymentDate
+                        ? formatNotificationDateOnly(oldPayment.paymentDate)
+                        : '—'
+                    }
+                    newValue={
+                      newPayment?.paymentDate
+                        ? formatNotificationDateOnly(newPayment.paymentDate)
+                        : '—'
+                    }
+                  />
                 )}
 
-                {isChanged && (
-                  <span className={`${surfaceStyles.diffBadge} ${surfaceStyles.diffBadgeChanged}`}>
-                    Изменено
-                  </span>
+                {/* ПРИМЕЧАНИЕ */}
+                {oldPayment?.note !== newPayment?.note && (
+                  <DiffRow
+                    label="Примечание"
+                    oldValue={oldPayment?.note || '—'}
+                    newValue={newPayment?.note || '—'}
+                  />
                 )}
               </div>
-
-              {/* СУММА */}
-              {oldPayment?.amount !== newPayment?.amount && (
-                <DiffRow
-                  label="Сумма"
-                  oldValue={oldPayment?.amount}
-                  newValue={newPayment?.amount}
-                />
-              )}
-
-              {/* ДАТА */}
-              {oldPayment?.paymentDate !== newPayment?.paymentDate && (
-                <DiffRow
-                  label="Дата"
-                  oldValue={
-                    oldPayment?.paymentDate
-                      ? formatNotificationDateTime(oldPayment.paymentDate)
-                      : '—'
-                  }
-                  newValue={
-                    newPayment?.paymentDate
-                      ? formatNotificationDateTime(newPayment.paymentDate)
-                      : '—'
-                  }
-                />
-              )}
-
-              {/* ПРИМЕЧАНИЕ */}
-              {oldPayment?.note !== newPayment?.note && (
-                <DiffRow
-                  label="Примечание"
-                  oldValue={oldPayment?.note || '—'}
-                  newValue={newPayment?.note || '—'}
-                />
-              )}
-            </div>
-          )
-        })}
+            )
+          })}
       </div>
     </div>
   )

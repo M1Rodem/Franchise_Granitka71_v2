@@ -28,15 +28,15 @@ namespace Franchisee.Web.Services.Print.Builders
 
         public string BuildHtml(PrintDataModel data)
         {
-            return data.Type == PrintType.Worker 
-                ? BuildWorkerHtml(data) 
+            return data.Type == PrintType.Worker
+                ? BuildWorkerHtml(data)
                 : BuildDefaultHtml(data);
         }
 
         private string BuildDefaultHtml(PrintDataModel data)
         {
             var sb = new StringBuilder();
-            
+
             sb.AppendLine("<!DOCTYPE html>");
             sb.AppendLine("<html>");
             sb.AppendLine("<head>");
@@ -103,7 +103,7 @@ namespace Franchisee.Web.Services.Print.Builders
                 var description = work?.Description ?? "";
                 var note = work?.Note ?? "";
                 var price = (work != null && work.ShowPrice) ? FormatPrice(work.Total) : "";
-                
+
                 sb.AppendLine("<tr>");
                 sb.AppendLine($"<td>{i + 1}.</td>");
                 sb.AppendLine($"<td colspan='3'>{description}</td>");
@@ -133,15 +133,15 @@ namespace Franchisee.Web.Services.Print.Builders
             {
                 var left = i < data.Payments.Count ? data.Payments[i] : null;
                 var right = (i + 4) < data.Payments.Count ? data.Payments[i + 4] : null;
-                
+
                 var leftType = left?.PaymentType ?? (i == 0 ? "Аванс" : "Доплата");
                 var leftAmount = (left != null && left.ShowAmount) ? FormatPrice(left.Amount) : "";
                 var leftDate = (left != null && left.ShowAmount) ? left.PaymentDate.ToString("dd.MM.yyyy") : "";
-                
+
                 var rightType = right?.PaymentType ?? "Доплата";
-                var rightAmount = (right != null && right.ShowAmount) ? FormatPrice(right.Amount) : "";            
+                var rightAmount = (right != null && right.ShowAmount) ? FormatPrice(right.Amount) : "";
                 var rightDate = (right != null && right.ShowAmount) ? right.PaymentDate.ToString("dd.MM.yyyy") : "";
-                
+
                 sb.AppendLine("<tr>");
                 sb.AppendLine($"<td class='bold'>{leftType}</td>");
                 sb.AppendLine($"<td>{leftAmount}</td>");
@@ -182,7 +182,7 @@ namespace Franchisee.Web.Services.Print.Builders
         private string BuildWorkerHtml(PrintDataModel data)
         {
             var sb = new StringBuilder();
-            
+
             sb.AppendLine("<!DOCTYPE html>");
             sb.AppendLine("<html>");
             sb.AppendLine("<head>");

@@ -153,7 +153,7 @@ export function LocationSection() {
       <div className={layout.grid2}>
         <div className={layout.field}>
           <label className={layout.label}>
-            Место осмотрел *
+            Кто смотрел место *
           </label>
           <input
             {...register('inspectionPlace')}
@@ -209,7 +209,7 @@ export function LocationSection() {
                 }
               }}
               onSelect={handleSelect}
-            > 
+            >
               {plotCoords && (
                 <MapMarker coords={plotCoords} />
               )}

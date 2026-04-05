@@ -50,49 +50,49 @@ export default function ArchivedOrderDetailsPage() {
   })
 
   const plotsQuery = usePlots()
-    const resolvedPlotName = useMemo(() => {
-        if (data?.plotName) return data.plotName
+  const resolvedPlotName = (() => {
+    if (data?.plotName) return data.plotName
 
-        if (data?.plotId && plotsQuery.data) {
-            const plot = plotsQuery.data.find(p => p.id === data.plotId)
-            return plot?.name ?? null
-        }
+    if (data?.plotId && plotsQuery.data) {
+      const plot = plotsQuery.data.find(p => p.id === data.plotId)
+      return plot?.name ?? null
+    }
 
-        return null
-    }, [data?.plotName, data?.plotId, plotsQuery.data])
+    return null
+  })()
 
   const plotCoordinates = useMemo(() => {
     if (!data || !plotsQuery.data) return null
 
     const selectedPlot =
-        (typeof data.plotId === 'number'
+      (typeof data.plotId === 'number'
         ? plotsQuery.data.find((p) => p.id === data.plotId)
         : null) ??
-        (data.plotName
+      (data.plotName
         ? plotsQuery.data.find((p) => p.name === data.plotName)
         : null) ??
-        plotsQuery.data.find((p) => p.name === data.place)
+      plotsQuery.data.find((p) => p.name === data.place)
 
     const latitude = selectedPlot?.latitude
     const longitude = selectedPlot?.longitude
 
     if (typeof latitude !== 'number' || typeof longitude !== 'number') {
-        return null
+      return null
     }
 
     return [latitude, longitude] as [number, number]
-    }, [data, plotsQuery.data])
+  }, [data, plotsQuery.data])
 
-    const destinationCoordinates = useMemo(() => {
+  const destinationCoordinates = useMemo(() => {
     if (
-        typeof data?.latitude !== 'number' ||
-        typeof data?.longitude !== 'number'
+      typeof data?.latitude !== 'number' ||
+      typeof data?.longitude !== 'number'
     ) {
-        return null
+      return null
     }
 
     return [data.latitude, data.longitude] as [number, number]
-    }, [data])
+  }, [data])
 
   useEffect(() => {
     if (data) {
@@ -106,9 +106,9 @@ export default function ArchivedOrderDetailsPage() {
 
   if (isLoading) {
     return (
-        <div className={styles.page}>
+      <div className={styles.page}>
         <OrdersTableSkeleton />
-        </div>
+      </div>
     )
   }
 
@@ -144,6 +144,7 @@ export default function ArchivedOrderDetailsPage() {
         orderDate={data.orderDate}
         createdAt={data.createdAt}
         updatedAt={data.updatedAt}
+        dateOnly
       />
 
       <InstallationSection
@@ -153,9 +154,9 @@ export default function ArchivedOrderDetailsPage() {
         latitude={data.latitude}
         longitude={data.longitude}
         distanceKm={
-            data.workItems.find(
+          data.workItems.find(
             w => w.workDescription === 'Расстояние'
-            )?.quantity ?? null
+          )?.quantity ?? null
         }
         plotCoordinates={plotCoordinates}
         destinationCoordinates={destinationCoordinates}

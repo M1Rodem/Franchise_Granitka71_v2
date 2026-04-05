@@ -142,7 +142,6 @@ export default function ArchivedOrderDetailsPage() {
       <MetadataSection
         manager={data.managerFullName}
         orderDate={data.orderDate}
-        createdAt={data.createdAt}
         updatedAt={data.updatedAt}
         dateOnly
       />

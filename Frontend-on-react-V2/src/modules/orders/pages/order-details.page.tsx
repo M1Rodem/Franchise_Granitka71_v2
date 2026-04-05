@@ -157,7 +157,6 @@ export default function OrderDetailsPage() {
       <MetadataSection
         manager={data.managerFullName}
         orderDate={data.orderDate}
-        createdAt={data.createdAt}
         updatedAt={data.updatedAt}
         dateOnly
       />

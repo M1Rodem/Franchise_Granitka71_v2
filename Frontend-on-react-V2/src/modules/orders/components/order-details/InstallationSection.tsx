@@ -27,8 +27,8 @@ export function InstallationSection({
 
   const navigatorUrl = hasNavigatorRoute
     ? `https://yandex.ru/maps/?rtext=` +
-      `${plotCoordinates[0]},${plotCoordinates[1]}` +
-      `~${destinationCoordinates[0]},${destinationCoordinates[1]}`
+    `${plotCoordinates[0]},${plotCoordinates[1]}` +
+    `~${destinationCoordinates[0]},${destinationCoordinates[1]}`
     : null
 
   return (
@@ -42,7 +42,7 @@ export function InstallationSection({
         </div>
 
         <div className={layout.field}>
-          <span className={layout.label}>Место смотрел</span>
+          <span className={layout.label}>Кто смотрел место</span>
           <span className={layout.value}>{inspectionPlace}</span>
         </div>
 

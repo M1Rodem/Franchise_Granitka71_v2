@@ -155,10 +155,10 @@ export default function OrderDetailsPage() {
       />
 
       <MetadataSection
-      manager={data.managerFullName}
-      orderDate={data.orderDate}
-      createdAt={data.createdAt}
-      updatedAt={data.updatedAt}
+        manager={data.managerFullName}
+        orderDate={data.orderDate}
+        updatedAt={data.updatedAt}
+        dateOnly
       />
 
       <InstallationSection
@@ -175,7 +175,7 @@ export default function OrderDetailsPage() {
         plotCoordinates={plotCoordinates}
         destinationCoordinates={destinationCoordinates}
       />
-      
+
       <WorksSection items={data.workItems} />
 
       <FinancialSection
@@ -194,7 +194,7 @@ export default function OrderDetailsPage() {
       <PaymentsSection items={data.payments} />
 
       <MediaSection items={data.photos} />
-      
+
       <AdditionalInfoSection
         additionalInfo={(data.additionalInfo as string) ?? ''}
       />

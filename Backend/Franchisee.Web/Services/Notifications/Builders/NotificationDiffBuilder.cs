@@ -45,7 +45,8 @@ public static class NotificationDiffBuilder
                 or "MonumentType"
                 or "MonumentSize"
                 or "DeceasedFullName"
-                or "AdditionalInfo")
+                or "AdditionalInfo"
+                or "OrderDate")
             {
                 list.Add(new FieldChangeDto
                 {
@@ -73,12 +74,15 @@ public static class NotificationDiffBuilder
         {
             if (oldMap.TryGetProperty("latitude", out var lat))
                 map.Old.Latitude = lat.GetDouble();
-            
+
             if (oldMap.TryGetProperty("longitude", out var lon))
                 map.Old.Longitude = lon.GetDouble();
-            
+
             if (oldMap.TryGetProperty("plot", out var plot))
                 map.Old.Plot = plot.GetString();
+
+            if (oldMap.TryGetProperty("inspectionPlace", out var inspectionPlace))
+                map.Old.InspectionPlace = inspectionPlace.GetString();
         }
 
         // Новые данные
@@ -86,12 +90,15 @@ public static class NotificationDiffBuilder
         {
             if (newMap.TryGetProperty("latitude", out var lat))
                 map.New.Latitude = lat.GetDouble();
-            
+
             if (newMap.TryGetProperty("longitude", out var lon))
                 map.New.Longitude = lon.GetDouble();
-            
+
             if (newMap.TryGetProperty("plot", out var plot))
                 map.New.Plot = plot.GetString();
+
+            if (newMap.TryGetProperty("inspectionPlace", out var inspectionPlace))
+                map.New.InspectionPlace = inspectionPlace.GetString();
         }
 
         result.Map = map;
@@ -270,7 +277,7 @@ public static class NotificationDiffBuilder
             // Старая скидка в деньгах
             var oldDiscountAmount = finance.Old.WorksTotal * (finance.Old.Discount / 100m);
             finance.Old.DiscountAmount = Math.Round(oldDiscountAmount, 2, MidpointRounding.AwayFromZero);
-            
+
             // Старая итоговая сумма
             finance.Old.Total = finance.Old.WorksTotal - finance.Old.DiscountAmount;
             if (finance.Old.Total < 0) finance.Old.Total = 0;
@@ -278,7 +285,7 @@ public static class NotificationDiffBuilder
             // Новая скидка в деньгах
             var newDiscountAmount = finance.New.WorksTotal * (finance.New.Discount / 100m);
             finance.New.DiscountAmount = Math.Round(newDiscountAmount, 2, MidpointRounding.AwayFromZero);
-            
+
             // Новая итоговая сумма
             finance.New.Total = finance.New.WorksTotal - finance.New.DiscountAmount;
             if (finance.New.Total < 0) finance.New.Total = 0;
@@ -299,6 +306,7 @@ public static class NotificationDiffBuilder
             "MonumentSize" => "Размер",
             "DeceasedFullName" => "Покойный",
             "AdditionalInfo" => "Примечание",
+            "OrderDate" => "Дата заказа",
             _ => field
         };
     }

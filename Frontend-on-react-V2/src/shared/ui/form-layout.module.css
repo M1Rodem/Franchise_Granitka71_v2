@@ -36,6 +36,23 @@
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
 }
 
+.headerRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--size-12);
+}
+
+.headerRight {
+  min-width: 180px;
+}
+
+.fieldInline {
+  display: flex;
+  align-items: center;
+  gap: var(--size-10);
+}
+
 /* ===== VALUE ===== */
 
 .value {

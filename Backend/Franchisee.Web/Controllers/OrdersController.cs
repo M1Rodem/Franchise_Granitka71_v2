@@ -727,16 +727,6 @@ namespace Franchisee.Web.Controllers
             if (!string.IsNullOrEmpty(request.Place) && request.Place != order.Place)
                 changes["Place"] = new { old = order.Place, @new = request.Place };
 
-            // InspectionPlace - собираем отдельно (НЕ в map)
-            if (request.InspectionPlace != order.InspectionPlace)
-            {
-                changes["InspectionPlace"] = new 
-                { 
-                    old = order.InspectionPlace ?? string.Empty, 
-                    @new = request.InspectionPlace ?? string.Empty 
-                };
-            }
-
             if (request.OrderDate.HasValue)
             {
                 var newDate = request.OrderDate.Value.Date;
@@ -754,15 +744,17 @@ namespace Franchisee.Web.Controllers
 
             // Собираем изменения карты (map) ТОЛЬКО если менялись Latitude, Longitude или Plot
             bool hasMapChanges = false;
-            
+
             // Используем nullable типы для совместимости
             double? oldLatitude = order.Latitude;
             double? oldLongitude = order.Longitude;
             string oldPlot = order.Plot?.Name ?? string.Empty;
-            
+            string oldInspectionPlace = order.InspectionPlace ?? string.Empty;  // ← ДОБАВИТЬ
+
             double? newLatitude = order.Latitude;
             double? newLongitude = order.Longitude;
             string newPlot = order.Plot?.Name ?? string.Empty;
+            string newInspectionPlace = order.InspectionPlace ?? string.Empty;  // ← ДОБАВИТЬ
 
             // Latitude
             if (request.Latitude.HasValue && request.Latitude != order.Latitude)
@@ -788,6 +780,13 @@ namespace Franchisee.Web.Controllers
                 hasMapChanges = true;
             }
 
+            // ← ДОБАВИТЬ InspectionPlace
+            if (request.InspectionPlace != null && request.InspectionPlace != order.InspectionPlace)
+            {
+                newInspectionPlace = request.InspectionPlace;
+                hasMapChanges = true;
+            }
+
             // Если есть изменения карты - добавляем map
             if (hasMapChanges)
             {
@@ -797,13 +796,15 @@ namespace Franchisee.Web.Controllers
                     {
                         latitude = oldLatitude,
                         longitude = oldLongitude,
-                        plot = oldPlot
+                        plot = oldPlot,
+                        inspectionPlace = oldInspectionPlace  // ← ДОБАВИТЬ
                     },
                     @new = new
                     {
                         latitude = newLatitude,
                         longitude = newLongitude,
-                        plot = newPlot
+                        plot = newPlot,
+                        inspectionPlace = newInspectionPlace  // ← ДОБАВИТЬ
                     }
                 };
             }
@@ -830,17 +831,22 @@ namespace Franchisee.Web.Controllers
             if (!string.IsNullOrEmpty(request.MonumentSize) && request.MonumentSize != order.MonumentSize)
                 changes["MonumentSize"] = new { old = order.MonumentSize, @new = request.MonumentSize };
 
-            if (request.AdditionalInfo != order.AdditionalInfo)
-                changes["AdditionalInfo"] = new { old = order.AdditionalInfo ?? string.Empty, @new = request.AdditionalInfo ?? string.Empty };
+            var oldAdditionalInfo = order.AdditionalInfo ?? string.Empty;
+            var newAdditionalInfo = request.AdditionalInfo ?? string.Empty;
+
+            if (oldAdditionalInfo != newAdditionalInfo)
+            {
+                changes["AdditionalInfo"] = new { old = oldAdditionalInfo, @new = newAdditionalInfo };
+            }
 
             if (request.Status.HasValue && request.Status.Value != order.Status)
                 changes["Status"] = new { old = order.Status.ToString(), @new = request.Status.Value.ToString() };
             if (request.DiscountPercent.HasValue && request.DiscountPercent.Value != order.DiscountPercent)
             {
-                changes["DiscountPercent"] = new 
-                { 
-                    old = order.DiscountPercent, 
-                    @new = request.DiscountPercent.Value 
+                changes["DiscountPercent"] = new
+                {
+                    old = order.DiscountPercent,
+                    @new = request.DiscountPercent.Value
                 };
             }
         }
@@ -849,14 +855,16 @@ namespace Franchisee.Web.Controllers
         {
             if (request.WorkItems == null) return;
 
-            var oldWorkItems = order.WorkItems.Select(w => new {
+            var oldWorkItems = order.WorkItems.Select(w => new
+            {
                 w.WorkDescription,
                 w.Price,
                 w.Quantity,
                 w.Note
             }).ToList();
 
-            var newWorkItems = request.WorkItems.Select(w => new {
+            var newWorkItems = request.WorkItems.Select(w => new
+            {
                 w.WorkDescription,
                 w.Price,
                 w.Quantity,
@@ -876,14 +884,16 @@ namespace Franchisee.Web.Controllers
         {
             if (request.Payments == null) return;
 
-            var oldPayments = order.Payments.Select(p => new {
+            var oldPayments = order.Payments.Select(p => new
+            {
                 p.Amount,
                 p.PaymentDate,
                 p.PaymentType,
                 p.Note
             }).ToList();
 
-            var newPayments = request.Payments.Select(p => new {
+            var newPayments = request.Payments.Select(p => new
+            {
                 p.Amount,
                 PaymentDate = p.PaymentDate,
                 p.PaymentType,
@@ -1050,13 +1060,13 @@ namespace Franchisee.Web.Controllers
                 }).ToList(),
                 Payments = (order.Payments ?? new List<OrderPayment>())
                     .Select(p => new OrderPaymentDto
-                {
-                    Id = p.Id,
-                    Amount = p.Amount,
-                    PaymentDate = p.PaymentDate,
-                    PaymentType = p.PaymentType,
-                    Note = p.Note
-                }).ToList(),
+                    {
+                        Id = p.Id,
+                        Amount = p.Amount,
+                        PaymentDate = p.PaymentDate,
+                        PaymentType = p.PaymentType,
+                        Note = p.Note
+                    }).ToList(),
                 Photos = order.Photos.Select(p => new OrderMediaDto
                 {
                     Id = p.Id,

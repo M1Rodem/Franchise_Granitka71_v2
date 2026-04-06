@@ -31,3 +31,13 @@ export function formatNotificationDateTime(dateString: string): string {
     minute: '2-digit',
   }).format(date)
 }
+
+export function formatNotificationDateOnly(dateString: string): string {
+  const date = new Date(dateString)
+  
+  return new Intl.DateTimeFormat('ru-RU', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+  }).format(date)
+}

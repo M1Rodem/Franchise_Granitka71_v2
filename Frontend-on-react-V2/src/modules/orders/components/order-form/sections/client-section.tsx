@@ -3,19 +3,36 @@
 import { useFormContext, Controller } from 'react-hook-form'
 import { IMaskInput } from 'react-imask'
 import type { OrderFormModel } from '../order-form.schema'
+import { OrdersDateInput } from '@/modules/orders/components/OrdersDateInput'
 
 import surface from '@/shared/ui/surface.module.css'
 import layout from '@/shared/ui/form-layout.module.css'
 import input from '@/shared/ui/input.module.css'
 
 export function ClientSection() {
-  const { register, control } = useFormContext<OrderFormModel>()
+  const { register, control, watch, setValue } = useFormContext<OrderFormModel>()
 
   return (
     <div className={surface.surface}>
-      <h2 className={surface.sectionTitle}>
-        Данные заказчика
-      </h2>
+      <div className={layout.headerRow}>
+        <h2 className={surface.sectionTitle}>
+          Данные заказчика
+        </h2>
+
+        <div className={layout.fieldInline}>
+          <span className={layout.label}>Дата заказа</span>
+
+          <div style={{ minWidth: 160 }}>
+            <OrdersDateInput
+              label=""
+              isoValue={watch('orderDate')}
+              onCommit={(value) =>
+                setValue('orderDate', value, { shouldDirty: true })
+              }
+            />
+          </div>
+        </div>
+      </div>
 
       <div className={layout.grid2x2}>
 

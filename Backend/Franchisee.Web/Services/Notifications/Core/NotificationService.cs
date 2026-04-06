@@ -223,7 +223,7 @@ namespace Franchisee.Web.Services.Notifications.Core
                 {
                     await SendRealTimeNotificationAsync(notification, userId);
                 }
-                
+
                 foreach (var userId in recipientUserIds)
                 {
                     await SendNotificationCountsUpdateAsync(userId);
@@ -251,10 +251,10 @@ namespace Franchisee.Web.Services.Notifications.Core
             try
             {
                 var counts = await GetNotificationCountsAsync(userId);
-                
+
                 await _hubContext.Clients.Group($"user-{userId}")
                     .UpdateNotificationCounts(counts);
-                
+
                 _logger.LogDebug("Отправлены counts для UserId: {UserId}, Active={Active}, HasActiveNonSystem={HasActiveNonSystem}",
                     userId, counts.Active, counts.HasActiveNonSystem);
             }
@@ -293,7 +293,7 @@ namespace Franchisee.Web.Services.Notifications.Core
                     Postponed = g.Count(x => x.IsPostponed),
                     History = g.Count(x => x.IsHistory),
                     All = g.Count(),
-                    
+
                     HasActiveNonSystem = g.Any(x => x.IsActive && !x.IsSystem),
                     HasPostponed = g.Any(x => x.IsPostponed),
                     HasOnlySystem = g.Count(x => x.IsActive || x.IsPostponed) > 0 &&
@@ -422,7 +422,7 @@ namespace Franchisee.Web.Services.Notifications.Core
             using var transaction = await _context.Database.BeginTransactionAsync();
             List<NotificationRecipient> otherRecipients = new();
             List<int> syncedRecipientUserIds = new();
-            
+
             try
             {
                 // 1. Находим уведомление с получателями
@@ -605,7 +605,7 @@ namespace Franchisee.Web.Services.Notifications.Core
                 // 9. Отправляем SignalR события
                 await SendNotificationResolvedEventAsync(notification, userId, status, note);
                 LogNotificationUpdated(notificationId, status, userId, note);
-                
+
                 // Для влияющих уведомлений
                 await SendNotificationCountsUpdateAsync(userId);
 
@@ -632,7 +632,7 @@ namespace Franchisee.Web.Services.Notifications.Core
                     string fullMessage;
                     if (!string.IsNullOrEmpty(note))
                     {
-                        fullMessage = note;  
+                        fullMessage = note;
                     }
                     else
                     {
@@ -657,7 +657,7 @@ namespace Franchisee.Web.Services.Notifications.Core
                     "Уведомление {NotificationId} обработано пользователем {UserId}. Статус: {Status} ({OldStatus} -> {NewStatus})",
                     notificationId, userId, status, oldStatus, status);
 
-                
+
                 List<int> recipientUserIds = new List<int>();
 
                 if (otherRecipients.Any())
@@ -713,9 +713,9 @@ namespace Franchisee.Web.Services.Notifications.Core
         {
             // Вызываем существующий метод
             var success = await ResolveNotificationAsync(notificationId, userId, status, note);
-            
+
             if (!success) return null;
-            
+
             // Получаем обновленное уведомление для этого пользователя
             var recipient = await _context.NotificationRecipients
                 .Include(r => r.Notification)
@@ -724,9 +724,9 @@ namespace Franchisee.Web.Services.Notifications.Core
                     .ThenInclude(n => n.Order)
                 .Include(r => r.User)
                 .FirstOrDefaultAsync(r => r.NotificationId == notificationId && r.UserId == userId);
-            
+
             if (recipient == null) return null;
-            
+
             // Маппим в DTO
             return MapToDto(recipient);
         }
@@ -754,7 +754,8 @@ namespace Franchisee.Web.Services.Notifications.Core
                 !r.Notification.IsInfluencing
             );
 
-            return new {
+            return new
+            {
                 total = items.Count,
                 hasImpact,
                 hasSnoozed,
@@ -1270,8 +1271,8 @@ namespace Franchisee.Web.Services.Notifications.Core
                         if (newValue.TryGetDateTime(out var date))
                         {
                             // Гарантируем UTC
-                            order.OrderDate = date.Kind == DateTimeKind.Utc 
-                                ? date 
+                            order.OrderDate = date.Kind == DateTimeKind.Utc
+                                ? date
                                 : DateTime.SpecifyKind(date, DateTimeKind.Utc);
                             return true;
                         }
@@ -1515,7 +1516,7 @@ namespace Franchisee.Web.Services.Notifications.Core
                     var allRecipientIds = allRecipients.Select(r => r.UserId).Distinct();
                     foreach (var id in allRecipientIds)
                     {
-                        await SendNotificationCountsUpdateAsync(id); 
+                        await SendNotificationCountsUpdateAsync(id);
                     }
                 }
 
@@ -1554,7 +1555,7 @@ namespace Franchisee.Web.Services.Notifications.Core
                     .ThenInclude(n => n.Order)
                 .Include(r => r.User)
                 .FirstOrDefaultAsync(r => r.NotificationId == notificationId && r.UserId == userId);
-            
+
             return recipient != null ? MapToDto(recipient) : null;
         }
 
@@ -1760,13 +1761,13 @@ namespace Franchisee.Web.Services.Notifications.Core
                     InitiatorId = initiatorId,
                     OrderId = orderId,
                     Title = title,
-                    Message = message,  
+                    Message = message,
                     CreatedAt = DateTime.UtcNow,
                     Data = JsonSerializer.Serialize(new
                     {
                         OrderNumber = orderNumber,
                         IsInformation = isInformationNotification,
-                        FullMessage = message 
+                        FullMessage = message
                     }, JsonOptions)
                 };
 
@@ -1975,8 +1976,8 @@ namespace Franchisee.Web.Services.Notifications.Core
 
         private DateTime EnsureUtc(DateTime dateTime)
         {
-            return dateTime.Kind == DateTimeKind.Utc 
-                ? dateTime 
+            return dateTime.Kind == DateTimeKind.Utc
+                ? dateTime
                 : DateTime.SpecifyKind(dateTime, DateTimeKind.Utc);
         }
 

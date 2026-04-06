@@ -6,6 +6,25 @@ interface Props {
   items: FieldChangeDto[]
 }
 
+// НОВАЯ ФУНКЦИЯ: форматирование даты
+function formatDateIfNeeded(value: string, fieldName: string): string {
+  // Проверяем, является ли поле датой (по имени поля или по формату ISO)
+  const isDateField = fieldName === 'OrderDate' || fieldName === 'orderDate'
+
+  if (!isDateField) return value
+
+  // Пробуем распарсить как дату
+  const date = new Date(value)
+  if (isNaN(date.getTime())) return value // не дата, возвращаем как есть
+
+  // Форматируем в локальный формат
+  return new Intl.DateTimeFormat('ru-RU', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric'
+  }).format(date)
+}
+
 function resolveGroup(label: string): string {
   if (
     ['ФИО', 'Email', 'Телефон', 'Адрес'].includes(label)
@@ -23,6 +42,11 @@ function resolveGroup(label: string): string {
 
   if (label === 'Примечание') {
     return 'Дополнительно'
+  }
+
+  // Добавляем группу для дат и других метаданных
+  if (label === 'Дата заказа') {
+    return 'Метаданные'
   }
 
   return 'Прочее'
@@ -45,11 +69,12 @@ function groupItems(items: FieldChangeDto[]): Record<string, FieldChangeDto[]> {
 }
 
 export function TextFieldDiff({ items }: Props) {
-  const normalizeValue = (value: string | null | undefined): string => {
+  const normalizeValue = (value: string | null | undefined, fieldName: string): string => {
     if (value === null || value === undefined || value === '') {
       return '—'
     }
-    return value
+    // Форматируем дату, если нужно
+    return formatDateIfNeeded(value, fieldName)
   }
 
   type DiffType = 'added' | 'removed' | 'changed' | 'none'
@@ -90,7 +115,7 @@ export function TextFieldDiff({ items }: Props) {
 
   const grouped = groupItems(items)
 
-    return (
+  return (
     <div className={surfaceStyles.diffList}>
       {Object.entries(grouped).map(
         ([groupName, groupItems]: [string, FieldChangeDto[]]) => (
@@ -105,8 +130,8 @@ export function TextFieldDiff({ items }: Props) {
             </div>
 
             {groupItems.map((item: FieldChangeDto) => {
-              const oldValue = normalizeValue(item.oldValue)
-              const newValue = normalizeValue(item.newValue)
+              const oldValue = normalizeValue(item.oldValue, item.field)
+              const newValue = normalizeValue(item.newValue, item.field)
 
               const diffType = getDiffType(oldValue, newValue)
               const diffLabel = getDiffLabel(diffType)

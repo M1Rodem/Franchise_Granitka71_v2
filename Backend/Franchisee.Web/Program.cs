@@ -66,12 +66,11 @@ try
 
     builder.Services.AddSignalR(options =>
     {
-        // EnableDetailedErrors только в development
         options.EnableDetailedErrors = builder.Environment.IsDevelopment();
-        options.MaximumReceiveMessageSize = 102400; // 100KB
-        options.KeepAliveInterval = TimeSpan.FromSeconds(15);
-        options.ClientTimeoutInterval = TimeSpan.FromSeconds(30);
-        options.HandshakeTimeout = TimeSpan.FromSeconds(30);
+        options.MaximumReceiveMessageSize = 102400;
+        options.KeepAliveInterval = TimeSpan.FromSeconds(10);
+        options.ClientTimeoutInterval = TimeSpan.FromSeconds(60);
+        options.HandshakeTimeout = TimeSpan.FromSeconds(15);
     });
 
     AppConfiguration.ConfigureServices(builder.Services, builder.Configuration, builder.Environment);
@@ -110,8 +109,6 @@ try
         });
     }
 
-    AppConfiguration.ConfigurePipeline(app, app.Environment);
-
     var allowedOrigins = Environment.GetEnvironmentVariable("ALLOWED_ORIGINS")?
     .Split(',', StringSplitOptions.RemoveEmptyEntries)
     .Select(o => o.Trim())
@@ -121,7 +118,7 @@ try
 
     var webSocketOptions = new WebSocketOptions
     {
-        KeepAliveInterval = TimeSpan.FromSeconds(120)
+        KeepAliveInterval = TimeSpan.FromSeconds(30)
     };
 
     foreach (var origin in allowedOrigins)
@@ -130,6 +127,7 @@ try
     }
 
     app.UseWebSockets(webSocketOptions);
+    AppConfiguration.ConfigurePipeline(app, app.Environment);
     app.Run();
 }
 catch (Exception ex)

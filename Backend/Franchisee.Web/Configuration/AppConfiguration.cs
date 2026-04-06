@@ -21,7 +21,7 @@ using Franchisee.Web.Services.Print.Strategies;
 namespace Franchisee.Web.Configuration
 {
     public static class AppConfiguration
-    {   
+    {
         public static void ConfigureServices(IServiceCollection services, IConfiguration configuration, IWebHostEnvironment env)
         {
             services.Configure<AppSettings>(configuration.GetSection("AppSettings"));
@@ -45,7 +45,7 @@ namespace Franchisee.Web.Configuration
                             .Split(',', StringSplitOptions.RemoveEmptyEntries)
                             .Select(o => o.Trim())
                             .ToArray();
-                        
+
                         Log.Information("CORS allowed origins: {Origins}", string.Join(", ", origins));
                     }
 
@@ -65,7 +65,7 @@ namespace Franchisee.Web.Configuration
             });
 
             services.AddHttpContextAccessor();
-            
+
             // Upload limits - вынесены в ENV
             int maxUploadSizeBytes = 100_000_000; // default 100 MB
             var maxUploadSizeEnv = Environment.GetEnvironmentVariable("MAX_UPLOAD_SIZE_BYTES");
@@ -187,13 +187,13 @@ namespace Franchisee.Web.Configuration
                     OnTokenValidated = context =>
                     {
                         var userIdClaim = context.Principal?.FindFirst("UserId");
-                        
+
                         if (userIdClaim == null)
                         {
                             context.Fail("Unauthorized");
                             return Task.CompletedTask;
                         }
-                        
+
                         return Task.CompletedTask;
                     },
 
@@ -265,7 +265,7 @@ namespace Franchisee.Web.Configuration
             }
 
             var connectionString = $"Host={host};Port={port};Database={db};Username={user};Password={pass};";
-            
+
             Log.Information("Database connection configured for: {Host}:{Port}/{Database}", host, port, db);
 
             services.AddDbContext<ApplicationDbContext>(options =>
@@ -298,7 +298,7 @@ namespace Franchisee.Web.Configuration
                 app.UseSwaggerUI();
             }
 
-            
+
             // Статические файлы
             app.UseStaticFiles();
             app.UseStaticFiles(new StaticFileOptions
@@ -322,6 +322,7 @@ namespace Franchisee.Web.Configuration
                 {
                     options.Transports =
                         HttpTransportType.WebSockets |
+                        HttpTransportType.ServerSentEvents |
                         HttpTransportType.LongPolling;
 
                     options.ApplicationMaxBufferSize = 102400;

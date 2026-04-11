@@ -35,7 +35,7 @@ export function ArchivedOrderActions({ orderId }: Props) {
     },
 
     onError: (_: unknown) => {
-      showTempMessage('error', 'Ошибка удаления заказа')
+      showTempMessage('error', 'Ошибка восстановления заказа')
     },
   })
 
@@ -51,18 +51,20 @@ export function ArchivedOrderActions({ orderId }: Props) {
     },
 
     onError: (error: unknown) => {
-
       if (isAxiosError<ApiErrorResponse>(error)) {
-        const rawMessage = error.response?.data?.message ?? ''
-        const message = rawMessage.toLowerCase()
+        let serverMessage = error.response?.data?.message
 
-        if (message.includes('архив')) {
-          showTempMessage('error', 'Нельзя удалить не свой заказ из архива')
+        if (serverMessage && typeof serverMessage === 'string') {
+          // Убираем часть "Осталось X минут"
+          serverMessage = serverMessage.replace(/\.\s*Осталось\s+[-\d]+\s*минут\.?/i, '')
+          serverMessage = serverMessage.replace(/\s+Осталось\s+[-\d]+\s*минут\.?/i, '')
+
+          showTempMessage('error', serverMessage.trim())
           return
         }
 
         if (error.response?.status === 403) {
-          showTempMessage('error', rawMessage || 'Нет доступа')
+          showTempMessage('error', 'Нет доступа к этому заказу')
           return
         }
       }
@@ -72,7 +74,6 @@ export function ArchivedOrderActions({ orderId }: Props) {
   })
 
   function handleRestore() {
-
     openModal({
       title: 'Восстановление заказа',
       message: 'Вы действительно хотите восстановить этот заказ?',
@@ -86,7 +87,6 @@ export function ArchivedOrderActions({ orderId }: Props) {
   }
 
   function handleDelete() {
-
     openModal({
       title: 'Удаление заказа',
       message: 'Заказ будет удалён окончательно. Это действие нельзя отменить.',

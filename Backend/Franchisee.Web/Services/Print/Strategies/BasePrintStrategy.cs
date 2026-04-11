@@ -8,7 +8,7 @@ namespace Franchisee.Web.Services.Print.Strategies
     public abstract class BasePrintStrategy : IPrintStrategy
     {
         public abstract PrintType Type { get; }
-        
+
         public virtual PrintDataModel BuildDataModel(Order order)
         {
             return new PrintDataModel
@@ -18,7 +18,7 @@ namespace Franchisee.Web.Services.Print.Strategies
                 {
                     OrderNumber = order.OrderNumber,
                     OrderDate = order.OrderDate,
-                    Place = order.Place,
+                    Place = order.Plot?.Name ?? order.Place,
                     InspectionPlace = order.InspectionPlace,
                     DeceasedFullName = order.DeceasedFullName,
                     MonumentType = order.MonumentType,

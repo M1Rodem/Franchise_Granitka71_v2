@@ -122,62 +122,46 @@
   --surface-gradient: linear-gradient(135deg, rgba(17, 33, 52, 0.75), rgba(7, 19, 33, 0.83));
   --surface-gradient-strong: linear-gradient(135deg, rgba(19, 36, 58, 0.8), rgba(6, 18, 32, 0.9));
 
-  --surface-overlay: 
+  --surface-overlay:
     radial-gradient(circle at 25% 20%, rgba(110, 165, 225, 0.09), transparent 45%),
     radial-gradient(circle at 75% 70%, rgba(90, 150, 190, 0.06), transparent 40%),
     linear-gradient(125deg, rgba(255, 255, 255, 0.03), transparent 68%);
 
-  --surface-overlay-accent: 
+  --surface-overlay-accent:
     radial-gradient(circle at 15% 75%, rgba(90, 155, 220, 0.11), transparent 52%),
     radial-gradient(circle at 85% 25%, rgba(80, 170, 160, 0.09), transparent 48%),
     linear-gradient(145deg, rgba(255, 255, 255, 0.04), transparent 62%);
 
-  --interactive-gloss: linear-gradient(
-    145deg,
-    rgba(255, 255, 255, 0.055) 0%,
-    rgba(255, 255, 255, 0.02) 45%,
-    rgba(255, 255, 255, 0.04) 100%
-  );
+  --interactive-gloss: linear-gradient(145deg,
+      rgba(255, 255, 255, 0.055) 0%,
+      rgba(255, 255, 255, 0.02) 45%,
+      rgba(255, 255, 255, 0.04) 100%);
 
-  --interactive-gloss-strong: linear-gradient(
-    135deg,
-    rgba(255, 255, 255, 0.07) 0%,
-    rgba(255, 255, 255, 0.025) 40%,
-    rgba(255, 255, 255, 0.055) 90%
-  );
+  --interactive-gloss-strong: linear-gradient(135deg,
+      rgba(255, 255, 255, 0.07) 0%,
+      rgba(255, 255, 255, 0.025) 40%,
+      rgba(255, 255, 255, 0.055) 90%);
 
-  --accent-gradient-primary: linear-gradient(
-    180deg,
-    rgba(127, 179, 236, 0.21),
-    rgba(127, 179, 236, 0.1)
-  );
-  --accent-gradient-success: linear-gradient(
-    180deg,
-    rgba(76, 192, 134, 0.21),
-    rgba(76, 192, 134, 0.1)
-  );
-  --accent-gradient-danger: linear-gradient(
-    180deg,
-    rgba(237, 118, 129, 0.21),
-    rgba(237, 118, 129, 0.1)
-  );
-  --accent-gradient-warning: linear-gradient(
-    180deg,
-    rgba(244, 164, 42, 0.21),
-    rgba(244, 164, 42, 0.1)
-  );
-  --accent-gradient-info: linear-gradient(
-    180deg,
-    rgba(124, 199, 246, 0.21),
-    rgba(124, 199, 246, 0.1)
-  );
+  --accent-gradient-primary: linear-gradient(180deg,
+      rgba(127, 179, 236, 0.21),
+      rgba(127, 179, 236, 0.1));
+  --accent-gradient-success: linear-gradient(180deg,
+      rgba(76, 192, 134, 0.21),
+      rgba(76, 192, 134, 0.1));
+  --accent-gradient-danger: linear-gradient(180deg,
+      rgba(237, 118, 129, 0.21),
+      rgba(237, 118, 129, 0.1));
+  --accent-gradient-warning: linear-gradient(180deg,
+      rgba(244, 164, 42, 0.21),
+      rgba(244, 164, 42, 0.1));
+  --accent-gradient-info: linear-gradient(180deg,
+      rgba(124, 199, 246, 0.21),
+      rgba(124, 199, 246, 0.1));
 
-  --accent-gloss: linear-gradient(
-    135deg,
-    rgba(255, 255, 255, 0.2) 0%,
-    rgba(255, 255, 255, 0.05) 50%,
-    rgba(255, 255, 255, 0.12) 100%
-  );
+  --accent-gloss: linear-gradient(135deg,
+      rgba(255, 255, 255, 0.2) 0%,
+      rgba(255, 255, 255, 0.05) 50%,
+      rgba(255, 255, 255, 0.12) 100%);
 
   --accent-shadow: 0 8px 20px rgba(0, 0, 0, 0.27), 0 0 0 1px rgba(255, 255, 255, 0.065) inset;
   --accent-hover-shadow: 0 12px 28px rgba(0, 0, 0, 0.35), 0 0 0 1px rgba(255, 255, 255, 0.1) inset;
@@ -207,7 +191,7 @@
   --overlay-thumb: rgba(140, 168, 198, 0.32);
   --overlay-thumb-hover: rgba(160, 188, 218, 0.44);
   --overlay-thumb-active: rgba(184, 212, 237, 0.54);
-  
+
 
   --tone-0f172a: #0f172a;
   --tone-1e3a8a: #1e3a8a;
@@ -625,4 +609,8 @@ a {
 
 ::-webkit-scrollbar-thumb:hover {
   background: var(--overlay-thumb-hover);
+}
+
+[class*="searchbox-input__input"] {
+  color: #111 !important;
 }

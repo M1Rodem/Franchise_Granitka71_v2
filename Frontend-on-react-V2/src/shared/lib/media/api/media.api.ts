@@ -11,7 +11,11 @@ export interface TempUploadDto {
 }
 
 export const mediaApi = {
-  async uploadTemp(file: File, type: 'photo' | 'video') {
+  async uploadTemp(
+    file: File,
+    type: 'photo' | 'video',
+    onProgress?: (percent: number) => void
+  ) {
     let finalFile = file
 
     if (type === 'photo') {
@@ -29,8 +33,14 @@ export const mediaApi = {
       `/media/upload-temp?type=${type}`,
       formData,
       {
-        headers: {
-          'Content-Type': 'multipart/form-data',
+        timeout: 0,
+        maxBodyLength: Infinity,
+        maxContentLength: Infinity,
+
+        onUploadProgress: (event) => {
+          if (!event.total) return
+          const percent = Math.round((event.loaded * 100) / event.total)
+          onProgress?.(percent)
         },
       }
     )

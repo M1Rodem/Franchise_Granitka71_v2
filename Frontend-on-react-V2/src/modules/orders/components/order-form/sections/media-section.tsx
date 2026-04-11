@@ -16,22 +16,22 @@ import layout from '@/shared/ui/form-layout.module.css'
 
 type MediaItem =
   | {
-      kind: 'temp'
-      id: number
-      previewUrl: string
-      name: string
-      type: 'photo' | 'video'
-      markedForDelete?: boolean
-      uploading?: boolean
-    }
+    kind: 'temp'
+    id: number
+    previewUrl: string
+    name: string
+    type: 'photo' | 'video'
+    markedForDelete?: boolean
+    uploading?: boolean
+  }
   | {
-      kind: 'existing'
-      id: number
-      previewUrl: string
-      name: string
-      type: 'photo' | 'video'
-      markedForDelete?: boolean
-    }
+    kind: 'existing'
+    id: number
+    previewUrl: string
+    name: string
+    type: 'photo' | 'video'
+    markedForDelete?: boolean
+  }
 
 interface Props {
   existing?: ViewerMediaDto[]
@@ -54,7 +54,7 @@ export function MediaSection({ existing = [] }: Props) {
 
   const mediaRef = useRef<MediaItem[]>([])
   const fileInputRef = useRef<HTMLInputElement | null>(null)
-  
+
   const [removedPhotos] = useState<number[]>([])
   const [removedVideos] = useState<number[]>([])
 
@@ -111,7 +111,7 @@ export function MediaSection({ existing = [] }: Props) {
     if (!isEditMode) {
 
       if (item.kind === 'temp') {
-        await mediaApi.deleteTemp(item.id).catch(() => {})
+        await mediaApi.deleteTemp(item.id).catch(() => { })
       }
 
       setMedia(prev => prev.filter((_, i) => i !== index))
@@ -182,7 +182,7 @@ export function MediaSection({ existing = [] }: Props) {
         if (m.uploading) return
 
         if (m.markedForDelete) {
-          mediaApi.deleteTemp(m.id).catch(() => {})
+          mediaApi.deleteTemp(m.id).catch(() => { })
         }
 
       })
@@ -301,10 +301,10 @@ export function MediaSection({ existing = [] }: Props) {
 
               <button
                 type="button"
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    handleDelete(index)
-                  }}
+                onClick={(e) => {
+                  e.stopPropagation()
+                  handleDelete(index)
+                }}
                 style={{
                   position: 'absolute',
                   top: '6px',

@@ -1,386 +1,364 @@
+// Services/Print/Builders/ExcelDocumentBuilder.cs
 using ClosedXML.Excel;
 using Franchisee.Web.Models.Print;
 using System;
 using System.IO;
 using System.Linq;
+using System.Collections.Generic;
 
 namespace Franchisee.Web.Services.Print.Builders
 {
     public class ExcelDocumentBuilder : IPrintDocumentBuilder
     {
+        private const int MAX_WORK_ITEMS_PER_PAGE = 26;
+        private const int MAX_PAYMENTS_PER_PAGE = 8;
+
         private string FormatPrice(decimal price)
         {
-            // Если цена целое число - показываем без копеек
-            if (price == Math.Floor(price))
-            {
-                return $"{price:0} руб.";
-            }
-            // Иначе показываем с 2 знаками
-            return $"{price:F2} руб.";
+            return price == Math.Floor(price)
+                ? $"{price:0} руб."
+                : $"{price:F2} руб.";
         }
+
         public string GetContentType => "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
         public string GetFileExtension => ".xlsx";
 
         public byte[] BuildExcel(PrintDataModel data)
         {
             using var workbook = new XLWorkbook();
-            var worksheet = workbook.Worksheets.Add("Заказ");
 
-            // Настройка страницы
-            ConfigurePage(worksheet);
-            
-            // ВСЕГДА используем BuildDefaultSheet (структура 1 в 1)
-            BuildDefaultSheet(worksheet, data);
+            var workItemPages = SplitWorkItems(data.WorkItems, MAX_WORK_ITEMS_PER_PAGE);
+            var paymentPages = SplitPayments(data.Payments, MAX_PAYMENTS_PER_PAGE);
+
+            var totalPages = Math.Max(workItemPages.Count, paymentPages.Count);
+
+            for (int pageNum = 0; pageNum < totalPages; pageNum++)
+            {
+                var sheetName = pageNum == 0 ? "Заказ" : $"Заказ (стр.{pageNum + 1})";
+                var worksheet = workbook.Worksheets.Add(sheetName);
+
+                ConfigurePage(worksheet);
+
+                int row = 1;
+
+                if (pageNum == 0)
+                {
+                    BuildHeader(worksheet, ref row, data);
+                }
+                else
+                {
+                    // Заголовок продолжения
+                    worksheet.Range($"A{row}:H{row}").Merge();
+                    SetBoldCentered(worksheet, row, $"--- ПРОДОЛЖЕНИЕ ЗАКАЗА (стр. {pageNum + 1} из {totalPages}) ---");
+                    row += 2;
+
+                    BuildWorkItemsHeader(worksheet, ref row);
+                }
+
+                // Работы
+                var currentWorkItems = pageNum < workItemPages.Count
+                    ? workItemPages[pageNum]
+                    : new List<WorkItemInfo>();
+
+                BuildWorkItemsPage(worksheet, ref row, currentWorkItems, pageNum);
+
+                // Только на первой странице
+                if (pageNum == 0)
+                {
+                    BuildTotals(worksheet, ref row, data);
+                    BuildAdditionalInfo(worksheet, ref row, data);
+                    BuildMonumentInfo(worksheet, ref row, data);
+                }
+
+                // Платежи
+                var currentPayments = pageNum < paymentPages.Count
+                    ? paymentPages[pageNum]
+                    : new List<PaymentInfo>();
+
+                if (currentPayments.Any())
+                {
+                    BuildPaymentsHeader(worksheet, ref row);
+                    BuildPaymentsPage(worksheet, ref row, currentPayments);
+                }
+
+                // Подписи только на последней странице
+                if (pageNum == totalPages - 1)
+                {
+                    BuildSignatures(worksheet, ref row);
+                }
+
+                // Границы
+                var lastRow = row - 1;
+                if (lastRow >= 1)
+                {
+                    worksheet.Range($"A1:H{lastRow}")
+                        .Style.Border.OutsideBorder = XLBorderStyleValues.Thin;
+                    worksheet.Range($"A1:H{lastRow}")
+                        .Style.Border.InsideBorder = XLBorderStyleValues.Thin;
+                }
+            }
 
             using var memoryStream = new MemoryStream();
             workbook.SaveAs(memoryStream);
             return memoryStream.ToArray();
         }
 
-        public string BuildHtml(PrintDataModel data)
+        private void ConfigurePage(IXLWorksheet ws)
         {
-            // Для Excel билдера HTML не нужен
-            throw new NotSupportedException("ExcelDocumentBuilder не поддерживает HTML формат");
-        }
+            ws.PageSetup.PaperSize = XLPaperSize.A4Paper;
 
-        private void ConfigurePage(IXLWorksheet worksheet)
-        {
-            worksheet.PageSetup.PaperSize = XLPaperSize.A4Paper;
-            worksheet.PageSetup.Margins.Top = 0.5;
-            worksheet.PageSetup.Margins.Bottom = 0.5;
-            worksheet.PageSetup.Margins.Left = 0.5;
-            worksheet.PageSetup.Margins.Right = 0.5;
-            worksheet.PageSetup.FitToPages(1, 1);
+            // Исправление: нет метода Set(), задаём каждое поле отдельно
+            ws.PageSetup.Margins.Top = 0.5;
+            ws.PageSetup.Margins.Bottom = 0.5;
+            ws.PageSetup.Margins.Left = 0.5;
+            ws.PageSetup.Margins.Right = 0.5;
+
+            ws.PageSetup.FitToPages(1, 1);
 
             // Ширина колонок
-            worksheet.Column(1).Width = 12;  // A
-            worksheet.Column(2).Width = 15;  // B
-            worksheet.Column(3).Width = 15;  // C
-            worksheet.Column(4).Width = 15;  // D
-            worksheet.Column(5).Width = 12;  // E
-            worksheet.Column(6).Width = 19;  // F
-            worksheet.Column(7).Width = 15;  // G
-            worksheet.Column(8).Width = 15;  // H
+            ws.Column(1).Width = 8;
+            ws.Column(2).Width = 18;
+            ws.Column(3).Width = 12;
+            ws.Column(4).Width = 12;
+            ws.Column(5).Width = 15;
+            ws.Column(6).Width = 22;
+            ws.Column(7).Width = 12;
+            ws.Column(8).Width = 12;
 
-            // Высота строк
-            for (int row = 1; row <= 43; row++)
-                worksheet.Row(row).Height = 18;
-
-            worksheet.Style.Font.FontSize = 11;
+            ws.Style.Font.FontSize = 11;
         }
 
-        private void BuildDefaultSheet(IXLWorksheet worksheet, PrintDataModel data)
-        {
-            int currentRow = 1;
-            
-            // Заголовок (всегда рисуем)
-            BuildHeader(worksheet, ref currentRow, data);
-            
-            // Работы (всегда рисуем 26 строк)
-            BuildWorkItems(worksheet, ref currentRow, data);
-            
-            // Итого (для Worker - пустое место)
-            BuildTotals(worksheet, ref currentRow, data);
-            
-            // Примечание
-            BuildAdditionalInfo(worksheet, ref currentRow, data);
-            
-            // Платежи (для Worker - пустые строки)
-            BuildPayments(worksheet, ref currentRow, data);
-            
-            // Подписи
-            BuildSignatures(worksheet, ref currentRow);
-            
-            // Границы
-            worksheet.Range("A1:H43").Style.Border.OutsideBorder = XLBorderStyleValues.Thin;
-            worksheet.Range("A1:H43").Style.Border.InsideBorder = XLBorderStyleValues.Thin;
-        }
-        private void BuildWorkerSheet(IXLWorksheet worksheet, PrintDataModel data)
-        {
-            int currentRow = 1;
-            
-            // Заголовок (без личных данных)
-            BuildWorkerHeader(worksheet, ref currentRow, data);
-            
-            // Работы (без цен)
-            BuildWorkerWorkItems(worksheet, ref currentRow, data);
-            
-            // Техническая информация
-            BuildTechnicalInfo(worksheet, ref currentRow, data);
-            
-            // Границы
-            var lastRow = currentRow - 1;
-            worksheet.Range($"A1:H{lastRow}").Style.Border.OutsideBorder = XLBorderStyleValues.Thin;
-            worksheet.Range($"A1:H{lastRow}").Style.Border.InsideBorder = XLBorderStyleValues.Thin;
-        }
-
-        private void BuildHeader(IXLWorksheet worksheet, ref int row, PrintDataModel data)
+        private void BuildHeader(IXLWorksheet ws, ref int row, PrintDataModel data)
         {
             // Строка 1
-            SetBoldCell(worksheet, $"A{row}", "№ заказа");
-            worksheet.Cell($"B{row}").Value = data.Header.OrderNumber;
-            SetBoldCell(worksheet, $"C{row}", "№ Участка:");
-            worksheet.Range($"D{row}:E{row}").Merge();
-            worksheet.Cell($"D{row}").Value = data.Header.Place;
-            SetBoldCell(worksheet, $"F{row}", "Место смотрел:");
-            worksheet.Range($"G{row}:H{row}").Merge();
-            worksheet.Cell($"G{row}").Value = data.Header.InspectionPlace;
+            SetBold(ws, $"A{row}", "№ заказа");
+            ws.Cell($"B{row}").Value = data.Header.OrderNumber;
+            SetBold(ws, $"C{row}", "№ Участка:");
+            ws.Range($"D{row}:E{row}").Merge().Value = data.Header.Place;
+            SetBold(ws, $"F{row}", "Место смотрел:");
+            ws.Range($"G{row}:H{row}").Merge().Value = data.Header.InspectionPlace;
             row++;
 
             // Строка 2
-            SetBoldCell(worksheet, $"A{row}", "Дата:");
-            worksheet.Cell($"B{row}").Value = data.Header.OrderDate.ToString("dd.MM.yyyy");
-            SetBoldCell(worksheet, $"C{row}", "Заказ принял:");
-            worksheet.Range($"D{row}:E{row}").Merge();
-            worksheet.Cell($"D{row}").Value = data.Manager.FullName;
-            worksheet.Range($"F{row}:H{row}").Merge();
-            SetBoldCell(worksheet, $"F{row}", "ФИО на участке захоронения:");
+            SetBold(ws, $"A{row}", "Дата:");
+            ws.Cell($"B{row}").Value = data.Header.OrderDate.ToString("dd.MM.yyyy");
+            SetBold(ws, $"C{row}", "Заказ принял:");
+            ws.Range($"D{row}:E{row}").Merge().Value = data.Manager.FullName;
+            ws.Range($"F{row}:H{row}").Merge();
+            SetBold(ws, $"F{row}", "ФИО на участке захоронения:");
             row++;
 
-            // Строка 3 - EMAIL (если личные данные скрыты - пусто)
-            SetBoldCell(worksheet, $"A{row}", "E-mail:");
-            worksheet.Range($"B{row}:E{row}").Merge();
-            worksheet.Cell($"B{row}").Value = data.Customer.IncludePersonalInfo ? data.Customer.Email : "";
-            worksheet.Range($"F{row}:H{row + 3}").Merge();
-            worksheet.Cell($"F{row}").Value = data.Header.DeceasedFullName;
+            // Личные данные
+            SetBold(ws, $"A{row}", "E-mail:");
+            ws.Range($"B{row}:E{row}").Merge().Value = data.Customer.Email;
+            ws.Range($"F{row}:H{row + 3}").Merge().Value = data.Header.DeceasedFullName;
             row++;
 
-            // Строка 4 - Заказчик (если личные данные скрыты - пусто)
-            SetBoldCell(worksheet, $"A{row}", "Заказчик:");
-            worksheet.Range($"B{row}:E{row}").Merge();
-            worksheet.Cell($"B{row}").Value = data.Customer.IncludePersonalInfo ? data.Customer.FullName : "";
+            SetBold(ws, $"A{row}", "Заказчик:");
+            ws.Range($"B{row}:E{row}").Merge().Value = data.Customer.FullName;
             row++;
 
-            // Строка 5 - Адрес (если личные данные скрыты - пусто)
-            SetBoldCell(worksheet, $"A{row}", "Адрес:");
-            worksheet.Range($"B{row}:E{row}").Merge();
-            worksheet.Cell($"B{row}").Value = data.Customer.IncludePersonalInfo ? data.Customer.Address : "";
+            SetBold(ws, $"A{row}", "Адрес:");
+            ws.Range($"B{row}:E{row}").Merge().Value = data.Customer.Address;
             row++;
 
-            // Строка 6 - Телефон (если личные данные скрыты - пусто)
-            SetBoldCell(worksheet, $"A{row}", "Телефон:");
-            worksheet.Range($"B{row}:E{row}").Merge();
-            worksheet.Cell($"B{row}").Value = data.Customer.IncludePersonalInfo ? data.Customer.Phone : "";
+            SetBold(ws, $"A{row}", "Телефон:");
+            ws.Range($"B{row}:E{row}").Merge().Value = data.Customer.Phone;
             row++;
 
-            // Заголовок работ
-            worksheet.Cell($"A{row}").Value = "№";
-            worksheet.Range($"B{row}:D{row}").Merge();
-            SetBoldCell(worksheet, $"B{row}", "Вид работы:");
-            SetBoldCell(worksheet, $"E{row}", "Стоимость:");
-            worksheet.Range($"F{row}:H{row}").Merge();
-            SetBoldCell(worksheet, $"F{row}", "Примечание:");
+            BuildWorkItemsHeader(ws, ref row);
+        }
+
+        private void BuildWorkItemsHeader(IXLWorksheet ws, ref int row)
+        {
+            ws.Cell($"A{row}").Value = "№";
+            ws.Range($"B{row}:D{row}").Merge();
+            SetBold(ws, $"B{row}", "Вид работы:");
+            SetBold(ws, $"E{row}", "Стоимость:");
+            ws.Range($"F{row}:H{row}").Merge();
+            SetBold(ws, $"F{row}", "Примечание:");
             row++;
         }
 
-        private void BuildWorkerHeader(IXLWorksheet worksheet, ref int row, PrintDataModel data)
+        private void BuildPaymentsHeader(IXLWorksheet ws, ref int row)
         {
-            // Строка 1 - Рабочий документ
-            worksheet.Range($"A{row}:H{row}").Merge();
-            SetBoldCell(worksheet, $"A{row}", "РАБОЧИЙ ДОКУМЕНТ (без цен)");
-            worksheet.Cell($"A{row}").Style.Font.FontSize = 14;
-            worksheet.Cell($"A{row}").Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
-            row += 2;
-
-            // Строка 2 - Номер заказа
-            SetBoldCell(worksheet, $"A{row}", "№ заказа:");
-            worksheet.Range($"B{row}:C{row}").Merge();
-            worksheet.Cell($"B{row}").Value = data.Header.OrderNumber;
-            SetBoldCell(worksheet, $"D{row}", "Дата:");
-            worksheet.Range($"E{row}:F{row}").Merge();
-            worksheet.Cell($"E{row}").Value = data.Header.OrderDate.ToString("dd.MM.yyyy");
-            row++;
-
-            // Строка 3 - Участок
-            SetBoldCell(worksheet, $"A{row}", "Участок:");
-            worksheet.Range($"B{row}:F{row}").Merge();
-            worksheet.Cell($"B{row}").Value = data.Header.Place;
-            row++;
-
-            // Строка 4 - ФИО умершего
-            SetBoldCell(worksheet, $"A{row}", "ФИО умершего:");
-            worksheet.Range($"B{row}:H{row}").Merge();
-            worksheet.Cell($"B{row}").Value = data.Header.DeceasedFullName;
-            row += 2;
-
-            // Заголовок работ
-            worksheet.Cell($"A{row}").Value = "№";
-            worksheet.Range($"B{row}:E{row}").Merge();
-            SetBoldCell(worksheet, $"B{row}", "Вид работы:");
-            worksheet.Range($"F{row}:H{row}").Merge();
-            SetBoldCell(worksheet, $"F{row}", "Примечание:");
+            SetBold(ws, $"B{row}", "Сумма:");
+            SetBold(ws, $"C{row}", "Дата:");
+            SetBold(ws, $"D{row}", "Подпись:");
+            SetBold(ws, $"F{row}", "Сумма:");
+            SetBold(ws, $"G{row}", "Дата:");
+            SetBold(ws, $"H{row}", "Подпись:");
             row++;
         }
 
-        private void BuildWorkItems(IXLWorksheet worksheet, ref int row, PrintDataModel data)
+        private void BuildWorkItemsPage(IXLWorksheet ws, ref int row, List<WorkItemInfo> workItems, int pageNum)
         {
-            for (int i = 0; i < 26; i++)
+            int startNumber = pageNum * MAX_WORK_ITEMS_PER_PAGE;
+
+            for (int i = 0; i < workItems.Count; i++)
             {
-                var workItem = i < data.WorkItems.Count ? data.WorkItems[i] : null;
-                
-                worksheet.Cell($"A{row}").Value = $"{i + 1}.";
-                
-                if (workItem != null)
-                {
-                    worksheet.Range($"B{row}:D{row}").Merge();
-                    worksheet.Cell($"B{row}").Value = workItem.Description;
-                    
-                    // ИСПРАВЛЕНО: форматируем цену
-                    if (workItem.ShowPrice)
-                    {
-                        var formattedPrice = FormatPrice(workItem.Total);
-                        worksheet.Cell($"E{row}").Value = formattedPrice;
-                    }
-                    else
-                    {
-                        worksheet.Cell($"E{row}").Value = "";
-                    }
-                    
-                    worksheet.Range($"F{row}:H{row}").Merge();
-                    worksheet.Cell($"F{row}").Value = workItem.Note;
-                }
-                else
-                {
-                    worksheet.Range($"B{row}:D{row}").Merge();
-                    worksheet.Range($"F{row}:H{row}").Merge();
-                }
-                
+                var item = workItems[i];
+                int itemNumber = startNumber + i + 1;
+
+                ws.Cell($"A{row}").Value = $"{itemNumber}.";
+                ws.Range($"B{row}:D{row}").Merge().Value = item.Description;
+
+                if (item.ShowPrice)
+                    ws.Cell($"E{row}").Value = FormatPrice(item.Total);
+
+                ws.Range($"F{row}:H{row}").Merge().Value = item.Note;
                 row++;
+            }
+
+            if (pageNum == 0)
+            {
+                for (int i = workItems.Count; i < MAX_WORK_ITEMS_PER_PAGE; i++)
+                {
+                    ws.Cell($"A{row}").Value = $"{i + 1}.";
+                    ws.Range($"B{row}:D{row}").Merge();
+                    ws.Range($"F{row}:H{row}").Merge();
+                    row++;
+                }
             }
         }
 
-        private void BuildWorkerWorkItems(IXLWorksheet worksheet, ref int row, PrintDataModel data)
+        private void BuildTotals(IXLWorksheet ws, ref int row, PrintDataModel data)
         {
-            for (int i = 0; i < data.WorkItems.Count; i++)
-            {
-                var workItem = data.WorkItems[i];
-                
-                worksheet.Cell($"A{row}").Value = $"{i + 1}.";
-                worksheet.Range($"B{row}:E{row}").Merge();
-                worksheet.Cell($"B{row}").Value = workItem.Description;
-                worksheet.Range($"F{row}:H{row}").Merge();
-                worksheet.Cell($"F{row}").Value = workItem.Note;
-                
-                row++;
-            }
-        }
+            ws.Range($"A{row}:D{row}").Merge();
+            SetBold(ws, $"A{row}", "ИТОГО:");
 
-        private void BuildTotals(IXLWorksheet worksheet, ref int row, PrintDataModel data)
-        {
-            worksheet.Range($"A{row}:D{row}").Merge();
-            SetBoldCell(worksheet, $"A{row}", "ИТОГО:");
-            worksheet.Range($"E{row}:H{row}").Merge();
-            
+            ws.Range($"E{row}:H{row}").Merge();
             if (data.Financials.ShowFinancials)
             {
-                var totalWorkPrice = data.WorkItems.Sum(w => w.Total);
-                // ИСПРАВЛЕНО: форматируем цену
-                worksheet.Cell($"E{row}").Value = FormatPrice(totalWorkPrice);
-            }
-            else
-            {
-                worksheet.Cell($"E{row}").Value = "";
+                var total = data.WorkItems.Sum(w => w.Total);
+                ws.Cell($"E{row}").Value = FormatPrice(total);
             }
             row++;
         }
 
-        private void BuildAdditionalInfo(IXLWorksheet worksheet, ref int row, PrintDataModel data)
+        private void BuildAdditionalInfo(IXLWorksheet ws, ref int row, PrintDataModel data)
         {
-            worksheet.Range($"A{row}:A{row + 2}").Merge();
-            SetBoldCell(worksheet, $"A{row}", "Примечание:");
-            worksheet.Range($"B{row}:H{row + 2}").Merge();
-            worksheet.Cell($"B{row}").Value = data.AdditionalInfo;
+            ws.Range($"A{row}:A{row + 2}").Merge();
+            SetBold(ws, $"A{row}", "Примечание:");
+
+            ws.Range($"B{row}:H{row + 2}").Merge().Value = data.AdditionalInfo ?? "";
             row += 3;
         }
 
-        private void BuildTechnicalInfo(IXLWorksheet worksheet, ref int row, PrintDataModel data)
+        private void BuildMonumentInfo(IXLWorksheet ws, ref int row, PrintDataModel data)
         {
-            worksheet.Range($"A{row}:H{row}").Merge();
-            SetBoldCell(worksheet, $"A{row}", "ТЕХНИЧЕСКАЯ ИНФОРМАЦИЯ");
-            worksheet.Cell($"A{row}").Style.Fill.BackgroundColor = XLColor.LightGray;
+            if (string.IsNullOrWhiteSpace(data.Header.MonumentType) &&
+                string.IsNullOrWhiteSpace(data.Header.MonumentSize))
+                return;
+
+            ws.Range($"A{row}:H{row}").Merge();
+            SetBold(ws, $"A{row}", "ИНФОРМАЦИЯ О ПАМЯТНИКЕ");
+            ws.Cell($"A{row}").Style.Fill.BackgroundColor = XLColor.LightGray;
             row++;
 
-            SetBoldCell(worksheet, $"A{row}", "Тип памятника:");
-            worksheet.Range($"B{row}:H{row}").Merge();
-            worksheet.Cell($"B{row}").Value = data.Header.MonumentType;
-            row++;
-
-            SetBoldCell(worksheet, $"A{row}", "Размер памятника:");
-            worksheet.Range($"B{row}:H{row}").Merge();
-            worksheet.Cell($"B{row}").Value = data.Header.MonumentSize;
-            row++;
-
-            if (data.WorkItems.Any(w => w.DistanceKm.HasValue))
+            if (!string.IsNullOrWhiteSpace(data.Header.MonumentType))
             {
-                SetBoldCell(worksheet, $"A{row}", "Расстояние (км):");
-                worksheet.Range($"B{row}:H{row}").Merge();
-                var distances = string.Join(", ", data.WorkItems.Where(w => w.DistanceKm.HasValue).Select(w => $"{w.Description}: {w.DistanceKm} км"));
-                worksheet.Cell($"B{row}").Value = distances;
+                SetBold(ws, $"A{row}", "Тип памятника:");
+                ws.Range($"B{row}:H{row}").Merge().Value = data.Header.MonumentType;
+                row++;
+            }
+
+            if (!string.IsNullOrWhiteSpace(data.Header.MonumentSize))
+            {
+                SetBold(ws, $"A{row}", "Размер памятника:");
+                ws.Range($"B{row}:H{row}").Merge().Value = data.Header.MonumentSize;
+                row++;
+            }
+            row++;
+        }
+
+        private void BuildPaymentsPage(IXLWorksheet ws, ref int row, List<PaymentInfo> payments)
+        {
+            for (int i = 0; i < payments.Count; i += 2)
+            {
+                var left = payments[i];
+                var right = i + 1 < payments.Count ? payments[i + 1] : null;
+
+                SetBold(ws, $"A{row}", left.PaymentType);
+
+                if (left.ShowAmount)
+                {
+                    ws.Cell($"B{row}").Value = FormatPrice(left.Amount);
+                    ws.Cell($"C{row}").Value = left.PaymentDate.ToString("dd.MM.yyyy");
+                }
+
+                if (right != null)
+                {
+                    SetBold(ws, $"E{row}", right.PaymentType);
+                    if (right.ShowAmount)
+                    {
+                        ws.Cell($"F{row}").Value = FormatPrice(right.Amount);
+                        ws.Cell($"G{row}").Value = right.PaymentDate.ToString("dd.MM.yyyy");
+                    }
+                }
                 row++;
             }
         }
 
-        private void BuildPayments(IXLWorksheet worksheet, ref int row, PrintDataModel data)
+        private void BuildSignatures(IXLWorksheet ws, ref int row)
         {
-            SetBoldCell(worksheet, $"B{row}", "Сумма:");
-            SetBoldCell(worksheet, $"C{row}", "Дата:");
-            SetBoldCell(worksheet, $"D{row}", "Подпись:");
-            SetBoldCell(worksheet, $"F{row}", "Сумма:");
-            SetBoldCell(worksheet, $"G{row}", "Дата:");
-            SetBoldCell(worksheet, $"H{row}", "Подпись:");
-            row++;
+            ws.Range($"A{row}:C{row}").Merge();
+            SetBold(ws, $"A{row}", "Скидка при следующем заказе % -");
 
-            for (int i = 0; i < 4; i++)
+            ws.Range($"E{row}:G{row}").Merge();
+            SetBold(ws, $"E{row}", "Заказ выполнен полностью, претензий не имею -");
+        }
+
+        // ====================== Вспомогательные методы ======================
+
+        private void SetBold(IXLWorksheet ws, string address, string value)
+        {
+            var cell = ws.Cell(address);
+            cell.Value = value;
+            cell.Style.Font.Bold = true;
+        }
+
+        private void SetBoldCentered(IXLWorksheet ws, int row, string value)
+        {
+            var cell = ws.Cell($"A{row}");
+            cell.Value = value;
+            cell.Style.Font.Bold = true;
+            cell.Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
+        }
+
+        private List<List<WorkItemInfo>> SplitWorkItems(List<WorkItemInfo> items, int pageSize)
+        {
+            var pages = new List<List<WorkItemInfo>>();
+            if (items.Count == 0)
             {
-                var paymentLeft = i < data.Payments.Count ? data.Payments[i] : null;
-                var paymentRight = (i + 4) < data.Payments.Count ? data.Payments[i + 4] : null;
-
-                // Левая часть
-                SetBoldCell(worksheet, $"A{row}", paymentLeft?.PaymentType ?? (i == 0 ? "Аванс" : "Доплата"));
-
-                if (paymentLeft != null && paymentLeft.ShowAmount)
-                {
-                    // ИСПРАВЛЕНО: форматируем сумму платежа
-                    worksheet.Cell($"B{row}").Value = FormatPrice(paymentLeft.Amount);
-                    worksheet.Cell($"C{row}").Value = paymentLeft.PaymentDate.ToString("dd.MM.yyyy");
-                }
-                else
-                {
-                    worksheet.Cell($"B{row}").Value = "";
-                    worksheet.Cell($"C{row}").Value = "";
-                }
-
-                // Правая часть
-                SetBoldCell(worksheet, $"E{row}", paymentRight?.PaymentType ?? "Доплата");
-
-                if (paymentRight != null && paymentRight.ShowAmount)
-                {
-                    // ИСПРАВЛЕНО: форматируем сумму платежа
-                    worksheet.Cell($"F{row}").Value = FormatPrice(paymentRight.Amount);
-                    worksheet.Cell($"G{row}").Value = paymentRight.PaymentDate.ToString("dd.MM.yyyy");
-                }
-                else
-                {
-                    worksheet.Cell($"F{row}").Value = "";
-                    worksheet.Cell($"G{row}").Value = "";
-                }
-                
-                row++;
+                pages.Add(new List<WorkItemInfo>());
+                return pages;
             }
+
+            for (int i = 0; i < items.Count; i += pageSize)
+                pages.Add(items.Skip(i).Take(pageSize).ToList());
+
+            return pages;
         }
 
-        private void BuildSignatures(IXLWorksheet worksheet, ref int row, PrintDataModel data = null)
+        private List<List<PaymentInfo>> SplitPayments(List<PaymentInfo> payments, int pageSize)
         {
-            worksheet.Range($"A{row}:C{row}").Merge();
-            SetBoldCell(worksheet, $"A{row}", "Скидка при следующем заказе % -");
-            worksheet.Range($"E{row}:G{row}").Merge();
-            SetBoldCell(worksheet, $"E{row}", "Заказ выполнен полностью, претензий не имею -");
+            var pages = new List<List<PaymentInfo>>();
+            if (payments.Count == 0)
+            {
+                pages.Add(new List<PaymentInfo>());
+                return pages;
+            }
+
+            for (int i = 0; i < payments.Count; i += pageSize)
+                pages.Add(payments.Skip(i).Take(pageSize).ToList());
+
+            return pages;
         }
 
-        private void SetBoldCell(IXLWorksheet worksheet, string cellAddress, string value)
+        public string BuildHtml(PrintDataModel data)
         {
-            worksheet.Cell(cellAddress).Value = value;
-            worksheet.Cell(cellAddress).Style.Font.Bold = true;
+            throw new NotSupportedException("ExcelDocumentBuilder не поддерживает HTML формат");
         }
     }
 }

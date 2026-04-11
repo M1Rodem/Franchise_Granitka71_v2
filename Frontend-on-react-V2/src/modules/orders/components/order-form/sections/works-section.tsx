@@ -16,7 +16,7 @@ import styles from './works-section.module.css'
 const GRID = '2fr 1fr 1fr 2fr 120px'
 
 export function WorksSection() {
-  const { register, control } =
+  const { register, control, setValue } =
     useFormContext<OrderFormModel>()
 
   const { fields, append, remove } =
@@ -59,6 +59,7 @@ export function WorksSection() {
               <div className={styles.mobileRow}>
                 <span className={table.label}>Работа</span>
                 <input
+                  placeholder="Название работы"
                   {...register(`works.${index}.workDescription`)}
                   className={input.input}
                   disabled={isDistanceRow}
@@ -71,7 +72,24 @@ export function WorksSection() {
                   <span className={table.label}>Цена</span>
                   <input
                     type="number"
-                    {...register(`works.${index}.price`, { valueAsNumber: true })}
+                    step="0.01"
+                    inputMode="decimal"
+                    placeholder="Цена"
+                    {...register(`works.${index}.price`, {
+                      valueAsNumber: true,
+                      onChange: (e) => {
+                        let value = Number(e.target.value) || 0
+
+                        // округление как в payments
+                        value = Math.round(value * 100) / 100
+
+                        setValue(
+                          `works.${index}.price`,
+                          value,
+                          { shouldDirty: true }
+                        )
+                      }
+                    })}
                     className={input.input}
                   />
                 </div>
@@ -80,7 +98,23 @@ export function WorksSection() {
                   <span className={table.label}>Кол-во</span>
                   <input
                     type="number"
-                    {...register(`works.${index}.quantity`, { valueAsNumber: true })}
+                    inputMode="numeric"
+                    placeholder="Кол-во"
+                    {...register(`works.${index}.quantity`, {
+                      valueAsNumber: true,
+                      onChange: (e) => {
+                        let value = Number(e.target.value) || 0
+
+                        // можно ограничить минимум
+                        if (value < 0) value = 0
+
+                        setValue(
+                          `works.${index}.quantity`,
+                          value,
+                          { shouldDirty: true }
+                        )
+                      }
+                    })}
                     className={input.input}
                     disabled={isDistanceRow}
                   />
@@ -91,6 +125,7 @@ export function WorksSection() {
               <div className={styles.mobileRow}>
                 <span className={table.label}>Примечание</span>
                 <textarea
+                  placeholder="Коментарий"
                   {...register(`works.${index}.note`)}
                   className={`${input.textarea} ${styles.compactTextarea}`}
                   readOnly={isDistanceRow}

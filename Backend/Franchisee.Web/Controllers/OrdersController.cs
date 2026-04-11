@@ -568,8 +568,8 @@ namespace Franchisee.Web.Controllers
 
             try
             {
-                // Загружаем заказ
                 var order = await _context.Orders
+                    .IgnoreQueryFilters()
                     .FirstOrDefaultAsync(o => o.Id == id);
 
                 if (order == null)
@@ -578,26 +578,16 @@ namespace Franchisee.Web.Controllers
                     return NotFound(new { success = false, message = "Заказ не найден" });
                 }
 
-                // Проверка прав: админы могут всё, менеджеры только свои заказы
                 if (!IsAdminOrHigher() && order.ManagerId != userId)
                 {
                     _logger.LogWarning("Менеджер {UserId} пытается удалить чужой заказ {OrderId}", userId, id);
-                    // Исправлено: возвращаем StatusCode 403 с сообщением, а не Forbid()
                     return StatusCode(403, new { success = false, message = "Можно удалять только свои заказы" });
-                }
-
-                // Если заказ уже в архиве
-                if (order.IsDeleted)
-                {
-                    _logger.LogWarning("Заказ {OrderId} уже в архиве", id);
-                    return BadRequest(new { success = false, message = "Заказ уже в архиве" });
                 }
 
                 using var transaction = await _context.Database.BeginTransactionAsync();
 
                 try
                 {
-                    // Удаляем уведомления, связанные с заказом
                     var notifications = await _context.Notifications
                         .Where(n => n.OrderId == id)
                         .ToListAsync();
@@ -608,7 +598,7 @@ namespace Franchisee.Web.Controllers
                         _context.Notifications.RemoveRange(notifications);
                     }
 
-                    // Мягкое удаление
+                    bool wasAlreadyArchived = order.IsDeleted;
                     order.IsDeleted = true;
                     order.DeletedAt = DateTime.UtcNow;
                     order.UpdatedAt = DateTime.UtcNow;
@@ -616,12 +606,12 @@ namespace Franchisee.Web.Controllers
                     await _context.SaveChangesAsync();
                     await transaction.CommitAsync();
 
-                    _logger.LogInformation("Заказ {OrderId} успешно перемещен в архив", id);
+                    _logger.LogInformation("Заказ {OrderId} успешно перемещен в архив (был в архиве: {WasArchived})", id, wasAlreadyArchived);
 
                     return Ok(new
                     {
                         success = true,
-                        message = "Заказ перемещен в архив",
+                        message = wasAlreadyArchived ? "Заказ уже был в архиве, флаги обновлены" : "Заказ перемещен в архив",
                         orderId = id,
                         orderNumber = order.OrderNumber
                     });
@@ -1167,14 +1157,47 @@ namespace Franchisee.Web.Controllers
                     return NotFound(new { success = false, message = "Архивный заказ не найден" });
                 }
 
-                // Проверка прав: админы могут всё, менеджеры только свои заказы
-                if (!IsAdminOrHigher() && order.ManagerId != userId)
+                // === НОВАЯ ЛОГИКА ПРОВЕРКИ ===
+
+                // Админы и суперадмины могут всё
+                if (IsAdminOrHigher())
                 {
-                    _logger.LogWarning("Менеджер {UserId} пытается удалить чужой архивный заказ {OrderId}", userId, id);
-                    // Исправлено: возвращаем StatusCode 403 с сообщением, а не Forbid()
-                    return StatusCode(403, new { success = false, message = "Можно удалять из архива только свои заказы" });
+                    _logger.LogInformation("Админ {UserId} удаляет архивный заказ {OrderId}", userId, id);
+                    // продолжаем удаление
+                }
+                else
+                {
+                    // Менеджеры: проверяем время создания заказа
+                    var timeSinceCreated = DateTime.UtcNow - order.CreatedAt;
+                    var canDelete = timeSinceCreated.TotalMinutes <= 30;
+
+                    if (!canDelete)
+                    {
+                        var minutesLeft = (int)(30 - timeSinceCreated.TotalMinutes);
+                        _logger.LogWarning(
+                            "Менеджер {UserId} пытается удалить архивный заказ {OrderId} (создан {CreatedAt}, прошло {Minutes} мин, можно только до 30 мин)",
+                            userId, id, order.CreatedAt, (int)timeSinceCreated.TotalMinutes);
+
+                        return StatusCode(403, new
+                        {
+                            success = false,
+                            message = $"Заказ можно удалить из архива только в течение 30 минут после создания. Осталось {minutesLeft} минут.",
+                            canDeleteAt = order.CreatedAt.AddMinutes(30)
+                        });
+                    }
+
+                    // Дополнительная проверка: заказ должен принадлежать менеджеру
+                    if (order.ManagerId != userId)
+                    {
+                        _logger.LogWarning("Менеджер {UserId} пытается удалить чужой архивный заказ {OrderId}", userId, id);
+                        return StatusCode(403, new { success = false, message = "Можно удалять из архива только свои заказы" });
+                    }
+
+                    _logger.LogInformation("Менеджер {UserId} удаляет свой архивный заказ {OrderId} (создан {CreatedAt}, прошло {Minutes} мин)",
+                        userId, id, order.CreatedAt, (int)timeSinceCreated.TotalMinutes);
                 }
 
+                // === УДАЛЕНИЕ (без изменений) ===
                 using var transaction = await _context.Database.BeginTransactionAsync();
 
                 try

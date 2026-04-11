@@ -199,6 +199,27 @@ export function LocationSection() {
               onReady={(map: any) => {
                 mapRef.current = map
 
+                const searchControl = new window.ymaps.control.SearchControl({
+                  options: {
+                    noPlacemark: true,
+                  },
+                })
+
+                map.controls.add(searchControl)
+
+                searchControl.events.add('resultselect', () => {
+                  const index = searchControl.getSelectedIndex()
+                  const result = searchControl.getResult(index)
+
+                  result.then((res: any) => {
+                    const coords = res.geometry.getCoordinates()
+
+                    handleSelect(coords)
+
+                    map.setCenter(coords)
+                  })
+                })
+
                 if (!selectedPlot) return
 
                 const lat = watch('latitude')

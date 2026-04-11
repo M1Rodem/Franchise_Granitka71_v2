@@ -39,7 +39,7 @@ export function PaymentsSection() {
     name: 'payments',
   })
 
- const payments =
+  const payments =
     useWatch({
       control,
       name: 'payments',
@@ -64,18 +64,13 @@ export function PaymentsSection() {
       (Number(w?.quantity) || 0),
     0
   )
-  
+
   const roundMoney = (value: number) =>
     Math.round(value * 100) / 100
 
   const advanceIndex = payments.findIndex(
     (p) => p?.paymentType === "Аванс"
   )
-
-  const advanceAmount =
-    advanceIndex !== -1
-      ? Number(payments?.[advanceIndex]?.amount) || 0
-      : 0
 
   const applySuggestedAdvance = () => {
 
@@ -120,6 +115,8 @@ export function PaymentsSection() {
 
   const remaining = roundMoney(Math.max(0, total - totalPaid))
 
+  const isAdvanceEnough = totalPaid >= suggestedAdvance
+
   return (
     <div className={surface.surface}>
       <div className={styles.headerRow}>
@@ -128,31 +125,31 @@ export function PaymentsSection() {
         </h2>
 
         {advanceIndex !== -1 &&
-        advanceAmount !== suggestedAdvance &&
-        (
-          mode === "edit" ||
-          dirtyFields?.payments?.[advanceIndex]?.amount
-        ) && (
+          !isAdvanceEnough &&
+          (
+            mode === "edit" ||
+            dirtyFields?.payments?.[advanceIndex]?.amount
+          ) && (
 
-          <div className={styles.advanceHint}>
-            <span className={styles.advanceText}>
-              Рекомендуемый аванс (30%):
-              <strong>
-                {" "}
-                {suggestedAdvance.toLocaleString("ru-RU")} ₽
-              </strong>
-            </span>
+            <div className={styles.advanceHint}>
+              <span className={styles.advanceText}>
+                Рекомендуемый аванс (30%):
+                <strong>
+                  {" "}
+                  {suggestedAdvance.toLocaleString("ru-RU")} ₽
+                </strong>
+              </span>
 
-            <button
-              type="button"
-              onClick={applySuggestedAdvance}
-              className={`${button.btn} ${button.btnSuccess}`}
-            >
-              Применить 30%
-            </button>
-          </div>
+              <button
+                type="button"
+                onClick={applySuggestedAdvance}
+                className={`${button.btn} ${button.btnSuccess}`}
+              >
+                Применить 30%
+              </button>
+            </div>
 
-        )}
+          )}
 
       </div>
 
@@ -179,7 +176,7 @@ export function PaymentsSection() {
 
           const isOnlyAdvance =
             payments[index]?.paymentType ===
-              'Аванс' &&
+            'Аванс' &&
             advanceCount === 1
 
           return (

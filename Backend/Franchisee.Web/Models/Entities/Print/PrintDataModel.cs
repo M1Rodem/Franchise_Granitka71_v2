@@ -13,6 +13,8 @@ namespace Franchisee.Web.Models.Print
         public string AdditionalInfo { get; set; } = string.Empty;
         public ManagerInfo Manager { get; set; } = new();
         public PrintType Type { get; set; }
+        public List<WorkItemInfo> DistanceWorkItems { get; set; } = new();
+        public List<WorkItemInfo> RegularWorkItems { get; set; } = new();
     }
 
     public class OrderHeaderInfo
@@ -41,10 +43,20 @@ namespace Franchisee.Web.Models.Print
         public string Description { get; set; } = string.Empty;
         public decimal Price { get; set; }
         public decimal Quantity { get; set; }
-        public decimal Total => Price * Quantity;
+        public decimal Total =>
+            IsDistanceWork
+                ? Price * (decimal)((DistanceKm ?? 0) * Routes)
+                : Price * Quantity;
+
+        public decimal CalculatedQuantity =>
+            IsDistanceWork
+                ? (decimal)((DistanceKm ?? 0) * Routes)
+                : Quantity;
         public string Note { get; set; } = string.Empty;
         public bool ShowPrice { get; set; } = true;
         public double? DistanceKm { get; set; }
+        public int Routes { get; set; }
+        public bool IsDistanceWork { get; set; }
     }
 
     public class PaymentInfo

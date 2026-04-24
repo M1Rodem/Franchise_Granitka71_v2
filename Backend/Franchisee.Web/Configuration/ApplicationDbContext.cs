@@ -13,8 +13,7 @@ namespace Franchisee.Web.Configuration
             : base(options)
         {
         }
-
-        // Таблицы (DbSet)
+        public DbSet<OrderCounter> OrderCounters { get; set; }
         public DbSet<Manager> Managers { get; set; }
         public DbSet<Order> Orders { get; set; }
         public DbSet<OrderWorkItem> OrderWorkItems { get; set; }
@@ -28,6 +27,13 @@ namespace Franchisee.Web.Configuration
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
+
+            modelBuilder.Entity<OrderCounter>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                entity.Property(e => e.Id).ValueGeneratedOnAdd();
+                entity.ToTable("OrderCounters");
+            });
 
             // Конфигурация для Plot
             modelBuilder.Entity<Plot>(entity =>
@@ -117,13 +123,20 @@ namespace Franchisee.Web.Configuration
                     .HasForeignKey(w => w.OrderId)
                     .OnDelete(DeleteBehavior.Cascade);
 
-                // Цена - 2 знака для копеек
                 entity.Property(w => w.Price)
                     .HasPrecision(18, 2);
 
-                // Количество - 3 знака (для 2.123)
                 entity.Property(w => w.Quantity)
-                    .HasPrecision(10, 3);  // 10 знаков всего, 3 после запятой
+                    .HasPrecision(10, 3);
+
+                // NEW: конфигурация для Routes
+                entity.Property(w => w.Routes)
+                    .IsRequired()
+                    .HasDefaultValue(1);
+
+                // NEW: конфигурация для DistanceKm
+                entity.Property(w => w.DistanceKm)
+                    .HasPrecision(10, 2);
             });
 
             // Конфигурация для OrderPayment

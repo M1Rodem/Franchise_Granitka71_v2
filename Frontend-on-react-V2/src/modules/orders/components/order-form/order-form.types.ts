@@ -1,7 +1,7 @@
 import type { OrderFormModel } from './order-form.schema'
 export const createOrderDefaultValues = (): OrderFormModel => {
   const today = new Date().toISOString().split('T')[0]
-  
+
   return {
     inspectionPlace: '',
     plotId: null,
@@ -26,8 +26,15 @@ export const createOrderDefaultValues = (): OrderFormModel => {
     works: [
       {
         workDescription: 'Расстояние',
-        quantity: 1,
         price: 0,
+
+        isDistanceWork: true,
+
+        routes: 1,
+        distanceKm: 0,
+
+        quantity: 0,
+
         note: 'Расчетное расстояние будет определено после выбора на карте',
       },
     ],

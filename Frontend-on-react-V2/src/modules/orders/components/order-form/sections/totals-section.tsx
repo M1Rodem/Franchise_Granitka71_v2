@@ -27,13 +27,13 @@ export function TotalsSection() {
       name: 'discountPercent',
     }) ?? 0
 
-  const subtotal = works.reduce(
-    (sum, w) =>
-      sum +
-      (Number(w?.price) || 0) *
-      (Number(w?.quantity) || 0),
-    0
-  )
+  const subtotal = works.reduce((sum, w) => {
+    if (w.isDistanceWork) {
+      return sum + (w.price || 0) * (w.routes || 0) * (w.distanceKm || 0)
+    }
+
+    return sum + (w.price || 0) * (w.quantity || 0)
+  }, 0)
 
   const discountAmount =
     subtotal * (discountPercent / 100)

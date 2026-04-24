@@ -33,9 +33,21 @@ export const orderFormSchema = z
     works: z
       .array(
         z.object({
+          id: z.number().optional(),
+
           workDescription: z.string().min(1, 'Укажите вид работы'),
-          quantity: z.number().min(0, 'Количество должно быть > 0'),
           price: z.number().min(0),
+
+          // обычные работы
+          quantity: z.number().min(0).optional(),
+
+          // distance работы
+          routes: z.number().min(0).optional(),
+          distanceKm: z.number().min(0).optional(),
+
+          // главный флаг
+          isDistanceWork: z.boolean(),
+
           note: z.string().optional(),
         })
       )

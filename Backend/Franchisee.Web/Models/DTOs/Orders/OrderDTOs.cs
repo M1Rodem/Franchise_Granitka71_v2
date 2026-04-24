@@ -60,12 +60,14 @@ namespace Franchisee.Web.Models.DTOs.Orders
         public string WorkDescription { get; set; } = string.Empty;
 
         public decimal Price { get; set; }
+        public int Routes { get; set; } = 1;
 
         public decimal Quantity { get; set; }
 
         public string Note { get; set; } = string.Empty;
 
         public double? DistanceKm { get; set; }
+        public bool IsDistanceWork { get; set; } = false;
     }
     public class OrdersListItemDto
     {

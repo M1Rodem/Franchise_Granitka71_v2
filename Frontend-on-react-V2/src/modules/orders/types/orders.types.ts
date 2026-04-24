@@ -113,6 +113,8 @@ const workItemCamelSchema = z.object({
   workDescription: z.string(),
   price: z.number(),
   quantity: z.number(),
+  routes: z.number().optional(),
+  isDistanceWork: z.boolean().optional(),
   note: z.string().optional(),
   distanceKm: z.number().nullable().optional(),
 }).passthrough();
@@ -123,6 +125,8 @@ const workItemPascalSchema = z.object({
   WorkDescription: z.string(),
   Price: z.number(),
   Quantity: z.number(),
+  Routes: z.number().optional(),
+  IsDistanceWork: z.boolean().optional(),
   Note: z.string().optional(),
   DistanceKm: z.number().nullable().optional(),
 }).passthrough().transform((v) => ({
@@ -131,6 +135,8 @@ const workItemPascalSchema = z.object({
   workDescription: v.WorkDescription,
   price: v.Price,
   quantity: v.Quantity,
+  routes: v.Routes,
+  isDistanceWork: v.IsDistanceWork,
   note: v.Note,
   distanceKm: v.DistanceKm,
 }));
@@ -260,10 +266,10 @@ const orderDetailsPascalSchema = z.object({
   CustomerEmail: z.string().nullable().optional(),
   Phone: z.string(),
   Address: z.string(),
-  
+
   monumentType: z.string().optional().nullable(),
   monumentSize: z.string().optional().nullable(),
-  additionalInfo: z.string().optional().nullable(), 
+  additionalInfo: z.string().optional().nullable(),
 
   Status: z.union([z.number(), z.string()]),
 

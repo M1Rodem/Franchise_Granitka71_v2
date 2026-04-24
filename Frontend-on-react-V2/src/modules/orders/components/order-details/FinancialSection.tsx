@@ -1,5 +1,4 @@
 import surface from '@/shared/ui/surface.module.css'
-import layout from '@/shared/ui/form-layout.module.css'
 import { StatusBadge } from '@/shared/ui/status'
 import { getPaymentStatusInfo } from '@/modules/orders/lib/payment-status'
 
@@ -35,30 +34,30 @@ export function FinancialSection({
   paymentStatus,
 }: Props) {
 
-  const paid = payments.reduce(
-    (sum, p) => sum + p.amount,
-    0
+  const round = (v: number) =>
+    Math.round(v * 100) / 100
+
+  const paid = round(
+    payments.reduce((sum, p) => sum + (p.amount || 0), 0)
   )
 
-  const remaining = totalPrice - paid
+  const remaining = round(
+    Math.max(0, totalPrice - paid)
+  )
 
   const paymentStatusInfo =
-    getPaymentStatusInfo(
-      typeof paymentStatus === 'number'
-        ? paymentStatus
-        : 0
-    )
-  
+    getPaymentStatusInfo(paymentStatus ?? 0)
+
   return (
     <section className={surface.surface}>
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          marginBottom: '16px',
-        }}
-      >
+
+      {/* HEADER */}
+      <div style={{
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 16,
+      }}>
         <h2 className={surface.sectionTitle}>Финансы</h2>
 
         <StatusBadge style={paymentStatusInfo.style}>
@@ -66,51 +65,44 @@ export function FinancialSection({
         </StatusBadge>
       </div>
 
-      <div className={layout.grid2}>
+      {/* 🔹 БЛОК 1 */}
+      <div className={surface.financeGrid}>
 
-        <div className={layout.field}>
-          <span className={layout.label}>Сумма работ</span>
-          <span className={layout.value}>
-            {formatMoney(subtotal)}
-          </span>
+        {/* 1 строка */}
+        <div className={surface.financeItem}>
+          <span>Сумма работ</span>
+          <strong>{formatMoney(subtotal)}</strong>
         </div>
 
-        <div className={layout.field}>
-          <span className={layout.label}>Скидка</span>
-          <span className={layout.value}>
-            {discountPercent} %
-          </span>
+        <div className={surface.financeItem}>
+          <span>Итого</span>
+          <strong>{formatMoney(totalPrice)}</strong>
         </div>
 
-        <div className={layout.field}>
-          <span className={layout.label}>Сумма скидки</span>
-          <span className={layout.value}>
-            {formatMoney(discountAmount)}
-          </span>
+        <div className={surface.financeItem}>
+          <span>Скидка</span>
+          <strong>{discountPercent} %</strong>
         </div>
 
-        <div className={layout.field}>
-          <span className={layout.label}>Итого</span>
-          <span className={layout.value}>
-            <strong>{formatMoney(totalPrice)}</strong>
-          </span>
+        {/* 2 строка */}
+        <div className={surface.financeItem}>
+          <span>Сумма скидки</span>
+          <strong>{formatMoney(discountAmount)}</strong>
         </div>
 
-        <div className={layout.field}>
-          <span className={layout.label}>Оплачено</span>
-          <span className={layout.value}>
-            {formatMoney(paid)}
-          </span>
+
+        <div className={surface.financeItem}>
+          <span>Оплачено</span>
+          <strong>{formatMoney(paid)}</strong>
         </div>
 
-        <div className={layout.field}>
-          <span className={layout.label}>Осталось</span>
-          <span className={layout.value}>
-            <strong>{formatMoney(remaining)}</strong>
-          </span>
+        <div className={surface.financeItem}>
+          <span>Осталось</span>
+          <strong>{formatMoney(remaining)}</strong>
         </div>
 
       </div>
+
     </section>
   )
 }

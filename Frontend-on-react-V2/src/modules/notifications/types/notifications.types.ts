@@ -97,10 +97,14 @@ export interface MapChangeDto {
 }
 
 export interface WorkItemDto {
+  id: number
   workDescription: string
   quantity: number
   price: number
   note?: string | null
+  routes?: number
+  distanceKm?: number
+  isDistanceWork?: boolean
 }
 
 export interface WorksChangeDto {

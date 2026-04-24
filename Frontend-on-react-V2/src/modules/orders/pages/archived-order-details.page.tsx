@@ -120,6 +120,11 @@ export default function ArchivedOrderDetailsPage() {
     )
   }
 
+  const normalizedWorkItems = data.workItems.map(w => ({
+    ...w,
+    distanceKm: w.distanceKm ?? undefined,
+  }))
+
   return (
     <div className={styles.page}>
 
@@ -161,7 +166,7 @@ export default function ArchivedOrderDetailsPage() {
         destinationCoordinates={destinationCoordinates}
       />
 
-      <WorksSection items={data.workItems} />
+      <WorksSection items={normalizedWorkItems} />
 
       <FinancialSection
         subtotal={data.subtotal}

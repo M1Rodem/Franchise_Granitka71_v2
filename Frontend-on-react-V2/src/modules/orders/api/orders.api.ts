@@ -37,9 +37,18 @@ export interface CreateOrderRequestDto {
   discountPercent: number;
 
   workItems: {
+    id?: number;
+
     workDescription: string;
     price: number;
-    quantity: number;
+
+    quantity?: number;
+
+    routes?: number;
+    distanceKm?: number;
+
+    isDistanceWork: boolean;
+
     note?: string;
   }[];
 
@@ -76,10 +85,19 @@ export interface UpdateOrderRequestDto {
   discountPercent?: number
 
   workItems?: {
-    workDescription: string
-    price: number
-    quantity: number
-    note?: string
+    id?: number;
+
+    workDescription: string;
+    price: number;
+
+    quantity?: number;
+
+    routes?: number;
+    distanceKm?: number;
+
+    isDistanceWork: boolean;
+
+    note?: string;
   }[]
 
   payments?: {
@@ -167,11 +185,11 @@ export const ordersApi = {
     payload: UpdateOrderRequestDto
   ): Promise<UpdateOrderResponse> {
     const response = await httpClient.put(`/orders/${id}`, payload)
-    
+
     // Возвращаем как есть, разбор будет в provider
     return response.data
   },
-  
+
   // =========================
   // ARCHIVED ORDERS
   // =========================

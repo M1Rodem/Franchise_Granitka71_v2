@@ -11,9 +11,23 @@ namespace Franchisee.Web.Services.Print.Strategies
 
         public virtual PrintDataModel BuildDataModel(Order order)
         {
+            var allItems = order.WorkItems.Select(w => new WorkItemInfo
+            {
+                Id = w.Id,
+                Description = w.WorkDescription,
+                Price = w.Price,
+                Quantity = w.Quantity,
+                Routes = w.Routes,
+                DistanceKm = w.DistanceKm,
+                IsDistanceWork = w.DistanceKm.HasValue && w.DistanceKm > 0,
+                Note = w.Note,
+                ShowPrice = true
+            }).ToList();
+
             return new PrintDataModel
             {
                 Type = Type,
+
                 Header = new OrderHeaderInfo
                 {
                     OrderNumber = order.OrderNumber,
@@ -24,6 +38,7 @@ namespace Franchisee.Web.Services.Print.Strategies
                     MonumentType = order.MonumentType,
                     MonumentSize = order.MonumentSize
                 },
+
                 Customer = new CustomerInfo
                 {
                     FullName = order.CustomerFullName,
@@ -32,16 +47,12 @@ namespace Franchisee.Web.Services.Print.Strategies
                     Address = order.Address,
                     IncludePersonalInfo = true
                 },
-                WorkItems = order.WorkItems.Select(w => new WorkItemInfo
-                {
-                    Id = w.Id,
-                    Description = w.WorkDescription,
-                    Price = w.Price,
-                    Quantity = w.Quantity,
-                    Note = w.Note,
-                    DistanceKm = w.DistanceKm,
-                    ShowPrice = true
-                }).ToList(),
+
+                WorkItems = allItems,
+
+                DistanceWorkItems = allItems.Where(x => x.IsDistanceWork).ToList(),
+                RegularWorkItems = allItems.Where(x => !x.IsDistanceWork).ToList(),
+
                 Payments = order.Payments.Select(p => new PaymentInfo
                 {
                     Amount = p.Amount,
@@ -50,11 +61,14 @@ namespace Franchisee.Web.Services.Print.Strategies
                     Note = p.Note,
                     ShowAmount = true
                 }).ToList(),
+
                 AdditionalInfo = order.AdditionalInfo,
+
                 Manager = new ManagerInfo
                 {
                     FullName = order.Manager?.FullName ?? string.Empty
                 },
+
                 Financials = new FinancialInfo
                 {
                     Subtotal = order.Subtotal,

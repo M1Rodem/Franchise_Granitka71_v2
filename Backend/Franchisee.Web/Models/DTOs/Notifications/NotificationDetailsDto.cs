@@ -1,5 +1,6 @@
 using Franchisee.Web.Models.DTOs.Orders;
 using Franchisee.Web.Models.Entities.Notification;
+using System.Linq;
 
 namespace Franchisee.Web.Models.DTOs.Notifications
 {
@@ -83,16 +84,21 @@ namespace Franchisee.Web.Models.DTOs.Notifications
 
     public class WorksChangeDto
     {
+        public int ChangedWorksCount { get; set; }
         public List<OrderWorkItemDto> OldWorks { get; set; } = new();
         public List<OrderWorkItemDto> NewWorks { get; set; } = new();
 
         public decimal OldTotal { get; set; }
 
         public decimal NewTotal { get; set; }
+        public int OldQuantity { get; set; }
+        public int NewQuantity { get; set; }
+        public bool ShowRoutesInsteadOfQuantity { get; set; }
     }
 
     public class PaymentsChangeDto
     {
+        public int ChangedPaymentsCount { get; set; }
         public List<OrderPaymentDto> OldPayments { get; set; } = new();
 
         public List<OrderPaymentDto> NewPayments { get; set; } = new();

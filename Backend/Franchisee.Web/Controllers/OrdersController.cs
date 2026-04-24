@@ -178,8 +178,9 @@ namespace Franchisee.Web.Controllers
                         WorkDescription = w.WorkDescription,
                         Price = w.Price,
                         Quantity = w.Quantity,
-                        Note = w.Note,
-                        DistanceKm = w.DistanceKm
+                        Routes = w.IsDistanceWork ? (w.Routes > 0 ? w.Routes : 1) : 1,
+                        DistanceKm = w.IsDistanceWork ? w.DistanceKm : null,
+                        Note = w.Note
                     }).ToList() ?? new List<OrderWorkItem>(),
 
                     Payments = request.Payments?.Select(p => new OrderPayment
@@ -193,9 +194,13 @@ namespace Franchisee.Web.Controllers
 
                 order.RecalculateTotals();
 
-                // ИСПРАВЛЕНИЕ: НЕ вызываем CalculateAndAddDistanceWorkItem
-                // Расстояние приходит с фронта в request.WorkItems
-                // Бэк НЕ ДОЛЖЕН пересчитывать расстояние!
+                foreach (var wi in order.WorkItems)
+                {
+                    if (wi.DistanceKm.HasValue && wi.DistanceKm > 0 && wi.Routes > 0)
+                    {
+                        wi.Quantity = (decimal)(wi.DistanceKm.Value * wi.Routes);
+                    }
+                }
 
                 // Set FK
                 foreach (var wi in order.WorkItems)
@@ -350,28 +355,19 @@ namespace Franchisee.Web.Controllers
 
                     if (newPaymentsSum < 0)
                     {
-                        return BadRequest(new
-                        {
-                            message = "Сумма платежей не может быть отрицательной."
-                        });
+                        return BadRequest(new { message = "Сумма платежей не может быть отрицательной." });
                     }
 
                     foreach (var payment in request.Payments)
                     {
                         if (payment.Amount <= 0)
                         {
-                            return BadRequest(new
-                            {
-                                message = "Каждый платеж должен быть больше 0."
-                            });
+                            return BadRequest(new { message = "Каждый платеж должен быть больше 0." });
                         }
 
                         if (payment.PaymentDate == default)
                         {
-                            return BadRequest(new
-                            {
-                                message = "Дата платежа обязательна."
-                            });
+                            return BadRequest(new { message = "Дата платежа обязательна." });
                         }
                     }
                 }
@@ -433,33 +429,99 @@ namespace Franchisee.Web.Controllers
 
                     order.UpdatedAt = DateTime.UtcNow;
 
-                    // WorkItems - полная замена
                     if (request.WorkItems != null)
                     {
                         var existingWorkItems = await _context.OrderWorkItems
                             .Where(w => w.OrderId == id)
                             .ToListAsync();
-                        _context.OrderWorkItems.RemoveRange(existingWorkItems);
 
                         foreach (var wi in request.WorkItems)
                         {
-                            var entity = new OrderWorkItem
-                            {
-                                OrderId = id,
-                                WorkDescription = wi.WorkDescription,
-                                Price = wi.Price,
-                                Quantity = wi.Quantity,
-                                Note = wi.Note,
-                                DistanceKm = wi.DistanceKm
-                            };
+                            var existing = existingWorkItems.FirstOrDefault(w => w.Id == wi.Id);
 
-                            _context.OrderWorkItems.Add(entity);
+                            if (existing != null)
+                            {
+                                // Общие поля для всех WorkItems
+                                if (!string.IsNullOrEmpty(wi.WorkDescription))
+                                    existing.WorkDescription = wi.WorkDescription;
+
+                                if (wi.Price > 0)
+                                    existing.Price = wi.Price;
+
+                                if (!string.IsNullOrEmpty(wi.Note))
+                                    existing.Note = wi.Note;
+
+                                // ЯВНАЯ ЛОГИКА ПО ФЛАГУ
+                                if (wi.IsDistanceWork)
+                                {
+                                    // Только для работ с флагом IsDistanceWork = true
+                                    if (wi.Routes > 0)
+                                        existing.Routes = wi.Routes;
+
+                                    if (wi.DistanceKm.HasValue && wi.DistanceKm > 0)
+                                        existing.DistanceKm = wi.DistanceKm;
+
+                                    // Пересчитываем quantity
+                                    if (existing.DistanceKm.HasValue && existing.DistanceKm > 0 && existing.Routes > 0)
+                                    {
+                                        existing.Quantity = (decimal)(existing.DistanceKm.Value * existing.Routes);
+                                    }
+                                }
+                                else
+                                {
+                                    // Обычные работы
+                                    if (wi.Quantity > 0)
+                                        existing.Quantity = wi.Quantity;
+
+                                    // Очищаем маршрутные поля (на всякий случай)
+                                    existing.Routes = 1;
+                                    existing.DistanceKm = null;
+                                }
+                            }
+                            else if (wi.Id == 0)
+                            {
+                                // Новый WorkItem
+                                var newItem = new OrderWorkItem
+                                {
+                                    OrderId = id,
+                                    WorkDescription = wi.WorkDescription,
+                                    Price = wi.Price,
+                                    Note = wi.Note ?? ""
+                                };
+
+                                if (wi.IsDistanceWork)
+                                {
+                                    newItem.Routes = wi.Routes > 0 ? wi.Routes : 1;
+                                    newItem.DistanceKm = wi.DistanceKm;
+
+                                    if (newItem.DistanceKm.HasValue && newItem.DistanceKm > 0 && newItem.Routes > 0)
+                                    {
+                                        newItem.Quantity = (decimal)(newItem.DistanceKm.Value * newItem.Routes);
+                                    }
+                                }
+                                else
+                                {
+                                    newItem.Quantity = wi.Quantity;
+                                    newItem.Routes = 1;
+                                    newItem.DistanceKm = null;
+                                }
+
+                                _context.OrderWorkItems.Add(newItem);
+                            }
+                        }
+
+                        // Удаляем те, что не пришли
+                        var requestedIds = request.WorkItems.Where(w => w.Id > 0).Select(w => w.Id).ToList();
+                        var toDelete = existingWorkItems.Where(w => !requestedIds.Contains(w.Id)).ToList();
+                        if (toDelete.Any())
+                        {
+                            _context.OrderWorkItems.RemoveRange(toDelete);
                         }
                     }
 
                     order.RecalculateTotals();
 
-                    // Payments - полная замена
+                    // Payments - полная замена (как было)
                     if (request.Payments != null)
                     {
                         var existingPayments = await _context.OrderPayments
@@ -484,13 +546,13 @@ namespace Franchisee.Web.Controllers
 
                     await _orderRepository.UpdateAsync(order);
 
+                    // Обработка фото и видео (как было)
                     if (request.RemovedPhotoIds?.Any() == true)
                     {
                         var photosToRemove = await _context.OrderPhotos
-                            .Where(p =>
-                                request.RemovedPhotoIds.Contains(p.Id) &&
-                                p.OrderId == id &&
-                                p.MediaType == MediaType.Photo)
+                            .Where(p => request.RemovedPhotoIds.Contains(p.Id) &&
+                                        p.OrderId == id &&
+                                        p.MediaType == MediaType.Photo)
                             .ToListAsync();
 
                         foreach (var photo in photosToRemove)
@@ -505,10 +567,9 @@ namespace Franchisee.Web.Controllers
                     if (request.RemovedVideoIds?.Any() == true)
                     {
                         var videosToRemove = await _context.OrderPhotos
-                            .Where(p =>
-                                request.RemovedVideoIds.Contains(p.Id) &&
-                                p.OrderId == id &&
-                                p.MediaType == MediaType.Video)
+                            .Where(p => request.RemovedVideoIds.Contains(p.Id) &&
+                                        p.OrderId == id &&
+                                        p.MediaType == MediaType.Video)
                             .ToListAsync();
 
                         foreach (var video in videosToRemove)
@@ -847,18 +908,26 @@ namespace Franchisee.Web.Controllers
 
             var oldWorkItems = order.WorkItems.Select(w => new
             {
+                w.Id,
                 w.WorkDescription,
                 w.Price,
                 w.Quantity,
-                w.Note
+                w.Routes,
+                w.DistanceKm,
+                w.Note,
+                IsDistanceWork = w.DistanceKm.HasValue && w.DistanceKm > 0
             }).ToList();
 
             var newWorkItems = request.WorkItems.Select(w => new
             {
+                w.Id,
                 w.WorkDescription,
                 w.Price,
                 w.Quantity,
-                w.Note
+                w.Routes,
+                w.DistanceKm,
+                w.Note,
+                w.IsDistanceWork
             }).ToList();
 
             var oldWorkItemsJson = JsonSerializer.Serialize(oldWorkItems);
@@ -1039,14 +1108,28 @@ namespace Franchisee.Web.Controllers
 
                 ManagerId = order.ManagerId,
                 ManagerFullName = order.Manager?.FullName ?? string.Empty,
-                WorkItems = order.WorkItems.Select(w => new OrderWorkItemDto
+                WorkItems = order.WorkItems.Select(w =>
                 {
-                    Id = w.Id,
-                    WorkDescription = w.WorkDescription,
-                    Price = w.Price,
-                    Quantity = w.Quantity,
-                    Note = w.Note,
-                    DistanceKm = w.DistanceKm
+                    var dto = new OrderWorkItemDto
+                    {
+                        Id = w.Id,
+                        WorkDescription = w.WorkDescription,
+                        Price = w.Price,
+                        Routes = w.Routes,
+                        Quantity = w.Quantity,
+                        Note = w.Note,
+                        DistanceKm = w.DistanceKm,
+                        IsDistanceWork = w.DistanceKm.HasValue && w.DistanceKm > 0
+                    };
+
+                    if (!dto.IsDistanceWork && dto.WorkDescription == "Расстояние" && dto.Quantity > 0)
+                    {
+                        dto.IsDistanceWork = true;
+                        dto.DistanceKm = (double)dto.Quantity;
+                        dto.Routes = 1;
+                    }
+
+                    return dto;
                 }).ToList(),
                 Payments = (order.Payments ?? new List<OrderPayment>())
                     .Select(p => new OrderPaymentDto

@@ -21,20 +21,20 @@ import { useUiStore } from '@/shared/store/ui.store'
 import { useUnsavedChangesGuard } from '@/shared/hooks/useUnsavedChangesGuard'
 import { useFormState } from "react-hook-form"
 import type { OrderDetailsDto } from '@/modules/orders/types/orders.types'
+import { useAuthStore } from '@/shared/store/auth.store'
 
 interface OrderFormProviderProps {
   children: ReactNode
   mode?: 'create' | 'edit'
   initialValues?: OrderFormModel
   orderId?: number
+  managerId?: number
 }
 
 interface OrderFormContextValue {
   mode: 'create' | 'edit'
   orderId?: number
 }
-
-
 
 const OrderFormContext = createContext<OrderFormContextValue | null>(null)
 
@@ -53,13 +53,14 @@ export function OrderFormProvider({
   mode = 'create',
   initialValues,
   orderId,
+  managerId,
 }: OrderFormProviderProps) {
   const queryClient = useQueryClient()
   const navigate = useNavigate()
   const [isSaving, setIsSaving] = useState(false)
   const [allowNavigation, setAllowNavigation] = useState(false)
   const defaultValuesRef = useRef<OrderFormModel | null>(null)
-
+  const currentUser = useAuthStore((s) => s.user)
   const [isCommentOpen, setIsCommentOpen] = useState(false)
   const [pendingValues, setPendingValues] = useState<OrderFormModel | null>(null)
 
@@ -94,8 +95,6 @@ export function OrderFormProvider({
     name: "payments"
   })
 
-  const advanceManuallyEditedRef = useRef(false)
-
   const { dirtyFields, isDirty, isSubmitting } = useFormState({
     control: methods.control
   })
@@ -108,7 +107,7 @@ export function OrderFormProvider({
 
   const hasRealChanges =
     Object.keys(dirtyFields).length > 0 || isDiscountChanged
-  
+
   const shouldBlock = hasRealChanges && !isSaving
 
   useUnsavedChangesGuard(shouldBlock && !allowNavigation)
@@ -126,22 +125,33 @@ export function OrderFormProvider({
   }, [mode, isDirty, hasRealChanges, isSubmitting, dirtyFields])
 
   useEffect(() => {
-
     if (mode !== "create") return
     if (!payments?.length) return
 
-    const subtotal = (works ?? []).reduce(
-      (sum, w) =>
-        sum +
-        (Number(w?.price) || 0) *
-        (Number(w?.quantity) || 0),
-      0
+    const hasDistanceReady = (works ?? []).some(
+      w => w.isDistanceWork && Number(w.distanceKm) > 0
     )
+
+    if (!hasDistanceReady) return
+
+    const subtotal = (works ?? []).reduce((sum, w) => {
+      if (w?.isDistanceWork) {
+        const routes = Number(w?.routes) || 1
+        const km = Number(w?.distanceKm) || 0
+        const price = Number(w?.price) || 0
+
+        return sum + price * routes * km
+      }
+
+      return sum +
+        (Number(w?.price) || 0) *
+        (Number(w?.quantity) || 0)
+    }, 0)
 
     const discountAmount =
       subtotal * ((discountPercent ?? 0) / 100)
 
-    const total = subtotal - discountAmount
+    const total = Math.max(0, subtotal - discountAmount)
 
     const advance = Math.round(total * 0.3)
 
@@ -162,43 +172,8 @@ export function OrderFormProvider({
       { shouldDirty: false }
     )
 
-  }, [works, discountPercent])
+  }, [works, discountPercent, payments])
 
-  useEffect(() => {
-
-    if (mode !== "create") return
-
-    const advanceIndex = payments?.findIndex(
-      (p) => p?.paymentType === "Аванс"
-    )
-
-    if (advanceIndex === -1) return
-
-    const subtotal = (works ?? []).reduce(
-      (sum, w) =>
-        sum +
-        (Number(w?.price) || 0) *
-        (Number(w?.quantity) || 0),
-      0
-    )
-
-    const discountAmount =
-      subtotal * ((discountPercent ?? 0) / 100)
-
-    const total = subtotal - discountAmount
-
-    const autoAdvance =
-      Math.round(total * 0.3)
-
-    const current =
-      payments?.[advanceIndex]?.amount
-
-    if (current !== autoAdvance) {
-      advanceManuallyEditedRef.current = true
-    }
-
-  }, [payments])
-  
   const createMutation = useMutation({
     mutationFn: ordersApi.createOrder,
     onSuccess: (order: any) => {
@@ -230,8 +205,8 @@ export function OrderFormProvider({
     onSuccess: (response) => {
       setAllowNavigation(true)
 
-      const isRequestResponse = (response as any)?.success === true && 
-                                (response as any)?.message === "Запрос на изменение отправлен"
+      const isRequestResponse = (response as any)?.success === true &&
+        (response as any)?.message === "Запрос на изменение отправлен"
 
       if (isRequestResponse) {
         showTempMessage('info', 'Запрос на изменение отправлен. Ожидайте подтверждения.')
@@ -254,7 +229,7 @@ export function OrderFormProvider({
 
       navigate(`/orders/${order.id}`)
     },
-    
+
     onError: (error: any) => {
       if (isAxiosError(error)) {
         const message = (error.response?.data as any)?.message ?? 'Ошибка при обновлении заказа'
@@ -270,7 +245,11 @@ export function OrderFormProvider({
 
     setIsSaving(true)
 
-    const payload = mapFormToUpdateDto(pendingValues, dirtyFields)
+    const payload = mapFormToUpdateDto(
+      pendingValues,
+      dirtyFields,
+      defaultValuesRef.current ?? undefined
+    )
 
     try {
       await updateMutation.mutateAsync({
@@ -297,6 +276,7 @@ export function OrderFormProvider({
 
       try {
         if (mode === 'create') {
+          console.log('FORM WORKS BEFORE MAP:', values.works)
           const payload = mapFormToCreateDto(values)
           await createMutation.mutateAsync(payload)
         }
@@ -307,6 +287,31 @@ export function OrderFormProvider({
             return
           }
 
+          if (!currentUser) return
+
+          const isOwnOrder = currentUser.id === managerId
+
+          const isAdmin =
+            currentUser.role === 'Admin' ||
+            currentUser.role === 'SuperAdmin'
+
+          if (isOwnOrder || isAdmin) {
+            // ✅ сразу сохраняем
+            const payload = mapFormToUpdateDto(
+              values,
+              dirtyFields,
+              defaultValuesRef.current ?? undefined
+            )
+
+            await updateMutation.mutateAsync({
+              id: orderId,
+              payload,
+            })
+
+            return
+          }
+
+          // ❗ только для чужих заказов
           setPendingValues(values)
           setIsCommentOpen(true)
           return
@@ -349,7 +354,7 @@ export function OrderFormProvider({
   )
 }
 
-function mapFormToUpdateDto(values: OrderFormModel, dirtyFields: any) {
+function mapFormToUpdateDto(values: OrderFormModel, _: any, defaultValues?: OrderFormModel) {
   const payload: any = {
     // Основные поля всегда отправляем
     place: values.inspectionPlace,
@@ -377,16 +382,80 @@ function mapFormToUpdateDto(values: OrderFormModel, dirtyFields: any) {
     removedPhotoIds: values.media.removedPhotoIds,
     removedVideoIds: values.media.removedVideoIds,
   }
-  if (dirtyFields?.works) {
-    payload.workItems = values.works.map((w) => ({
-      workDescription: w.workDescription,
-      price: w.price,
-      quantity: w.quantity,
-      note: w.note,
-    }))
+  const worksChanged = values.works.some((w, i) => {
+    const old = defaultValues?.works?.[i]
+    if (!old) return true
+
+    return (
+      w.id !== old.id ||
+      w.price !== old.price ||
+      w.quantity !== old.quantity ||
+      w.routes !== old.routes ||
+      w.distanceKm !== old.distanceKm ||
+      w.note !== old.note ||
+      w.workDescription !== old.workDescription
+    )
+  })
+
+  if (worksChanged) {
+    payload.workItems = values.works.map((w) => {
+      if (w.isDistanceWork) {
+        return {
+          id: w.id ?? 0,
+          workDescription: w.workDescription,
+          price: w.price,
+          routes: w.routes ?? 1,
+          distanceKm: w.distanceKm ?? 0,
+          isDistanceWork: true,
+          note: w.note,
+        }
+      }
+
+      return {
+        id: w.id ?? 0,
+        workDescription: w.workDescription,
+        price: w.price,
+        quantity: w.quantity ?? 0,
+        isDistanceWork: false,
+        note: w.note,
+      }
+    })
   }
 
-  if (dirtyFields?.payments) {
+  const normalizeDate = (date: string | undefined) => {
+    if (!date) return ''
+
+    const d = new Date(date)
+
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+  }
+
+  const normalizePayment = (p: any) => ({
+    amount: Number(p.amount ?? 0),
+    paymentDate: normalizeDate(p.paymentDate),
+    paymentType: p.paymentType ?? '',
+    note: (p.note ?? '').trim(),
+  })
+
+  const paymentsChanged = (() => {
+    const current = values.payments.map(normalizePayment)
+    const initial = (defaultValues?.payments ?? []).map(normalizePayment)
+
+    if (current.length !== initial.length) return true
+
+    return current.some((p, i) => {
+      const old = initial[i]
+
+      return (
+        p.amount !== old.amount ||
+        p.paymentDate !== old.paymentDate ||
+        p.paymentType !== old.paymentType ||
+        p.note !== old.note
+      )
+    })
+  })()
+
+  if (paymentsChanged) {
     payload.payments = values.payments.map((p) => ({
       amount: p.amount,
       paymentDate: p.paymentDate,
@@ -431,12 +500,26 @@ function mapFormToCreateDto(values: OrderFormModel) {
 
     discountPercent: values.discountPercent,
 
-    workItems: values.works.map((w) => ({
-      workDescription: w.workDescription,
-      price: w.price,
-      quantity: w.quantity,
-      note: w.note,
-    })),
+    workItems: values.works.map((w) => {
+      if (w.isDistanceWork) {
+        return {
+          workDescription: w.workDescription,
+          price: w.price,
+          routes: w.routes ?? 1,
+          distanceKm: w.distanceKm ?? 0,
+          isDistanceWork: true,
+          note: w.note,
+        }
+      }
+
+      return {
+        workDescription: w.workDescription,
+        price: w.price,
+        quantity: w.quantity ?? 0,
+        isDistanceWork: false,
+        note: w.note,
+      }
+    }),
 
     payments: values.payments.map((p) => ({
       amount: p.amount,

@@ -35,6 +35,13 @@ export function PaymentsDiff({ data }: Props) {
               oldPayment?.paymentType ||
               '—'
 
+            const formatDate = (d?: string) =>
+              d ? formatNotificationDateOnly(d) : ''
+
+            const isDateChanged =
+              formatDate(oldPayment?.paymentDate) !==
+              formatDate(newPayment?.paymentDate)
+
             return (
               <div key={index} className={surfaceStyles.diffCard}>
 
@@ -79,19 +86,11 @@ export function PaymentsDiff({ data }: Props) {
                 )}
 
                 {/* ДАТА */}
-                {oldPayment?.paymentDate !== newPayment?.paymentDate && (
+                {isDateChanged && (
                   <DiffRow
                     label="Дата"
-                    oldValue={
-                      oldPayment?.paymentDate
-                        ? formatNotificationDateOnly(oldPayment.paymentDate)
-                        : '—'
-                    }
-                    newValue={
-                      newPayment?.paymentDate
-                        ? formatNotificationDateOnly(newPayment.paymentDate)
-                        : '—'
-                    }
+                    oldValue={formatDate(oldPayment?.paymentDate)}
+                    newValue={formatDate(newPayment?.paymentDate)}
                   />
                 )}
 

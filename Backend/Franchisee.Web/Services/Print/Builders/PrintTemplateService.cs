@@ -24,6 +24,12 @@ namespace Franchisee.Web.Services.Print.Builders
             return $"{distanceKm:F2} км × {item.Routes} рейс = {totalKm:F2} км";
         }
 
+        private string FormatQuantity(decimal quantity)
+        {
+            if (Math.Abs(quantity - Math.Floor(quantity)) < 0.001m)
+                return ((int)quantity).ToString();
+            return quantity.ToString("F2");
+        }
         public string BuildFullDocument(string css, List<HtmlPageModel> pages, PrintDataModel data)
         {
             var sb = new StringBuilder();
@@ -148,7 +154,7 @@ namespace Franchisee.Web.Services.Print.Builders
             sb.AppendLine(BuildWorkTables(page, data));
 
             // Итого (только первая страница)
-            if (page.IsFirstPage && data.Financials.ShowFinancials)
+            if (page.IsFirstPage && data.Financials.ShowFinancials && data.Type != PrintType.Worker)
             {
                 sb.AppendLine(BuildTotalsTable(page));
             }
@@ -168,9 +174,12 @@ namespace Franchisee.Web.Services.Print.Builders
             }
 
             // Платежи
-            if (page.Payments.Any() || page.IsFirstPage)
+            if (page.Data?.Type != PrintType.Worker)
             {
-                sb.AppendLine(BuildPaymentsTable(page));
+                if (page.Payments.Any() || page.IsFirstPage)
+                {
+                    sb.AppendLine(BuildPaymentsTable(page));
+                }
             }
 
             // Подписи (только последняя страница)
@@ -280,7 +289,7 @@ namespace Franchisee.Web.Services.Print.Builders
             <td>{FormatPrice(item.Price, item.ShowPrice)}</td>
             <td>{item.DistanceKm}</td>
             <td>{item.Routes}</td>
-            <td>{item.CalculatedQuantity}</td>
+            <td>{FormatQuantity(item.CalculatedQuantity)}</td>
             <td>{FormatPrice(item.Total, item.ShowPrice)}</td>
             <td>{item.Note}</td>
         </tr>");
@@ -312,7 +321,7 @@ namespace Franchisee.Web.Services.Print.Builders
         <tr>
             <td>{currentNumber}.</td>
             <td>{item.Description}</td>
-            <td>{item.Quantity}</td>
+            <td>{FormatQuantity(item.Quantity)}</td>
             <td>{FormatPrice(item.Price, item.ShowPrice)}</td>
             <td>{item.Note}</td>
         </tr>");

@@ -17,7 +17,6 @@ import styles from './works-section.module.css'
 const GRID = '2fr 1fr 1fr 2fr 120px'
 const DISTANCE_GRID = '2fr 1fr 1fr 1fr 1fr 2fr'
 
-// 🔥 helper
 const normalizeNumber = (v: any, min = 0) => {
   const num = Number(v)
   if (isNaN(num) || num < min) return min
@@ -57,124 +56,205 @@ export function WorksSection() {
       </h2>
 
       {distance && (
-        <div className={table.dataTable}>
+        <>
+          {/* Десктопная версия */}
+          <div className={styles.desktopDistanceTable}>
+            <div className={table.dataTable}>
+              <div
+                className={table.dataHeader}
+                style={{ gridTemplateColumns: DISTANCE_GRID }}
+              >
+                <span>Работа</span>
+                <span>Цена</span>
+                <span>КМ</span>
+                <span>Рейсы</span>
+                <span>Итого</span>
+                <span>Примечание</span>
+              </div>
 
-          <div
-            className={table.dataHeader}
-            style={{ gridTemplateColumns: DISTANCE_GRID }}
-          >
-            <span>Работа</span>
-            <span>Цена</span>
-            <span>КМ</span>
-            <span>Рейсы</span>
-            <span>Итого</span>
-            <span>Примечание</span>
+              <div
+                className={table.dataRow}
+                style={{ gridTemplateColumns: DISTANCE_GRID }}
+              >
+                <input
+                  value={distance.workDescription}
+                  readOnly
+                  disabled
+                  className={input.input}
+                />
+
+                <input
+                  type="number"
+                  inputMode="numeric"
+                  onWheel={(e) => (e.target as HTMLInputElement).blur()}
+                  {...register(`works.${distanceIndex}.price`, {
+                    valueAsNumber: true,
+                    onChange: (e) => {
+                      const value = normalizeNumber(e.target.value)
+                      setValue(`works.${distanceIndex}.price`, value, {
+                        shouldDirty: true
+                      })
+                    }
+                  })}
+                  className={input.input}
+                />
+
+                <input
+                  value={distance.distanceKm ?? 0}
+                  readOnly
+                  disabled
+                  className={input.input}
+                />
+
+                <input
+                  type="number"
+                  inputMode="numeric"
+                  min={1}
+                  step={1}
+                  onWheel={(e) => (e.target as HTMLInputElement).blur()}
+                  {...register(`works.${distanceIndex}.routes`, {
+                    valueAsNumber: true,
+                    onChange: (e) => {
+                      let value = e.target.value
+                      if (value === '') {
+                        setValue(`works.${distanceIndex}.routes`, 1)
+                        return
+                      }
+                      let num = Number(value)
+                      if (isNaN(num) || num < 1) num = 1
+                      setValue(`works.${distanceIndex}.routes`, num, {
+                        shouldDirty: true,
+                        shouldValidate: true
+                      })
+                    }
+                  })}
+                  onFocus={(e) => {
+                    if (e.target.value === '1') {
+                      e.target.select()
+                    }
+                  }}
+                  onBlur={(e) => {
+                    if (!e.target.value || Number(e.target.value) < 1) {
+                      setValue(`works.${distanceIndex}.routes`, 1)
+                    }
+                  }}
+                  className={input.input}
+                />
+
+                <input
+                  value={round(
+                    (Number(distance.routes) || 0) *
+                    (Number(distance.distanceKm) || 0)
+                  )}
+                  readOnly
+                  disabled
+                  className={input.input}
+                />
+
+                <textarea
+                  value={distance.note ?? ''}
+                  readOnly
+                  disabled
+                  className={`${input.textarea} ${styles.compactTextarea}`}
+                />
+              </div>
+            </div>
           </div>
 
-          <div
-            className={table.dataRow}
-            style={{ gridTemplateColumns: DISTANCE_GRID }}
-          >
+          {/* Мобильная версия — как вторая таблица */}
+          <div className={styles.mobileDistanceCard}>
+            <div className={styles.mobileRow}>
+              <span className={table.label}>Работа</span>
+              <input
+                value={distance.workDescription}
+                readOnly
+                disabled
+                className={input.input}
+              />
+            </div>
 
-            {/* Работа */}
-            <input
-              value={distance.workDescription}
-              readOnly
-              disabled
-              className={input.input}
-            />
+            <div className={styles.mobileGrid2}>
+              <div className={styles.mobileRow}>
+                <span className={table.label}>Цена</span>
+                <input
+                  type="number"
+                  inputMode="numeric"
+                  onWheel={(e) => (e.target as HTMLInputElement).blur()}
+                  {...register(`works.${distanceIndex}.price`, {
+                    valueAsNumber: true,
+                    onChange: (e) => {
+                      const value = normalizeNumber(e.target.value)
+                      setValue(`works.${distanceIndex}.price`, value, {
+                        shouldDirty: true
+                      })
+                    }
+                  })}
+                  className={input.input}
+                />
+              </div>
 
-            {/* Цена */}
-            <input
-              type="number"
-              inputMode="numeric"
-              onWheel={(e) => (e.target as HTMLInputElement).blur()}
-              {...register(`works.${distanceIndex}.price`, {
-                valueAsNumber: true,
-                onChange: (e) => {
-                  const value = normalizeNumber(e.target.value)
-                  setValue(`works.${distanceIndex}.price`, value, {
-                    shouldDirty: true
-                  })
-                }
-              })}
-              className={input.input}
-            />
+              <div className={styles.mobileRow}>
+                <span className={table.label}>КМ</span>
+                <input
+                  value={distance.distanceKm ?? 0}
+                  readOnly
+                  disabled
+                  className={input.input}
+                />
+              </div>
 
-            {/* KM (с карты) */}
-            <input
-              value={distance.distanceKm ?? 0}
-              readOnly
-              disabled
-              className={input.input}
-            />
+              <div className={styles.mobileRow}>
+                <span className={table.label}>Рейсы</span>
+                <input
+                  type="number"
+                  inputMode="numeric"
+                  min={1}
+                  step={1}
+                  {...register(`works.${distanceIndex}.routes`, {
+                    valueAsNumber: true,
+                    onChange: (e) => {
+                      let value = e.target.value
+                      if (value === '') {
+                        setValue(`works.${distanceIndex}.routes`, 1)
+                        return
+                      }
+                      let num = Number(value)
+                      if (isNaN(num) || num < 1) num = 1
+                      setValue(`works.${distanceIndex}.routes`, num, {
+                        shouldDirty: true,
+                        shouldValidate: true
+                      })
+                    }
+                  })}
+                  className={input.input}
+                />
+              </div>
+            </div>
 
-            {/* ROUTES */}
-            <input
-              type="number"
-              inputMode="numeric"
-              min={1}
-              step={1}
-              onWheel={(e) => (e.target as HTMLInputElement).blur()}
-
-              {...register(`works.${distanceIndex}.routes`, {
-                valueAsNumber: true,
-                onChange: (e) => {
-                  let value = e.target.value
-
-                  if (value === '') {
-                    setValue(`works.${distanceIndex}.routes`, 1)
-                    return
-                  }
-
-                  let num = Number(value)
-
-                  if (isNaN(num) || num < 1) num = 1
-
-                  setValue(`works.${distanceIndex}.routes`, num, {
-                    shouldDirty: true,
-                    shouldValidate: true
-                  })
-                }
-              })}
-
-              onFocus={(e) => {
-                if (e.target.value === '1') {
-                  e.target.select()
-                }
-              }}
-
-              onBlur={(e) => {
-                if (!e.target.value || Number(e.target.value) < 1) {
-                  setValue(`works.${distanceIndex}.routes`, 1)
-                }
-              }}
-
-              className={input.input}
-            />
-
-            {/* ИТОГО */}
-            <input
-              value={
-                round(
+            <div className={styles.mobileRow}>
+              <span className={table.label}>Итого</span>
+              <input
+                value={round(
                   (Number(distance.routes) || 0) *
                   (Number(distance.distanceKm) || 0)
-                )
-              }
-              readOnly
-              disabled
-              className={input.input}
-            />
+                )}
+                readOnly
+                disabled
+                className={input.input}
+              />
+            </div>
 
-            {/* NOTE */}
-            <textarea
-              value={distance.note ?? ''}
-              readOnly
-              disabled
-              className={`${input.textarea} ${styles.compactTextarea}`}
-            />
+            <div className={styles.mobileRow}>
+              <span className={table.label}>Примечание</span>
+              <textarea
+                value={distance.note ?? ''}
+                readOnly
+                disabled
+                className={`${input.textarea} ${styles.compactTextarea}`}
+              />
+            </div>
           </div>
-        </div>
+        </>
       )}
 
       <div className={table.dataTable}>
@@ -199,31 +279,30 @@ export function WorksSection() {
               className={`${table.dataRow} ${styles.mobileCard}`}
               style={{ gridTemplateColumns: GRID }}
             >
-
               {/* Работа */}
               <div className={styles.mobileRow}>
                 <span className={table.label}>Работа</span>
                 <input
                   {...register(`works.${index}.workDescription`)}
                   className={input.input}
+                  placeholder="Введите название работы"
                 />
               </div>
 
               {/* Цена + Кол-во */}
               <div className={styles.mobileGrid2}>
-
                 <div className={styles.mobileRow}>
                   <span className={table.label}>Цена</span>
                   <input
                     type="number"
                     inputMode="numeric"
+                    placeholder="0"
                     onWheel={(e) => (e.target as HTMLInputElement).blur()}
                     {...register(`works.${index}.price`, {
                       valueAsNumber: true,
                       onChange: (e) => {
                         let value = normalizeNumber(e.target.value)
                         value = Math.round(value * 100) / 100
-
                         setValue(`works.${index}.price`, value, {
                           shouldDirty: true
                         })
@@ -238,12 +317,12 @@ export function WorksSection() {
                   <input
                     type="number"
                     inputMode="numeric"
+                    placeholder="1"
                     onWheel={(e) => (e.target as HTMLInputElement).blur()}
                     {...register(`works.${index}.quantity`, {
                       valueAsNumber: true,
                       onChange: (e) => {
                         let value = normalizeNumber(e.target.value)
-
                         setValue(`works.${index}.quantity`, value, {
                           shouldDirty: true
                         })
@@ -252,7 +331,6 @@ export function WorksSection() {
                     className={input.input}
                   />
                 </div>
-
               </div>
 
               {/* NOTE */}
@@ -260,6 +338,7 @@ export function WorksSection() {
                 <span className={table.label}>Примечание</span>
                 <textarea
                   {...register(`works.${index}.note`)}
+                  placeholder="Дополнительная информация"
                   className={`${input.textarea} ${styles.compactTextarea}`}
                 />
               </div>

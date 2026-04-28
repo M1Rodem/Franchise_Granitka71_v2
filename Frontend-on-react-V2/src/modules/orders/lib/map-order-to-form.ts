@@ -74,6 +74,7 @@ export function mapOrderToForm(
     }),
 
     payments: order.payments.map((p) => ({
+      id: p.id,
       amount: p.amount,
       paymentDate: p.paymentDate.split('T')[0],
       paymentType: p.paymentType,
@@ -89,7 +90,5 @@ export function mapOrderToForm(
       removedVideoIds: [],
     },
   }
-  console.log('MAP RESULT WORKS:', result.works)
-
   return result
 }

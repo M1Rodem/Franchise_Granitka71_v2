@@ -109,86 +109,178 @@ public static class NotificationDiffBuilder
         if (!changes.TryGetProperty("WorkItems", out var works))
             return;
 
-        var dto = new WorksChangeDto();
-
-        var oldWorks = works.GetProperty("old");
-        var newWorks = works.GetProperty("new");
-
-        foreach (var item in oldWorks.EnumerateArray())
+        var dto = new WorksChangeDto
         {
-            var work = ParseWork(item);
+            AddedWorks = new List<OrderWorkItemDto>(),
+            RemovedWorks = new List<OrderWorkItemDto>(),
+            ChangedWorks = new List<WorkItemChangedDto>()
+        };
 
-            if (work.IsDistanceWork && work.DistanceKm.HasValue && work.Routes > 0)
+        // Добавленные работы
+        if (works.TryGetProperty("added", out var added))
+        {
+            foreach (var item in added.EnumerateArray())
             {
-                work.Quantity = (decimal)(work.DistanceKm.Value * work.Routes);
+                var work = ParseWork(item);
+                if (work.IsDistanceWork && work.DistanceKm.HasValue && work.Routes > 0)
+                {
+                    work.Quantity = (decimal)(work.DistanceKm.Value * work.Routes);
+                }
+                dto.AddedWorks.Add(work);
             }
-
-            dto.OldWorks.Add(work);
         }
 
-        foreach (var item in newWorks.EnumerateArray())
+        // Удаленные работы
+        if (works.TryGetProperty("removed", out var removed))
         {
-            var work = ParseWork(item);
-
-            if (work.IsDistanceWork && work.DistanceKm.HasValue && work.Routes > 0)
+            foreach (var item in removed.EnumerateArray())
             {
-                work.Quantity = (decimal)(work.DistanceKm.Value * work.Routes);
+                var work = ParseWork(item);
+                if (work.IsDistanceWork && work.DistanceKm.HasValue && work.Routes > 0)
+                {
+                    work.Quantity = (decimal)(work.DistanceKm.Value * work.Routes);
+                }
+                dto.RemovedWorks.Add(work);
             }
-
-            dto.NewWorks.Add(work);
         }
 
-        dto.OldTotal = dto.OldWorks.Sum(x => x.Price * x.Quantity);
-        dto.NewTotal = dto.NewWorks.Sum(x => x.Price * x.Quantity);
+        // Измененные работы
+        if (works.TryGetProperty("changed", out var changed))
+        {
+            foreach (var item in changed.EnumerateArray())
+            {
+                var id = item.GetProperty("id").GetInt32();
+                var oldElement = item.GetProperty("old");
+                var newElement = item.GetProperty("new");
 
-        var distanceWorkOld = dto.OldWorks.FirstOrDefault(x => x.IsDistanceWork);
-        var distanceWorkNew = dto.NewWorks.FirstOrDefault(x => x.IsDistanceWork);
+                var isDistanceWork = item.TryGetProperty("isDistanceWork", out var distWork)
+                    ? distWork.GetBoolean()
+                    : false;
 
-        if (distanceWorkOld != null && distanceWorkNew != null)
+                var oldItem = ParseWork(oldElement);
+                var newItem = ParseWork(newElement);
+
+                if (!oldItem.IsDistanceWork && isDistanceWork)
+                    oldItem.IsDistanceWork = true;
+                if (!newItem.IsDistanceWork && isDistanceWork)
+                    newItem.IsDistanceWork = true;
+
+                var changedItem = new WorkItemChangedDto
+                {
+                    Id = id,
+                    Old = oldItem,
+                    New = newItem
+                };
+
+                if (string.IsNullOrWhiteSpace(changedItem.New.WorkDescription))
+                {
+                    changedItem.New.WorkDescription = changedItem.Old.WorkDescription;
+                }
+
+                if (changedItem.Old.IsDistanceWork && changedItem.Old.DistanceKm.HasValue && changedItem.Old.Routes > 0)
+                {
+                    changedItem.Old.Quantity = (decimal)(changedItem.Old.DistanceKm.Value * changedItem.Old.Routes);
+                }
+                if (changedItem.New.IsDistanceWork && changedItem.New.DistanceKm.HasValue && changedItem.New.Routes > 0)
+                {
+                    changedItem.New.Quantity = (decimal)(changedItem.New.DistanceKm.Value * changedItem.New.Routes);
+                }
+
+                dto.ChangedWorks.Add(changedItem);
+            }
+        }
+
+        // Расчет сумм
+        var allOldWorks = new List<OrderWorkItemDto>();
+        allOldWorks.AddRange(dto.RemovedWorks);
+        allOldWorks.AddRange(dto.ChangedWorks.Select(x => x.Old));
+
+        var allNewWorks = new List<OrderWorkItemDto>();
+        allNewWorks.AddRange(dto.AddedWorks);
+        allNewWorks.AddRange(dto.ChangedWorks.Select(x => x.New));
+
+        dto.OldTotal = allOldWorks.Sum(x => x.Price * x.Quantity);
+        dto.NewTotal = allNewWorks.Sum(x => x.Price * x.Quantity);
+        dto.ChangedWorksCount = dto.ChangedWorks.Count;
+
+        // Дистанционные работы
+        var anyDistanceWork = dto.AddedWorks.Any(x => x.IsDistanceWork) ||
+                      dto.RemovedWorks.Any(x => x.IsDistanceWork) ||
+                      dto.ChangedWorks.Any(x => x.Old.IsDistanceWork || x.New.IsDistanceWork);
+
+        if (anyDistanceWork)
         {
             dto.ShowRoutesInsteadOfQuantity = true;
-            dto.OldQuantity = distanceWorkOld.Routes;
-            dto.NewQuantity = distanceWorkNew.Routes;
+
+            var distanceWorkFromAdded = dto.AddedWorks.FirstOrDefault(x => x.IsDistanceWork);
+            var distanceWorkFromRemoved = dto.RemovedWorks.FirstOrDefault(x => x.IsDistanceWork);
+            var distanceWorkFromChanged = dto.ChangedWorks.FirstOrDefault(x => x.Old.IsDistanceWork || x.New.IsDistanceWork);
+
+            if (distanceWorkFromAdded != null)
+            {
+                dto.NewQuantity = distanceWorkFromAdded.Routes;
+                dto.OldQuantity = distanceWorkFromAdded.Routes;
+            }
+            else if (distanceWorkFromChanged != null)
+            {
+                if (distanceWorkFromChanged.Old.IsDistanceWork)
+                    dto.OldQuantity = distanceWorkFromChanged.Old.Routes;
+                if (distanceWorkFromChanged.New.IsDistanceWork)
+                    dto.NewQuantity = distanceWorkFromChanged.New.Routes;
+            }
+            else if (distanceWorkFromRemoved != null)
+            {
+                dto.OldQuantity = distanceWorkFromRemoved.Routes;
+                dto.NewQuantity = distanceWorkFromRemoved.Routes;
+            }
         }
 
         result.Works = dto;
     }
+
     private static OrderWorkItemDto ParseWork(JsonElement item)
     {
         var isDistanceWork = item.TryGetProperty("isDistanceWork", out var isDist)
             ? isDist.GetBoolean()
             : false;
 
-        var routes = item.TryGetProperty("routes", out var r) ? r.GetInt32() : 1;
-        var distanceKm = item.TryGetProperty("distanceKm", out var d) ? d.GetDouble() : (double?)null;
-        var quantity = item.GetProperty("quantity").GetDecimal();
+        var id = item.TryGetProperty("id", out var idProp) ? idProp.GetInt32() : 0;
+        var workDescription = item.GetProperty("workDescription").GetString() ?? "";
+        var price = item.GetProperty("price").GetDecimal();
+        var note = item.TryGetProperty("note", out var noteProp) ? noteProp.GetString() : null;
 
-        if (!isDistanceWork && quantity > 0)
+        if (isDistanceWork)
         {
-            var workDesc = item.GetProperty("workDescription").GetString() ?? "";
-            if (workDesc == "Расстояние")
+            // Distance работа
+            var routes = item.TryGetProperty("routes", out var r) ? r.GetInt32() : 1;
+            var distanceKm = item.TryGetProperty("distanceKm", out var d) ? d.GetDouble() : (double?)null;
+            var calculatedQuantity = (decimal)(routes * (distanceKm ?? 0));
+
+            return new OrderWorkItemDto
             {
-                isDistanceWork = true;
-                distanceKm = (double)quantity;
-                routes = 1;
-            }
+                Id = id,
+                WorkDescription = workDescription,
+                Price = price,
+                Routes = routes,
+                Quantity = calculatedQuantity,
+                Note = note,
+                DistanceKm = distanceKm,
+                IsDistanceWork = true
+            };
         }
 
-        if (isDistanceWork && distanceKm.HasValue && distanceKm > 0 && routes > 0)
-        {
-            quantity = (decimal)(distanceKm.Value * routes);
-        }
+        var quantityValue = item.TryGetProperty("quantity", out var q) ? q.GetDecimal() : 0;
 
         return new OrderWorkItemDto
         {
-            Id = item.TryGetProperty("id", out var idProp) ? idProp.GetInt32() : 0,
-            WorkDescription = item.GetProperty("workDescription").GetString() ?? "",
-            Price = item.GetProperty("price").GetDecimal(),
-            Routes = routes,
-            Quantity = quantity,
-            Note = item.TryGetProperty("note", out var note) ? note.GetString() : null,
-            DistanceKm = distanceKm,
-            IsDistanceWork = isDistanceWork
+            Id = id,
+            WorkDescription = workDescription,
+            Price = price,
+            Quantity = quantityValue,
+            Note = note,
+            Routes = 1,
+            DistanceKm = null,
+            IsDistanceWork = false
         };
     }
 
@@ -197,18 +289,47 @@ public static class NotificationDiffBuilder
         if (!changes.TryGetProperty("Payments", out var payments))
             return;
 
-        var dto = new PaymentsChangeDto();
-
-        foreach (var item in payments.GetProperty("old").EnumerateArray())
+        var dto = new PaymentsChangeDto
         {
-            dto.OldPayments.Add(ParsePayment(item));
+            AddedPayments = new List<OrderPaymentDto>(),
+            RemovedPayments = new List<OrderPaymentDto>(),
+            ChangedPayments = new List<PaymentChangedDto>()
+        };
+
+        // Добавленные платежи
+        if (payments.TryGetProperty("added", out var added))
+        {
+            foreach (var item in added.EnumerateArray())
+            {
+                dto.AddedPayments.Add(ParsePayment(item));
+            }
         }
 
-        foreach (var item in payments.GetProperty("new").EnumerateArray())
+        // Удаленные платежи
+        if (payments.TryGetProperty("removed", out var removed))
         {
-            dto.NewPayments.Add(ParsePayment(item));
+            foreach (var item in removed.EnumerateArray())
+            {
+                dto.RemovedPayments.Add(ParsePayment(item));
+            }
         }
 
+        // Измененные платежи
+        if (payments.TryGetProperty("changed", out var changed))
+        {
+            foreach (var item in changed.EnumerateArray())
+            {
+                var changedItem = new PaymentChangedDto
+                {
+                    Id = item.GetProperty("id").GetInt32(),
+                    Old = ParsePayment(item.GetProperty("old")),
+                    New = ParsePayment(item.GetProperty("new"))
+                };
+                dto.ChangedPayments.Add(changedItem);
+            }
+        }
+
+        dto.ChangedPaymentsCount = dto.ChangedPayments.Count;
         result.Payments = dto;
     }
 
@@ -216,6 +337,7 @@ public static class NotificationDiffBuilder
     {
         return new OrderPaymentDto
         {
+            Id = item.TryGetProperty("id", out var idProp) ? idProp.GetInt32() : 0,  // ← ДОБАВИТЬ!
             PaymentType = item.GetProperty("paymentType").GetString() ?? "",
             Amount = item.GetProperty("amount").GetDecimal(),
             PaymentDate = item.GetProperty("paymentDate").GetDateTime(),

@@ -107,10 +107,13 @@ namespace Franchisee.Web.Services.Print.Builders
                     ? paymentPages[pageNum]
                     : new List<PaymentInfo>();
 
-                if (currentPayments.Any() || pageNum == 0)
+                if (data.Type != PrintType.Worker)
                 {
-                    BuildPaymentsHeader(worksheet, ref row);
-                    BuildPaymentsPage(worksheet, ref row, currentPayments);
+                    if (currentPayments.Any() || pageNum == 0)
+                    {
+                        BuildPaymentsHeader(worksheet, ref row);
+                        BuildPaymentsPage(worksheet, ref row, currentPayments);
+                    }
                 }
 
                 // Подписи только на последней странице
@@ -225,7 +228,7 @@ namespace Franchisee.Web.Services.Print.Builders
             ws.Column(7).Width = 12;  // Итого
             ws.Column(8).Width = 15;  // Примечание
 
-            ws.Style.Font.FontSize = 11;
+            ws.Style.Font.FontSize = 12;
         }
 
         private void BuildHeader(IXLWorksheet ws, ref int row, PrintDataModel data)
@@ -298,7 +301,11 @@ namespace Franchisee.Web.Services.Print.Builders
                     ws.Cell($"C{row}").Value = FormatPrice(item.Price);
                     ws.Cell($"D{row}").Value = item.DistanceKm;
                     ws.Cell($"E{row}").Value = item.Routes;
-                    ws.Cell($"F{row}").Value = item.CalculatedQuantity;
+                    var calcQuantity = item.CalculatedQuantity;
+                    var displayCalcQuantity = Math.Abs(calcQuantity - Math.Floor(calcQuantity)) < 0.001m
+                        ? (int)calcQuantity
+                        : calcQuantity;
+                    ws.Cell($"F{row}").Value = displayCalcQuantity;
                     ws.Cell($"G{row}").Value = item.ShowPrice ? FormatPrice(item.Total) : "";
                     ws.Cell($"H{row}").Value = item.Note;
 
@@ -322,7 +329,11 @@ namespace Franchisee.Web.Services.Print.Builders
             {
                 ws.Cell($"A{row}").Value = $"{currentNumber}.";
                 ws.Range($"B{row}:C{row}").Merge().Value = item.Description;
-                ws.Cell($"D{row}").Value = item.Quantity;  // Кол-во
+                var quantityValue = item.Quantity;
+                var displayQuantity = Math.Abs(quantityValue - Math.Floor(quantityValue)) < 0.001m
+                    ? (int)quantityValue
+                    : quantityValue;
+                ws.Cell($"D{row}").Value = displayQuantity; // Кол-во
                 ws.Cell($"E{row}").Value = item.ShowPrice ? FormatPrice(item.Price) : "";  // Цена
                 ws.Range($"F{row}:H{row}").Merge().Value = item.Note;
 
@@ -347,6 +358,8 @@ namespace Franchisee.Web.Services.Print.Builders
 
         private void BuildTotals(IXLWorksheet ws, ref int row, PrintDataModel data)
         {
+            if (data.Type == PrintType.Worker) return;
+
             var total = data.WorkItems.Sum(w => w.Total);
 
             ws.Range($"A{row}:D{row}").Merge();
@@ -358,7 +371,6 @@ namespace Franchisee.Web.Services.Print.Builders
                 ws.Cell($"E{row}").Value = FormatPrice(total);
             }
             row++;
-            // Убираем лишний row++
         }
 
         private void BuildAdditionalInfo(IXLWorksheet ws, ref int row, PrintDataModel data)

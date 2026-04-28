@@ -20,5 +20,6 @@ namespace Franchisee.Web.Models.Print
         public string OrderNumber { get; set; } = string.Empty;
         public int SequenceStartNumber { get; set; }
         public decimal TotalAmount { get; set; }
+        public PrintType? PrintType { get; set; }
     }
 }

@@ -139,40 +139,29 @@ export function OrderFormProvider({
         const routes = Number(w?.routes) || 1
         const km = Number(w?.distanceKm) || 0
         const price = Number(w?.price) || 0
-
         return sum + price * routes * km
       }
-
-      return sum +
-        (Number(w?.price) || 0) *
-        (Number(w?.quantity) || 0)
+      return sum + (Number(w?.price) || 0) * (Number(w?.quantity) || 0)
     }, 0)
 
-    const discountAmount =
-      subtotal * ((discountPercent ?? 0) / 100)
-
+    const discountAmount = subtotal * ((discountPercent ?? 0) / 100)
     const total = Math.max(0, subtotal - discountAmount)
-
     const advance = Math.round(total * 0.3)
 
-    const advanceIndex = payments.findIndex(
-      (p) => p?.paymentType === "Аванс"
-    )
-
+    const advanceIndex = payments.findIndex(p => p?.paymentType === "Аванс")
     if (advanceIndex === -1) return
 
-    const isDirty =
-      dirtyFields?.payments?.[advanceIndex]?.amount
+    const currentAdvance = payments[advanceIndex]?.amount
 
-    if (isDirty) return
+    if (currentAdvance === advance) return
 
-    methods.setValue(
-      `payments.${advanceIndex}.amount`,
-      advance,
-      { shouldDirty: false }
-    )
+    const fieldState = methods.getFieldState(`payments.${advanceIndex}.amount`)
+    if (fieldState.isDirty) return
 
-  }, [works, discountPercent, payments])
+    methods.setValue(`payments.${advanceIndex}.amount`, advance, {
+      shouldDirty: false
+    })
+  }, [works, discountPercent, payments, mode, methods])
 
   const createMutation = useMutation({
     mutationFn: ordersApi.createOrder,
@@ -276,7 +265,6 @@ export function OrderFormProvider({
 
       try {
         if (mode === 'create') {
-          console.log('FORM WORKS BEFORE MAP:', values.works)
           const payload = mapFormToCreateDto(values)
           await createMutation.mutateAsync(payload)
         }
@@ -296,7 +284,6 @@ export function OrderFormProvider({
             currentUser.role === 'SuperAdmin'
 
           if (isOwnOrder || isAdmin) {
-            // ✅ сразу сохраняем
             const payload = mapFormToUpdateDto(
               values,
               dirtyFields,
@@ -355,6 +342,11 @@ export function OrderFormProvider({
 }
 
 function mapFormToUpdateDto(values: OrderFormModel, _: any, defaultValues?: OrderFormModel) {
+  const distanceItems = values.works.filter(w => w.isDistanceWork)
+
+  if (distanceItems.length !== 1) {
+    console.error('Distance work broken', distanceItems)
+  }
   const payload: any = {
     // Основные поля всегда отправляем
     place: values.inspectionPlace,
@@ -399,7 +391,10 @@ function mapFormToUpdateDto(values: OrderFormModel, _: any, defaultValues?: Orde
 
   if (worksChanged) {
     payload.workItems = values.works.map((w) => {
-      if (w.isDistanceWork) {
+
+      const isDistance = w.isDistanceWork === true
+
+      if (isDistance) {
         return {
           id: w.id ?? 0,
           workDescription: w.workDescription,
@@ -431,6 +426,7 @@ function mapFormToUpdateDto(values: OrderFormModel, _: any, defaultValues?: Orde
   }
 
   const normalizePayment = (p: any) => ({
+    id: p.id ?? 0,
     amount: Number(p.amount ?? 0),
     paymentDate: normalizeDate(p.paymentDate),
     paymentType: p.paymentType ?? '',
@@ -447,6 +443,7 @@ function mapFormToUpdateDto(values: OrderFormModel, _: any, defaultValues?: Orde
       const old = initial[i]
 
       return (
+        p.id !== old.id ||
         p.amount !== old.amount ||
         p.paymentDate !== old.paymentDate ||
         p.paymentType !== old.paymentType ||
@@ -457,13 +454,14 @@ function mapFormToUpdateDto(values: OrderFormModel, _: any, defaultValues?: Orde
 
   if (paymentsChanged) {
     payload.payments = values.payments.map((p) => ({
+      id: p.id ?? 0,
       amount: p.amount,
       paymentDate: p.paymentDate,
       paymentType: p.paymentType,
       note: p.note,
     }))
   }
-
+  console.log(payload)
   return payload
 }
 
@@ -500,8 +498,11 @@ function mapFormToCreateDto(values: OrderFormModel) {
 
     discountPercent: values.discountPercent,
 
+
     workItems: values.works.map((w) => {
-      if (w.isDistanceWork) {
+      const isDistance = w.isDistanceWork === true
+
+      if (isDistance) {
         return {
           workDescription: w.workDescription,
           price: w.price,

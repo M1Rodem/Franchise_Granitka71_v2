@@ -96,13 +96,9 @@ namespace Franchisee.Web.Models.DTOs.Orders
     public class OrderPaymentDto
     {
         public int Id { get; set; }
-
         public decimal Amount { get; set; }
-
         public DateTime PaymentDate { get; set; }
-
         public string PaymentType { get; set; } = string.Empty;
-
         public string? Note { get; set; }
     }
 }

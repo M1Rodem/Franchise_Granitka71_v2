@@ -958,17 +958,13 @@ namespace Franchisee.Web.Services.Notifications.Core
                 {
                     _logger.LogDebug("Обработка WorkItems, ValueKind: {ValueKind}", workItemsProp.ValueKind);
 
-                    if (workItemsProp.ValueKind == JsonValueKind.Object &&
-                        workItemsProp.TryGetProperty("new", out var newWorkItemsValue))
+                    if (workItemsProp.ValueKind == JsonValueKind.Object)
                     {
-                        _logger.LogDebug("Найден 'new' в WorkItems, ValueKind: {ValueKind}",
-                            newWorkItemsValue.ValueKind);
-
-                        hasChanges |= await ApplyWorkItemsChangesAsync(order.Id, newWorkItemsValue);
+                        hasChanges |= await ApplyWorkItemsChangesAsync(order.Id, workItemsProp);
                     }
                     else
                     {
-                        _logger.LogWarning("WorkItems не содержит 'new' или имеет неправильный формат");
+                        _logger.LogWarning("WorkItems имеет неправильный формат");
                     }
                 }
 
@@ -976,17 +972,13 @@ namespace Franchisee.Web.Services.Notifications.Core
                 {
                     _logger.LogDebug("Обработка Payments, ValueKind: {ValueKind}", paymentsProp.ValueKind);
 
-                    if (paymentsProp.ValueKind == JsonValueKind.Object &&
-                        paymentsProp.TryGetProperty("new", out var newPaymentsValue))
+                    if (paymentsProp.ValueKind == JsonValueKind.Object)
                     {
-                        _logger.LogDebug("Найден 'new' в Payments, ValueKind: {ValueKind}",
-                            newPaymentsValue.ValueKind);
-
-                        hasChanges |= await ApplyPaymentsChangesAsync(order.Id, newPaymentsValue);
+                        hasChanges |= await ApplyPaymentsChangesAsync(order.Id, paymentsProp);
                     }
                     else
                     {
-                        _logger.LogWarning("Payments не содержит 'new' или имеет неправильный формат");
+                        _logger.LogWarning("Payments имеет неправильный формат");
                     }
                 }
 
@@ -1343,45 +1335,90 @@ namespace Franchisee.Web.Services.Notifications.Core
             }
         }
 
-        private async Task<bool> ApplyWorkItemsChangesAsync(int orderId, JsonElement newWorkItemsValue)
+        private async Task<bool> ApplyWorkItemsChangesAsync(int orderId, JsonElement changesValue)
         {
             try
             {
                 _logger.LogDebug("=== ApplyWorkItemsChangesAsync для заказа {OrderId} ===", orderId);
 
-                var workItems = newWorkItemsValue.Deserialize<List<OrderWorkItem>>(new JsonSerializerOptions
-                {
-                    PropertyNameCaseInsensitive = true,
-                    NumberHandling = JsonNumberHandling.AllowReadingFromString
-                });
-
-                if (workItems == null)
-                {
-                    _logger.LogWarning("Не удалось десериализовать WorkItems для заказа {OrderId}", orderId);
-                    return false;
-                }
-
-                // Удаляем старые
                 var existing = await _context.OrderWorkItems
                     .Where(w => w.OrderId == orderId)
                     .ToListAsync();
 
-                _context.OrderWorkItems.RemoveRange(existing);
+                var existingDict = existing.ToDictionary(x => x.Id);
 
-                // Добавляем новые
-                foreach (var wi in workItems)
+                // Обработка добавленных работ
+                if (changesValue.TryGetProperty("added", out var added))
                 {
-                    wi.OrderId = orderId;
-                    wi.Id = 0;
+                    var addedItems = added.Deserialize<List<OrderWorkItem>>(new JsonSerializerOptions
+                    {
+                        PropertyNameCaseInsensitive = true,
+                        NumberHandling = JsonNumberHandling.AllowReadingFromString
+                    });
 
-                    _logger.LogDebug("Добавление WorkItem: Description='{Description}', Price={Price}",
-                        wi.WorkDescription, wi.Price);
+                    if (addedItems != null)
+                    {
+                        foreach (var wi in addedItems)
+                        {
+                            wi.OrderId = orderId;
+                            wi.Id = 0;
+                            _context.OrderWorkItems.Add(wi);
+                            _logger.LogDebug("Добавлена работа: {Description}", wi.WorkDescription);
+                        }
+                    }
+                }
 
-                    _context.OrderWorkItems.Add(wi);
+                // Обработка удаленных работ
+                if (changesValue.TryGetProperty("removed", out var removed))
+                {
+                    var removedItems = removed.Deserialize<List<OrderWorkItem>>(new JsonSerializerOptions
+                    {
+                        PropertyNameCaseInsensitive = true,
+                        NumberHandling = JsonNumberHandling.AllowReadingFromString
+                    });
+
+                    if (removedItems != null)
+                    {
+                        foreach (var wi in removedItems)
+                        {
+                            if (existingDict.TryGetValue(wi.Id, out var toRemove))
+                            {
+                                _context.OrderWorkItems.Remove(toRemove);
+                                _logger.LogDebug("Удалена работа: {Description}", wi.WorkDescription);
+                            }
+                        }
+                    }
+                }
+
+                // Обработка измененных работ
+                if (changesValue.TryGetProperty("changed", out var changed))
+                {
+                    var changedItems = changed.Deserialize<List<WorkItemChangedDto>>(new JsonSerializerOptions
+                    {
+                        PropertyNameCaseInsensitive = true,
+                        NumberHandling = JsonNumberHandling.AllowReadingFromString
+                    });
+
+                    if (changedItems != null)
+                    {
+                        foreach (var changedItem in changedItems)
+                        {
+                            if (existingDict.TryGetValue(changedItem.Id, out var toUpdate))
+                            {
+                                toUpdate.WorkDescription = changedItem.New.WorkDescription;
+                                toUpdate.Price = changedItem.New.Price;
+                                toUpdate.Quantity = changedItem.New.Quantity;
+                                toUpdate.Routes = changedItem.New.Routes;
+                                toUpdate.DistanceKm = changedItem.New.DistanceKm;
+                                toUpdate.Note = changedItem.New.Note ?? string.Empty;
+
+                                _logger.LogDebug("Обновлена работа {Id}: {Description}", changedItem.Id, changedItem.New.WorkDescription);
+                            }
+                        }
+                    }
                 }
 
                 await _context.SaveChangesAsync();
-
                 _logger.LogDebug("=== ApplyWorkItemsChangesAsync УСПЕШНО для заказа {OrderId} ===", orderId);
                 return true;
             }
@@ -1392,56 +1429,102 @@ namespace Franchisee.Web.Services.Notifications.Core
             }
         }
 
-
-        private async Task<bool> ApplyPaymentsChangesAsync(int orderId, JsonElement newPaymentsValue)
+        private async Task<bool> ApplyPaymentsChangesAsync(int orderId, JsonElement changesValue)
         {
             try
             {
                 _logger.LogDebug("=== ApplyPaymentsChangesAsync для заказа {OrderId} ===", orderId);
 
-                var payments = newPaymentsValue.Deserialize<List<OrderPayment>>(new JsonSerializerOptions
-                {
-                    PropertyNameCaseInsensitive = true,
-                    NumberHandling = JsonNumberHandling.AllowReadingFromString
-                });
-
-                if (payments == null)
-                {
-                    _logger.LogWarning("Не удалось десериализовать Payments для заказа {OrderId}", orderId);
-                    return false;
-                }
-
-                // Удаляем старые
                 var existing = await _context.OrderPayments
                     .Where(p => p.OrderId == orderId)
                     .ToListAsync();
 
-                _context.OrderPayments.RemoveRange(existing);
+                var existingDict = existing.ToDictionary(x => x.Id);
 
-                // Добавляем новые
-                foreach (var p in payments)
+                // Обработка добавленных платежей
+                if (changesValue.TryGetProperty("added", out var added))
                 {
-                    p.OrderId = orderId;
-                    p.Id = 0;
-
-                    // 🔧 ИСПРАВЛЕНИЕ: Гарантируем UTC для PaymentDate
-                    if (p.PaymentDate == default)
+                    var addedPayments = added.Deserialize<List<OrderPayment>>(new JsonSerializerOptions
                     {
-                        p.PaymentDate = DateTime.UtcNow;
-                    }
-                    else if (p.PaymentDate.Kind != DateTimeKind.Utc)
+                        PropertyNameCaseInsensitive = true,
+                        NumberHandling = JsonNumberHandling.AllowReadingFromString
+                    });
+
+                    if (addedPayments != null)
                     {
-                        p.PaymentDate = DateTime.SpecifyKind(p.PaymentDate, DateTimeKind.Utc);
+                        foreach (var p in addedPayments)
+                        {
+                            p.OrderId = orderId;
+                            p.Id = 0;
+                            if (p.PaymentDate == default)
+                            {
+                                p.PaymentDate = DateTime.UtcNow;
+                            }
+                            else if (p.PaymentDate.Kind != DateTimeKind.Utc)
+                            {
+                                p.PaymentDate = DateTime.SpecifyKind(p.PaymentDate, DateTimeKind.Utc);
+                            }
+                            _context.OrderPayments.Add(p);
+                            _logger.LogDebug("Добавлен платеж: {Amount} {Type}", p.Amount, p.PaymentType);
+                        }
                     }
+                }
 
-                    _logger.LogDebug("Добавление Payment: Amount={Amount}, Type={Type}, Date={Date} (Kind={Kind})",
-                        p.Amount, p.PaymentType, p.PaymentDate, p.PaymentDate.Kind);
+                // Обработка удаленных платежей
+                if (changesValue.TryGetProperty("removed", out var removed))
+                {
+                    var removedPayments = removed.Deserialize<List<OrderPayment>>(new JsonSerializerOptions
+                    {
+                        PropertyNameCaseInsensitive = true,
+                        NumberHandling = JsonNumberHandling.AllowReadingFromString
+                    });
 
-                    _context.OrderPayments.Add(p);
+                    if (removedPayments != null)
+                    {
+                        foreach (var p in removedPayments)
+                        {
+                            if (existingDict.TryGetValue(p.Id, out var toRemove))
+                            {
+                                _context.OrderPayments.Remove(toRemove);
+                                _logger.LogDebug("Удален платеж: {Amount} {Type}", p.Amount, p.PaymentType);
+                            }
+                        }
+                    }
+                }
+
+                // Обработка измененных платежей
+                if (changesValue.TryGetProperty("changed", out var changed))
+                {
+                    var changedPayments = changed.Deserialize<List<PaymentChangedDto>>(new JsonSerializerOptions
+                    {
+                        PropertyNameCaseInsensitive = true,
+                        NumberHandling = JsonNumberHandling.AllowReadingFromString
+                    });
+
+                    if (changedPayments != null)
+                    {
+                        foreach (var changedPayment in changedPayments)
+                        {
+                            if (existingDict.TryGetValue(changedPayment.Id, out var toUpdate))
+                            {
+                                toUpdate.Amount = changedPayment.New.Amount;
+                                toUpdate.PaymentType = changedPayment.New.PaymentType;
+                                toUpdate.PaymentDate = changedPayment.New.PaymentDate;
+                                toUpdate.Note = changedPayment.New.Note ?? string.Empty;
+
+                                if (toUpdate.PaymentDate.Kind != DateTimeKind.Utc)
+                                {
+                                    toUpdate.PaymentDate = DateTime.SpecifyKind(toUpdate.PaymentDate, DateTimeKind.Utc);
+                                }
+
+                                _logger.LogDebug("Обновлен платеж {Id}: {Amount} {Type}",
+                                    changedPayment.Id, changedPayment.New.Amount, changedPayment.New.PaymentType);
+                            }
+                        }
+                    }
                 }
 
                 await _context.SaveChangesAsync();
-
                 _logger.LogDebug("=== ApplyPaymentsChangesAsync УСПЕШНО для заказа {OrderId} ===", orderId);
                 return true;
             }

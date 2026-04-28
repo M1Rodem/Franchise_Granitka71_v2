@@ -453,47 +453,58 @@ namespace Franchisee.Web.Services.Orders.Repositories
 
         public async Task<string> GenerateOrderNumberAsync()
         {
-            using var transaction = await _context.Database.BeginTransactionAsync();
+            // Используем адаптивную блокировку без явной транзакции
+            // EF Core 6+ позволяет использовать FOR UPDATE в рамках существующей транзакции
+            const int maxRetries = 3;
+            int retryCount = 0;
 
-            try
+            while (retryCount < maxRetries)
             {
-                // Блокировка строки
-                var counter = await _context.OrderCounters
-                    .FromSqlRaw("SELECT * FROM \"OrderCounters\" WHERE \"Id\" = 1 FOR UPDATE")
-                    .FirstOrDefaultAsync();
-
-                if (counter == null)
+                try
                 {
-                    var maxOrderNumber = await _context.Orders
-                        .IgnoreQueryFilters()
-                        .MaxAsync(o => o.OrderNumber);
+                    // Пытаемся получить блокировку строки (работает даже во внешней транзакции)
+                    var counter = await _context.OrderCounters
+                        .FromSqlRaw("SELECT * FROM \"OrderCounters\" WHERE \"Id\" = 1 FOR UPDATE")
+                        .FirstOrDefaultAsync();
 
-                    var lastNumber = 0;
-                    if (!string.IsNullOrEmpty(maxOrderNumber))
+                    if (counter == null)
                     {
-                        var parts = maxOrderNumber.Split('-');
-                        if (parts.Length == 2 && int.TryParse(parts[1], out var num))
+                        var maxOrderNumber = await _context.Orders
+                            .IgnoreQueryFilters()
+                            .MaxAsync(o => o.OrderNumber);
+
+                        var lastNumber = 0;
+                        if (!string.IsNullOrEmpty(maxOrderNumber))
                         {
-                            lastNumber = num;
+                            var parts = maxOrderNumber.Split('-');
+                            if (parts.Length == 2 && int.TryParse(parts[1], out var num))
+                            {
+                                lastNumber = num;
+                            }
                         }
+
+                        counter = new OrderCounter { Id = 1, LastNumber = lastNumber };
+                        _context.OrderCounters.Add(counter);
+                        await _context.SaveChangesAsync();
                     }
 
-                    counter = new OrderCounter { Id = 1, LastNumber = lastNumber };
-                    _context.OrderCounters.Add(counter);
+                    counter.LastNumber++;
                     await _context.SaveChangesAsync();
+
+                    return $"ORD-{counter.LastNumber:00000}";
                 }
+                catch (DbUpdateConcurrencyException)
+                {
+                    retryCount++;
+                    if (retryCount >= maxRetries)
+                        throw;
 
-                counter.LastNumber++;
-                await _context.SaveChangesAsync();
-                await transaction.CommitAsync();
+                    // Ждем перед повтором
+                    await Task.Delay(50 * retryCount);
+                }
+            }
 
-                return $"ORD-{counter.LastNumber:00000}";
-            }
-            catch (Exception ex)
-            {
-                await transaction.RollbackAsync();
-                throw;
-            }
+            throw new InvalidOperationException("Не удалось сгенерировать номер заказа после нескольких попыток");
         }
 
         public async Task<string> GetOriginalOrderNumberAsync(int orderId)

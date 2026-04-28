@@ -11,7 +11,7 @@ namespace Franchisee.Web.Services.Print.Builders
 /* Базовые стили */
 body {
     font-family: 'Segoe UI', 'Arial', sans-serif;
-    font-size: 13px;
+    font-size: 14px;
     line-height: 1.2;
     background: white;
     margin: 0;
@@ -29,7 +29,7 @@ table {
 td, th {
     border: 1px solid #000000;
     padding: 3px 4px !important;
-    font-size: 13px !important;
+    font-size: 14px !important;
     vertical-align: top;
     word-wrap: break-word;
     overflow-wrap: break-word;
@@ -190,7 +190,7 @@ table.additional-info th {
     /* Компактный режим для печати */
     td, th {
         padding: 2px 3px !important;
-        font-size: 12px !important;
+        font-size: 13px !important;
     }
 }
 ";

@@ -47,12 +47,13 @@ export interface CreateOrderRequestDto {
     routes?: number;
     distanceKm?: number;
 
-    isDistanceWork: boolean;
+    isDistanceWork?: boolean;
 
     note?: string;
   }[];
 
   payments: {
+    id?: number
     amount: number;
     paymentDate: string;
     paymentType: string;
@@ -95,12 +96,13 @@ export interface UpdateOrderRequestDto {
     routes?: number;
     distanceKm?: number;
 
-    isDistanceWork: boolean;
+    isDistanceWork?: boolean;
 
     note?: string;
   }[]
 
   payments?: {
+    id?: number
     amount: number
     paymentDate: string
     paymentType: string

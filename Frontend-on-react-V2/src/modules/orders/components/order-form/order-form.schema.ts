@@ -56,6 +56,7 @@ export const orderFormSchema = z
     payments: z
       .array(
         z.object({
+          id: z.number().optional(),
           paymentType: z.string().min(1),
           amount: z.number().min(0),
           paymentDate: z.string(),

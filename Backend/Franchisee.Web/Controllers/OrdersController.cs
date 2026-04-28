@@ -14,7 +14,7 @@ using Franchisee.Web.Services.Notifications.Core;
 using Franchisee.Web.Services.Orders.Repositories;
 using Franchisee.Web.Services.Media.Core;
 using Franchisee.Web.Services.Plots.Repositories;
-
+using Franchisee.Web.Services.Notifications.Builders;
 
 namespace Franchisee.Web.Controllers
 {
@@ -329,7 +329,12 @@ namespace Franchisee.Web.Controllers
                     _logger.LogInformation("Менеджер {UserId} запрашивает изменения чужого заказа {OrderId}", userId, id);
 
                     var proposedChanges = CollectProposedChanges(order, request);
-                    if (!proposedChanges.Any())
+
+                    var realChanges = proposedChanges
+                        .Where(x => x.Key != "AdditionalInfo" && x.Key != "CustomerEmail")
+                        .ToList();
+
+                    if (!realChanges.Any())
                     {
                         return BadRequest(new { success = false, message = "Нет изменений для отправки" });
                     }
@@ -758,21 +763,54 @@ namespace Franchisee.Web.Controllers
             var changes = new Dictionary<string, object>();
 
             CollectFieldChanges(order, request, changes);
-
-            if (request.WorkItems != null)
-            {
-                CollectWorkItemsChanges(order, request, changes);
-            }
-
-            if (request.Payments != null)
-            {
-                CollectPaymentsChanges(order, request, changes);
-            }
-
+            CollectWorkItemsChanges(order, request, changes);
+            CollectPaymentsChanges(order, request, changes);
             CollectPhotoChanges(order, request, changes);
+
+            // Если нет ни одного изменения — возвращаем пустой словарь
+            if (changes.Count == 0)
+            {
+                return changes;
+            }
+
+            // Удаляем пустые коллекции (проверка через System.Text.Json)
+            var keysToRemove = new List<string>();
+            foreach (var kvp in changes)
+            {
+                if (kvp.Value is System.Text.Json.JsonElement obj)
+                {
+                    bool hasAdded = false;
+                    bool hasRemoved = false;
+                    bool hasChanged = false;
+
+                    if (obj.TryGetProperty("added", out var addedProp))
+                        hasAdded = addedProp.ValueKind == System.Text.Json.JsonValueKind.Array && addedProp.GetArrayLength() > 0;
+
+                    if (obj.TryGetProperty("removed", out var removedProp))
+                        hasRemoved = removedProp.ValueKind == System.Text.Json.JsonValueKind.Array && removedProp.GetArrayLength() > 0;
+
+                    if (obj.TryGetProperty("changed", out var changedProp))
+                        hasChanged = changedProp.ValueKind == System.Text.Json.JsonValueKind.Array && changedProp.GetArrayLength() > 0;
+
+                    if (!hasAdded && !hasRemoved && !hasChanged && kvp.Key != "Photos" && kvp.Key != "Videos")
+                    {
+                        keysToRemove.Add(kvp.Key);
+                    }
+                }
+                else if (kvp.Value is System.Collections.DictionaryEntry)
+                {
+                    // Для других типов оставляем как есть
+                }
+            }
+
+            foreach (var key in keysToRemove)
+            {
+                changes.Remove(key);
+            }
 
             return changes;
         }
+
         private void CollectFieldChanges(Order order, UpdateOrderRequest request, Dictionary<string, object> changes)
         {
             if (!string.IsNullOrEmpty(request.Place) && request.Place != order.Place)
@@ -885,9 +923,24 @@ namespace Franchisee.Web.Controllers
             var oldAdditionalInfo = order.AdditionalInfo ?? string.Empty;
             var newAdditionalInfo = request.AdditionalInfo ?? string.Empty;
 
-            if (oldAdditionalInfo != newAdditionalInfo)
+            // Игнорируем если обе пустые или null
+            bool bothEmpty = string.IsNullOrEmpty(oldAdditionalInfo) && string.IsNullOrEmpty(newAdditionalInfo);
+            bool noRealChange = oldAdditionalInfo == newAdditionalInfo;
+
+            if (!bothEmpty && !noRealChange)
             {
                 changes["AdditionalInfo"] = new { old = oldAdditionalInfo, @new = newAdditionalInfo };
+            }
+
+            var oldEmail = order.CustomerEmail ?? string.Empty;
+            var newEmail = request.CustomerEmail ?? string.Empty;
+
+            bool bothEmptyEmail = string.IsNullOrEmpty(oldEmail) && string.IsNullOrEmpty(newEmail);
+            bool noEmailChange = oldEmail == newEmail;
+
+            if (!bothEmptyEmail && !noEmailChange)
+            {
+                changes["CustomerEmail"] = new { old = oldEmail, @new = newEmail };
             }
 
             if (request.Status.HasValue && request.Status.Value != order.Status)
@@ -906,67 +959,110 @@ namespace Franchisee.Web.Controllers
         {
             if (request.WorkItems == null) return;
 
-            var oldWorkItems = order.WorkItems.Select(w => new
+            var oldWorkItems = order.WorkItems.Select(w => new OrderWorkItemDto
             {
-                w.Id,
-                w.WorkDescription,
-                w.Price,
-                w.Quantity,
-                w.Routes,
-                w.DistanceKm,
-                w.Note,
+                Id = w.Id,
+                WorkDescription = w.WorkDescription,
+                Price = w.Price,
+                Quantity = w.Quantity,
+                Routes = w.Routes,
+                DistanceKm = w.DistanceKm,
+                Note = w.Note ?? string.Empty,
                 IsDistanceWork = w.DistanceKm.HasValue && w.DistanceKm > 0
             }).ToList();
 
-            var newWorkItems = request.WorkItems.Select(w => new
+            var newWorkItems = request.WorkItems.Select(w =>
             {
-                w.Id,
-                w.WorkDescription,
-                w.Price,
-                w.Quantity,
-                w.Routes,
-                w.DistanceKm,
-                w.Note,
-                w.IsDistanceWork
+                var dto = new OrderWorkItemDto
+                {
+                    Id = w.Id,
+                    WorkDescription = w.WorkDescription,
+                    Price = w.Price,
+                    Note = w.Note ?? string.Empty,
+                    IsDistanceWork = w.IsDistanceWork
+                };
+
+                if (w.IsDistanceWork)
+                {
+                    var routes = w.Routes > 0 ? w.Routes : 1;
+                    var distanceKm = w.DistanceKm ?? 0;
+
+                    dto.Routes = routes;
+                    dto.DistanceKm = distanceKm;
+                    dto.Quantity = (decimal)(routes * distanceKm);
+                }
+                else
+                {
+                    dto.Quantity = w.Quantity;
+                    dto.Routes = 1;
+                    dto.DistanceKm = null;
+                }
+
+                return dto;
             }).ToList();
 
-            var oldWorkItemsJson = JsonSerializer.Serialize(oldWorkItems);
-            var newWorkItemsJson = JsonSerializer.Serialize(newWorkItems);
+            var diffService = new NotificationDiffService();
+            var diffResult = diffService.CompareWorkItems(oldWorkItems, newWorkItems);
 
-            if (oldWorkItemsJson != newWorkItemsJson)
+            var realChanged = diffResult.Changed
+                .Where(c => !AreWorkItemsEqual(c.Old, c.New))
+                .ToList();
+
+            if (diffResult.Added.Any() || diffResult.Removed.Any() || realChanged.Any())
             {
-                changes["WorkItems"] = new { old = oldWorkItems, @new = newWorkItems };
+                changes["WorkItems"] = new
+                {
+                    added = diffResult.Added,
+                    removed = diffResult.Removed,
+                    changed = realChanged
+                };
             }
+        }
+        private bool AreWorkItemsEqual(OrderWorkItemDto old, OrderWorkItemDto newItem)
+        {
+            return old.WorkDescription == newItem.WorkDescription &&
+                   Math.Abs(old.Price - newItem.Price) < 0.001m &&
+                   old.Routes == newItem.Routes &&
+                   Math.Abs((old.DistanceKm ?? 0) - (newItem.DistanceKm ?? 0)) < 0.001 &&
+                   old.IsDistanceWork == newItem.IsDistanceWork;
         }
 
         private void CollectPaymentsChanges(Order order, UpdateOrderRequest request, Dictionary<string, object> changes)
         {
             if (request.Payments == null) return;
 
-            var oldPayments = order.Payments.Select(p => new
+            var oldPayments = order.Payments.Select(p => new OrderPaymentDto
             {
-                p.Amount,
-                p.PaymentDate,
-                p.PaymentType,
-                p.Note
-            }).ToList();
-
-            var newPayments = request.Payments.Select(p => new
-            {
-                p.Amount,
+                Id = p.Id,
+                Amount = p.Amount,
                 PaymentDate = p.PaymentDate,
-                p.PaymentType,
-                p.Note
+                PaymentType = p.PaymentType,
+                Note = p.Note ?? string.Empty  // ← ИЗМЕНЕНО
             }).ToList();
 
-            var oldPaymentsJson = JsonSerializer.Serialize(oldPayments);
-            var newPaymentsJson = JsonSerializer.Serialize(newPayments);
-
-            if (oldPaymentsJson != newPaymentsJson)
+            var newPayments = request.Payments.Select(p => new OrderPaymentDto
             {
-                changes["Payments"] = new { old = oldPayments, @new = newPayments };
+                Id = p.Id,
+                Amount = p.Amount,
+                PaymentDate = p.PaymentDate,
+                PaymentType = p.PaymentType,
+                Note = p.Note ?? string.Empty
+            }).ToList();
+
+            var diffService = new NotificationDiffService();
+            var diffResult = diffService.ComparePayments(oldPayments, newPayments);
+
+            if (diffResult.Added.Any() || diffResult.Removed.Any() || diffResult.Changed.Any())
+            {
+                changes["Payments"] = new
+                {
+                    added = diffResult.Added,
+                    removed = diffResult.Removed,
+                    changed = diffResult.Changed
+                };
             }
         }
+
         private void CollectPhotoChanges(Order order, UpdateOrderRequest request, Dictionary<string, object> changes)
         {
             // Собираем фото для добавления

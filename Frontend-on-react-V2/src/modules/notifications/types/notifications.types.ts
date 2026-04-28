@@ -103,27 +103,49 @@ export interface WorkItemDto {
   price: number
   note?: string | null
   routes?: number
-  distanceKm?: number
+  distanceKm?: number | null
   isDistanceWork?: boolean
 }
 
+export interface ChangedWorkDto {
+  id: number
+  old: WorkItemDto
+  new: WorkItemDto
+}
+
 export interface WorksChangeDto {
-  oldWorks: WorkItemDto[]
-  newWorks: WorkItemDto[]
-  oldTotal: number
-  newTotal: number
+  addedWorks: WorkItemDto[]
+  removedWorks: WorkItemDto[]
+  changedWorks: ChangedWorkDto[]
+
+  changedWorksCount?: number
+  oldTotal?: number
+  newTotal?: number
+  oldQuantity?: number
+  newQuantity?: number
+  showRoutesInsteadOfQuantity?: boolean
 }
 
 export interface PaymentDto {
+  id: number
   paymentType: string
   amount: number
   paymentDate: string
   note?: string | null
 }
 
+export interface ChangedPaymentDto {
+  id: number
+  old: PaymentDto
+  new: PaymentDto
+}
+
 export interface PaymentsChangeDto {
-  oldPayments: PaymentDto[]
-  newPayments: PaymentDto[]
+  addedPayments: PaymentDto[]
+  removedPayments: PaymentDto[]
+  changedPayments: ChangedPaymentDto[]
+
+  changedPaymentsCount?: number
 }
 
 export interface MediaItemDto {

@@ -7,149 +7,111 @@ interface Props {
 }
 
 export function PaymentsDiff({ data }: Props) {
+  const { addedPayments, removedPayments, changedPayments } = data
+
+  const hasAdded = addedPayments?.length > 0
+  const hasRemoved = removedPayments?.length > 0
+  const hasChanged = changedPayments?.length > 0
+
+  if (!hasAdded && !hasRemoved && !hasChanged) return null
+
   return (
-    <div className={surfaceStyles.surface}>
-      <div className={surfaceStyles.diffList}>
-        {[...data.oldPayments, ...data.newPayments]
-          .map((_, index) => ({
-            oldPayment: data.oldPayments[index],
-            newPayment: data.newPayments[index],
-          }))
-          .filter(item => item.oldPayment || item.newPayment)
-          .map(({ oldPayment, newPayment }, index) => {
+    <div className={surfaceStyles.diffList}>
 
-            // тип изменения
-            const isAdded = !oldPayment && !!newPayment
-            const isRemoved = !!oldPayment && !newPayment
-            const isChanged =
-              oldPayment &&
-              newPayment &&
-              (
-                oldPayment.amount !== newPayment.amount ||
-                oldPayment.note !== newPayment.note ||
-                oldPayment.paymentDate !== newPayment.paymentDate
-              )
+      {hasChanged && (
+        <Category title="Изменения">
+          {changedPayments.map((item) => (
+            <PaymentItem key={item.id} type="changed" oldP={item.old} newP={item.new} />
+          ))}
+        </Category>
+      )}
 
-            const title =
-              newPayment?.paymentType ||
-              oldPayment?.paymentType ||
-              '—'
+      {hasAdded && (
+        <Category title="Добавлено">
+          {addedPayments.map((item) => (
+            <PaymentItem key={`added-${item.id}-${item.amount}`} type="added" newP={item} />
+          ))}
+        </Category>
+      )}
 
-            return (
-              <div key={index} className={surfaceStyles.diffCard}>
+      {hasRemoved && (
+        <Category title="Удалено">
+          {removedPayments.map((item) => (
+            <PaymentItem key={`removed-${item.id}-${item.amount}`} type="removed" oldP={item} />
+          ))}
+        </Category>
+      )}
 
-                {/* HEADER */}
-                <div
-                  style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                  }}
-                >
-                  <div className={surfaceStyles.diffTitle}>
-                    {title}
-                  </div>
-
-                  {isAdded && (
-                    <span className={`${surfaceStyles.diffBadge} ${surfaceStyles.diffBadgeAdded}`}>
-                      Добавлено
-                    </span>
-                  )}
-
-                  {isRemoved && (
-                    <span className={`${surfaceStyles.diffBadge} ${surfaceStyles.diffBadgeRemoved}`}>
-                      Удалено
-                    </span>
-                  )}
-
-                  {isChanged && (
-                    <span className={`${surfaceStyles.diffBadge} ${surfaceStyles.diffBadgeChanged}`}>
-                      Изменено
-                    </span>
-                  )}
-                </div>
-
-                {/* СУММА */}
-                {oldPayment?.amount !== newPayment?.amount && (
-                  <DiffRow
-                    label="Сумма"
-                    oldValue={oldPayment?.amount}
-                    newValue={newPayment?.amount}
-                  />
-                )}
-
-                {/* ДАТА */}
-                {oldPayment?.paymentDate !== newPayment?.paymentDate && (
-                  <DiffRow
-                    label="Дата"
-                    oldValue={
-                      oldPayment?.paymentDate
-                        ? formatNotificationDateOnly(oldPayment.paymentDate)
-                        : '—'
-                    }
-                    newValue={
-                      newPayment?.paymentDate
-                        ? formatNotificationDateOnly(newPayment.paymentDate)
-                        : '—'
-                    }
-                  />
-                )}
-
-                {/* ПРИМЕЧАНИЕ */}
-                {oldPayment?.note !== newPayment?.note && (
-                  <DiffRow
-                    label="Примечание"
-                    oldValue={oldPayment?.note || '—'}
-                    newValue={newPayment?.note || '—'}
-                  />
-                )}
-              </div>
-            )
-          })}
-      </div>
     </div>
   )
 }
 
-function DiffRow({
-  label,
-  oldValue,
-  newValue,
+function Category({ title, children }: any) {
+  return (
+    <div className={surfaceStyles.diffGroup}>
+      <div className={surfaceStyles.diffGroupTitle}>{title}</div>
+      {children}
+    </div>
+  )
+}
+
+function PaymentItem({
+  type,
+  oldP,
+  newP,
 }: {
-  label: string
-  oldValue: string | number | null | undefined
-  newValue: string | number | null | undefined
+  type: 'added' | 'removed' | 'changed'
+  oldP?: any
+  newP?: any
 }) {
-  const changed = oldValue !== newValue
+  const title = newP?.paymentType || oldP?.paymentType || '—'
+
+  const formatDate = (d?: string) =>
+    d ? formatNotificationDateOnly(d) : '—'
+
+  return (
+    <div className={surfaceStyles.diffCard}>
+
+      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+        <div className={surfaceStyles.diffTitle}>{title}</div>
+
+        <span className={`${surfaceStyles.diffBadge} ${type === 'added'
+          ? surfaceStyles.diffBadgeAdded
+          : type === 'removed'
+            ? surfaceStyles.diffBadgeRemoved
+            : surfaceStyles.diffBadgeChanged
+          }`}>
+          {type === 'added' ? 'Добавлено' : type === 'removed' ? 'Удалено' : 'Изменено'}
+        </span>
+      </div>
+
+      <DiffRow label="Сумма" oldValue={oldP?.amount} newValue={newP?.amount} type={type} />
+      <DiffRow label="Дата" oldValue={formatDate(oldP?.paymentDate)} newValue={formatDate(newP?.paymentDate)} type={type} />
+      <DiffRow label="Примечание" oldValue={oldP?.note} newValue={newP?.note} type={type} />
+    </div>
+  )
+}
+
+function DiffRow({ label, oldValue, newValue, type }: any) {
+  if (type === 'added') {
+    if (!newValue) return null
+    return <div className={surfaceStyles.diffField}><div>{label}</div><span className={surfaceStyles.diffNew}>{newValue}</span></div>
+  }
+
+  if (type === 'removed') {
+    if (!oldValue) return null
+    return <div className={surfaceStyles.diffField}><div>{label}</div><span className={surfaceStyles.diffOldChanged}>{oldValue}</span></div>
+  }
+
+  if (oldValue === newValue) return null
 
   return (
     <div className={surfaceStyles.diffField}>
-      <div className={surfaceStyles.diffLabel}>{label}</div>
-
+      <div>{label}</div>
       <div className={surfaceStyles.diffValues}>
-        <span
-          className={
-            changed
-              ? surfaceStyles.diffOldChanged
-              : surfaceStyles.diffOld
-          }
-        >
-          <span className={surfaceStyles.hideOnDesktop}>Было: </span>
-          {oldValue ?? '—'}
-        </span>
-
+        <span className={surfaceStyles.diffOldChanged}>{oldValue ?? '—'}</span>
         <span className={surfaceStyles.diffArrow}>→</span>
-
-        <span
-          className={
-            changed
-              ? surfaceStyles.diffNewChanged
-              : surfaceStyles.diffNew
-          }
-        >
-          <span className={surfaceStyles.hideOnDesktop}>Стало: </span>
-          {newValue ?? '—'}
-        </span>
+        <span className={surfaceStyles.diffNewChanged}>{newValue ?? '—'}</span>
       </div>
     </div>
   )

@@ -143,8 +143,9 @@ namespace Franchisee.Web.Services.Orders.Repositories
                         WorkDescription = w.WorkDescription,
                         Price = w.Price,
                         Quantity = w.Quantity,
-                        Note = w.Note,
-                        DistanceKm = w.DistanceKm
+                        Routes = w.Routes,
+                        DistanceKm = w.DistanceKm,
+                        Note = w.Note
                     }).ToList(),
 
                     Payments = o.Payments.Select(p => new OrderPayment
@@ -452,26 +453,58 @@ namespace Franchisee.Web.Services.Orders.Repositories
 
         public async Task<string> GenerateOrderNumberAsync()
         {
-            try
+            // Используем адаптивную блокировку без явной транзакции
+            // EF Core 6+ позволяет использовать FOR UPDATE в рамках существующей транзакции
+            const int maxRetries = 3;
+            int retryCount = 0;
+
+            while (retryCount < maxRetries)
             {
-                // ИСПРАВЛЕНИЕ: Ищем ВСЕ заказы (включая архивные) чтобы избежать дублирования номеров
-                var maxId = await _context.Orders
-                    .IgnoreQueryFilters() // ВАЖНО: игнорируем фильтр мягкого удаления
-                    .MaxAsync(o => (int?)o.Id) ?? 0;
+                try
+                {
+                    // Пытаемся получить блокировку строки (работает даже во внешней транзакции)
+                    var counter = await _context.OrderCounters
+                        .FromSqlRaw("SELECT * FROM \"OrderCounters\" WHERE \"Id\" = 1 FOR UPDATE")
+                        .FirstOrDefaultAsync();
 
-                // Следующий ID
-                var nextId = maxId + 1;
+                    if (counter == null)
+                    {
+                        var maxOrderNumber = await _context.Orders
+                            .IgnoreQueryFilters()
+                            .MaxAsync(o => o.OrderNumber);
 
-                // Формат только ORD-00001, ORD-00002 без даты
-                var orderNumber = $"ORD-{nextId:00000}";
+                        var lastNumber = 0;
+                        if (!string.IsNullOrEmpty(maxOrderNumber))
+                        {
+                            var parts = maxOrderNumber.Split('-');
+                            if (parts.Length == 2 && int.TryParse(parts[1], out var num))
+                            {
+                                lastNumber = num;
+                            }
+                        }
 
-                return orderNumber;
+                        counter = new OrderCounter { Id = 1, LastNumber = lastNumber };
+                        _context.OrderCounters.Add(counter);
+                        await _context.SaveChangesAsync();
+                    }
+
+                    counter.LastNumber++;
+                    await _context.SaveChangesAsync();
+
+                    return $"ORD-{counter.LastNumber:00000}";
+                }
+                catch (DbUpdateConcurrencyException)
+                {
+                    retryCount++;
+                    if (retryCount >= maxRetries)
+                        throw;
+
+                    // Ждем перед повтором
+                    await Task.Delay(50 * retryCount);
+                }
             }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"GenerateOrderNumberAsync error: {ex.Message}");
-                throw;
-            }
+
+            throw new InvalidOperationException("Не удалось сгенерировать номер заказа после нескольких попыток");
         }
 
         public async Task<string> GetOriginalOrderNumberAsync(int orderId)

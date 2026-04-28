@@ -60,12 +60,14 @@ namespace Franchisee.Web.Models.DTOs.Orders
         public string WorkDescription { get; set; } = string.Empty;
 
         public decimal Price { get; set; }
+        public int Routes { get; set; } = 1;
 
         public decimal Quantity { get; set; }
 
         public string Note { get; set; } = string.Empty;
 
         public double? DistanceKm { get; set; }
+        public bool IsDistanceWork { get; set; } = false;
     }
     public class OrdersListItemDto
     {
@@ -94,13 +96,9 @@ namespace Franchisee.Web.Models.DTOs.Orders
     public class OrderPaymentDto
     {
         public int Id { get; set; }
-
         public decimal Amount { get; set; }
-
         public DateTime PaymentDate { get; set; }
-
         public string PaymentType { get; set; } = string.Empty;
-
         public string? Note { get; set; }
     }
 }

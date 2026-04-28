@@ -111,34 +111,35 @@ export function LocationSection() {
 
       // ждём построения маршрута
       multiRoute.model.events.add('requestsuccess', () => {
-        const activeRoute =
-          multiRoute.getActiveRoute()
-
+        const activeRoute = multiRoute.getActiveRoute()
         if (!activeRoute) return
 
-        // отключаем события сегментов
         const paths = activeRoute.getPaths()
         paths.options.set({
           pointerEvents: 'none',
         })
 
-        const distanceValue =
-          Number(
-            (
-              activeRoute.properties
-                .get('distance')
-                .value / 1000
-            ).toFixed(2)
-          )
-
-        setValue(
-          'works.0.quantity',
-          distanceValue,
-          {
-            shouldDirty: true,
-            shouldValidate: true,
-          }
+        const distanceValue = Number(
+          (
+            activeRoute.properties
+              .get('distance')
+              .value / 1000
+          ).toFixed(2)
         )
+
+        const works = watch('works')
+        const distanceIndex = works.findIndex(w => w.isDistanceWork)
+
+        if (distanceIndex !== -1) {
+          setValue(
+            `works.${distanceIndex}.distanceKm`,
+            distanceValue,
+            {
+              shouldDirty: true,
+              shouldValidate: true,
+            }
+          )
+        }
       })
     },
     [selectedPlot]

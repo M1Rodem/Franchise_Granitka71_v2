@@ -72,7 +72,11 @@ export function DiffAccordion({ changes }: Props) {
       {changes.works ? (
         <AccordionItem
           title="Работы"
-          count={changes.works.newWorks.length}
+          count={
+            (changes.works.addedWorks?.length || 0) +
+            (changes.works.removedWorks?.length || 0) +
+            (changes.works.changedWorks?.length || 0)
+          }
           isOpen={openSections.has('works')}
           onClick={() => toggle('works')}
         >
@@ -84,7 +88,11 @@ export function DiffAccordion({ changes }: Props) {
       {changes.payments ? (
         <AccordionItem
           title="Платежи"
-          count={changes.payments.newPayments.length}
+          count={
+            (changes.payments.addedPayments?.length || 0) +
+            (changes.payments.removedPayments?.length || 0) +
+            (changes.payments.changedPayments?.length || 0)
+          }
           isOpen={openSections.has('payments')}
           onClick={() => toggle('payments')}
         >

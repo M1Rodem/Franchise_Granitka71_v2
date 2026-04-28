@@ -57,13 +57,18 @@ export function PaymentsSection() {
       name: "discountPercent"
     }) ?? 0
 
-  const subtotal = works.reduce(
-    (sum, w) =>
-      sum +
-      (Number(w?.price) || 0) *
-      (Number(w?.quantity) || 0),
-    0
-  )
+  const subtotal = works.reduce((sum, w) => {
+    if (w.isDistanceWork) {
+      return sum +
+        (Number(w.price) || 0) *
+        (Number(w.routes) || 0) *
+        (Number(w.distanceKm) || 0)
+    }
+
+    return sum +
+      (Number(w.price) || 0) *
+      (Number(w.quantity) || 0)
+  }, 0)
 
   const roundMoney = (value: number) =>
     Math.round(value * 100) / 100
@@ -87,11 +92,13 @@ export function PaymentsSection() {
 
   }
 
-  const discountAmount =
+  const discountAmount = roundMoney(
     subtotal * (discountPercent / 100)
+  )
 
-  const total =
-    roundMoney(subtotal - discountAmount)
+  const total = roundMoney(
+    subtotal - discountAmount
+  )
 
   const suggestedAdvance =
     Math.round(total * 0.3)

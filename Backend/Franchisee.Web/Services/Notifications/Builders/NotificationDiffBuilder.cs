@@ -109,37 +109,178 @@ public static class NotificationDiffBuilder
         if (!changes.TryGetProperty("WorkItems", out var works))
             return;
 
-        var dto = new WorksChangeDto();
-
-        var oldWorks = works.GetProperty("old");
-        var newWorks = works.GetProperty("new");
-
-        foreach (var item in oldWorks.EnumerateArray())
+        var dto = new WorksChangeDto
         {
-            dto.OldWorks.Add(ParseWork(item));
+            AddedWorks = new List<OrderWorkItemDto>(),
+            RemovedWorks = new List<OrderWorkItemDto>(),
+            ChangedWorks = new List<WorkItemChangedDto>()
+        };
+
+        // Добавленные работы
+        if (works.TryGetProperty("added", out var added))
+        {
+            foreach (var item in added.EnumerateArray())
+            {
+                var work = ParseWork(item);
+                if (work.IsDistanceWork && work.DistanceKm.HasValue && work.Routes > 0)
+                {
+                    work.Quantity = (decimal)(work.DistanceKm.Value * work.Routes);
+                }
+                dto.AddedWorks.Add(work);
+            }
         }
 
-        foreach (var item in newWorks.EnumerateArray())
+        // Удаленные работы
+        if (works.TryGetProperty("removed", out var removed))
         {
-            dto.NewWorks.Add(ParseWork(item));
+            foreach (var item in removed.EnumerateArray())
+            {
+                var work = ParseWork(item);
+                if (work.IsDistanceWork && work.DistanceKm.HasValue && work.Routes > 0)
+                {
+                    work.Quantity = (decimal)(work.DistanceKm.Value * work.Routes);
+                }
+                dto.RemovedWorks.Add(work);
+            }
         }
 
-        dto.OldTotal = dto.OldWorks.Sum(x => x.Price * x.Quantity);
-        dto.NewTotal = dto.NewWorks.Sum(x => x.Price * x.Quantity);
+        // Измененные работы
+        if (works.TryGetProperty("changed", out var changed))
+        {
+            foreach (var item in changed.EnumerateArray())
+            {
+                var id = item.GetProperty("id").GetInt32();
+                var oldElement = item.GetProperty("old");
+                var newElement = item.GetProperty("new");
+
+                var isDistanceWork = item.TryGetProperty("isDistanceWork", out var distWork)
+                    ? distWork.GetBoolean()
+                    : false;
+
+                var oldItem = ParseWork(oldElement);
+                var newItem = ParseWork(newElement);
+
+                if (!oldItem.IsDistanceWork && isDistanceWork)
+                    oldItem.IsDistanceWork = true;
+                if (!newItem.IsDistanceWork && isDistanceWork)
+                    newItem.IsDistanceWork = true;
+
+                var changedItem = new WorkItemChangedDto
+                {
+                    Id = id,
+                    Old = oldItem,
+                    New = newItem
+                };
+
+                if (string.IsNullOrWhiteSpace(changedItem.New.WorkDescription))
+                {
+                    changedItem.New.WorkDescription = changedItem.Old.WorkDescription;
+                }
+
+                if (changedItem.Old.IsDistanceWork && changedItem.Old.DistanceKm.HasValue && changedItem.Old.Routes > 0)
+                {
+                    changedItem.Old.Quantity = (decimal)(changedItem.Old.DistanceKm.Value * changedItem.Old.Routes);
+                }
+                if (changedItem.New.IsDistanceWork && changedItem.New.DistanceKm.HasValue && changedItem.New.Routes > 0)
+                {
+                    changedItem.New.Quantity = (decimal)(changedItem.New.DistanceKm.Value * changedItem.New.Routes);
+                }
+
+                dto.ChangedWorks.Add(changedItem);
+            }
+        }
+
+        // Расчет сумм
+        var allOldWorks = new List<OrderWorkItemDto>();
+        allOldWorks.AddRange(dto.RemovedWorks);
+        allOldWorks.AddRange(dto.ChangedWorks.Select(x => x.Old));
+
+        var allNewWorks = new List<OrderWorkItemDto>();
+        allNewWorks.AddRange(dto.AddedWorks);
+        allNewWorks.AddRange(dto.ChangedWorks.Select(x => x.New));
+
+        dto.OldTotal = allOldWorks.Sum(x => x.Price * x.Quantity);
+        dto.NewTotal = allNewWorks.Sum(x => x.Price * x.Quantity);
+        dto.ChangedWorksCount = dto.ChangedWorks.Count;
+
+        // Дистанционные работы
+        var anyDistanceWork = dto.AddedWorks.Any(x => x.IsDistanceWork) ||
+                      dto.RemovedWorks.Any(x => x.IsDistanceWork) ||
+                      dto.ChangedWorks.Any(x => x.Old.IsDistanceWork || x.New.IsDistanceWork);
+
+        if (anyDistanceWork)
+        {
+            dto.ShowRoutesInsteadOfQuantity = true;
+
+            var distanceWorkFromAdded = dto.AddedWorks.FirstOrDefault(x => x.IsDistanceWork);
+            var distanceWorkFromRemoved = dto.RemovedWorks.FirstOrDefault(x => x.IsDistanceWork);
+            var distanceWorkFromChanged = dto.ChangedWorks.FirstOrDefault(x => x.Old.IsDistanceWork || x.New.IsDistanceWork);
+
+            if (distanceWorkFromAdded != null)
+            {
+                dto.NewQuantity = distanceWorkFromAdded.Routes;
+                dto.OldQuantity = distanceWorkFromAdded.Routes;
+            }
+            else if (distanceWorkFromChanged != null)
+            {
+                if (distanceWorkFromChanged.Old.IsDistanceWork)
+                    dto.OldQuantity = distanceWorkFromChanged.Old.Routes;
+                if (distanceWorkFromChanged.New.IsDistanceWork)
+                    dto.NewQuantity = distanceWorkFromChanged.New.Routes;
+            }
+            else if (distanceWorkFromRemoved != null)
+            {
+                dto.OldQuantity = distanceWorkFromRemoved.Routes;
+                dto.NewQuantity = distanceWorkFromRemoved.Routes;
+            }
+        }
 
         result.Works = dto;
     }
 
     private static OrderWorkItemDto ParseWork(JsonElement item)
     {
+        var isDistanceWork = item.TryGetProperty("isDistanceWork", out var isDist)
+            ? isDist.GetBoolean()
+            : false;
+
+        var id = item.TryGetProperty("id", out var idProp) ? idProp.GetInt32() : 0;
+        var workDescription = item.GetProperty("workDescription").GetString() ?? "";
+        var price = item.GetProperty("price").GetDecimal();
+        var note = item.TryGetProperty("note", out var noteProp) ? noteProp.GetString() : null;
+
+        if (isDistanceWork)
+        {
+            // Distance работа
+            var routes = item.TryGetProperty("routes", out var r) ? r.GetInt32() : 1;
+            var distanceKm = item.TryGetProperty("distanceKm", out var d) ? d.GetDouble() : (double?)null;
+            var calculatedQuantity = (decimal)(routes * (distanceKm ?? 0));
+
+            return new OrderWorkItemDto
+            {
+                Id = id,
+                WorkDescription = workDescription,
+                Price = price,
+                Routes = routes,
+                Quantity = calculatedQuantity,
+                Note = note,
+                DistanceKm = distanceKm,
+                IsDistanceWork = true
+            };
+        }
+
+        var quantityValue = item.TryGetProperty("quantity", out var q) ? q.GetDecimal() : 0;
+
         return new OrderWorkItemDto
         {
-            WorkDescription = item.GetProperty("workDescription").GetString() ?? "",
-            Quantity = item.GetProperty("quantity").GetDecimal(),
-            Price = item.GetProperty("price").GetDecimal(),
-            Note = item.TryGetProperty("note", out var note)
-                ? note.GetString()
-                : null
+            Id = id,
+            WorkDescription = workDescription,
+            Price = price,
+            Quantity = quantityValue,
+            Note = note,
+            Routes = 1,
+            DistanceKm = null,
+            IsDistanceWork = false
         };
     }
 
@@ -148,18 +289,47 @@ public static class NotificationDiffBuilder
         if (!changes.TryGetProperty("Payments", out var payments))
             return;
 
-        var dto = new PaymentsChangeDto();
-
-        foreach (var item in payments.GetProperty("old").EnumerateArray())
+        var dto = new PaymentsChangeDto
         {
-            dto.OldPayments.Add(ParsePayment(item));
+            AddedPayments = new List<OrderPaymentDto>(),
+            RemovedPayments = new List<OrderPaymentDto>(),
+            ChangedPayments = new List<PaymentChangedDto>()
+        };
+
+        // Добавленные платежи
+        if (payments.TryGetProperty("added", out var added))
+        {
+            foreach (var item in added.EnumerateArray())
+            {
+                dto.AddedPayments.Add(ParsePayment(item));
+            }
         }
 
-        foreach (var item in payments.GetProperty("new").EnumerateArray())
+        // Удаленные платежи
+        if (payments.TryGetProperty("removed", out var removed))
         {
-            dto.NewPayments.Add(ParsePayment(item));
+            foreach (var item in removed.EnumerateArray())
+            {
+                dto.RemovedPayments.Add(ParsePayment(item));
+            }
         }
 
+        // Измененные платежи
+        if (payments.TryGetProperty("changed", out var changed))
+        {
+            foreach (var item in changed.EnumerateArray())
+            {
+                var changedItem = new PaymentChangedDto
+                {
+                    Id = item.GetProperty("id").GetInt32(),
+                    Old = ParsePayment(item.GetProperty("old")),
+                    New = ParsePayment(item.GetProperty("new"))
+                };
+                dto.ChangedPayments.Add(changedItem);
+            }
+        }
+
+        dto.ChangedPaymentsCount = dto.ChangedPayments.Count;
         result.Payments = dto;
     }
 
@@ -167,6 +337,7 @@ public static class NotificationDiffBuilder
     {
         return new OrderPaymentDto
         {
+            Id = item.TryGetProperty("id", out var idProp) ? idProp.GetInt32() : 0,  // ← ДОБАВИТЬ!
             PaymentType = item.GetProperty("paymentType").GetString() ?? "",
             Amount = item.GetProperty("amount").GetDecimal(),
             PaymentDate = item.GetProperty("paymentDate").GetDateTime(),
@@ -248,50 +419,57 @@ public static class NotificationDiffBuilder
 
     private static void BuildFinance(JsonElement changes, NotificationChangesDto result)
     {
-        var finance = new FinanceChangeDto();
-        bool hasChanges = false;
+        if (result.Works == null) return;
 
-        // 1. Обработка скидки (DiscountPercent)
+        var finance = new FinanceChangeDto();
+
+        // worksTotal
+        finance.Old.WorksTotal = result.Works.OldTotal;
+        finance.New.WorksTotal = result.Works.NewTotal;
+
+        // Discount
         if (changes.TryGetProperty("DiscountPercent", out var discountElement))
         {
-            if (discountElement.TryGetProperty("old", out var oldDiscount) &&
-                discountElement.TryGetProperty("new", out var newDiscount))
-            {
-                finance.Old.Discount = oldDiscount.GetDecimal();      // ← DiscountPercent
-                finance.New.Discount = newDiscount.GetDecimal();      // ← DiscountPercent
-                hasChanges = true;
-            }
+            if (discountElement.TryGetProperty("old", out var oldDiscount))
+                finance.Old.Discount = oldDiscount.GetDecimal();
+            if (discountElement.TryGetProperty("new", out var newDiscount))
+                finance.New.Discount = newDiscount.GetDecimal();
         }
 
-        // 2. Обработка WorkItems (сумма работ)
-        if (result.Works != null)
+        // Расчет discountAmount и total
+        finance.Old.DiscountAmount = Math.Round(finance.Old.WorksTotal * (finance.Old.Discount / 100m), 2);
+        finance.New.DiscountAmount = Math.Round(finance.New.WorksTotal * (finance.New.Discount / 100m), 2);
+
+        finance.Old.Total = finance.Old.WorksTotal - finance.Old.DiscountAmount;
+        finance.New.Total = finance.New.WorksTotal - finance.New.DiscountAmount;
+        if (finance.Old.Total < 0) finance.Old.Total = 0;
+        if (finance.New.Total < 0) finance.New.Total = 0;
+
+        // пытаемся получить платежи из разных мест
+        decimal oldPaid = 0;
+        decimal newPaid = 0;
+
+        // 1. Из изменений (если платежи менялись)
+        if (changes.TryGetProperty("Payments", out var paymentsProp))
         {
-            finance.Old.WorksTotal = result.Works.OldTotal;
-            finance.New.WorksTotal = result.Works.NewTotal;
-            hasChanges = true;
+            if (paymentsProp.TryGetProperty("old", out var oldPayments))
+                oldPaid = oldPayments.EnumerateArray().Sum(p => p.GetProperty("amount").GetDecimal());
+            if (paymentsProp.TryGetProperty("new", out var newPayments))
+                newPaid = newPayments.EnumerateArray().Sum(p => p.GetProperty("amount").GetDecimal());
         }
 
-        // 3. Расчет скидки в деньгах и итоговой суммы
-        if (hasChanges)
-        {
-            // Старая скидка в деньгах
-            var oldDiscountAmount = finance.Old.WorksTotal * (finance.Old.Discount / 100m);
-            finance.Old.DiscountAmount = Math.Round(oldDiscountAmount, 2, MidpointRounding.AwayFromZero);
+        // 2. Если нет в changes, но есть в originalData (нужно передавать из NotificationService)
+        // Для этого нужно в NotificationService при создании уведомления добавлять текущие платежи
 
-            // Старая итоговая сумма
-            finance.Old.Total = finance.Old.WorksTotal - finance.Old.DiscountAmount;
-            if (finance.Old.Total < 0) finance.Old.Total = 0;
+        finance.Old.Paid = oldPaid;
+        finance.New.Paid = newPaid;
 
-            // Новая скидка в деньгах
-            var newDiscountAmount = finance.New.WorksTotal * (finance.New.Discount / 100m);
-            finance.New.DiscountAmount = Math.Round(newDiscountAmount, 2, MidpointRounding.AwayFromZero);
+        finance.Old.Remaining = finance.Old.Total - finance.Old.Paid;
+        finance.New.Remaining = finance.New.Total - finance.New.Paid;
+        if (finance.Old.Remaining < 0) finance.Old.Remaining = 0;
+        if (finance.New.Remaining < 0) finance.New.Remaining = 0;
 
-            // Новая итоговая сумма
-            finance.New.Total = finance.New.WorksTotal - finance.New.DiscountAmount;
-            if (finance.New.Total < 0) finance.New.Total = 0;
-
-            result.Finance = finance;
-        }
+        result.Finance = finance;
     }
 
     private static string GetLabel(string field)

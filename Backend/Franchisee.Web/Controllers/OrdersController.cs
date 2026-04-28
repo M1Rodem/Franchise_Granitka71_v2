@@ -14,7 +14,7 @@ using Franchisee.Web.Services.Notifications.Core;
 using Franchisee.Web.Services.Orders.Repositories;
 using Franchisee.Web.Services.Media.Core;
 using Franchisee.Web.Services.Plots.Repositories;
-
+using Franchisee.Web.Services.Notifications.Builders;
 
 namespace Franchisee.Web.Controllers
 {
@@ -178,8 +178,9 @@ namespace Franchisee.Web.Controllers
                         WorkDescription = w.WorkDescription,
                         Price = w.Price,
                         Quantity = w.Quantity,
-                        Note = w.Note,
-                        DistanceKm = w.DistanceKm
+                        Routes = w.IsDistanceWork ? (w.Routes > 0 ? w.Routes : 1) : 1,
+                        DistanceKm = w.IsDistanceWork ? w.DistanceKm : null,
+                        Note = w.Note
                     }).ToList() ?? new List<OrderWorkItem>(),
 
                     Payments = request.Payments?.Select(p => new OrderPayment
@@ -193,9 +194,13 @@ namespace Franchisee.Web.Controllers
 
                 order.RecalculateTotals();
 
-                // ИСПРАВЛЕНИЕ: НЕ вызываем CalculateAndAddDistanceWorkItem
-                // Расстояние приходит с фронта в request.WorkItems
-                // Бэк НЕ ДОЛЖЕН пересчитывать расстояние!
+                foreach (var wi in order.WorkItems)
+                {
+                    if (wi.DistanceKm.HasValue && wi.DistanceKm > 0 && wi.Routes > 0)
+                    {
+                        wi.Quantity = (decimal)(wi.DistanceKm.Value * wi.Routes);
+                    }
+                }
 
                 // Set FK
                 foreach (var wi in order.WorkItems)
@@ -324,7 +329,12 @@ namespace Franchisee.Web.Controllers
                     _logger.LogInformation("Менеджер {UserId} запрашивает изменения чужого заказа {OrderId}", userId, id);
 
                     var proposedChanges = CollectProposedChanges(order, request);
-                    if (!proposedChanges.Any())
+
+                    var realChanges = proposedChanges
+                        .Where(x => x.Key != "AdditionalInfo" && x.Key != "CustomerEmail")
+                        .ToList();
+
+                    if (!realChanges.Any())
                     {
                         return BadRequest(new { success = false, message = "Нет изменений для отправки" });
                     }
@@ -350,28 +360,19 @@ namespace Franchisee.Web.Controllers
 
                     if (newPaymentsSum < 0)
                     {
-                        return BadRequest(new
-                        {
-                            message = "Сумма платежей не может быть отрицательной."
-                        });
+                        return BadRequest(new { message = "Сумма платежей не может быть отрицательной." });
                     }
 
                     foreach (var payment in request.Payments)
                     {
                         if (payment.Amount <= 0)
                         {
-                            return BadRequest(new
-                            {
-                                message = "Каждый платеж должен быть больше 0."
-                            });
+                            return BadRequest(new { message = "Каждый платеж должен быть больше 0." });
                         }
 
                         if (payment.PaymentDate == default)
                         {
-                            return BadRequest(new
-                            {
-                                message = "Дата платежа обязательна."
-                            });
+                            return BadRequest(new { message = "Дата платежа обязательна." });
                         }
                     }
                 }
@@ -433,33 +434,99 @@ namespace Franchisee.Web.Controllers
 
                     order.UpdatedAt = DateTime.UtcNow;
 
-                    // WorkItems - полная замена
                     if (request.WorkItems != null)
                     {
                         var existingWorkItems = await _context.OrderWorkItems
                             .Where(w => w.OrderId == id)
                             .ToListAsync();
-                        _context.OrderWorkItems.RemoveRange(existingWorkItems);
 
                         foreach (var wi in request.WorkItems)
                         {
-                            var entity = new OrderWorkItem
-                            {
-                                OrderId = id,
-                                WorkDescription = wi.WorkDescription,
-                                Price = wi.Price,
-                                Quantity = wi.Quantity,
-                                Note = wi.Note,
-                                DistanceKm = wi.DistanceKm
-                            };
+                            var existing = existingWorkItems.FirstOrDefault(w => w.Id == wi.Id);
 
-                            _context.OrderWorkItems.Add(entity);
+                            if (existing != null)
+                            {
+                                // Общие поля для всех WorkItems
+                                if (!string.IsNullOrEmpty(wi.WorkDescription))
+                                    existing.WorkDescription = wi.WorkDescription;
+
+                                if (wi.Price > 0)
+                                    existing.Price = wi.Price;
+
+                                if (!string.IsNullOrEmpty(wi.Note))
+                                    existing.Note = wi.Note;
+
+                                // ЯВНАЯ ЛОГИКА ПО ФЛАГУ
+                                if (wi.IsDistanceWork)
+                                {
+                                    // Только для работ с флагом IsDistanceWork = true
+                                    if (wi.Routes > 0)
+                                        existing.Routes = wi.Routes;
+
+                                    if (wi.DistanceKm.HasValue && wi.DistanceKm > 0)
+                                        existing.DistanceKm = wi.DistanceKm;
+
+                                    // Пересчитываем quantity
+                                    if (existing.DistanceKm.HasValue && existing.DistanceKm > 0 && existing.Routes > 0)
+                                    {
+                                        existing.Quantity = (decimal)(existing.DistanceKm.Value * existing.Routes);
+                                    }
+                                }
+                                else
+                                {
+                                    // Обычные работы
+                                    if (wi.Quantity > 0)
+                                        existing.Quantity = wi.Quantity;
+
+                                    // Очищаем маршрутные поля (на всякий случай)
+                                    existing.Routes = 1;
+                                    existing.DistanceKm = null;
+                                }
+                            }
+                            else if (wi.Id == 0)
+                            {
+                                // Новый WorkItem
+                                var newItem = new OrderWorkItem
+                                {
+                                    OrderId = id,
+                                    WorkDescription = wi.WorkDescription,
+                                    Price = wi.Price,
+                                    Note = wi.Note ?? ""
+                                };
+
+                                if (wi.IsDistanceWork)
+                                {
+                                    newItem.Routes = wi.Routes > 0 ? wi.Routes : 1;
+                                    newItem.DistanceKm = wi.DistanceKm;
+
+                                    if (newItem.DistanceKm.HasValue && newItem.DistanceKm > 0 && newItem.Routes > 0)
+                                    {
+                                        newItem.Quantity = (decimal)(newItem.DistanceKm.Value * newItem.Routes);
+                                    }
+                                }
+                                else
+                                {
+                                    newItem.Quantity = wi.Quantity;
+                                    newItem.Routes = 1;
+                                    newItem.DistanceKm = null;
+                                }
+
+                                _context.OrderWorkItems.Add(newItem);
+                            }
+                        }
+
+                        // Удаляем те, что не пришли
+                        var requestedIds = request.WorkItems.Where(w => w.Id > 0).Select(w => w.Id).ToList();
+                        var toDelete = existingWorkItems.Where(w => !requestedIds.Contains(w.Id)).ToList();
+                        if (toDelete.Any())
+                        {
+                            _context.OrderWorkItems.RemoveRange(toDelete);
                         }
                     }
 
                     order.RecalculateTotals();
 
-                    // Payments - полная замена
+                    // Payments - полная замена (как было)
                     if (request.Payments != null)
                     {
                         var existingPayments = await _context.OrderPayments
@@ -484,13 +551,13 @@ namespace Franchisee.Web.Controllers
 
                     await _orderRepository.UpdateAsync(order);
 
+                    // Обработка фото и видео (как было)
                     if (request.RemovedPhotoIds?.Any() == true)
                     {
                         var photosToRemove = await _context.OrderPhotos
-                            .Where(p =>
-                                request.RemovedPhotoIds.Contains(p.Id) &&
-                                p.OrderId == id &&
-                                p.MediaType == MediaType.Photo)
+                            .Where(p => request.RemovedPhotoIds.Contains(p.Id) &&
+                                        p.OrderId == id &&
+                                        p.MediaType == MediaType.Photo)
                             .ToListAsync();
 
                         foreach (var photo in photosToRemove)
@@ -505,10 +572,9 @@ namespace Franchisee.Web.Controllers
                     if (request.RemovedVideoIds?.Any() == true)
                     {
                         var videosToRemove = await _context.OrderPhotos
-                            .Where(p =>
-                                request.RemovedVideoIds.Contains(p.Id) &&
-                                p.OrderId == id &&
-                                p.MediaType == MediaType.Video)
+                            .Where(p => request.RemovedVideoIds.Contains(p.Id) &&
+                                        p.OrderId == id &&
+                                        p.MediaType == MediaType.Video)
                             .ToListAsync();
 
                         foreach (var video in videosToRemove)
@@ -697,21 +763,54 @@ namespace Franchisee.Web.Controllers
             var changes = new Dictionary<string, object>();
 
             CollectFieldChanges(order, request, changes);
-
-            if (request.WorkItems != null)
-            {
-                CollectWorkItemsChanges(order, request, changes);
-            }
-
-            if (request.Payments != null)
-            {
-                CollectPaymentsChanges(order, request, changes);
-            }
-
+            CollectWorkItemsChanges(order, request, changes);
+            CollectPaymentsChanges(order, request, changes);
             CollectPhotoChanges(order, request, changes);
+
+            // Если нет ни одного изменения — возвращаем пустой словарь
+            if (changes.Count == 0)
+            {
+                return changes;
+            }
+
+            // Удаляем пустые коллекции (проверка через System.Text.Json)
+            var keysToRemove = new List<string>();
+            foreach (var kvp in changes)
+            {
+                if (kvp.Value is System.Text.Json.JsonElement obj)
+                {
+                    bool hasAdded = false;
+                    bool hasRemoved = false;
+                    bool hasChanged = false;
+
+                    if (obj.TryGetProperty("added", out var addedProp))
+                        hasAdded = addedProp.ValueKind == System.Text.Json.JsonValueKind.Array && addedProp.GetArrayLength() > 0;
+
+                    if (obj.TryGetProperty("removed", out var removedProp))
+                        hasRemoved = removedProp.ValueKind == System.Text.Json.JsonValueKind.Array && removedProp.GetArrayLength() > 0;
+
+                    if (obj.TryGetProperty("changed", out var changedProp))
+                        hasChanged = changedProp.ValueKind == System.Text.Json.JsonValueKind.Array && changedProp.GetArrayLength() > 0;
+
+                    if (!hasAdded && !hasRemoved && !hasChanged && kvp.Key != "Photos" && kvp.Key != "Videos")
+                    {
+                        keysToRemove.Add(kvp.Key);
+                    }
+                }
+                else if (kvp.Value is System.Collections.DictionaryEntry)
+                {
+                    // Для других типов оставляем как есть
+                }
+            }
+
+            foreach (var key in keysToRemove)
+            {
+                changes.Remove(key);
+            }
 
             return changes;
         }
+
         private void CollectFieldChanges(Order order, UpdateOrderRequest request, Dictionary<string, object> changes)
         {
             if (!string.IsNullOrEmpty(request.Place) && request.Place != order.Place)
@@ -824,9 +923,24 @@ namespace Franchisee.Web.Controllers
             var oldAdditionalInfo = order.AdditionalInfo ?? string.Empty;
             var newAdditionalInfo = request.AdditionalInfo ?? string.Empty;
 
-            if (oldAdditionalInfo != newAdditionalInfo)
+            // Игнорируем если обе пустые или null
+            bool bothEmpty = string.IsNullOrEmpty(oldAdditionalInfo) && string.IsNullOrEmpty(newAdditionalInfo);
+            bool noRealChange = oldAdditionalInfo == newAdditionalInfo;
+
+            if (!bothEmpty && !noRealChange)
             {
                 changes["AdditionalInfo"] = new { old = oldAdditionalInfo, @new = newAdditionalInfo };
+            }
+
+            var oldEmail = order.CustomerEmail ?? string.Empty;
+            var newEmail = request.CustomerEmail ?? string.Empty;
+
+            bool bothEmptyEmail = string.IsNullOrEmpty(oldEmail) && string.IsNullOrEmpty(newEmail);
+            bool noEmailChange = oldEmail == newEmail;
+
+            if (!bothEmptyEmail && !noEmailChange)
+            {
+                changes["CustomerEmail"] = new { old = oldEmail, @new = newEmail };
             }
 
             if (request.Status.HasValue && request.Status.Value != order.Status)
@@ -845,59 +959,110 @@ namespace Franchisee.Web.Controllers
         {
             if (request.WorkItems == null) return;
 
-            var oldWorkItems = order.WorkItems.Select(w => new
+            var oldWorkItems = order.WorkItems.Select(w => new OrderWorkItemDto
             {
-                w.WorkDescription,
-                w.Price,
-                w.Quantity,
-                w.Note
+                Id = w.Id,
+                WorkDescription = w.WorkDescription,
+                Price = w.Price,
+                Quantity = w.Quantity,
+                Routes = w.Routes,
+                DistanceKm = w.DistanceKm,
+                Note = w.Note ?? string.Empty,
+                IsDistanceWork = w.DistanceKm.HasValue && w.DistanceKm > 0
             }).ToList();
 
-            var newWorkItems = request.WorkItems.Select(w => new
+            var newWorkItems = request.WorkItems.Select(w =>
             {
-                w.WorkDescription,
-                w.Price,
-                w.Quantity,
-                w.Note
+                var dto = new OrderWorkItemDto
+                {
+                    Id = w.Id,
+                    WorkDescription = w.WorkDescription,
+                    Price = w.Price,
+                    Note = w.Note ?? string.Empty,
+                    IsDistanceWork = w.IsDistanceWork
+                };
+
+                if (w.IsDistanceWork)
+                {
+                    var routes = w.Routes > 0 ? w.Routes : 1;
+                    var distanceKm = w.DistanceKm ?? 0;
+
+                    dto.Routes = routes;
+                    dto.DistanceKm = distanceKm;
+                    dto.Quantity = (decimal)(routes * distanceKm);
+                }
+                else
+                {
+                    dto.Quantity = w.Quantity;
+                    dto.Routes = 1;
+                    dto.DistanceKm = null;
+                }
+
+                return dto;
             }).ToList();
 
-            var oldWorkItemsJson = JsonSerializer.Serialize(oldWorkItems);
-            var newWorkItemsJson = JsonSerializer.Serialize(newWorkItems);
+            var diffService = new NotificationDiffService();
+            var diffResult = diffService.CompareWorkItems(oldWorkItems, newWorkItems);
 
-            if (oldWorkItemsJson != newWorkItemsJson)
+            var realChanged = diffResult.Changed
+                .Where(c => !AreWorkItemsEqual(c.Old, c.New))
+                .ToList();
+
+            if (diffResult.Added.Any() || diffResult.Removed.Any() || realChanged.Any())
             {
-                changes["WorkItems"] = new { old = oldWorkItems, @new = newWorkItems };
+                changes["WorkItems"] = new
+                {
+                    added = diffResult.Added,
+                    removed = diffResult.Removed,
+                    changed = realChanged
+                };
             }
+        }
+        private bool AreWorkItemsEqual(OrderWorkItemDto old, OrderWorkItemDto newItem)
+        {
+            return old.WorkDescription == newItem.WorkDescription &&
+                   Math.Abs(old.Price - newItem.Price) < 0.001m &&
+                   old.Routes == newItem.Routes &&
+                   Math.Abs((old.DistanceKm ?? 0) - (newItem.DistanceKm ?? 0)) < 0.001 &&
+                   old.IsDistanceWork == newItem.IsDistanceWork;
         }
 
         private void CollectPaymentsChanges(Order order, UpdateOrderRequest request, Dictionary<string, object> changes)
         {
             if (request.Payments == null) return;
 
-            var oldPayments = order.Payments.Select(p => new
+            var oldPayments = order.Payments.Select(p => new OrderPaymentDto
             {
-                p.Amount,
-                p.PaymentDate,
-                p.PaymentType,
-                p.Note
-            }).ToList();
-
-            var newPayments = request.Payments.Select(p => new
-            {
-                p.Amount,
+                Id = p.Id,
+                Amount = p.Amount,
                 PaymentDate = p.PaymentDate,
-                p.PaymentType,
-                p.Note
+                PaymentType = p.PaymentType,
+                Note = p.Note ?? string.Empty  // ← ИЗМЕНЕНО
             }).ToList();
 
-            var oldPaymentsJson = JsonSerializer.Serialize(oldPayments);
-            var newPaymentsJson = JsonSerializer.Serialize(newPayments);
-
-            if (oldPaymentsJson != newPaymentsJson)
+            var newPayments = request.Payments.Select(p => new OrderPaymentDto
             {
-                changes["Payments"] = new { old = oldPayments, @new = newPayments };
+                Id = p.Id,
+                Amount = p.Amount,
+                PaymentDate = p.PaymentDate,
+                PaymentType = p.PaymentType,
+                Note = p.Note ?? string.Empty
+            }).ToList();
+
+            var diffService = new NotificationDiffService();
+            var diffResult = diffService.ComparePayments(oldPayments, newPayments);
+
+            if (diffResult.Added.Any() || diffResult.Removed.Any() || diffResult.Changed.Any())
+            {
+                changes["Payments"] = new
+                {
+                    added = diffResult.Added,
+                    removed = diffResult.Removed,
+                    changed = diffResult.Changed
+                };
             }
         }
+
         private void CollectPhotoChanges(Order order, UpdateOrderRequest request, Dictionary<string, object> changes)
         {
             // Собираем фото для добавления
@@ -1039,14 +1204,28 @@ namespace Franchisee.Web.Controllers
 
                 ManagerId = order.ManagerId,
                 ManagerFullName = order.Manager?.FullName ?? string.Empty,
-                WorkItems = order.WorkItems.Select(w => new OrderWorkItemDto
+                WorkItems = order.WorkItems.Select(w =>
                 {
-                    Id = w.Id,
-                    WorkDescription = w.WorkDescription,
-                    Price = w.Price,
-                    Quantity = w.Quantity,
-                    Note = w.Note,
-                    DistanceKm = w.DistanceKm
+                    var dto = new OrderWorkItemDto
+                    {
+                        Id = w.Id,
+                        WorkDescription = w.WorkDescription,
+                        Price = w.Price,
+                        Routes = w.Routes,
+                        Quantity = w.Quantity,
+                        Note = w.Note,
+                        DistanceKm = w.DistanceKm,
+                        IsDistanceWork = w.DistanceKm.HasValue && w.DistanceKm > 0
+                    };
+
+                    if (!dto.IsDistanceWork && dto.WorkDescription == "Расстояние" && dto.Quantity > 0)
+                    {
+                        dto.IsDistanceWork = true;
+                        dto.DistanceKm = (double)dto.Quantity;
+                        dto.Routes = 1;
+                    }
+
+                    return dto;
                 }).ToList(),
                 Payments = (order.Payments ?? new List<OrderPayment>())
                     .Select(p => new OrderPaymentDto

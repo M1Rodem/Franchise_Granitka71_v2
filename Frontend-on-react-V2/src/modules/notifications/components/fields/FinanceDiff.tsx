@@ -22,12 +22,11 @@ function formatPercent(value: number | undefined) {
 export function FinanceDiff({ data }: Props) {
   const oldVal = data.old
   const newVal = data.new
-
   return (
     <div className={surfaceStyles.surface}>
       <div className={surfaceStyles.diffList}>
-        
-        {/* WORKS TOTAL */}
+
+        {/* WORKS */}
         {oldVal.worksTotal !== newVal.worksTotal && (
           <DiffRow
             label="Работы"
@@ -63,7 +62,24 @@ export function FinanceDiff({ data }: Props) {
           />
         )}
 
-        {/* ⚠️ НЕ показываем paid / remaining */}
+        {/* PAID */}
+        {oldVal.paid !== newVal.paid && (
+          <DiffRow
+            label="Оплачено"
+            oldValue={formatMoney(oldVal.paid)}
+            newValue={formatMoney(newVal.paid)}
+          />
+        )}
+
+        {/* REMAINING */}
+        {oldVal.remaining !== newVal.remaining && (
+          <DiffRow
+            label="Осталось"
+            oldValue={formatMoney(oldVal.remaining)}
+            newValue={formatMoney(newVal.remaining)}
+          />
+        )}
+
       </div>
     </div>
   )

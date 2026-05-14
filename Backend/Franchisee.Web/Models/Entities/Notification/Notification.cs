@@ -10,7 +10,12 @@ namespace Franchisee.Web.Models.Entities.Notification
     {
         OrderUpdateRequest = 0,
         OrderCompletionConfirmation = 1,
-        System = 2
+        System = 2,
+
+        // НОВЫЕ ТИПЫ ДЛЯ COMPLETION WORKFLOW
+        CompletionRequest = 3,
+        CompletionApproved = 4,
+        CompletionRejected = 5
     }
 
     public enum NotificationStatus
@@ -53,11 +58,6 @@ namespace Franchisee.Web.Models.Entities.Notification
 
         public DateTime? ResolvedAt { get; set; }
         public DateTime? ReturnsAt { get; set; }
-
-        /// <summary>
-        /// Время последнего изменения уведомления
-        /// Используется для разрешения конфликтов при out-of-order событиях
-        /// </summary>
         public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 
         // Навигационные свойства

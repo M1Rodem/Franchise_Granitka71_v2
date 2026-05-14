@@ -100,11 +100,30 @@ namespace Franchisee.Web.Configuration
                 entity.Property(o => o.TotalPrice)
                     .HasPrecision(18, 2);
 
+                // ========== НОВЫЕ ПОЛЯ ДЛЯ COMPLETION WORKFLOW ==========
+                entity.Property(o => o.CompletionNote)
+                    .HasColumnType("text")
+                    .HasMaxLength(500);
+
+                entity.Property(o => o.ReviewComment)
+                    .HasColumnType("text")
+                    .HasMaxLength(500);
+
+                entity.Property(o => o.SubmittedForReviewAt)
+                    .HasColumnType("timestamp with time zone");
+
+                entity.Property(o => o.ReviewedAt)
+                    .HasColumnType("timestamp with time zone");
+
+                entity.Property(o => o.ReviewedBy)
+                    .HasColumnType("integer");
+                // ========================================================
+
                 // Связь с Plot
                 entity.HasOne(o => o.Plot)
                     .WithMany(p => p.Orders)
                     .HasForeignKey(o => o.PlotId)
-                    .OnDelete(DeleteBehavior.SetNull); // При удалении участка, PlotId = NULL
+                    .OnDelete(DeleteBehavior.SetNull);
 
                 entity.HasIndex(o => o.PlotId);
 
@@ -113,6 +132,13 @@ namespace Franchisee.Web.Configuration
                     .WithMany(m => m.Orders)
                     .HasForeignKey(o => o.ManagerId)
                     .OnDelete(DeleteBehavior.Restrict);
+
+                // ========== НОВЫЕ ИНДЕКСЫ ==========
+                entity.HasIndex(o => o.Status)
+                    .HasDatabaseName("IX_Orders_Status");
+
+                entity.HasIndex(o => o.SubmittedForReviewAt)
+                    .HasDatabaseName("IX_Orders_SubmittedForReviewAt");
             });
 
             // Конфигурация для OrderWorkItem

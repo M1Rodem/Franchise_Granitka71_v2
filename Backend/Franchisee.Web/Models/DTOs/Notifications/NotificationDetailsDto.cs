@@ -14,6 +14,7 @@ namespace Franchisee.Web.Models.DTOs.Notifications
         public string? Comment { get; set; }
         public string? Message { get; set; }
         public NotificationChangesDto Changes { get; set; } = new();
+        public CompletionNotificationDataDto? CompletionData { get; set; }
     }
 
     public class OrderShortDto

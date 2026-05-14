@@ -1,4 +1,5 @@
 ﻿using Franchisee.Web.Models.DTOs.Notifications;
+using Franchisee.Web.Models.DTOs.Orders;
 
 namespace Franchisee.Web.Services.Notifications.Dispatch
 {
@@ -14,6 +15,8 @@ namespace Franchisee.Web.Services.Notifications.Dispatch
         Task ConnectionEstablished(string message);
         Task ConnectionLost(string message);
         Task InitialNotificationState(NotificationBadgeDto badge);
+        Task CompletionRequestReceived(CompletionNotificationDataDto data);
+        Task CompletionResultReceived(CompletionResultDto result);
     }
 
     public class InitialNotificationStateDto

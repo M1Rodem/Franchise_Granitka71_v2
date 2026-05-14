@@ -13,7 +13,8 @@ namespace Franchisee.Web.Services.Media.Core
         Task<OrderMediaDto?> GetMediaDtoAsync(int mediaId);
         string GetTempPreviewUrl(int tempId);
         string GetMediaUrl(int mediaId, bool isThumb = false);
-
+        Task<int> CommitTempToCompletionAsync(int orderId, List<int> tempIds, int uploaderId);
+        Task<bool> DeleteCompletionFolderAsync(int orderId);
         Task<string?> SaveVideoFileAsync(IFormFile file, string fileName, string contentType);
     }
 }

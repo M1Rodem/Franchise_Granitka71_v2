@@ -7,6 +7,7 @@ using Microsoft.EntityFrameworkCore;
 using Serilog;
 using Serilog.Events;
 using DotNetEnv;
+using Franchisee.Web.Services.Orders.Background;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -77,8 +78,22 @@ try
 
     builder.Services.AddScoped<Franchisee.Web.Services.Plots.Repositories.IPlotRepository, Franchisee.Web.Services.Plots.Repositories.PlotRepository>();
     builder.Services.AddScoped<Franchisee.Web.Services.Media.Core.IMediaService, Franchisee.Web.Services.Media.Core.MediaService>();
+    builder.Services.AddHostedService<ExpiredOrderCleanupService>();
 
     var app = builder.Build();
+
+    using (var scope = app.Services.CreateScope())
+    {
+        try
+        {
+            await DbInitializer.InitializeAsync(scope.ServiceProvider);
+        }
+        catch (Exception ex)
+        {
+            Log.Fatal(ex, "An error occurred while initializing the database");
+            throw;
+        }
+    }
 
     app.MapGet("/health", async (ApplicationDbContext db) =>
     {

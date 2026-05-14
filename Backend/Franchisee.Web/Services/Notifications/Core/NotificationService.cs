@@ -10,6 +10,7 @@ using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using Franchisee.Web.Models.DTOs.Orders;
 
 namespace Franchisee.Web.Services.Notifications.Core
 {
@@ -372,6 +373,58 @@ namespace Franchisee.Web.Services.Notifications.Core
                 dto.Changes = NotificationDiffBuilder.Build(changes);
             }
 
+            _logger.LogInformation("=== DEBUG CompletionRequest ===");
+            _logger.LogInformation("Raw Data: {Data}", notification.Data);
+
+            if (notification.Type == NotificationType.CompletionRequest)
+            {
+                _logger.LogInformation("Processing CompletionRequest, checking Photos property...");
+                
+                // Десериализуем фото из Data
+                var photosList = new List<OrderMediaDto>();
+                if (data.TryGetProperty("photos", out var photosProp))
+                {
+                    _logger.LogInformation("Photos property found! Raw value: {PhotosRaw}", photosProp.GetRawText());
+                    photosList = JsonSerializer.Deserialize<List<OrderMediaDto>>(photosProp.GetRawText(), JsonOptions) 
+                                ?? new List<OrderMediaDto>();
+                    _logger.LogInformation("Deserialized photos count: {Count}", photosList.Count);
+                }
+                else
+                {
+                    _logger.LogWarning("Photos property NOT found in Data!");
+                }
+                
+                // Десериализуем видео из Data
+                OrderMediaDto? videoItem = null;
+                if (data.TryGetProperty("video", out var videoProp))
+                {
+                    videoItem = JsonSerializer.Deserialize<OrderMediaDto>(videoProp.GetRawText(), JsonOptions);
+                }
+                
+                var completionData = new CompletionNotificationDataDto
+                {
+                    OrderId = notification.OrderId ?? 0,
+                    OrderNumber = data.TryGetProperty("OrderNumber", out var orderNum) 
+                        ? orderNum.GetString() ?? "" 
+                        : notification.Order?.OrderNumber ?? "",
+                    InitiatorName = data.TryGetProperty("InitiatorName", out var initName) 
+                        ? initName.GetString() ?? "" 
+                        : notification.Initiator?.FullName ?? "",
+                    InitiatorId = notification.InitiatorId ?? 0,
+                    Note = data.TryGetProperty("CompletionNote", out var note) 
+                        ? note.GetString() 
+                        : null,
+                    CreatedAt = data.TryGetProperty("CreatedAt", out var createdAt) 
+                        ? createdAt.GetDateTime() 
+                        : notification.CreatedAt,
+                    Photos = photosList,
+                    Video = videoItem
+                };
+                
+                dto.CompletionData = completionData;
+                _logger.LogInformation("CompletionRequest Data raw: {Data}", notification.Data);
+            }
+
             return dto;
         }
 
@@ -557,6 +610,18 @@ namespace Franchisee.Web.Services.Notifications.Core
                         notification.Type == NotificationType.OrderUpdateRequest)
                     {
                         await ApplyOrderChangesAsync(notification);
+                    }
+                    
+                    if (notification.Type == NotificationType.CompletionRequest)
+                    {
+                        if (status == NotificationStatus.Approved)
+                        {
+                            await ApplyCompletionApprovalAsync(notification, note);
+                        }
+                        else if (status == NotificationStatus.Rejected)
+                        {
+                            await ApplyCompletionRejectionAsync(notification, note);
+                        }
                     }
                 }
 
@@ -762,6 +827,44 @@ namespace Franchisee.Web.Services.Notifications.Core
                 hasOnlySystem
             };
         }
+        private async Task ApplyCompletionApprovalAsync(Notification notification, string? comment)
+        {
+            var order = await _context.Orders.FindAsync(notification.OrderId);
+            if (order == null) return;
+            
+            order.Status = OrderStatus.Выполнено;
+            order.ReviewedAt = DateTime.UtcNow;
+            order.ReviewedBy = notification.InitiatorId ?? 0;
+            order.ReviewComment = comment;
+            order.UpdatedAt = DateTime.UtcNow;
+            order.CompletedAt = DateTime.UtcNow;
+            
+            await _context.SaveChangesAsync();
+        }
+        private async Task ApplyCompletionRejectionAsync(Notification notification, string? comment)
+        {
+            var order = await _context.Orders
+                .Include(o => o.Photos)
+                .FirstOrDefaultAsync(o => o.Id == notification.OrderId);
+            if (order == null) return;
+            
+            // Удаляем completion медиа
+            var completionMedia = order.Photos.Where(p => p.IsCompletionMedia).ToList();
+            foreach (var media in completionMedia)
+            {
+                if (System.IO.File.Exists(media.FilePath))
+                    System.IO.File.Delete(media.FilePath);
+                _context.OrderPhotos.Remove(media);
+            }
+            
+            order.Status = OrderStatus.НаДоработке;
+            order.ReviewedAt = DateTime.UtcNow;
+            order.ReviewedBy = notification.InitiatorId;
+            order.ReviewComment = comment;
+            order.UpdatedAt = DateTime.UtcNow;
+            
+            await _context.SaveChangesAsync();
+        }
         private async Task SendNotificationUpdatedEventAsync(Notification notification, int userId)
         {
             try
@@ -835,6 +938,238 @@ namespace Franchisee.Web.Services.Notifications.Core
                               nr.ReturnsAt.HasValue &&
                               nr.ReturnsAt <= now)))
                 .CountAsync();
+        }
+
+        public async Task<int> CreateCompletionRequestAsync(
+            int orderId,
+            int initiatorId,
+            string? completionNote,
+            List<int> tempMediaIds)
+        {
+            using var transaction = await _context.Database.BeginTransactionAsync();
+
+            try
+            {
+                // 1. Получаем заказ и инициатора
+                var order = await _context.Orders
+                    .Include(o => o.Manager)
+                    .FirstOrDefaultAsync(o => o.Id == orderId);
+
+                if (order == null)
+                    throw new ArgumentException($"Заказ {orderId} не найден");
+
+                var initiator = await _context.Managers
+                    .FirstOrDefaultAsync(m => m.Id == initiatorId);
+
+                if (initiator == null)
+                    throw new ArgumentException($"Инициатор {initiatorId} не найден");
+
+                // 2. Получаем временные файлы ОДИН РАЗ
+                var tempUploads = await _context.TempUploads
+                    .Where(t => tempMediaIds.Contains(t.Id) && t.UploaderId == initiatorId)
+                    .ToListAsync();
+
+                _logger.LogInformation("=== DEBUG CreateCompletionRequest ===");
+                _logger.LogInformation("TempUploads count: {Count}", tempUploads.Count);
+                _logger.LogInformation("Photos in tempUploads: {Count}", tempUploads.Count(t => t.MediaType == MediaType.Photo));
+                _logger.LogInformation("Videos in tempUploads: {Count}", tempUploads.Count(t => t.MediaType == MediaType.Video));
+
+                // 3. Формируем фото и видео из временных файлов
+                var photos = tempUploads
+                    .Where(t => t.MediaType == MediaType.Photo)
+                    .Select(t => new OrderMediaDto
+                    {
+                        Id = t.Id,
+                        Url = _mediaService.GetTempPreviewUrl(t.Id),
+                        OriginalFileName = t.OriginalFileName,
+                        Size = t.Size,
+                        Width = t.Width ?? 0,
+                        Height = t.Height ?? 0,
+                        MediaType = t.MediaType
+                    }).ToList();
+
+                var video = tempUploads
+                    .Where(t => t.MediaType == MediaType.Video)
+                    .Select(t => new OrderMediaDto
+                    {
+                        Id = t.Id,
+                        Url = _mediaService.GetTempPreviewUrl(t.Id),
+                        OriginalFileName = t.OriginalFileName,
+                        Size = t.Size,
+                        Width = t.Width ?? 0,
+                        Height = t.Height ?? 0,
+                        MediaType = t.MediaType
+                    }).FirstOrDefault();
+
+                // 4. Временно привязываем к null, позже обновим
+                if (tempMediaIds.Any())
+                {
+                    foreach (var tempUpload in tempUploads)
+                    {
+                        tempUpload.NotificationId = null;
+                        tempUpload.ExpiresAt = DateTime.UtcNow.AddDays(14);
+                    }
+
+                    await _context.SaveChangesAsync();
+                }
+
+                // 5. Создаём уведомление
+                var notification = new Notification
+                {
+                    Type = NotificationType.CompletionRequest,
+                    Status = NotificationStatus.Pending,
+                    IsInfluencing = true,
+                    InitiatorId = initiatorId,
+                    OrderId = orderId,
+                    Title = $"Запрос на выполнение заказа #{order.OrderNumber}",
+                    Message = $"Менеджер {initiator.FullName} отправил заказ #{order.OrderNumber} на проверку выполнения",
+                    Data = JsonSerializer.Serialize(new
+                    {
+                        CompletionNote = completionNote,
+                        TempMediaIds = tempMediaIds,
+                        OrderNumber = order.OrderNumber,
+                        InitiatorName = initiator.FullName,
+                        CreatedAt = DateTime.UtcNow,
+                        Photos = photos,
+                        Video = video
+                    }, JsonOptions),
+                    CreatedAt = DateTime.UtcNow
+                };
+
+                _context.Notifications.Add(notification);
+                await _context.SaveChangesAsync();
+
+                // 6. Обновляем временные файлы: привязываем к созданному уведомлению
+                if (tempMediaIds.Any())
+                {
+                    foreach (var tempUpload in tempUploads)
+                    {
+                        tempUpload.NotificationId = notification.Id;
+                    }
+
+                    await _context.SaveChangesAsync();
+                }
+
+                // 7. Создаём получателей — всех SuperAdmin
+                var superAdminIds = await GetSuperAdminIdsAsync();
+                var recipients = new List<NotificationRecipient>();
+
+                foreach (var adminId in superAdminIds)
+                {
+                    recipients.Add(new NotificationRecipient
+                    {
+                        NotificationId = notification.Id,
+                        UserId = adminId,
+                        Status = NotificationStatus.Pending
+                    });
+                }
+
+                _context.NotificationRecipients.AddRange(recipients);
+                await _context.SaveChangesAsync();
+                await transaction.CommitAsync();
+
+                // 8. Отправляем realtime уведомления всем SuperAdmin
+                foreach (var adminId in superAdminIds)
+                {
+                    await SendRealTimeNotificationAsync(notification, adminId);
+                    await SendNotificationCountsUpdateAsync(adminId);
+                }
+
+                _logger.LogInformation(
+                    "[Completion] Создан запрос на выполнение. NotificationId={NotificationId}, OrderId={OrderId}, Initiator={InitiatorId}, SuperAdmins={Count}",
+                    notification.Id, orderId, initiatorId, superAdminIds.Count);
+
+                return notification.Id;
+            }
+            catch (Exception ex)
+            {
+                await transaction.RollbackAsync();
+                _logger.LogError(ex, "Ошибка создания запроса на выполнение заказа {OrderId}", orderId);
+                throw;
+            }
+        }
+
+        public async Task SendCompletionResultAsync(
+            int orderId,
+            int initiatorId,
+            bool approved,
+            string? comment,
+            int reviewedBy)
+        {
+            try
+            {
+                var order = await _context.Orders
+                    .Include(o => o.Manager)
+                    .FirstOrDefaultAsync(o => o.Id == orderId);
+
+                if (order == null)
+                    throw new ArgumentException($"Заказ {orderId} не найден");
+
+                var reviewer = await _context.Managers
+                    .FirstOrDefaultAsync(m => m.Id == reviewedBy);
+
+                if (reviewer == null)
+                    throw new ArgumentException($"Проверяющий {reviewedBy} не найден");
+
+                var notificationType = approved
+                    ? NotificationType.CompletionApproved
+                    : NotificationType.CompletionRejected;
+
+                var title = approved
+                    ? $"Заказ #{order.OrderNumber} выполнен"
+                    : $"Заказ #{order.OrderNumber} требует доработки";
+
+                var message = approved
+                    ? $"SuperAdmin {reviewer.FullName} принял выполнение заказа #{order.OrderNumber}"
+                    : $"SuperAdmin {reviewer.FullName} отклонил выполнение заказа #{order.OrderNumber}. Требуется доработка.";
+
+                var notification = new Notification
+                {
+                    Type = notificationType,
+                    Status = NotificationStatus.Pending,
+                    IsInfluencing = false,  // Информационное, не блокирующее
+                    InitiatorId = reviewedBy,
+                    OrderId = orderId,
+                    Title = title,
+                    Message = message,
+                    Data = JsonSerializer.Serialize(new
+                    {
+                        Approved = approved,
+                        Comment = comment,
+                        ReviewerName = reviewer.FullName,
+                        ReviewedAt = DateTime.UtcNow,
+                        OrderNumber = order.OrderNumber
+                    }, JsonOptions),
+                    CreatedAt = DateTime.UtcNow
+                };
+
+                _context.Notifications.Add(notification);
+                await _context.SaveChangesAsync();
+
+                // Создаём получателя — инициатора (менеджера)
+                var recipient = new NotificationRecipient
+                {
+                    NotificationId = notification.Id,
+                    UserId = initiatorId,
+                    Status = NotificationStatus.Pending
+                };
+
+                _context.NotificationRecipients.Add(recipient);
+                await _context.SaveChangesAsync();
+
+                // Отправляем realtime уведомление инициатору
+                await SendRealTimeNotificationAsync(notification, initiatorId);
+                await SendNotificationCountsUpdateAsync(initiatorId);
+
+                _logger.LogInformation(
+                    "[Completion] Отправлен результат инициатору. NotificationId={NotificationId}, OrderId={OrderId}, Approved={Approved}, Initiator={InitiatorId}, Reviewer={ReviewedBy}",
+                    notification.Id, orderId, approved, initiatorId, reviewedBy);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Ошибка отправки результата выполнения заказа {OrderId}", orderId);
+                throw;
+            }
         }
 
         private bool CanRecipientResolve(NotificationRecipient recipient, NotificationStatus newStatus)
@@ -2260,6 +2595,13 @@ namespace Franchisee.Web.Services.Notifications.Core
 
                 ChangesPreview = preview
             };
+        }
+        private async Task<List<int>> GetSuperAdminIdsAsync()
+        {
+            return await _context.Managers
+                .Where(m => m.Role == UserRole.SuperAdmin)
+                .Select(m => m.Id)
+                .ToListAsync();
         }
     }
 }

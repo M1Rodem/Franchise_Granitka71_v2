@@ -5,7 +5,13 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace Franchisee.Web.Models.Entities.Orders
 {
-    public enum OrderStatus { Новый, ВРаботе, Оплата, Готов, Доставлен }
+    public enum OrderStatus
+    {
+        ВРаботе = 1,                  // 1 — основной статус (был 1)
+        ОжидаетПодтверждения = 5,     // 5 — на проверке у SuperAdmin
+        Выполнено = 6,                // 6 — терминальный (успех)
+        НаДоработке = 7               // 7 — требуется переделать
+    }
 
     public class Order
     {
@@ -18,7 +24,6 @@ namespace Franchisee.Web.Models.Entities.Orders
         public double? Latitude { get; set; }
         public double? Longitude { get; set; }
         public int? PlotId { get; set; }
-
         public int ManagerId { get; set; }
         public virtual Manager? Manager { get; set; }
         public virtual Plot? Plot { get; set; }
@@ -39,7 +44,7 @@ namespace Franchisee.Web.Models.Entities.Orders
         public string MonumentSize { get; set; } = string.Empty;
 
         public string AdditionalInfo { get; set; } = string.Empty;
-        public OrderStatus Status { get; set; } = OrderStatus.Новый;
+        public OrderStatus Status { get; set; } = OrderStatus.ВРаботе;
 
         public decimal Subtotal { get; private set; }
 
@@ -60,7 +65,15 @@ namespace Franchisee.Web.Models.Entities.Orders
         public DateTime? DeletedAt { get; set; }
         public bool IsArchived { get; set; } = false;
 
-       public void RecalculateTotals()
+        // COMPLETION WORKFLOW
+        public string? CompletionNote { get; set; }           // Примечание при отправке на проверку
+        public string? ReviewComment { get; set; }            // Комментарий SuperAdmin (при принятии/отклонении)
+        public DateTime? SubmittedForReviewAt { get; set; }   // Дата отправки на проверку
+        public DateTime? ReviewedAt { get; set; }             // Дата проверки SuperAdmin
+        public int? ReviewedBy { get; set; }                  // ID SuperAdmin, кто проверил
+        public DateTime? CompletedAt { get; set; }
+
+        public void RecalculateTotals()
         {
             if (WorkItems == null || WorkItems.Count == 0)
             {

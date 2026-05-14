@@ -334,6 +334,11 @@ namespace Franchisee.Web.Services.Orders.Repositories
                 query = ApplyPaymentStatusFilter(query, filter.PaymentStatus.Value);
             }
 
+            if (filter.Status.HasValue)
+            {
+                query = query.Where(o => o.Status == filter.Status.Value);
+            }
+
             // Фильтр по статусу заказа
             if (filter.Status.HasValue)
             {
@@ -417,6 +422,11 @@ namespace Franchisee.Web.Services.Orders.Repositories
             if (filter.PaymentStatus.HasValue && filter.PaymentStatus != PaymentStatus.All)
             {
                 query = ApplyPaymentStatusFilter(query, filter.PaymentStatus.Value);
+            }
+
+            if (filter.Status.HasValue)
+            {
+                query = query.Where(o => o.Status == filter.Status.Value);
             }
 
             var totalCount = await query.CountAsync();

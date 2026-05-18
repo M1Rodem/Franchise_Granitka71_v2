@@ -13,6 +13,9 @@ import buttonStyles from '@/shared/ui/button.module.css';
 import { isSystemNotification as isSystem } from '../utils/notification-type';
 import { useNotificationActions } from '../hooks/useNotificationActions';
 import styles from './notification-modal.module.css';
+import {
+  MediaGallery,
+} from '@/shared/lib/media'
 
 interface Props {
   notification: NotificationResponseDto | null;
@@ -38,6 +41,8 @@ export function NotificationModal({ notification, isOpen, onClose }: Props) {
     null;
   const navigate = useNavigate();
   const isSystemNotification = data?.type ? isSystem(data.type) : false;
+
+  const completionData =data?.completionData
   return (
     <FormModal
       isOpen={isOpen}
@@ -133,6 +138,95 @@ export function NotificationModal({ notification, isOpen, onClose }: Props) {
                 )}
               </div>
             </div>
+            {completionData && (
+              <div className={surfaceStyles.surface}>
+                <h3 className={surfaceStyles.sectionTitle}>
+                  Проверка выполнения
+                </h3>
+
+                <div className={surfaceStyles.infoGrid}>
+
+                  <div className={surfaceStyles.infoRow}>
+                    <span className={surfaceStyles.infoLabel}>
+                      Менеджер
+                    </span>
+
+                    <span className={surfaceStyles.infoValue}>
+                      {completionData.initiatorName}
+                    </span>
+                  </div>
+
+                  {completionData.comment && (
+                    <div className={surfaceStyles.infoRow}>
+                      <span className={surfaceStyles.infoLabel}>
+                        Комментарий
+                      </span>
+
+                      <span
+                        className={`${surfaceStyles.infoValue} ${styles.messageValue}`}
+                      >
+                        {completionData.comment}
+                      </span>
+                    </div>
+                  )}
+
+                </div>
+
+                {completionData.photos.length > 0 && (
+                  <>
+                    <h4
+                      style={{
+                        marginTop: 24,
+                        marginBottom: 12,
+                      }}
+                    >
+                      Фото
+                    </h4>
+
+                    <MediaGallery
+                      items={completionData.photos.map(
+                        media => ({
+                          ...media,
+
+                          uploadedAt:
+                            media.uploadedAt ?? '',
+
+                          mediaType:
+                            Number(media.mediaType),
+                        })
+                      )}
+                    />
+                  </>
+                )}
+
+                {completionData.video && (
+                  <>
+                    <h4
+                      style={{
+                        marginTop: 24,
+                        marginBottom: 12,
+                      }}
+                    >
+                      Видео
+                    </h4>
+
+                    <MediaGallery
+                      items={[
+                        {
+                          ...completionData.video,
+
+                          uploadedAt:
+                            completionData.video
+                              .uploadedAt ?? '',
+
+                          mediaType: 1,
+                        },
+                      ]}
+                    />
+                  </>
+                )}
+              </div>
+            )}
             <DiffAccordion changes={data.changes} />
           </div>
         </div>

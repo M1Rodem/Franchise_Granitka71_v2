@@ -72,6 +72,8 @@ namespace Franchisee.Web.Models.Entities.Orders
         public DateTime? ReviewedAt { get; set; }             // Дата проверки SuperAdmin
         public int? ReviewedBy { get; set; }                  // ID SuperAdmin, кто проверил
         public DateTime? CompletedAt { get; set; }
+        public string? SubmittedBy { get; set; }
+        public DateTime? LastExpirationWarningSentAt { get; set; }
 
         public void RecalculateTotals()
         {

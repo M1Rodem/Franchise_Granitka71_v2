@@ -3,19 +3,12 @@ import { StatusBadge } from '@/shared/ui/status';
 import type { OrderResponseDto } from '@/modules/orders/types/orders.types';
 import { formatPhone } from '@/shared/lib/phone';
 import { getPaymentStatusInfo } from '@/modules/orders/lib/payment-status';
+import { getOrderStatusInfo } from '@/modules/orders/lib/order-status'
 
 interface ArchivedOrdersTableProps {
   orders: OrderResponseDto[];
   onOpenOrder: (id: number) => void;
 }
-
-const statusLabels: Record<number, string> = {
-  0: 'Новый',
-  1: 'В работе',
-  2: 'Оплата',
-  3: 'Готов',
-  4: 'Доставлен',
-};
 
 function getDaysLeft(deletedAt?: string | null) {
   if (!deletedAt) return null;
@@ -29,33 +22,53 @@ function getDaysLeft(deletedAt?: string | null) {
   return daysLeft;
 }
 
-function getDaysLeftStyle(daysLeft: number | null) {
-  if (daysLeft === null) return {};
+function getDaysLeftStyle(
+  daysLeft: number | null
+) {
+
+  if (daysLeft === null) {
+    return {}
+  }
 
   if (daysLeft < 3) {
     return {
-      background: 'rgba(255,99,99,0.2)',
-      border: '1px solid rgba(255,120,120,0.5)',
-      color: '#ffdede',
-    };
+      background:
+        'rgba(120, 70, 70, 0.18)',
+
+      borderColor:
+        'rgba(210, 120, 120, 0.20)',
+
+      color:
+        'rgba(255, 210, 210, 0.92)',
+    }
   }
 
   if (daysLeft <= 7) {
     return {
-      background: 'rgba(255,180,0,0.2)',
-      border: '1px solid rgba(255,200,80,0.5)',
-      color: '#fff3d4',
-    };
+      background:
+        'rgba(120, 119, 90, 0.16)',
+
+      borderColor:
+        'rgba(214, 190, 120, 0.18)',
+
+      color:
+        'rgba(255, 232, 170, 0.92)',
+    }
   }
 
   return {
-    background: 'rgba(120,200,255,0.2)',
-    border: '1px solid rgba(150,210,255,0.5)',
-    color: '#e6f5ff',
-  };
+    background:
+      'rgba(80, 110, 145, 0.16)',
+
+    borderColor:
+      'rgba(120, 170, 220, 0.18)',
+
+    color:
+      'rgba(210, 232, 255, 0.92)',
+  }
 }
 
-const GRID_TEMPLATE = '110px 1.4fr 150px 130px 130px 140px 160px 1fr 1fr';
+const GRID_TEMPLATE = '110px 1.5fr 150px 130px 130px 220px 180px 1fr 170px';
 
 export function ArchivedOrdersTable({ orders, onOpenOrder }: ArchivedOrdersTableProps) {
   return (
@@ -75,10 +88,12 @@ export function ArchivedOrdersTable({ orders, onOpenOrder }: ArchivedOrdersTable
       {orders.map((order) => {
         const daysLeft = getDaysLeft((order as any).deletedAt);
 
-        const status =
-          typeof order.status === 'number'
-            ? (statusLabels[order.status] ?? `Статус ${order.status}`)
-            : order.status;
+        const orderStatusInfo =
+          getOrderStatusInfo(
+            typeof order.status === 'number'
+              ? order.status
+              : null
+          )
 
         const paymentStatusInfo = getPaymentStatusInfo(
           typeof order.paymentStatus === 'number' ? order.paymentStatus : 0,
@@ -112,9 +127,27 @@ export function ArchivedOrdersTable({ orders, onOpenOrder }: ArchivedOrdersTable
                 : '-'}
             </span>
 
-            <span data-label="Статус">{status}</span>
+            <span
+              data-label="Статус"
+              style={{
+                overflow: 'hidden',
+              }}
+            >
 
-            <span data-label="Оплата">
+              <StatusBadge
+                style={orderStatusInfo.style}
+              >
+                {orderStatusInfo.label}
+              </StatusBadge>
+
+            </span>
+
+            <span
+              data-label="Оплата"
+              style={{
+                overflow: 'hidden',
+              }}
+            >
               <StatusBadge style={paymentStatusInfo.style}>{paymentStatusInfo.label}</StatusBadge>
             </span>
 

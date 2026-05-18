@@ -9,6 +9,9 @@ export function getNotificationTypeLabel(type: string): string {
     case 'OrderCompletionConfirmation':
       return 'Подтверждение завершения заказа'
 
+    case 'CompletionRequest':
+      return 'Проверка выполнения'
+
     default:
       return type
   }

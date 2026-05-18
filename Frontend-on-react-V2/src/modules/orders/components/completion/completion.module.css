@@ -1,0 +1,47 @@
+.commentBlock {
+  display: flex;
+  flex-direction: column;
+  gap: var(--size-10);
+
+  padding: var(--size-16);
+  border-radius: var(--size-16);
+
+  border: var(--size-1) solid var(--border-subtle);
+
+  background: var(--tone-rgb-8-18-29-48);
+}
+
+.commentLabel {
+  font-size: var(--size-11);
+  font-weight: 700;
+
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+
+  color: var(--text-muted);
+}
+
+.commentText {
+  font-size: var(--size-14);
+  line-height: 1.6;
+  color: var(--text-secondary);
+
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.mediaSection {
+  display: flex;
+  flex-direction: column;
+  gap: var(--size-14);
+}
+
+.mediaHeader {
+  font-size: var(--size-12);
+  font-weight: 700;
+
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+
+  color: var(--text-muted);
+}

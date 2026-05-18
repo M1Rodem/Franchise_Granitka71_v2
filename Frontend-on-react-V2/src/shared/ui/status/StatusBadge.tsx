@@ -1,5 +1,9 @@
-import type { ReactNode, CSSProperties } from "react"
-import styles from "./status.module.css"
+import type {
+  ReactNode,
+  CSSProperties,
+} from 'react'
+
+import styles from './status.module.css'
 
 interface StatusBadgeProps {
   children: ReactNode
@@ -14,7 +18,7 @@ export function StatusBadge({
 }: StatusBadgeProps) {
   return (
     <span
-      className={`${styles.status} ${className ?? ""}`}
+      className={`${styles.status} ${className ?? ''}`}
       style={style}
     >
       {children}

@@ -23,11 +23,10 @@ const paymentOptions = [
 
 const completionOptions = [
   { value: '', label: 'Выполнение: все' },
-  { value: '0', label: 'Новый' },
   { value: '1', label: 'В работе' },
-  { value: '2', label: 'Оплата' },
-  { value: '3', label: 'Готов' },
-  { value: '4', label: 'Доставлен' },
+  { value: '5', label: 'Ожидает подтверждения' },
+  { value: '6', label: 'Выполнен' },
+  { value: '7', label: 'На доработке' },
 ];
 
 const parseNullableInt = (value: string): number | null => {

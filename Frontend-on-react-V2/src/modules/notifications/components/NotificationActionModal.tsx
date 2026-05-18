@@ -32,8 +32,17 @@ export function NotificationActionModal({ isOpen, type, onClose, onConfirm, isLo
             className={`${buttonStyles.btn} ${
               isAccept ? buttonStyles.btnSuccess : buttonStyles.btnDanger
             }`}
-            onClick={() => onConfirm(note || undefined)}
-            disabled={isLoading}
+            onClick={() => {
+              if (!note.trim()) {
+                return
+              }
+
+              onConfirm(note.trim())
+            }}
+            disabled={
+              isLoading ||
+              !note.trim()
+            }
           >
             {isAccept ? 'Подтвердить' : 'Отклонить'}
           </button>
@@ -49,9 +58,11 @@ export function NotificationActionModal({ isOpen, type, onClose, onConfirm, isLo
 
         <textarea
           className={inputStyles.textarea}
-          placeholder="Введите комментарий...(Можно оставить пустым)"
+          placeholder="Введите комментарий..."
           value={note}
-          onChange={(e) => setNote(e.target.value)}
+          onChange={(e) =>
+            setNote(e.target.value)
+          }
           rows={4}
         />
       </div>

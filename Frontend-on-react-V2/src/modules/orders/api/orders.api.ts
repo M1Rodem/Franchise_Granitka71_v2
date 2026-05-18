@@ -7,6 +7,10 @@ import {
   type OrderDetailsDto,
 } from '@/modules/orders/types/orders.types';
 import { normalizeOrdersListParams } from '@/modules/orders/lib/orders-filters';
+import type {
+  SubmitForReviewRequest,
+  SubmitForReviewResponse,
+} from '@/modules/orders/types/orders.types'
 
 export interface OrderUpdateRequestResponse {
   success: boolean;
@@ -134,6 +138,18 @@ export const ordersApi = {
     });
 
     return ordersPagedResultSchema.parse(response.data);
+  },
+
+  async submitForReview(
+    id: number,
+    payload: SubmitForReviewRequest
+  ): Promise<SubmitForReviewResponse> {
+    const response = await httpClient.post(
+      `/orders/${id}/submit-for-review`,
+      payload
+    )
+
+    return response.data
   },
 
   async printOrderHtml(id: number, type: 'default' | 'worker' = 'default'): Promise<Blob> {

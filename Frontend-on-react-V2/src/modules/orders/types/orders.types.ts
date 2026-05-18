@@ -204,6 +204,70 @@ const mediaPascalSchema = z.object({
 export const mediaSchema = z.union([mediaCamelSchema, mediaPascalSchema]);
 
 // =========================
+// COMPLETION DTO
+// =========================
+
+const orderCompletionCamelSchema = z.object({
+  submittedAt: z.string(),
+
+  submittedBy: z.string(),
+
+  submittedNote: z.string().nullable().optional(),
+
+  media: z.array(mediaSchema),
+
+  reviewedAt: z.string().nullable().optional(),
+
+  reviewedBy: z.string().nullable().optional(),
+
+  reviewComment: z.string().nullable().optional(),
+
+  status: z.string().nullable().optional(),
+}).passthrough()
+
+const orderCompletionPascalSchema = z.object({
+  SubmittedAt: z.string(),
+
+  SubmittedBy: z.string(),
+
+  SubmittedNote: z.string().nullable().optional(),
+
+  Media: z.array(mediaSchema),
+
+  ReviewedAt: z.string().nullable().optional(),
+
+  ReviewedBy: z.string().nullable().optional(),
+
+  ReviewComment: z.string().nullable().optional(),
+
+  Status: z.string().nullable().optional(),
+}).passthrough().transform((v) => ({
+  submittedAt: v.SubmittedAt,
+
+  submittedBy: v.SubmittedBy,
+
+  submittedNote: v.SubmittedNote,
+
+  media: v.Media,
+
+  reviewedAt: v.ReviewedAt,
+
+  reviewedBy: v.ReviewedBy,
+
+  reviewComment: v.ReviewComment,
+
+  status: v.Status,
+}))
+
+export const orderCompletionSchema = z.union([
+  orderCompletionCamelSchema,
+  orderCompletionPascalSchema,
+])
+
+export type OrderCompletionDto =
+  z.infer<typeof orderCompletionSchema>
+
+// =========================
 // Order Details DTO
 // =========================
 
@@ -244,6 +308,8 @@ const orderDetailsCamelSchema = z.object({
   workItems: z.array(workItemSchema),
   payments: z.array(paymentSchema),
   photos: z.array(mediaSchema),
+
+  completion: orderCompletionSchema.nullable().optional(),
 
   paymentStatus: z.union([z.number(), z.string()]),
   isDeleted: z.boolean(),
@@ -288,6 +354,8 @@ const orderDetailsPascalSchema = z.object({
   Payments: z.array(paymentSchema),
   Photos: z.array(mediaSchema),
 
+  Completion: orderCompletionSchema.nullable().optional(),
+
   PaymentStatus: z.union([z.number(), z.string()]),
   IsDeleted: z.boolean(),
   DeletedAt: z.string().nullable().optional(),
@@ -323,6 +391,9 @@ const orderDetailsPascalSchema = z.object({
   workItems: v.WorkItems,
   payments: v.Payments,
   photos: v.Photos,
+
+  completion: v.Completion,
+
   paymentStatus: v.PaymentStatus,
   isDeleted: v.IsDeleted,
   deletedAt: v.DeletedAt,
@@ -333,4 +404,26 @@ export const orderDetailsSchema = z.union([
   orderDetailsPascalSchema,
 ]);
 
+export const OrderStatus = {
+  InProgress: 1,
+  AwaitingConfirmation: 5,
+  Completed: 6,
+  RevisionRequired: 7,
+} as const
+
+export type OrderStatus =
+  (typeof OrderStatus)[keyof typeof OrderStatus]
+
 export type OrderDetailsDto = z.infer<typeof orderDetailsSchema>;
+
+export interface SubmitForReviewRequest {
+  tempMediaIds: number[]
+  note?: string
+}
+
+export interface SubmitForReviewResponse {
+  success: boolean
+  message: string
+  notificationId: number
+  newStatus: number
+}

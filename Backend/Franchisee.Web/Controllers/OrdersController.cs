@@ -761,7 +761,8 @@ namespace Franchisee.Web.Controllers
             [FromBody] SubmitForReviewRequest request)
         {
             var userId = GetCurrentUserId();
-            _logger.LogInformation("SubmitForReview: OrderId={OrderId}, UserId={UserId}", id, userId);
+            var isSuperAdmin = IsSuperAdmin();
+            _logger.LogInformation("SubmitForReview: OrderId={OrderId}, UserId={UserId}, IsSuperAdmin={IsSuperAdmin}", id, userId, isSuperAdmin);
 
             // 1. Получаем заказ
             var order = await _context.Orders
@@ -801,36 +802,57 @@ namespace Franchisee.Web.Controllers
 
             try
             {
-                // ========== ВАЖНО: СНАЧАЛА СОЗДАЁМ УВЕДОМЛЕНИЕ (tempUploads ещё есть) ==========
-                var notificationId = await _notificationService.CreateCompletionRequestAsync(
-                    order.Id,
-                    userId,
-                    request.Note,
-                    request.TempMediaIds);
+                // ========== 1. ПОЛУЧАЕМ ФИО ОТПРАВИТЕЛЯ ==========
+                var senderName = (await _context.Managers.FindAsync(userId))?.FullName ?? "Неизвестно";
+                
+                // ========== 2. ПЕРЕМЕЩАЕМ МЕДИА ==========
+                var committedCount = await _mediaService.CommitTempToCompletionAsync(
+                    order.Id, request.TempMediaIds, userId);
+                
+                if (committedCount == 0)
+                    return BadRequest(new { message = "Не удалось переместить медиафайлы" });
 
-                // ========== ПОТОМ ОБНОВЛЯЕМ ПОЛЯ ЗАКАЗА ==========
+                // ========== 3. ОБНОВЛЯЕМ ЗАКАЗ ==========
                 order.CompletionNote = request.Note;
                 order.SubmittedForReviewAt = DateTime.UtcNow;
-                order.Status = OrderStatus.ОжидаетПодтверждения;
+                order.SubmittedBy = senderName;  // ← СОХРАНЯЕМ ОТПРАВИТЕЛЯ
                 order.UpdatedAt = DateTime.UtcNow;
 
+                // ========== 4. ЕСЛИ SUPERADMIN — СРАЗУ ВЫПОЛНЯЕМ ==========
+                if (isSuperAdmin)
+                {
+                    order.Status = OrderStatus.Выполнено;
+                    order.ReviewedAt = DateTime.UtcNow;
+                    order.ReviewedBy = userId;
+                    order.CompletedAt = DateTime.UtcNow;
+                    
+                    await _orderRepository.UpdateAsync(order);
+                    
+                    _logger.LogInformation("SubmitForReview: OrderId={OrderId} completed by SuperAdmin={UserId}", order.Id, userId);
+                    
+                    return Ok(new SubmitForReviewResponse
+                    {
+                        Success = true,
+                        Message = "Заказ выполнен",
+                        NewStatus = order.Status
+                    });
+                }
+                
+                // ========== 5. ЕСЛИ НЕ SUPERADMIN — ОБЫЧНЫЙ ФЛОУ ==========
+                order.Status = OrderStatus.ОжидаетПодтверждения;
                 await _orderRepository.UpdateAsync(order);
-
-                // ========== ПОТОМ ПЕРЕМЕЩАЕМ МЕДИА В ПАПКУ COMPLETION ==========
-                var committedCount = await _mediaService.CommitTempToCompletionAsync(
-                    order.Id,
-                    request.TempMediaIds,
-                    userId);
-
-                // 8. Формируем данные для SignalR (получаем фото из уведомления)
-                // Получаем созданное уведомление, чтобы взять из него фото
+                
+                // 6. СОЗДАЁМ УВЕДОМЛЕНИЕ ДЛЯ SUPERADMIN
+                var notificationId = await _notificationService.CreateCompletionRequestAsync(
+                    order.Id, userId, request.Note, request.TempMediaIds);
+                
+                // 7. ФОРМИРУЕМ ДАННЫЕ ДЛЯ SIGNALR
                 var notification = await _context.Notifications
                     .FirstOrDefaultAsync(n => n.Id == notificationId);
-
+                
                 CompletionNotificationDataDto? notificationData = null;
                 if (notification != null)
                 {
-                    // Используем те же настройки, что и в NotificationService
                     var jsonOptions = new JsonSerializerOptions
                     {
                         PropertyNameCaseInsensitive = true,
@@ -842,41 +864,50 @@ namespace Franchisee.Web.Controllers
                     var photosList = new List<OrderMediaDto>();
                     if (data.TryGetProperty("photos", out var photosProp))
                     {
-                        var photosJson = photosProp.GetRawText();
-                        photosList = JsonSerializer.Deserialize<List<OrderMediaDto>>(photosJson, jsonOptions) 
+                        photosList = JsonSerializer.Deserialize<List<OrderMediaDto>>(photosProp.GetRawText(), jsonOptions) 
                                     ?? new List<OrderMediaDto>();
                     }
                     
                     OrderMediaDto? videoItem = null;
                     if (data.TryGetProperty("video", out var videoProp))
                     {
-                        var videoJson = videoProp.GetRawText();
-                        videoItem = JsonSerializer.Deserialize<OrderMediaDto>(videoJson, jsonOptions);
+                        videoItem = JsonSerializer.Deserialize<OrderMediaDto>(videoProp.GetRawText(), jsonOptions);
+                    }
+                    
+                    string? completionComment = null;
+                    if (data.TryGetProperty("comment", out var commentProp))
+                    {
+                        completionComment = commentProp.GetString();
+                    }
+                    else if (data.TryGetProperty("completionNote", out var noteProp))
+                    {
+                        completionComment = noteProp.GetString();
                     }
                     
                     notificationData = new CompletionNotificationDataDto
                     {
                         OrderId = order.Id,
                         OrderNumber = order.OrderNumber,
-                        InitiatorName = (await _context.Managers.FindAsync(userId))?.FullName ?? "Неизвестно",
+                        InitiatorName = senderName,  // ← используем полученное имя
                         InitiatorId = userId,
-                        Note = request.Note,
+                        Note = completionComment,
+                        Comment = completionComment,
                         Photos = photosList,
                         Video = videoItem,
                         CreatedAt = DateTime.UtcNow
                     };
                 }
-
-                // 9. Отправляем SignalR всем SuperAdmin
+                
+                // 8. ОТПРАВЛЯЕМ SIGNALR ВСЕМ SUPERADMIN
                 if (notificationData != null)
                 {
                     await _hubContext.Clients.Group("SuperAdmins").CompletionRequestReceived(notificationData);
                 }
-
+                
                 _logger.LogInformation(
                     "SubmitForReview: OrderId={OrderId} submitted by UserId={UserId}, NotificationId={NotificationId}",
                     order.Id, userId, notificationId);
-
+                
                 return Ok(new SubmitForReviewResponse
                 {
                     Success = true,
@@ -891,6 +922,7 @@ namespace Franchisee.Web.Controllers
                 return StatusCode(500, new { message = "Ошибка при отправке заказа на проверку" });
             }
         }
+
         #region Private Helpers
 
         private int GetCurrentUserId()
@@ -1332,12 +1364,8 @@ namespace Franchisee.Web.Controllers
                         : null
                 };
                 
-                // Заполняем кто отправил и кто проверил
-                if (order.SubmittedForReviewAt.HasValue)
-                {
-                    // Ищем менеджера, который отправил (берем из заказа)
-                    completionInfo.SubmittedBy = order.Manager?.FullName ?? "Неизвестно";
-                }
+                // ========== ИСПРАВЛЕНО: используем сохранённого отправителя ==========
+                completionInfo.SubmittedBy = order.SubmittedBy ?? order.Manager?.FullName ?? "Неизвестно";
                 
                 if (order.ReviewedAt.HasValue && order.ReviewedBy.HasValue)
                 {
@@ -1451,7 +1479,7 @@ namespace Franchisee.Web.Controllers
                     }).ToList(),
                 
                 Photos = order.Photos
-                    .Where(p => !p.FilePath.Contains("/completion/"))  // Исключаем completion фото из обычных
+                    .Where(p => !p.IsCompletionMedia)
                     .Select(p => new OrderMediaDto
                     {
                         Id = p.Id,
@@ -1464,7 +1492,7 @@ namespace Franchisee.Web.Controllers
                         MediaType = p.MediaType
                     }).ToList(),
                 
-                Completion = completionInfo,  // ← НОВОЕ ПОЛЕ
+                Completion = completionInfo,
                 
                 IsDeleted = order.IsDeleted,
                 DeletedAt = order.DeletedAt,

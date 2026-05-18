@@ -334,11 +334,7 @@ namespace Franchisee.Web.Services.Notifications.Core
 
             var data = JsonSerializer.Deserialize<JsonElement>(notification.Data);
 
-            string? comment = null;
             string? fullMessage = null;
-
-            if (data.TryGetProperty("comment", out var commentProp))
-                comment = commentProp.GetString();
 
             // Извлекаем полное сообщение из Data
             if (data.TryGetProperty("fullMessage", out var fullMessageProp))
@@ -364,8 +360,8 @@ namespace Franchisee.Web.Services.Notifications.Core
                     Id = notification.InitiatorId,
                     Name = notification.Initiator?.FullName ?? ""
                 },
-                Comment = comment,
-                Message = fullMessage  // ← полное сообщение для деталей
+                // Comment = comment,  // ← УДАЛИТЬ! Комментарий теперь внутри completionData
+                Message = fullMessage
             };
 
             if (data.TryGetProperty("proposedChanges", out var changes))
@@ -378,43 +374,45 @@ namespace Franchisee.Web.Services.Notifications.Core
 
             if (notification.Type == NotificationType.CompletionRequest)
             {
-                _logger.LogInformation("Processing CompletionRequest, checking Photos property...");
-                
-                // Десериализуем фото из Data
+                // Десериализуем фото
                 var photosList = new List<OrderMediaDto>();
                 if (data.TryGetProperty("photos", out var photosProp))
                 {
-                    _logger.LogInformation("Photos property found! Raw value: {PhotosRaw}", photosProp.GetRawText());
                     photosList = JsonSerializer.Deserialize<List<OrderMediaDto>>(photosProp.GetRawText(), JsonOptions) 
                                 ?? new List<OrderMediaDto>();
-                    _logger.LogInformation("Deserialized photos count: {Count}", photosList.Count);
-                }
-                else
-                {
-                    _logger.LogWarning("Photos property NOT found in Data!");
                 }
                 
-                // Десериализуем видео из Data
+                // Десериализуем видео
                 OrderMediaDto? videoItem = null;
                 if (data.TryGetProperty("video", out var videoProp))
                 {
                     videoItem = JsonSerializer.Deserialize<OrderMediaDto>(videoProp.GetRawText(), JsonOptions);
                 }
                 
+                // ========== ПОЛУЧАЕМ КОММЕНТАРИЙ ==========
+                string? completionComment = null;
+                if (data.TryGetProperty("comment", out var commentProp2))
+                {
+                    completionComment = commentProp2.GetString();
+                    _logger.LogInformation("Comment found: {Comment}", completionComment);
+                }
+                else if (data.TryGetProperty("completionNote", out var noteProp2))
+                {
+                    completionComment = noteProp2.GetString();
+                }
+                
                 var completionData = new CompletionNotificationDataDto
                 {
                     OrderId = notification.OrderId ?? 0,
-                    OrderNumber = data.TryGetProperty("OrderNumber", out var orderNum) 
+                    OrderNumber = data.TryGetProperty("orderNumber", out var orderNum) 
                         ? orderNum.GetString() ?? "" 
                         : notification.Order?.OrderNumber ?? "",
-                    InitiatorName = data.TryGetProperty("InitiatorName", out var initName) 
+                    InitiatorName = data.TryGetProperty("initiatorName", out var initName) 
                         ? initName.GetString() ?? "" 
                         : notification.Initiator?.FullName ?? "",
                     InitiatorId = notification.InitiatorId ?? 0,
-                    Note = data.TryGetProperty("CompletionNote", out var note) 
-                        ? note.GetString() 
-                        : null,
-                    CreatedAt = data.TryGetProperty("CreatedAt", out var createdAt) 
+                    Comment = completionComment,  // ← обязательно!
+                    CreatedAt = data.TryGetProperty("createdAt", out var createdAt) 
                         ? createdAt.GetDateTime() 
                         : notification.CreatedAt,
                     Photos = photosList,
@@ -422,7 +420,6 @@ namespace Franchisee.Web.Services.Notifications.Core
                 };
                 
                 dto.CompletionData = completionData;
-                _logger.LogInformation("CompletionRequest Data raw: {Data}", notification.Data);
             }
 
             return dto;
@@ -616,11 +613,11 @@ namespace Franchisee.Web.Services.Notifications.Core
                     {
                         if (status == NotificationStatus.Approved)
                         {
-                            await ApplyCompletionApprovalAsync(notification, note);
+                            await ApplyCompletionApprovalAsync(notification, note, userId); 
                         }
                         else if (status == NotificationStatus.Rejected)
                         {
-                            await ApplyCompletionRejectionAsync(notification, note);
+                            await ApplyCompletionRejectionAsync(notification, note, userId); 
                         }
                     }
                 }
@@ -770,6 +767,99 @@ namespace Franchisee.Web.Services.Notifications.Core
             }
         }
 
+        public async Task SendOrderExpirationWarningAsync(
+            int orderId,
+            string orderNumber,
+            int daysUntilDeletion,
+            DateTime completedAt)
+        {
+            try
+            {
+                var superAdminIds = await GetSuperAdminIdsAsync();
+                
+                if (!superAdminIds.Any())
+                {
+                    _logger.LogWarning("Нет SuperAdmin для отправки предупреждения об удалении заказа {OrderId}", orderId);
+                    return;
+                }
+                
+                string message;
+                string fullMessage;
+                
+                if (daysUntilDeletion == 0)
+                {
+                    message = $"Заказ #{orderNumber} будет удалён сегодня (выполнен {completedAt:dd.MM.yyyy})";
+                    fullMessage = $"Заказ #{orderNumber} будет удалён сегодня в {completedAt.AddDays(365):dd.MM.yyyy HH:mm}. " +
+                                $"Выполнен: {completedAt:dd.MM.yyyy HH:mm}.";
+                }
+                else if (daysUntilDeletion == 1)
+                {
+                    message = $"Заказ #{orderNumber} будет удалён завтра (выполнен {completedAt:dd.MM.yyyy})";
+                    fullMessage = $"Заказ #{orderNumber} будет удалён завтра в {completedAt.AddDays(365):dd.MM.yyyy HH:mm}. " +
+                                $"Выполнен: {completedAt:dd.MM.yyyy HH:mm}.";
+                }
+                else
+                {
+                    message = $"Заказ #{orderNumber} будет удалён через {daysUntilDeletion} дней (выполнен {completedAt:dd.MM.yyyy})";
+                    fullMessage = $"Заказ #{orderNumber} будет удалён через {daysUntilDeletion} дней в {completedAt.AddDays(365):dd.MM.yyyy HH:mm}. " +
+                                $"Выполнен: {completedAt:dd.MM.yyyy HH:mm}.";
+                }
+                
+                var notification = new Notification
+                {
+                    Type = NotificationType.System,
+                    Status = NotificationStatus.Pending,
+                    IsInfluencing = false,
+                    InitiatorId = null,
+                    OrderId = orderId,
+                    Title = $"Удаление заказа #{orderNumber}",
+                    Message = message,
+                    Data = JsonSerializer.Serialize(new
+                    {
+                        OrderNumber = orderNumber,
+                        OrderId = orderId,
+                        DaysUntilDeletion = daysUntilDeletion,
+                        CompletedAt = completedAt,
+                        DeleteAt = completedAt.AddDays(365),
+                        FullMessage = fullMessage,
+                        IsInformation = true
+                    }, JsonOptions),
+                    CreatedAt = DateTime.UtcNow
+                };
+                
+                _context.Notifications.Add(notification);
+                await _context.SaveChangesAsync();
+                
+                var recipients = new List<NotificationRecipient>();
+                foreach (var adminId in superAdminIds)
+                {
+                    recipients.Add(new NotificationRecipient
+                    {
+                        NotificationId = notification.Id,
+                        UserId = adminId,
+                        Status = NotificationStatus.Pending
+                    });
+                }
+                
+                _context.NotificationRecipients.AddRange(recipients);
+                await _context.SaveChangesAsync();
+                
+                foreach (var adminId in superAdminIds)
+                {
+                    await SendRealTimeNotificationAsync(notification, adminId);
+                    await SendNotificationCountsUpdateAsync(adminId);
+                }
+                
+                _logger.LogInformation(
+                    "[OrderExpiration] Отправлено предупреждение для заказа {OrderNumber}. Дней до удаления: {Days}",
+                    orderNumber, daysUntilDeletion);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Ошибка отправки предупреждения об удалении заказа {OrderId}", orderId);
+            }
+        }
+
         public async Task<NotificationResponseDto?> ResolveNotificationWithResultAsync(
             int notificationId,
             int userId,
@@ -827,21 +917,22 @@ namespace Franchisee.Web.Services.Notifications.Core
                 hasOnlySystem
             };
         }
-        private async Task ApplyCompletionApprovalAsync(Notification notification, string? comment)
+        private async Task ApplyCompletionApprovalAsync(Notification notification, string? comment, int reviewerId)
         {
             var order = await _context.Orders.FindAsync(notification.OrderId);
             if (order == null) return;
             
             order.Status = OrderStatus.Выполнено;
             order.ReviewedAt = DateTime.UtcNow;
-            order.ReviewedBy = notification.InitiatorId ?? 0;
+            order.ReviewedBy = reviewerId;  // ← ИСПРАВЛЕНО: ID текущего пользователя
             order.ReviewComment = comment;
             order.UpdatedAt = DateTime.UtcNow;
             order.CompletedAt = DateTime.UtcNow;
             
             await _context.SaveChangesAsync();
         }
-        private async Task ApplyCompletionRejectionAsync(Notification notification, string? comment)
+
+        private async Task ApplyCompletionRejectionAsync(Notification notification, string? comment, int reviewerId)
         {
             var order = await _context.Orders
                 .Include(o => o.Photos)
@@ -859,7 +950,7 @@ namespace Franchisee.Web.Services.Notifications.Core
             
             order.Status = OrderStatus.НаДоработке;
             order.ReviewedAt = DateTime.UtcNow;
-            order.ReviewedBy = notification.InitiatorId;
+            order.ReviewedBy = reviewerId;  // ← ИСПРАВЛЕНО: ID текущего пользователя
             order.ReviewComment = comment;
             order.UpdatedAt = DateTime.UtcNow;
             
@@ -950,7 +1041,6 @@ namespace Franchisee.Web.Services.Notifications.Core
 
             try
             {
-                // 1. Получаем заказ и инициатора
                 var order = await _context.Orders
                     .Include(o => o.Manager)
                     .FirstOrDefaultAsync(o => o.Id == orderId);
@@ -964,56 +1054,69 @@ namespace Franchisee.Web.Services.Notifications.Core
                 if (initiator == null)
                     throw new ArgumentException($"Инициатор {initiatorId} не найден");
 
-                // 2. Получаем временные файлы ОДИН РАЗ
-                var tempUploads = await _context.TempUploads
-                    .Where(t => tempMediaIds.Contains(t.Id) && t.UploaderId == initiatorId)
+                // ========== НАХОДИМ СОЗДАННЫЕ MEDIA ПОСЛЕ ПЕРЕМЕЩЕНИЯ ==========
+                // Проблема: tempMediaIds - это ID временных файлов, которые уже удалены
+                // Нужно искать медиа по orderId и флагу IsCompletionMedia, созданные за последние секунды
+                
+                var orderMedia = await _context.OrderPhotos
+                    .Where(m => m.OrderId == orderId && m.IsCompletionMedia)
+                    .OrderByDescending(m => m.Id)
+                    .Take(tempMediaIds.Count)  // берём последние N записей
                     .ToListAsync();
 
-                _logger.LogInformation("=== DEBUG CreateCompletionRequest ===");
-                _logger.LogInformation("TempUploads count: {Count}", tempUploads.Count);
-                _logger.LogInformation("Photos in tempUploads: {Count}", tempUploads.Count(t => t.MediaType == MediaType.Photo));
-                _logger.LogInformation("Videos in tempUploads: {Count}", tempUploads.Count(t => t.MediaType == MediaType.Video));
-
-                // 3. Формируем фото и видео из временных файлов
-                var photos = tempUploads
-                    .Where(t => t.MediaType == MediaType.Photo)
-                    .Select(t => new OrderMediaDto
+                var photos = orderMedia
+                    .Where(m => m.MediaType == MediaType.Photo)
+                    .Select(m => new OrderMediaDto
                     {
-                        Id = t.Id,
-                        Url = _mediaService.GetTempPreviewUrl(t.Id),
-                        OriginalFileName = t.OriginalFileName,
-                        Size = t.Size,
-                        Width = t.Width ?? 0,
-                        Height = t.Height ?? 0,
-                        MediaType = t.MediaType
+                        Id = m.Id,
+                        Url = $"/api/Media/{m.Id}/file",
+                        OriginalFileName = m.OriginalFileName,
+                        Size = m.Size,
+                        Width = m.Width ?? 0,
+                        Height = m.Height ?? 0,
+                        MediaType = m.MediaType,
+                        UploadedAt = m.UploadedAt
                     }).ToList();
 
-                var video = tempUploads
-                    .Where(t => t.MediaType == MediaType.Video)
-                    .Select(t => new OrderMediaDto
+                var video = orderMedia
+                    .Where(m => m.MediaType == MediaType.Video)
+                    .Select(m => new OrderMediaDto
                     {
-                        Id = t.Id,
-                        Url = _mediaService.GetTempPreviewUrl(t.Id),
-                        OriginalFileName = t.OriginalFileName,
-                        Size = t.Size,
-                        Width = t.Width ?? 0,
-                        Height = t.Height ?? 0,
-                        MediaType = t.MediaType
+                        Id = m.Id,
+                        Url = $"/api/Media/{m.Id}/file",
+                        OriginalFileName = m.OriginalFileName,
+                        Size = m.Size,
+                        Width = m.Width ?? 0,
+                        Height = m.Height ?? 0,
+                        MediaType = m.MediaType,
+                        UploadedAt = m.UploadedAt
                     }).FirstOrDefault();
 
-                // 4. Временно привязываем к null, позже обновим
+                // Обновляем временные файлы
                 if (tempMediaIds.Any())
                 {
+                    var tempUploads = await _context.TempUploads
+                        .Where(t => tempMediaIds.Contains(t.Id))
+                        .ToListAsync();
+
                     foreach (var tempUpload in tempUploads)
                     {
                         tempUpload.NotificationId = null;
                         tempUpload.ExpiresAt = DateTime.UtcNow.AddDays(14);
                     }
-
                     await _context.SaveChangesAsync();
                 }
 
-                // 5. Создаём уведомление
+                _logger.LogInformation("=== CreateCompletionRequest Debug ===");
+                _logger.LogInformation("orderMedia count: {Count}", orderMedia.Count);
+                _logger.LogInformation("photos count: {Count}", photos.Count);
+                if (photos.Any())
+                {
+                    _logger.LogInformation("First photo Id: {Id}, Url: {Url}", photos.First().Id, photos.First().Url);
+                }
+
+
+                // Создаём уведомление
                 var notification = new Notification
                 {
                     Type = NotificationType.CompletionRequest,
@@ -1030,8 +1133,9 @@ namespace Franchisee.Web.Services.Notifications.Core
                         OrderNumber = order.OrderNumber,
                         InitiatorName = initiator.FullName,
                         CreatedAt = DateTime.UtcNow,
-                        Photos = photos,
-                        Video = video
+                        Photos = photos,      // ← теперь здесь будут реальные медиа
+                        Video = video,
+                        Comment = completionNote
                     }, JsonOptions),
                     CreatedAt = DateTime.UtcNow
                 };
@@ -1039,18 +1143,21 @@ namespace Franchisee.Web.Services.Notifications.Core
                 _context.Notifications.Add(notification);
                 await _context.SaveChangesAsync();
 
-                // 6. Обновляем временные файлы: привязываем к созданному уведомлению
+                // Привязываем temp файлы к уведомлению
                 if (tempMediaIds.Any())
                 {
+                    var tempUploads = await _context.TempUploads
+                        .Where(t => tempMediaIds.Contains(t.Id))
+                        .ToListAsync();
+
                     foreach (var tempUpload in tempUploads)
                     {
                         tempUpload.NotificationId = notification.Id;
                     }
-
                     await _context.SaveChangesAsync();
                 }
 
-                // 7. Создаём получателей — всех SuperAdmin
+                // Создаём получателей
                 var superAdminIds = await GetSuperAdminIdsAsync();
                 var recipients = new List<NotificationRecipient>();
 
@@ -1068,16 +1175,12 @@ namespace Franchisee.Web.Services.Notifications.Core
                 await _context.SaveChangesAsync();
                 await transaction.CommitAsync();
 
-                // 8. Отправляем realtime уведомления всем SuperAdmin
+                // Отправляем realtime уведомления
                 foreach (var adminId in superAdminIds)
                 {
                     await SendRealTimeNotificationAsync(notification, adminId);
                     await SendNotificationCountsUpdateAsync(adminId);
                 }
-
-                _logger.LogInformation(
-                    "[Completion] Создан запрос на выполнение. NotificationId={NotificationId}, OrderId={OrderId}, Initiator={InitiatorId}, SuperAdmins={Count}",
-                    notification.Id, orderId, initiatorId, superAdminIds.Count);
 
                 return notification.Id;
             }
@@ -2596,7 +2699,7 @@ namespace Franchisee.Web.Services.Notifications.Core
                 ChangesPreview = preview
             };
         }
-        private async Task<List<int>> GetSuperAdminIdsAsync()
+        public async Task<List<int>> GetSuperAdminIdsAsync()
         {
             return await _context.Managers
                 .Where(m => m.Role == UserRole.SuperAdmin)

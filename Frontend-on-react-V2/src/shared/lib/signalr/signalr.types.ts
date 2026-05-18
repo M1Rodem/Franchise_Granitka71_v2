@@ -4,6 +4,9 @@ export const NotificationType = {
   OrderUpdateRequest: 0,
   OrderCompletionConfirmation: 1,
   System: 2,
+
+  CompletionRequest: 3,
+  CompletionResult: 4,
 } as const
 
 export type NotificationType =
@@ -25,14 +28,21 @@ export interface NotificationUpdateDto {
   id: number
   type: NotificationType
   status: NotificationStatus
+
   title: string
   message: string
+
   createdAt: string
   updatedAt: string
+
   orderId?: number | null
   orderNumber?: string | null
+
   initiatorName: string
+
   returnsAt?: string | null
+
+  completionData?: CompletionDataDto | null
 }
 
 export interface NotificationBadgeDto {
@@ -70,6 +80,63 @@ export interface NotificationCountsDto {
   hasActiveNonSystem: boolean
   hasPostponed: boolean
   hasOnlySystem: boolean
+}
+
+// ===== COMPLETION =====
+
+export const CompletionStatus = {
+  Pending: 'Pending',
+  Approved: 'Approved',
+  Rejected: 'Rejected',
+} as const
+
+export type CompletionStatus =
+  (typeof CompletionStatus)[keyof typeof CompletionStatus]
+
+export const CompletionMediaType = {
+  Photo: 0,
+  Video: 1,
+} as const
+
+export type CompletionMediaType =
+  (typeof CompletionMediaType)[keyof typeof CompletionMediaType]
+
+export interface CompletionMediaDto {
+  id: number
+  url: string
+  originalFileName: string
+  size: number
+  uploadedAt?: string
+  width: number
+  height: number
+  mediaType: CompletionMediaType
+}
+
+export interface CompletionDataDto {
+  orderId: number
+  orderNumber: string
+
+  initiatorId: number
+  initiatorName: string
+
+  comment?: string | null
+
+  photos: CompletionMediaDto[]
+  video?: CompletionMediaDto | null
+
+  createdAt: string
+}
+
+export interface CompletionResultDto {
+  orderId: number
+  orderNumber: string
+
+  approved: boolean
+
+  comment?: string | null
+
+  reviewedAt: string
+  reviewedByName: string
 }
 
 // ===== EVENTS =====

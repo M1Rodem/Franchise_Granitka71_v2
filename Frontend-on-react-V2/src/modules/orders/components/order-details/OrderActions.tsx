@@ -8,15 +8,47 @@ import surface from '@/shared/ui/surface.module.css'
 import button from '@/shared/ui/button.module.css'
 import { isAxiosError } from 'axios'
 import type { ApiErrorResponse } from '@/shared/types/api'
+import { useState } from 'react'
+
+import {
+  SubmitForReviewModal,
+} from '../completion/SubmitForReviewModal'
 
 interface Props {
   orderId: number
+  status: number | string
 }
 
-export function OrderActions({ orderId }: Props) {
+export function OrderActions({
+  orderId,
+  status,
+}: Props){
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const openModal = useConfirmModalStore((s) => s.open)
+
+  const [submitOpen, setSubmitOpen] =
+    useState(false)
+
+  const normalizedStatus =
+    typeof status === 'string'
+      ? Number(status)
+      : status
+
+  console.log(
+    '[ORDER STATUS DEBUG]',
+    {
+      raw: status,
+      normalized: normalizedStatus,
+      type: typeof status,
+    }
+  )
+  
+  const canSubmitForReview =
+    normalizedStatus === 1 ||
+    normalizedStatus === 7 ||
+    status === 'ВРаботе' ||
+    status === 'НаДоработке'
 
   const deleteMutation = useMutation({
     mutationFn: () => ordersApi.deleteOrder(orderId),
@@ -75,6 +107,18 @@ export function OrderActions({ orderId }: Props) {
           Редактировать
         </button>
 
+        {canSubmitForReview && (
+          <button
+            type="button"
+            className={`${button.btn} ${button.btnSuccess}`}
+            onClick={() =>
+              setSubmitOpen(true)
+            }
+          >
+            Отправить на проверку
+          </button>
+        )}
+
         <button
           type="button"
           className={`${button.btn} ${button.btnDanger}`}
@@ -84,6 +128,19 @@ export function OrderActions({ orderId }: Props) {
           {deleteMutation.isPending ? 'Удаление...' : 'Удалить'}
         </button>
       </div>
+      <SubmitForReviewModal
+        orderId={orderId}
+        isOpen={submitOpen}
+        onClose={() =>
+          setSubmitOpen(false)
+        }
+        onSuccess={() => {
+          queryClient.invalidateQueries({
+            queryKey:
+              ordersKeys.byId(orderId),
+          })
+        }}
+      />
     </section>
   )
 }

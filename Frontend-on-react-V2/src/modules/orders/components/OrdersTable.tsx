@@ -5,22 +5,15 @@ import type { OrderResponseDto } from '@/modules/orders/types/orders.types'
 import { formatPhone } from '@/shared/lib/phone'
 
 import { getPaymentStatusInfo } from '@/modules/orders/lib/payment-status'
+import { getOrderStatusInfo }  from '@/modules/orders/lib/order-status'
 
 interface OrdersTableProps {
   orders: OrderResponseDto[]
   onOpenOrder: (id: number) => void
 }
 
-const statusLabels: Record<number, string> = {
-  0: 'Новый',
-  1: 'В работе',
-  2: 'Оплата',
-  3: 'Готов',
-  4: 'Доставлен',
-}
-
 const GRID_TEMPLATE =
-  '110px 1.4fr 150px 130px 140px 160px 1fr 1fr'
+  '110px 1.4fr 150px 90px 180px 150px 190px 1fr'
 
 export function OrdersTable({
   orders,
@@ -43,11 +36,12 @@ export function OrdersTable({
       </div>
 
       {orders.map((order) => {
-        const status =
-          typeof order.status === 'number'
-            ? statusLabels[order.status] ??
-              `Статус ${order.status}`
-            : order.status
+        const orderStatusInfo =
+          getOrderStatusInfo(
+            typeof order.status === 'number'
+              ? order.status
+              : null
+          )
 
         const paymentStatusInfo =
           getPaymentStatusInfo(
@@ -87,7 +81,13 @@ export function OrdersTable({
             </span>
 
             <span data-label="Статус">
-              {status}
+
+              <StatusBadge
+                style={orderStatusInfo.style}
+              >
+                {orderStatusInfo.label}
+              </StatusBadge>
+
             </span>
 
             <span data-label="Оплата">

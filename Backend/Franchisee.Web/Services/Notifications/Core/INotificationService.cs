@@ -67,6 +67,31 @@ namespace Franchisee.Web.Services.Notifications.Core
             List<int> tempMediaIds);
 
         /// <summary>
+        /// Отправить предупреждение о скором удалении заказа (для SuperAdmin)
+        /// </summary>
+        Task SendOrderExpirationWarningAsync(
+            int orderId,
+            string orderNumber,
+            int daysUntilDeletion,
+            DateTime completedAt);
+
+        /// <summary>
+        /// Получить список ID всех SuperAdmin
+        /// </summary>
+        Task<List<int>> GetSuperAdminIdsAsync();
+
+        /// <summary>
+        /// Отправить системное уведомление с разделёнными сообщениями (краткое для списка, полное для деталей)
+        /// </summary>
+        Task SendSystemNotificationWithFullMessageAsync(
+            string shortMessage,
+            string fullMessage,
+            int? orderId = null,
+            string? orderNumber = null,
+            int? initiatorId = null,
+            params int[] userIds);
+
+        /// <summary>
         /// Отправить результат проверки инициатору
         /// </summary>
         /// <param name="orderId">ID заказа</param>

@@ -18,7 +18,8 @@ public class CompletionNotificationDataDto
     public string OrderNumber { get; set; } = string.Empty;
     public string InitiatorName { get; set; } = string.Empty;
     public int InitiatorId { get; set; }
-    public string? Note { get; set; }
+    public string? Note { get; set; }           
+    public string? Comment { get; set; }       
     public List<OrderMediaDto> Photos { get; set; } = new();
     public OrderMediaDto? Video { get; set; }
     public DateTime CreatedAt { get; set; }

@@ -1,6 +1,7 @@
 using Franchisee.Web.Configuration;
 using Microsoft.EntityFrameworkCore;
 using Franchisee.Web.Models.Entities.Orders;
+using Franchisee.Web.Services.Notifications.Core;
 
 namespace Franchisee.Web.Services.Orders.Background;
 
@@ -8,10 +9,8 @@ public class ExpiredOrderCleanupService : BackgroundService
 {
     private readonly IServiceProvider _serviceProvider;
     private readonly ILogger<ExpiredOrderCleanupService> _logger;
-    
-    // ДЛЯ ТЕСТА: проверка каждую минуту, удаляем через 10 минут
-    private readonly TimeSpan _checkInterval = TimeSpan.FromMinutes(1);
-    private readonly TimeSpan _deleteAfter = TimeSpan.FromMinutes(10);  // В продакшене: .FromDays(365)
+    private readonly TimeSpan _checkInterval = TimeSpan.FromDays(1);  
+    private readonly TimeSpan _deleteAfter = TimeSpan.FromDays(365);
 
     public ExpiredOrderCleanupService(
         IServiceProvider serviceProvider,
@@ -46,9 +45,43 @@ public class ExpiredOrderCleanupService : BackgroundService
         using var scope = _serviceProvider.CreateScope();
         var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
         var env = scope.ServiceProvider.GetRequiredService<IWebHostEnvironment>();
+        var notificationService = scope.ServiceProvider.GetRequiredService<INotificationService>();
         
-        var deleteBefore = DateTime.UtcNow.Subtract(_deleteAfter);
+        var now = DateTime.UtcNow;
+        var deleteBefore = now.Subtract(_deleteAfter);
         
+        // ========== 1. ОТПРАВКА ПРЕДУПРЕЖДЕНИЙ О СКОРОМ УДАЛЕНИИ ==========
+        var daysThresholds = new[] { 14, 7, 1 };
+        
+        foreach (var days in daysThresholds)
+        {
+            // Заказы, которые будут удалены через days дней
+            var warningDate = now.AddDays(365 - days);
+            
+            var ordersToWarn = await context.Orders
+                .IgnoreQueryFilters()
+                .Where(o => o.Status == OrderStatus.Выполнено &&
+                            o.CompletedAt.HasValue &&
+                            o.CompletedAt < warningDate &&
+                            (o.LastExpirationWarningSentAt == null || 
+                            o.LastExpirationWarningSentAt.Value.Date < now.Date))
+                .ToListAsync();
+            
+            foreach (var order in ordersToWarn)
+            {
+                var daysUntilDeletion = days;
+                
+                await SendExpirationWarningAsync(notificationService, order, daysUntilDeletion, now);
+                order.LastExpirationWarningSentAt = now;
+            }
+            
+            if (ordersToWarn.Any())
+            {
+                await context.SaveChangesAsync();
+            }
+        }
+        
+        // ========== 2. УДАЛЕНИЕ ПРОСРОЧЕННЫХ ЗАКАЗОВ ==========
         var expiredOrders = await context.Orders
             .IgnoreQueryFilters()
             .Where(o => o.Status == OrderStatus.Выполнено && o.CompletedAt.HasValue && o.CompletedAt < deleteBefore)
@@ -69,14 +102,16 @@ public class ExpiredOrderCleanupService : BackgroundService
         {
             try
             {
-                // ========== 1. СНАЧАЛА УДАЛЯЕМ УВЕДОМЛЕНИЯ, СВЯЗАННЫЕ С ЗАКАЗОМ ==========
+                // Отправляем уведомление об удалении заказа
+                await SendDeletionNotificationAsync(notificationService, order);
+                
+                // ========== 1. УДАЛЯЕМ УВЕДОМЛЕНИЯ, СВЯЗАННЫЕ С ЗАКАЗОМ ==========
                 var notifications = await context.Notifications
                     .Where(n => n.OrderId == order.Id)
                     .ToListAsync();
                 
                 if (notifications.Any())
                 {
-                    // Удаляем получателей уведомлений
                     var notificationIds = notifications.Select(n => n.Id).ToList();
                     var recipients = await context.NotificationRecipients
                         .Where(r => notificationIds.Contains(r.NotificationId))
@@ -159,5 +194,85 @@ public class ExpiredOrderCleanupService : BackgroundService
         
         await context.SaveChangesAsync();
         _logger.LogInformation("Удалено {Count} заказов, выполненных до {Date}", expiredOrders.Count, deleteBefore);
+    }
+    
+    private async Task SendExpirationWarningAsync(INotificationService notificationService, Order order, int daysUntilDeletion, DateTime now)
+    {
+        try
+        {
+            if (!order.CompletedAt.HasValue)
+            {
+                _logger.LogWarning("Заказ {OrderNumber} не имеет даты выполнения, пропускаем предупреждение", order.OrderNumber);
+                return;
+            }
+            
+            string shortMessage;
+            string fullMessage;
+            var deleteDate = order.CompletedAt.Value.AddDays(365);
+            
+            if (daysUntilDeletion == 1)
+            {
+                shortMessage = $"Заказ #{order.OrderNumber} будет удалён ЗАВТРА!";
+                fullMessage = $"Заказ #{order.OrderNumber} будет удалён завтра в {deleteDate:dd.MM.yyyy HH:mm}. " +
+                            $"Выполнен: {order.CompletedAt:dd.MM.yyyy HH:mm}.";
+            }
+            else
+            {
+                shortMessage = $"Заказ #{order.OrderNumber} будет удалён через {daysUntilDeletion} дней";
+                fullMessage = $"Заказ #{order.OrderNumber} будет удалён через {daysUntilDeletion} дней в {deleteDate:dd.MM.yyyy HH:mm}. " +
+                            $"Выполнен: {order.CompletedAt:dd.MM.yyyy HH:mm}.";
+            }
+            
+            var superAdminIds = await notificationService.GetSuperAdminIdsAsync();
+            
+            if (!superAdminIds.Any())
+                return;
+            
+            await notificationService.SendSystemNotificationWithFullMessageAsync(
+                shortMessage,
+                fullMessage,
+                order.Id,
+                order.OrderNumber,
+                null,
+                superAdminIds.ToArray());
+            
+            _logger.LogInformation(
+                "[OrderExpiration] Отправлено предупреждение для заказа {OrderNumber}. Дней до удаления: {Days}",
+                order.OrderNumber, daysUntilDeletion);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Ошибка отправки предупреждения об удалении заказа {OrderId}", order.Id);
+        }
+    }
+    
+    private async Task SendDeletionNotificationAsync(INotificationService notificationService, Order order)
+    {
+        try
+        {
+            var superAdminIds = await notificationService.GetSuperAdminIdsAsync();
+            
+            if (!superAdminIds.Any())
+                return;
+            
+            var shortMessage = $"Заказ #{order.OrderNumber} УДАЛЁН (выполнен {order.CompletedAt:dd.MM.yyyy})";
+            var fullMessage = $"Заказ #{order.OrderNumber} удалён из системы. " +
+                             $"Выполнен: {order.CompletedAt:dd.MM.yyyy HH:mm}. " +
+                             $"Удалён: {DateTime.UtcNow:dd.MM.yyyy HH:mm}.";
+            
+            await notificationService.SendSystemNotificationWithFullMessageAsync(
+                shortMessage,
+                fullMessage,
+                order.Id,
+                order.OrderNumber,
+                null,
+                superAdminIds.ToArray());
+            
+            _logger.LogDebug("Отправлено уведомление об удалении заказа {OrderNumber}", order.OrderNumber);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Ошибка отправки уведомления об удалении заказа {OrderId}", order.Id);
+        }
     }
 }

@@ -170,6 +170,15 @@ export const ordersApi = {
     return response.data
   },
 
+  async printOrderWithPhotos(id: number, type: 'default' | 'worker', photoIds: number[]): Promise<Blob> {
+    const photoIdsParam = photoIds.join(',');
+    const response = await httpClient.get(`/Print/order/${id}/download`, {
+      params: { type, photoIds: photoIdsParam },
+      responseType: 'blob',
+    });
+    return response.data;
+  },
+
   async getById(id: number): Promise<OrderDetailsDto> {
     const response = await httpClient.get(`/orders/${id}`);
     const parsed = orderDetailsSchema.safeParse(response.data);

@@ -79,6 +79,7 @@ try
     builder.Services.AddScoped<Franchisee.Web.Services.Plots.Repositories.IPlotRepository, Franchisee.Web.Services.Plots.Repositories.PlotRepository>();
     builder.Services.AddScoped<Franchisee.Web.Services.Media.Core.IMediaService, Franchisee.Web.Services.Media.Core.MediaService>();
     builder.Services.AddHostedService<ExpiredOrderCleanupService>();
+    builder.Services.AddHttpContextAccessor();
 
     var app = builder.Build();
 

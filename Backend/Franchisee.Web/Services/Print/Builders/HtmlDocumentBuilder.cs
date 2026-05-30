@@ -1,9 +1,11 @@
-// Services/Print/Builders/HtmlDocumentBuilder.cs
 using Franchisee.Web.Models.Print;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using Franchisee.Web.Models.DTOs.Print;
+using Microsoft.AspNetCore.Http;
+using System.Linq;
 
 namespace Franchisee.Web.Services.Print.Builders
 {
@@ -14,11 +16,15 @@ namespace Franchisee.Web.Services.Print.Builders
 
         private readonly PrintCssService _cssService;
         private readonly PrintTemplateService _templateService;
+        private readonly IHttpContextAccessor? _httpContextAccessor;
 
-        public HtmlDocumentBuilder()
+        public HtmlDocumentBuilder() : this(null) { }
+        
+        public HtmlDocumentBuilder(IHttpContextAccessor? httpContextAccessor = null)
         {
             _cssService = new PrintCssService();
             _templateService = new PrintTemplateService();
+            _httpContextAccessor = httpContextAccessor;
         }
 
         public string GetContentType => "text/html";
@@ -51,7 +57,44 @@ namespace Franchisee.Web.Services.Print.Builders
         {
             var pages = GeneratePages(data);
             var css = _cssService.GetPrintCss();
+            
+            // Дополнительный CSS для печати фото на весь лист
+            var photosCss = @"
+                @media print {
+                    body {
+                        margin: 0;
+                        padding: 0;
+                    }
+                    div[style*='page-break-after'] {
+                        page-break-after: always;
+                        page-break-inside: avoid;
+                    }
+                    img {
+                        page-break-inside: avoid;
+                    }
+                }
+                
+                /* Для экрана - скролл */
+                @media screen {
+                    div[style*='page-break-after'] {
+                        margin-bottom: 20px;
+                        border: 1px solid #ccc;
+                        min-height: 500px;
+                    }
+                }
+            ";
+            css += photosCss;
+            
             var html = _templateService.BuildFullDocument(css, pages, data);
+            
+            // Если есть выбранные фото - добавляем их секцию в конец
+            if (data.SelectedPhotos != null && data.SelectedPhotos.Any())
+            {
+                var photosHtml = BuildPhotosSection(data.SelectedPhotos);
+                // Вставляем перед закрывающим тегом body
+                html = html.Replace("</body>", photosHtml + "</body>");
+            }
+            
             return Encoding.UTF8.GetString(Encoding.UTF8.GetBytes(html));
         }
 
@@ -160,6 +203,43 @@ namespace Franchisee.Web.Services.Print.Builders
                 pages.Add(payments.Skip(i).Take(pageSize).ToList());
 
             return pages;
+        }
+
+        private string GetFullImageUrl(string relativeUrl)
+        {
+            if (_httpContextAccessor?.HttpContext == null)
+                return relativeUrl;
+            
+            var request = _httpContextAccessor.HttpContext.Request;
+            var baseUrl = $"{request.Scheme}://{request.Host}";
+            return $"{baseUrl}{relativeUrl}";
+        }
+
+        private string BuildPhotosSection(List<PhotoInfoDto> photos)
+        {
+            if (photos == null || !photos.Any())
+                return string.Empty;
+            
+            var sb = new StringBuilder();
+            
+            foreach (var photo in photos)
+            {
+                var fullUrl = GetFullImageUrl(photo.Url);
+                
+                // Каждое фото на отдельной странице, на весь лист
+                sb.AppendLine($@"
+                    <div style='page-break-after: always; margin: 0; padding: 0; width: 100%; height: 100vh; display: flex; align-items: center; justify-content: center; background: white;'>
+                        <img src='{fullUrl}' 
+                            style='max-width: 100%; 
+                                    max-height: 100%; 
+                                    object-fit: contain; 
+                                    display: block; 
+                                    margin: 0 auto;' />
+                    </div>
+                ");
+            }
+            
+            return sb.ToString();
         }
     }
 }

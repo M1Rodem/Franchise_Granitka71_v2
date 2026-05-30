@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using Franchisee.Web.Models.DTOs.Print;
 
 namespace Franchisee.Web.Models.Print
 {
@@ -15,6 +16,7 @@ namespace Franchisee.Web.Models.Print
         public PrintType Type { get; set; }
         public List<WorkItemInfo> DistanceWorkItems { get; set; } = new();
         public List<WorkItemInfo> RegularWorkItems { get; set; } = new();
+        public List<PhotoInfoDto>? SelectedPhotos { get; set; }
     }
 
     public class OrderHeaderInfo

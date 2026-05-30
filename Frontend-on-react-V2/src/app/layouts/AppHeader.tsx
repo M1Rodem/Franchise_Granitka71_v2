@@ -12,6 +12,10 @@ import { useParams } from 'react-router-dom'
 import { tempMessage } from '@/shared/ui/temp-message.service'
 import { AppIcon } from '@/shared/ui/AppIcon'
 import { PrintTypeModal } from '@/modules/orders/components/PrintTypeModal'
+import { PrintWithPhotosModal } from '@/modules/orders/components/PrintWithPhotosModal'
+import { useQuery } from '@tanstack/react-query'
+import { ordersKeys } from '@/modules/orders/lib/orders.keys'
+import type { OrderDetailsDto } from '@/modules/orders/types/orders.types'
 
 export function AppHeader() {
   const navigate = useNavigate();
@@ -22,9 +26,6 @@ export function AppHeader() {
   const header = useUiStore((state) => state.header)
   const submitDisabled = header.submitDisabled
   const openPlotCreateModal = useUiStore((state) => state.openPlotCreateModal);
-  const [printModalOpen, setPrintModalOpen] = useState(false)
-  const [, setPrintType] = useState<'default' | 'worker' | null>(null)
-  const [isPrinting, setIsPrinting] = useState(false)
   const [excelModalOpen, setExcelModalOpen] = useState(false)
   const [isDownloading, setIsDownloading] = useState(false)
   const defaultTitle = resolveRouteTitle(
@@ -44,6 +45,43 @@ export function AppHeader() {
   const isPlots = header.mode === 'plots'
   const isUsers = header.mode === 'users'
 
+  const [printWithPhotosModalOpen, setPrintWithPhotosModalOpen] = useState(false)
+  const [isPrintingWithPhotos, setIsPrintingWithPhotos] = useState(false)
+
+  // Получаем данные заказа для фото
+  const { data: orderData } = useQuery<OrderDetailsDto>({
+    queryKey: ordersKeys.byId(orderId),
+    queryFn: () => ordersApi.getById(orderId),
+    enabled: printWithPhotosModalOpen && !!orderId && !isNaN(orderId),
+  })
+
+  const handlePrintWithPhotos = async (photoIds: number[], type: 'default' | 'worker') => {
+    if (!orderId) {
+      tempMessage.error('Не удалось определить ID заказа')
+      return
+    }
+
+    if (!photoIds.length) {
+      tempMessage.warning('Выберите хотя бы одно фото')
+      return
+    }
+
+    setIsPrintingWithPhotos(true)
+
+    try {
+      const blob = await ordersApi.printOrderWithPhotos(orderId, type, photoIds)
+      const url = URL.createObjectURL(blob)
+      window.open(url, '_blank')
+      setTimeout(() => URL.revokeObjectURL(url), 5000)
+    } catch (e) {
+      console.error(e)
+      tempMessage.error('Ошибка при печати с фото')
+    } finally {
+      setIsPrintingWithPhotos(false)
+      setPrintWithPhotosModalOpen(false)
+    }
+  }
+
   useEffect(() => {
     const unsub = signalRService.subscribeStatus((s) => {
       setStatus(s)
@@ -51,29 +89,6 @@ export function AppHeader() {
 
     return unsub
   }, [])
-
-  const handlePrint = async (type: 'default' | 'worker') => {
-    if (!orderId) {
-      tempMessage.error('Не удалось определить ID заказа')
-      return
-    }
-
-    setIsPrinting(true)
-
-    try {
-      const blob = await ordersApi.printOrderHtml(orderId, type)
-      const url = URL.createObjectURL(blob)
-      window.open(url, '_blank')
-      setTimeout(() => URL.revokeObjectURL(url), 5000)
-    } catch (e) {
-      console.error(e)
-      tempMessage.error('Ошибка при открытии печати')
-    } finally {
-      setIsPrinting(false)
-      setPrintModalOpen(false)
-      setPrintType(null)
-    }
-  }
 
   const handleExcelDownload = async (type: 'default' | 'worker') => {
     if (!orderId) {
@@ -149,14 +164,14 @@ export function AppHeader() {
             {/* Кнопка печати с модальным окном */}
             <button
               type="button"
-              onClick={() => setPrintModalOpen(true)}
+              onClick={() => setPrintWithPhotosModalOpen(true)}
               className={cn(buttonStyles.btn, buttonStyles.btnPrint, buttonStyles.btnWithIcon)}
-              disabled={isPrinting}
+              disabled={isPrintingWithPhotos}
             >
               <span className={styles.actionIcon}>
                 <AppIcon name="print" />
               </span>
-              {isPrinting ? 'Загрузка...' : 'Печать'}
+              {isPrintingWithPhotos ? 'Загрузка...' : 'Печать'}
             </button>
 
             {/* Кнопка Excel */}
@@ -174,12 +189,6 @@ export function AppHeader() {
           </div>
 
           {/* Модальное окно выбора типа печати */}
-          <PrintTypeModal
-            isOpen={printModalOpen}
-            onClose={() => setPrintModalOpen(false)}
-            onSelect={handlePrint}
-            isLoading={isPrinting}
-          />
           <PrintTypeModal
             isOpen={excelModalOpen}
             title="Выберите тип Excel документа"
@@ -383,6 +392,14 @@ export function AppHeader() {
           status === 'connecting' && styles.connecting,
           status === 'disconnected' && styles.disconnected
         )}
+      />
+      {/* Модальное окно печати с выбором фото */}
+      <PrintWithPhotosModal
+        isOpen={printWithPhotosModalOpen}
+        onClose={() => setPrintWithPhotosModalOpen(false)}
+        onPrint={handlePrintWithPhotos}
+        photos={orderData?.photos?.filter(p => Number(p.mediaType) === 0) || []}
+        isLoading={isPrintingWithPhotos}
       />
     </header>
   );

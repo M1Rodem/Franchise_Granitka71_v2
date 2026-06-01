@@ -1,0 +1,123 @@
+.header {
+  margin-bottom: 24px;
+}
+
+.manager {
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--text-primary);
+  line-height: 1.2;
+}
+
+.ordersCount {
+  margin-top: 4px;
+  color: var(--text-muted);
+  font-size: 14px;
+}
+
+.kpiGrid {
+  display: grid;
+  grid-template-columns: repeat(
+    auto-fit,
+    minmax(240px, 1fr)
+  );
+  gap: 16px;
+}
+
+.kpiCard {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+
+  padding: 20px;
+
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+
+  background: rgba(255, 255, 255, 0.03);
+  backdrop-filter: blur(12px);
+
+  transition:
+    transform 0.2s ease,
+    border-color 0.2s ease,
+    background 0.2s ease;
+}
+
+.kpiCard:hover {
+  transform: translateY(-2px);
+
+  border-color: rgba(255, 255, 255, 0.12);
+
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.kpiCard span {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.kpiCard strong {
+  font-size: 28px;
+  font-weight: 800;
+  line-height: 1;
+  color: var(--text-primary);
+}
+
+/* Планшеты */
+@media (max-width: 1024px) {
+  .manager {
+    font-size: 22px;
+  }
+
+  .kpiCard {
+    padding: 18px;
+  }
+
+  .kpiCard strong {
+    font-size: 24px;
+  }
+}
+
+/* Телефоны */
+@media (max-width: 768px) {
+  .header {
+    margin-bottom: 20px;
+  }
+
+  .manager {
+    font-size: 20px;
+  }
+
+  .ordersCount {
+    font-size: 13px;
+  }
+
+  .kpiGrid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .kpiCard {
+    padding: 16px;
+  }
+
+  .kpiCard strong {
+    font-size: 22px;
+  }
+}
+
+/* Очень узкие экраны */
+@media (max-width: 480px) {
+  .manager {
+    font-size: 18px;
+  }
+
+  .kpiCard strong {
+    font-size: 20px;
+  }
+
+  .kpiCard span {
+    font-size: 12px;
+  }
+}

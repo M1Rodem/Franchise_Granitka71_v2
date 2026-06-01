@@ -1,0 +1,15 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.loader {
+  text-align: center;
+  padding: 40px;
+}
+
+.error {
+  text-align: center;
+  padding: 40px;
+}

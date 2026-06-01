@@ -83,19 +83,6 @@ try
 
     var app = builder.Build();
 
-    using (var scope = app.Services.CreateScope())
-    {
-        try
-        {
-            await DbInitializer.InitializeAsync(scope.ServiceProvider);
-        }
-        catch (Exception ex)
-        {
-            Log.Fatal(ex, "An error occurred while initializing the database");
-            throw;
-        }
-    }
-
     app.MapGet("/health", async (ApplicationDbContext db) =>
     {
         try

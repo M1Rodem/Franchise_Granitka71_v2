@@ -1,10 +1,11 @@
-﻿using Microsoft.EntityFrameworkCore;
-using Franchisee.Web.Configuration;
-using Franchisee.Web.Models.Entities.Plots;
-using Franchisee.Web.Models.Entities.Orders;
+﻿using Franchisee.Web.Configuration;
 using Franchisee.Web.Models.DTOs.Orders;
-using Franchisee.Web.Models.Requests.Orders;
+using Franchisee.Web.Models.DTOs.Reports;
+using Franchisee.Web.Models.Entities.Orders;
+using Franchisee.Web.Models.Entities.Plots;
 using Franchisee.Web.Models.Entities.Users;
+using Franchisee.Web.Models.Requests.Orders;
+using Microsoft.EntityFrameworkCore;
 
 namespace Franchisee.Web.Services.Orders.Repositories
 {
@@ -459,6 +460,57 @@ namespace Franchisee.Web.Services.Orders.Repositories
                 .ToListAsync();
 
             return (orders, totalCount);
+        }
+
+        public async Task<(List<ManagerFinanceOrderDto> Orders, Manager? Manager, decimal TotalPaid)>GetManagerFinanceReportAsync(int managerId, DateTime dateFrom, DateTime dateTo)
+        {
+            // Получаем менеджера
+            var manager = await _context.Managers
+                .FirstOrDefaultAsync(m => m.Id == managerId);
+
+            if (manager == null)
+            {
+                return (new List<ManagerFinanceOrderDto>(), null, 0);
+            }
+
+            // Получаем заказы с платежами и работами за период
+            var ordersQuery = _context.Orders
+                .Include(o => o.Payments)
+                .Include(o => o.WorkItems)  // ← ДОБАВЛЯЕМ WorkItems
+                .Where(o => o.ManagerId == managerId
+                            && o.OrderDate >= dateFrom
+                            && o.OrderDate <= dateTo
+                            && !o.IsDeleted)
+                .OrderByDescending(o => o.OrderDate);
+
+            var orders = await ordersQuery.ToListAsync();
+
+            // Формируем DTO и считаем суммы
+            var orderDtos = new List<ManagerFinanceOrderDto>();
+            decimal totalPaid = 0;
+            decimal totalSold = 0;
+
+            foreach (var order in orders)
+            {
+                var actualTotalPrice = order.WorkItems?.Sum(w => w.Price * w.Quantity) ?? 0;
+                var paidAmount = order.Payments?.Sum(p => p.Amount) ?? 0;
+
+                totalSold += actualTotalPrice;
+                totalPaid += paidAmount;
+
+                orderDtos.Add(new ManagerFinanceOrderDto
+                {
+                    OrderId = order.Id,
+                    OrderNumber = order.OrderNumber,
+                    OrderDate = order.OrderDate,
+                    CustomerName = order.CustomerFullName,
+                    TotalPrice = actualTotalPrice,
+                    PaidAmount = paidAmount,
+                    DebtAmount = actualTotalPrice - paidAmount
+                });
+            }
+
+            return (orderDtos, manager, totalPaid);
         }
 
         public async Task<string> GenerateOrderNumberAsync()

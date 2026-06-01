@@ -23,6 +23,9 @@ const EditOrderPage = lazy(() => import('@/modules/orders/pages/edit-order.page'
 const ArchivedOrderDetailsPage = lazy(
   () => import('@/modules/orders/pages/archived-order-details.page')
 )
+const ManagerFinancePage = lazy(
+  () => import('@/modules/reports/pages/manager-finance.page')
+)
 
 // Компонент загрузки с анимацией
 function RouterFallback() {
@@ -192,6 +195,15 @@ const router = createBrowserRouter([
                     element: (
                       <PageWrapper>
                         <PlotsPage />
+                      </PageWrapper>
+                    ),
+                  },
+
+                  {
+                    path: '/admin/manager-finance',
+                    element: (
+                      <PageWrapper>
+                        <ManagerFinancePage />
                       </PageWrapper>
                     ),
                   },

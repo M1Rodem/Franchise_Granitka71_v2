@@ -74,6 +74,31 @@ export default function AdminPage() {
                 </div>
               </button>
             )}
+            {user?.role === 'SuperAdmin' && (
+              <button
+                type="button"
+                className={`${button.btn} ${button.btnGlass} ${styles.adminCard}`}
+                onClick={() => navigate('/admin/manager-finance')}
+              >
+                <div className={styles.cardTop}>
+                  <div className={styles.iconWrapper}>
+                    <AppIcon name="info" />
+                  </div>
+
+                  <span className={styles.cardPill}>
+                    Аналитика
+                  </span>
+                </div>
+
+                <div className={styles.cardTitle}>
+                  Финансы менеджеров
+                </div>
+
+                <div className={styles.cardDescription}>
+                  Анализ продаж, оплат и задолженности менеджеров за выбранный период.
+                </div>
+              </button>
+            )}
           </div>
         </div>
       </section>

@@ -44,6 +44,7 @@ export function AppHeader() {
   const isOrderEdit = header.mode === 'orderEdit';
   const isPlots = header.mode === 'plots'
   const isUsers = header.mode === 'users'
+  const isManagerFinance = header.mode === 'managerFinance'
 
   const [printWithPhotosModalOpen, setPrintWithPhotosModalOpen] = useState(false)
   const [isPrintingWithPhotos, setIsPrintingWithPhotos] = useState(false)
@@ -133,8 +134,16 @@ export function AppHeader() {
       </button>
 
       {/* Обычный заголовок */}
-      {!isOrderDetails && !isAdminDetails && !isOrderCreate && !isOrderEdit && !isPlots && !isUsers && (
-        <h1 className={styles.title}>{defaultTitle}</h1>
+      {!isOrderDetails &&
+      !isAdminDetails &&
+      !isOrderCreate &&
+      !isOrderEdit &&
+      !isPlots &&
+      !isUsers &&
+      !isManagerFinance && (
+        <h1 className={styles.title}>
+          {defaultTitle}
+        </h1>
       )}
 
       {/* Режим заказа */}
@@ -354,6 +363,31 @@ export function AppHeader() {
           </div>
         </>
       )}
+
+      {isManagerFinance && (
+      <>
+        <button
+          type="button"
+          onClick={() => navigate('/admin')}
+          className={cn(
+            buttonStyles.btn,
+            buttonStyles.btnNeutral,
+            styles.backBtn
+          )}
+        >
+          <span className={styles.backIcon}>
+            <AppIcon name="arrowLeft" />
+          </span>
+          Назад
+        </button>
+
+        <h1 className={styles.detailsTitle}>
+          {header.title}
+        </h1>
+
+        <div className={styles.detailsActions} />
+      </>
+    )}
 
       {/* Admin режим (Users / Plots) */}
       {isAdminDetails && (

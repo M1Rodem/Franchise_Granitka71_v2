@@ -45,4 +45,10 @@ namespace Franchisee.Web.Models.DTOs.Users
         public int PageSize { get; set; }
         public int TotalPages { get; set; }
     }
+    public class OfflineEmployeeDto
+    {
+        public int Id { get; set; }
+        public string Username { get; set; } = string.Empty;
+        public string FullName { get; set; } = string.Empty;
+    }
 }

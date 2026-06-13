@@ -34,8 +34,6 @@ export default function ArchivedOrdersPage() {
         <div className={toolbar.shell}>
           <div className={toolbar.row}>
             <div className={toolbar.titleBlock}>
-              <span className={toolbar.eyebrow}>Archive</span>
-              <h1 className={toolbar.heading}>Архив заказов</h1>
               <p className={toolbar.description}>
                 Удалённые заказы временно хранятся в архиве, чтобы их можно было
                 быстро найти и проверить.

@@ -10,6 +10,11 @@ import { AppIcon } from '@/shared/ui/AppIcon'
 import { mediaApi } from '@/shared/lib/media/api/media.api'
 import { MediaPreviewModal } from '@/shared/lib/media/components/MediaPreviewModal'
 import type { ViewerMediaDto } from '@/shared/lib/media/api/media.types'
+import { showTempMessage } from '@/shared/ui/temp-message.service'
+import { connectivityService } from '@/modules/offline/services/connectivity.service'
+import { offlineMediaRepository } from '@/modules/offline/repositories/offline-media.repository'
+import { createOfflineMedia } from '@/modules/offline/services/offline-media.service'
+import { useOrderForm } from '../order-form.provider'
 
 import surface from '@/shared/ui/surface.module.css'
 import layout from '@/shared/ui/form-layout.module.css'
@@ -32,6 +37,14 @@ type MediaItem =
     type: 'photo' | 'video'
     markedForDelete?: boolean
   }
+  | {
+    kind: 'offline'
+    id: string
+    previewUrl: string
+    name: string
+    type: 'photo' | 'video'
+    markedForDelete?: boolean
+  }
 
 interface Props {
   existing?: ViewerMediaDto[]
@@ -39,6 +52,7 @@ interface Props {
 
 export function MediaSection({ existing = [] }: Props) {
   const { setValue } = useFormContext<OrderFormModel>()
+  const { mode, draftLocalId } = useOrderForm()
 
   const [media, setMedia] = useState<MediaItem[]>(() =>
     existing.map((m) => ({
@@ -58,13 +72,47 @@ export function MediaSection({ existing = [] }: Props) {
   const [removedPhotos] = useState<number[]>([])
   const [removedVideos] = useState<number[]>([])
 
-  const [previewUrls, setPreviewUrls] = useState<Record<number, string>>({})
+  const [previewUrls, setPreviewUrls] = useState<Record<string, string>>({})
 
   const isEditMode = existing.length > 0
 
   useEffect(() => {
     mediaRef.current = media
   }, [media, removedPhotos, removedVideos])
+
+  useEffect(() => {
+    if (mode !== 'create') return
+    if (!draftLocalId) return
+
+    let cancelled = false
+
+    void offlineMediaRepository.getOrderMedia(draftLocalId).then((items) => {
+      if (cancelled || !items.length) return
+
+      setMedia((prev) => {
+        const existingIds = new Set(prev.map((item) => String(item.id)))
+        const next = [...prev]
+
+        items.forEach((item) => {
+          if (existingIds.has(item.id)) return
+
+          next.push({
+            kind: 'offline',
+            id: item.id,
+            previewUrl: URL.createObjectURL(item.blob),
+            name: item.fileName,
+            type: item.type,
+          })
+        })
+
+        return next
+      })
+    })
+
+    return () => {
+      cancelled = true
+    }
+  }, [mode, draftLocalId])
 
   const handleFiles = async (fileList: FileList | null) => {
     if (!fileList) return
@@ -74,6 +122,35 @@ export function MediaSection({ existing = [] }: Props) {
     setUploading(true)
 
     try {
+      if (mode === 'create' && draftLocalId && connectivityService.isOffline()) {
+        const offlineUploads = await Promise.all(
+          files.map(async (file) => {
+            const type = file.type.startsWith('video')
+              ? 'video'
+              : 'photo'
+
+            const offlineMedia = createOfflineMedia({
+              orderLocalId: draftLocalId,
+              file,
+              type,
+            })
+
+            await offlineMediaRepository.saveOrderMedia(offlineMedia)
+
+            return {
+              kind: 'offline',
+              id: offlineMedia.id,
+              previewUrl: URL.createObjectURL(file),
+              name: offlineMedia.fileName,
+              type,
+            } as MediaItem
+          })
+        )
+
+        setMedia(prev => [...prev, ...offlineUploads])
+        return
+      }
+
       const uploads = await Promise.all(
         files.map(async (file) => {
           const type = file.type.startsWith('video')
@@ -94,6 +171,11 @@ export function MediaSection({ existing = [] }: Props) {
       )
 
       setMedia(prev => [...prev, ...uploads])
+    } catch (error) {
+      showTempMessage(
+        'error',
+        error instanceof Error ? error.message : 'Ошибка при сохранении медиа'
+      )
     } finally {
       setUploading(false)
 
@@ -114,6 +196,10 @@ export function MediaSection({ existing = [] }: Props) {
         await mediaApi.deleteTemp(item.id).catch(() => { })
       }
 
+      if (item.kind === 'offline') {
+        await offlineMediaRepository.deleteOrderMedia(item.id)
+      }
+
       setMedia(prev => prev.filter((_, i) => i !== index))
 
       return
@@ -131,20 +217,44 @@ export function MediaSection({ existing = [] }: Props) {
 
   useEffect(() => {
     const photoIds = media
-      .filter(m => m.kind === 'temp' && m.type === 'photo')
-      .map(m => m.id)
+      .filter(
+        (
+          m
+        ): m is Extract<MediaItem, { kind: 'temp' }> =>
+          m.kind === 'temp' && m.type === 'photo'
+      )
+      .map((m) => m.id)
 
     const videoIds = media
-      .filter(m => m.kind === 'temp' && m.type === 'video')
-      .map(m => m.id)
+      .filter(
+        (
+          m
+        ): m is Extract<MediaItem, { kind: 'temp' }> =>
+          m.kind === 'temp' && m.type === 'video'
+      )
+      .map((m) => m.id)
 
     const removedPhotos = media
-      .filter(m => m.kind === 'existing' && m.type === 'photo' && m.markedForDelete)
-      .map(m => m.id)
+      .filter(
+        (
+          m
+        ): m is Extract<MediaItem, { kind: 'existing' }> =>
+          m.kind === 'existing' &&
+          m.type === 'photo' &&
+          m.markedForDelete === true
+      )
+      .map((m) => m.id)
 
     const removedVideos = media
-      .filter(m => m.kind === 'existing' && m.type === 'video' && m.markedForDelete)
-      .map(m => m.id)
+      .filter(
+        (
+          m
+        ): m is Extract<MediaItem, { kind: 'existing' }> =>
+          m.kind === 'existing' &&
+          m.type === 'video' &&
+          m.markedForDelete === true
+      )
+      .map((m) => m.id)
 
     setValue('media.tempPhotoIds', photoIds, { shouldDirty: true })
     setValue('media.tempVideoIds', videoIds, { shouldDirty: true })
@@ -194,7 +304,17 @@ export function MediaSection({ existing = [] }: Props) {
 
     media.forEach((m) => {
 
-      if (previewUrls[m.id]) return
+      const mediaId = String(m.id)
+
+      if (previewUrls[mediaId]) return
+
+      if (m.kind === 'offline') {
+        setPreviewUrls((prev) => ({
+          ...prev,
+          [mediaId]: m.previewUrl,
+        }))
+        return
+      }
 
       loadMedia(m.previewUrl).then((url) => {
 
@@ -202,7 +322,7 @@ export function MediaSection({ existing = [] }: Props) {
 
         setPreviewUrls((prev) => ({
           ...prev,
-          [m.id]: url,
+          [mediaId]: url,
         }))
 
       })
@@ -212,7 +332,7 @@ export function MediaSection({ existing = [] }: Props) {
   }, [media])
 
   const previewItems: ViewerMediaDto[] = media.map((m) => ({
-    id: m.id,
+    id: typeof m.id === 'number' ? m.id : Number.MAX_SAFE_INTEGER,
     url: m.previewUrl,
     originalFileName: m.name,
     mediaType: m.type === 'video' ? 1 : 0,

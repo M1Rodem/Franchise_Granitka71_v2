@@ -196,7 +196,7 @@ export function LocationSection() {
         <div className={styles.mapContainer}>
           <YandexMapProvider>
             <MapView
-              center={plotCoords ?? [55.75, 37.57]}
+              center={plotCoords ?? [53.9320, 37.9197]}
               onReady={(map: any) => {
                 mapRef.current = map
 

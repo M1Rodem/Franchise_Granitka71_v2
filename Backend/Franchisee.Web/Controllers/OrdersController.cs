@@ -142,6 +142,18 @@ namespace Franchisee.Web.Controllers
             var userId = GetCurrentUserId();
             _logger.LogInformation("Создание заказа для пользователя {UserId}", userId);
 
+            if (request.OwnerUserId.HasValue && request.OwnerUserId.Value <= 0)
+            {
+                return BadRequest(new { message = "OwnerUserId должен быть положительным числом" });
+            }
+
+            if (request.OwnerUserId.HasValue && request.OwnerUserId.Value != userId && !IsAdminOrHigher())
+            {
+                _logger.LogWarning("Пользователь {UserId} пытается создать заказ от имени {OwnerUserId} без прав администратора", 
+                    userId, request.OwnerUserId.Value);
+                return StatusCode(403, new { message = "Недостаточно прав для создания заказа от имени другого пользователя" });
+            }
+
             using var transaction = await _context.Database.BeginTransactionAsync();
 
             try
@@ -175,7 +187,7 @@ namespace Franchisee.Web.Controllers
                     MonumentSize = request.MonumentSize,
                     AdditionalInfo = request.AdditionalInfo ?? string.Empty,
                     Status = OrderStatus.ВРаботе,
-                    ManagerId = userId,
+                    ManagerId = request.OwnerUserId ?? userId,
                     CreatedAt = DateTime.UtcNow,
                     UpdatedAt = DateTime.UtcNow,
                     WorkItems = request.WorkItems?.Select(w => new OrderWorkItem

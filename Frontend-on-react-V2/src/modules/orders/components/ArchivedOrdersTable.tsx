@@ -1,4 +1,6 @@
 import table from '@/shared/ui/table-base.module.css';
+import surface from '@/shared/ui/surface.module.css';
+
 import { StatusBadge } from '@/shared/ui/status';
 import type { OrderResponseDto } from '@/modules/orders/types/orders.types';
 import { formatPhone } from '@/shared/lib/phone';
@@ -72,7 +74,7 @@ const GRID_TEMPLATE = '110px 1.5fr 150px 130px 130px 220px 180px 1fr 170px';
 
 export function ArchivedOrdersTable({ orders, onOpenOrder }: ArchivedOrdersTableProps) {
   return (
-    <div className={table.dataTable}>
+    <div className={surface.surface}>
       <div className={table.dataHeader} style={{ gridTemplateColumns: GRID_TEMPLATE }}>
         <span>Номер</span>
         <span>Клиент</span>

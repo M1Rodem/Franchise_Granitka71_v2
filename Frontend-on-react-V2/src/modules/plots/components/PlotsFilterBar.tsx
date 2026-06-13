@@ -46,8 +46,6 @@ export function PlotsFilterBar({
       <div className={toolbar.shell}>
         <div className={toolbar.row}>
           <div className={toolbar.titleBlock}>
-            <span className={toolbar.eyebrow}>Plots</span>
-            <h1 className={toolbar.heading}>Участки CRM</h1>
             <p className={toolbar.description}>
               Поиск и быстрый доступ к участкам, адресам и действиям в таком же
               аккуратном контуре, как на странице пользователей.

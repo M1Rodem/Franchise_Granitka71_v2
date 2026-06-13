@@ -12,11 +12,29 @@ import { useNotificationsStore } from '@/modules/notifications/store/notificatio
 import { NotificationBadge } from '@/shared/ui/badge/NotificationBadge'
 import button from '@/shared/ui/button.module.css'
 import { motion } from 'framer-motion'
+import { useConnectivity } from '@/modules/offline/hooks/use-connectivity'
+import { useOfflineSession } from '@/modules/offline/hooks/useOfflineSession'
+import { EmployeeSelectModal } from '@/modules/offline/components/EmployeeSelectModal'
+import { useOfflineOrders } from '@/modules/offline/hooks/use-offline-orders'
+import { showTempMessage } from '@/shared/ui/temp-message.service'
 
 export function Sidebar() {
+  const { isOnline } = useConnectivity()
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated)
   const user = useAuthStore((state) => state.user)
+  const { currentEmployee, setCurrentEmployee } = useOfflineSession()
+  const { items } = useOfflineOrders()
+  const [isEmployeeModalOpen, setIsEmployeeModalOpen] = useState(false)
 
-  const visibleItems = filterNavigationByRole(navigationConfig, user?.role)
+  const offlineOrdersCount = items.length
+
+  const isFullSidebar = isOnline && isAuthenticated
+
+  let visibleItems = filterNavigationByRole(navigationConfig, user?.role)
+
+  if (!isFullSidebar) {
+    visibleItems = visibleItems.filter((item) => item.offlineOnly === true)
+  }
 
   const location = useLocation()
   const logout = useLogout()
@@ -28,9 +46,6 @@ export function Sidebar() {
   const closeMobileSidebar = useUiStore((state) => state.closeMobileSidebar)
 
   const color = useNotificationsStore((s) => s.selectSidebarColor())
-  /* ---------------------------------- */
-  /* MOBILE DETECTION */
-  /* ---------------------------------- */
 
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 960)
 
@@ -40,13 +55,8 @@ export function Sidebar() {
     }
 
     window.addEventListener('resize', handleResize)
-
     return () => window.removeEventListener('resize', handleResize)
   }, [])
-
-  /* ---------------------------------- */
-  /* COLLAPSE BUTTON HANDLER */
-  /* ---------------------------------- */
 
   const handleToggle = () => {
     if (isMobile) {
@@ -56,6 +66,15 @@ export function Sidebar() {
     }
   }
 
+  let displayName = user?.fullName
+  if (!isFullSidebar && currentEmployee) {
+    displayName = currentEmployee.fullName
+  }
+
+  const showEmployeeSelector = !isFullSidebar
+
+  const showLogoutButton = isFullSidebar
+
   return (
     <aside
       className={[
@@ -64,23 +83,13 @@ export function Sidebar() {
         isMobileSidebarOpen ? styles.mobileOpen : '',
       ].join(' ')}
     >
-
-      {/* ================= HEADER ================= */}
-
+      {/* HEADER */}
       <div className={styles.header}>
-
         <div className={styles.branding}>
           <div className={styles.logo}>
-            <img
-              src={logo}
-              alt="Granitka71 Logo"
-              className={styles.logoImage}
-            />
-
+            <img src={logo} alt="Granitka71 Logo" className={styles.logoImage} />
             {!isSidebarCollapsed && (
-              <span className={styles.brand}>
-                Granitka71
-              </span>
+              <span className={styles.brand}>Granitka71</span>
             )}
           </div>
         </div>
@@ -97,18 +106,17 @@ export function Sidebar() {
             className={styles.icon}
           />
         </motion.button>
-
       </div>
 
-      {/* ================= NAVIGATION ================= */}
-
-      <nav
-        className={styles.nav}
-        aria-label="Main navigation"
-      >
+      {/* NAVIGATION */}
+      <nav className={styles.nav} aria-label="Main navigation">
         {visibleItems.map((item) => {
-
           const isActive = isNavigationItemActive(location.pathname, item)
+
+          let label = item.label
+          if (!isSidebarCollapsed && item.id === 'offline-orders' && offlineOrdersCount > 0) {
+            label = `${item.label} (${offlineOrdersCount})`
+          }
 
           return (
             <motion.div
@@ -121,20 +129,23 @@ export function Sidebar() {
                 className={[
                   styles.navItem,
                   isActive ? styles.active : '',
-                  item.id === 'notifications' && color === 'red'
-                    ? styles.glow
-                    : '',
+                  item.id === 'notifications' && color === 'red' ? styles.glow : '',
                 ].join(' ')}
                 onClick={closeMobileSidebar}
               >
-                <AppIcon
-                  name={item.icon}
-                  className={styles.icon}
-                />
-
+                <AppIcon name={item.icon} className={styles.icon} />
                 {!isSidebarCollapsed && (
                   <span className={styles.navLabel}>
-                    <span className={styles.navText}>{item.label}</span>
+                    <span className={styles.navText}>
+                      {item.label}
+                    </span>
+
+                    {item.id === 'offline-orders' &&
+                      offlineOrdersCount > 0 && (
+                        <span className={styles.counterBadge}>
+                          {offlineOrdersCount}
+                        </span>
+                      )}
 
                     {item.id === 'notifications' && (
                       <span className={styles.badgeWrap}>
@@ -149,26 +160,47 @@ export function Sidebar() {
         })}
       </nav>
 
-      {/* ================= FOOTER ================= */}
-
+      {/* FOOTER */}
       <div className={styles.footer}>
-
-        {!isSidebarCollapsed && user && (
+        {!isSidebarCollapsed && isFullSidebar && user && (
           <p className={styles.userName}>
             {user.fullName}
           </p>
         )}
 
-        <button
-          type="button"
-          className={`${button.btn} ${button.btnDanger}`}
-          onClick={() => void logout()}
-        >
-          {isSidebarCollapsed ? '✕' : 'Выход'}
-        </button>
+        {!isSidebarCollapsed &&
+          !isFullSidebar &&
+          currentEmployee && (
+            <button
+              type="button"
+              onClick={() => setIsEmployeeModalOpen(true)}
+              className={styles.employeeSwitcher}
+            >
+              <span>{currentEmployee.fullName}</span>
+              <span>▼</span>
+            </button>
+          )}
 
+        {isFullSidebar && (
+          <button
+            type="button"
+            className={`${button.btn} ${button.btnDanger}`}
+            onClick={() => void logout()}
+          >
+            Выход
+          </button>
+        )}
       </div>
 
+      {/* Модалка выбора сотрудника */}
+      <EmployeeSelectModal
+        isOpen={isEmployeeModalOpen}
+        onClose={() => setIsEmployeeModalOpen(false)}
+        onEmployeeSelected={(employee) => {
+          setCurrentEmployee(employee)
+          showTempMessage('success', `Выбран сотрудник: ${employee.fullName}`)
+        }}
+      />
     </aside>
   )
 }

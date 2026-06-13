@@ -1,4 +1,5 @@
 import table from '@/shared/ui/table-base.module.css'
+import surface from '@/shared/ui/surface.module.css';
 
 import type {
   ManagerFinanceOrderDto,
@@ -24,7 +25,7 @@ export function FinanceOrdersTable({
   const navigate = useNavigate()
   return (
     <>
-      <div className={table.dataTable}>
+      <div className={surface.surface}>
         <div
           className={table.dataHeader}
           style={{

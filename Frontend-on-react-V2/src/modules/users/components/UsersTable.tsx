@@ -3,6 +3,7 @@ import { StatusBadge } from "@/shared/ui/status"
 import type { UserDto } from "@/modules/users/types/users.types"
 import { getUserStatusInfo } from "@/modules/users/lib/user-status"
 import styles from "./users-table.module.css"
+import surface from '@/shared/ui/surface.module.css';
 
 interface UsersTableProps {
   users: UserDto[]
@@ -22,7 +23,7 @@ export function UsersTable({
   onOpenUser,
 }: UsersTableProps) {
   return (
-    <div className={table.dataTable}>
+    <div className={surface.surface}>
       <div
         className={table.dataHeader}
         style={{

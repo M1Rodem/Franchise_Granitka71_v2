@@ -8,11 +8,14 @@ import { AuthLayout } from '@/app/layouts/AuthLayout'
 import { RequireAuth, RequireRole } from '@/app/router/guards'
 import { RootLayout } from './root-layout'
 
-// Ленивая загрузка страниц
+import CreateOrderPage from '@/modules/orders/pages/create-order.page'
+import OfflineOrdersPage from '@/modules/offline/pages/offline-orders.page'
+import OfflineOrderDetailsPage from '@/modules/offline/pages/offline-order-details.page'
+
+// Ленивая загрузка для остальных страниц
 const LoginPage = lazy(() => import('@/modules/auth/pages/login.page'))
 const OrdersListPage = lazy(() => import('@/modules/orders/pages/orders-list.page'))
 const OrderDetailsPage = lazy(() => import('@/modules/orders/pages/order-details.page'))
-const CreateOrderPage = lazy(() => import('@/modules/orders/pages/create-order.page'))
 const ArchivedOrdersPage = lazy(() => import('@/modules/orders/pages/archived-orders.page'))
 const NotificationsPage = lazy(() => import('@/modules/notifications/pages/notifications.page'))
 const ProfilePage = lazy(() => import('@/modules/profile/pages/profile.page'))
@@ -110,11 +113,19 @@ const router = createBrowserRouter([
                 path: '/orders/new',
                 element: (
                   <OrderBlockingGuard>
-                    <PageWrapper>
-                      <CreateOrderPage />
-                    </PageWrapper>
+                    <CreateOrderPage />
                   </OrderBlockingGuard>
                 ),
+              },
+              {
+                path: '/offline-orders',
+                element: (
+                  <OfflineOrdersPage />
+                ),
+              },
+              {
+                path: '/offline-orders/:localId',
+                element: <OfflineOrderDetailsPage />,
               },
               {
                 path: '/orders/:id/edit',

@@ -35,5 +35,7 @@ namespace Franchisee.Web.Models.Requests.Orders
 
         public List<int> TempPhotoIds { get; set; } = new();
         public List<int> TempVideoIds { get; set; } = new();
+
+        public int? OwnerUserId { get; set; }
     }
 }

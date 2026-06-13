@@ -8,6 +8,7 @@ import type {
   CreateUserDto,
   UpdateUserDto,
   ChangeRoleDto,
+  OfflineEmployeeDto
 } from "@/modules/users/types/users.types"
 
 export const usersApi = {
@@ -72,5 +73,10 @@ export const usersApi = {
   async unblockUser(id: number): Promise<void> {
 
     await httpClient.post(`/Users/${id}/unblock`)
+  },
+
+  async getEmployeesForOffline(): Promise<OfflineEmployeeDto[]> {
+    const response = await httpClient.get("/Users/employees-for-offline")
+    return response.data
   },
 }

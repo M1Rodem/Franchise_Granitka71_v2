@@ -1,0 +1,122 @@
+.content {
+  display: grid;
+  gap: var(--size-18);
+}
+
+.headerText {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: var(--size-13);
+}
+
+.form {
+  display: grid;
+  gap: var(--size-14);
+}
+
+.field {
+  display: grid;
+  gap: var(--size-8);
+}
+
+.field span {
+  color: var(--text-secondary);
+  font-size: var(--size-13);
+  font-weight: 600;
+}
+
+.field input {
+  min-height: var(--size-44);
+  padding: 0 var(--size-14);
+  border-radius: var(--size-12);
+  border: 1px solid var(--border-primary);
+  background: var(--gradient-field-surface-strong);
+  color: var(--text-primary);
+  transition: all .18s ease;
+}
+
+.field input:focus {
+  outline: none;
+  border-color: var(--tone-rgb-119-175-233-50);
+  box-shadow:
+    0 0 0 1px var(--tone-rgb-119-175-233-50),
+    0 0 0 4px var(--tone-rgb-119-175-233-12);
+}
+
+.employeeList {
+  display: grid;
+  gap: var(--size-10);
+}
+
+.employeeCard {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+
+  padding: var(--size-14) var(--size-16);
+
+  border-radius: var(--size-14);
+
+  border: 1px solid var(--border-primary);
+
+  background: var(--gradient-field-surface-strong);
+
+  cursor: pointer;
+
+  transition:
+    transform .18s ease,
+    border-color .18s ease,
+    background .18s ease;
+}
+
+.employeeCard:hover {
+  transform: translateY(-1px);
+}
+
+.employeeCardSelected {
+  border-color: rgba(234,179,8,.5);
+
+  background:
+    linear-gradient(
+      180deg,
+      rgba(234,179,8,.14),
+      rgba(234,179,8,.08)
+    );
+}
+
+.employeeInfo {
+  display: grid;
+  gap: 4px;
+}
+
+.employeeName {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.employeeCount {
+  color: var(--text-secondary);
+  font-size: var(--size-12);
+}
+
+.employeeCard {
+  width: 100%;
+
+  appearance: none;
+
+  text-align: left;
+
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+
+  padding: var(--size-14) var(--size-16);
+
+  border-radius: var(--size-14);
+
+  border: 1px solid var(--border-primary);
+
+  background: var(--gradient-field-surface-strong);
+
+  cursor: pointer;
+}

@@ -8,6 +8,7 @@ import { PaymentsSection } from '@/modules/orders/components/order-form/sections
 import { MediaSection } from '@/modules/orders/components/order-form/sections/media-section'
 import { AdditionalInfoSection } from '@/modules/orders/components/order-form/sections/additional-info-section'
 import { TotalsSection } from '@/modules/orders/components/order-form/sections/totals-section'
+import { CreateOrderGuard } from '@/modules/offline/components/CreateOrderGuard'
 
 import styles from './create-order.page.module.css'
 
@@ -25,27 +26,30 @@ export default function CreateOrderPage() {
       resetHeader()
     }
   }, [setHeader, resetHeader])
+
   return (
-    <OrderFormProvider>
-      <div className={styles.page}>
-        <div className={styles.grid}>
-          <div className={styles.col}>
-            <ClientSection />
-            <DeceasedSection />
+    <CreateOrderGuard>
+      <OrderFormProvider>
+        <div className={styles.page}>
+          <div className={styles.grid}>
+            <div className={styles.col}>
+              <ClientSection />
+              <DeceasedSection />
+            </div>
+
+            <div className={styles.col}>
+              <LocationSection />
+              <MonumentSection />
+            </div>
           </div>
 
-          <div className={styles.col}>
-            <LocationSection />
-            <MonumentSection />
-          </div>
+          <WorksSection />
+          <TotalsSection />
+          <PaymentsSection />
+          <MediaSection />
+          <AdditionalInfoSection />
         </div>
-
-        <WorksSection />
-        <TotalsSection />
-        <PaymentsSection />
-        <MediaSection />
-        <AdditionalInfoSection />
-      </div>
-    </OrderFormProvider>
+      </OrderFormProvider>
+    </CreateOrderGuard>
   )
 }

@@ -2,6 +2,7 @@ import table from '@/shared/ui/table-base.module.css'
 import button from '@/shared/ui/button.module.css'
 import type { PlotDto } from '@/modules/plots/types/plots.types'
 import styles from './plots-table.module.css'
+import surface from '@/shared/ui/surface.module.css';
 
 interface Props {
   plots: PlotDto[]
@@ -14,7 +15,7 @@ const GRID_TEMPLATE = '1.4fr 1fr 200px'
 
 export function PlotsTable({ plots, onDelete, onShowMap }: Props) {
   return (
-    <div className={table.dataTable}>
+    <div className={surface.surface}>
       <div
         className={table.dataHeader}
         style={{ gridTemplateColumns: GRID_TEMPLATE }}

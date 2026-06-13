@@ -8,6 +8,9 @@ import { authApi } from '@/modules/auth/api/auth.api';
 import { useAuthStore } from '@/shared/store/auth.store';
 import { showTempMessage } from '@/shared/ui/temp-message.service';
 import { useEffect, useState } from 'react';
+import { offlineEmployeesService } from '@/modules/offline/services/offline-employees.service';
+import { useOfflineSessionStore } from '@/modules/offline/store/offline-session.store';
+import { offlinePlotsService } from '@/modules/offline/services/offline-plots.service'
 
 const loginSchema = z.object({
   username: z.string().min(1, 'Введите логин'),
@@ -50,16 +53,45 @@ export function useLoginForm() {
   const loginMutation = useMutation({
     mutationFn: (payload: LoginFormValues) => authApi.login(payload),
 
-    onSuccess: ({ token, refreshToken: _refreshToken, ...user }) => {
+    onSuccess: async ({ token, refreshToken: _refreshToken, ...user }) => {
       setSession({ user, token })
       setLockRemainingMs(0);
+      
+      showTempMessage('info', 'Загрузка данных для оффлайн режима...');
+
+      // Синхронизация сотрудников (ждем)
+      try {
+        const employeesResult = await offlineEmployeesService.syncEmployees();
+        console.log('[Sync] Employees:', employeesResult);
+      } catch (error) {
+        console.error('Failed to sync employees:', error);
+        showTempMessage('warning', 'Не удалось загрузить список сотрудников');
+      }
+
+      // Синхронизация участков (ждем)
+      try {
+        const plotsResult = await offlinePlotsService.syncPlots();
+        console.log('[Sync] Plots:', plotsResult);
+      } catch (error) {
+        console.error('Failed to sync plots:', error);
+        showTempMessage('warning', 'Не удалось загрузить список участков');
+      }
+
+      // Сохраняем текущего пользователя как выбранного сотрудника для оффлайн режима
+      const setOfflineEmployee = useOfflineSessionStore.getState().setCurrentEmployee;
+      setOfflineEmployee({
+        id: user.id,
+        username: user.username,
+        fullName: user.fullName,
+        lastSyncedAt: new Date().toISOString(),
+      });
+
       showTempMessage('success', 'Вход выполнен успешно');
       navigate('/orders', { replace: true });
     },
 
     onError: (error) => {
       if (isAxiosError(error)) {
-        // 429 от сервера
         if (error.response?.status === 429) {
           const retryAfter =
             (error.response.data as any)?.retryAfterSeconds ?? 0;

@@ -16,6 +16,32 @@ if (import.meta.env.DEV) {
   window.showTempMessage = showTempMessage;
 }
 
+if ('serviceWorker' in navigator && import.meta.env.PROD) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js').then(registration => {
+      console.log('SW registered:', registration)
+
+      registration.addEventListener('updatefound', () => {
+        const newWorker = registration.installing
+        if (newWorker) {
+          newWorker.addEventListener('statechange', () => {
+            if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+              window.dispatchEvent(new CustomEvent('sw-update', { detail: { version: 'new' } }))
+              showTempMessage(
+                'info',
+                'Доступна новая версия приложения. Обновите страницу.',
+                10000
+              )
+            }
+          })
+        }
+      })
+    }).catch(err => {
+      console.error('SW registration failed:', err)
+    })
+  })
+}
+
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <AppProviders>

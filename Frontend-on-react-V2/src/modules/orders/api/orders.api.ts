@@ -42,22 +42,17 @@ export interface CreateOrderRequestDto {
 
   workItems: {
     id?: number;
-
     workDescription: string;
     price: number;
-
     quantity?: number;
-
     routes?: number;
     distanceKm?: number;
-
     isDistanceWork?: boolean;
-
     note?: string;
   }[];
 
   payments: {
-    id?: number
+    id?: number;
     amount: number;
     paymentDate: string;
     paymentType: string;
@@ -66,6 +61,8 @@ export interface CreateOrderRequestDto {
 
   tempPhotoIds: number[];
   tempVideoIds: number[];
+  
+  ownerUserId?: number;
 }
 
 export interface UpdateOrderRequestDto {

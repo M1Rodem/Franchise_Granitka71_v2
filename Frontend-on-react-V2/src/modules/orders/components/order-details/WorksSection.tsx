@@ -49,11 +49,12 @@ export function WorksSection({ items }: Props) {
 
   return (
     <section className={surface.surface}>
-      <h2 className={surface.sectionTitle}>Работы по заказу</h2>
+      <h2 className={surface.sectionTitle}>
+        Работы по заказу
+      </h2>
 
       {distance && (
         <div className={table.dataTable}>
-
           <div
             className={table.dataHeader}
             style={{ gridTemplateColumns: DISTANCE_GRID }}
@@ -71,30 +72,33 @@ export function WorksSection({ items }: Props) {
             className={table.dataRow}
             style={{ gridTemplateColumns: DISTANCE_GRID }}
           >
-            <span className={table.descriptionCell}>
+            <span
+              data-label="Описание"
+              className={table.descriptionCell}
+            >
               {distance.workDescription}
             </span>
 
-            <span>
+            <span data-label="Цена">
               {formatMoney(distance.price)}
             </span>
 
-            <span>
+            <span data-label="КМ">
               {round(distance.distanceKm ?? 0)}
             </span>
 
-            <span>
+            <span data-label="Рейсы">
               {distance.routes ?? 1}
             </span>
 
-            <span>
+            <span data-label="Кол-во">
               {round(
                 (distance.routes ?? 1) *
                 (distance.distanceKm ?? 0)
               )}
             </span>
 
-            <span>
+            <span data-label="Итого">
               {formatMoney(
                 round(
                   (distance.price || 0) *
@@ -104,7 +108,10 @@ export function WorksSection({ items }: Props) {
               )}
             </span>
 
-            <span className={table.noteCell}>
+            <span
+              data-label="Примечание"
+              className={table.noteCell}
+            >
               {distance.note || '—'}
             </span>
           </div>
@@ -113,7 +120,6 @@ export function WorksSection({ items }: Props) {
 
       {normalItems.length > 0 && (
         <div className={table.dataTable}>
-
           <div
             className={table.dataHeader}
             style={{ gridTemplateColumns: GRID }}
@@ -127,7 +133,10 @@ export function WorksSection({ items }: Props) {
 
           {normalItems.map((item) => {
             const total =
-              round((item.price || 0) * (item.quantity || 0))
+              round(
+                (item.price || 0) *
+                (item.quantity || 0)
+              )
 
             return (
               <div
@@ -135,23 +144,29 @@ export function WorksSection({ items }: Props) {
                 className={table.dataRow}
                 style={{ gridTemplateColumns: GRID }}
               >
-                <span className={table.descriptionCell}>
+                <span
+                  data-label="Описание"
+                  className={table.descriptionCell}
+                >
                   {item.workDescription}
                 </span>
 
-                <span>
+                <span data-label="Цена">
                   {formatMoney(item.price)}
                 </span>
 
-                <span>
+                <span data-label="Кол-во">
                   {item.quantity ?? 0}
                 </span>
 
-                <span>
+                <span data-label="Итого">
                   {formatMoney(total)}
                 </span>
 
-                <span className={table.noteCell}>
+                <span
+                  data-label="Примечание"
+                  className={table.noteCell}
+                >
                   {item.note || '—'}
                 </span>
               </div>

@@ -22,6 +22,15 @@ import { useUnsavedChangesGuard } from '@/shared/hooks/useUnsavedChangesGuard'
 import { useFormState } from "react-hook-form"
 import type { OrderDetailsDto } from '@/modules/orders/types/orders.types'
 import { useAuthStore } from '@/shared/store/auth.store'
+import { connectivityService } from '@/modules/offline/services/connectivity.service'
+import {
+  clearOfflineDraftLocalId,
+  createOfflineOrderDraft,
+  getOrCreateOfflineDraftLocalId,
+  mapFormToOfflineCreatePayload,
+} from '@/modules/offline/services/offline-order.service'
+import { offlineRepository } from '@/modules/offline/repositories/offline.repository'
+import { useOfflineSessionStore } from '@/modules/offline/store/offline-session.store'
 
 interface OrderFormProviderProps {
   children: ReactNode
@@ -34,6 +43,7 @@ interface OrderFormProviderProps {
 interface OrderFormContextValue {
   mode: 'create' | 'edit'
   orderId?: number
+  draftLocalId?: string
 }
 
 const OrderFormContext = createContext<OrderFormContextValue | null>(null)
@@ -60,9 +70,13 @@ export function OrderFormProvider({
   const [isSaving, setIsSaving] = useState(false)
   const [allowNavigation, setAllowNavigation] = useState(false)
   const defaultValuesRef = useRef<OrderFormModel | null>(null)
+  const draftLocalIdRef = useRef<string | undefined>(
+    mode === 'create' ? getOrCreateOfflineDraftLocalId() : undefined
+  )
   const currentUser = useAuthStore((s) => s.user)
   const [isCommentOpen, setIsCommentOpen] = useState(false)
   const [pendingValues, setPendingValues] = useState<OrderFormModel | null>(null)
+  const offlineEmployee = useOfflineSessionStore((s) => s.currentEmployee)
 
   if (!defaultValuesRef.current) {
     defaultValuesRef.current =
@@ -180,8 +194,10 @@ export function OrderFormProvider({
         order?.OrderId
 
       if (id) {
+        clearOfflineDraftLocalId()
         navigate(`/orders/${id}`)
       } else {
+        clearOfflineDraftLocalId()
         navigate('/orders')
       }
     },
@@ -265,8 +281,35 @@ export function OrderFormProvider({
 
       try {
         if (mode === 'create') {
+          // Проверяем оффлайн режим
+          if (connectivityService.isOffline()) {
+            const localId = draftLocalIdRef.current ?? crypto.randomUUID()
+
+            if (!offlineEmployee) {
+              showTempMessage('error', 'Не выбран сотрудник для оффлайн-создания')
+              return
+            }
+
+            const offlineOrder = createOfflineOrderDraft({
+              localId,
+              payload: mapFormToOfflineCreatePayload(values),
+              ownerUserId: offlineEmployee.id,
+              ownerUsername: offlineEmployee.username,
+              ownerFullName: offlineEmployee.fullName,
+            })
+
+            await offlineRepository.createOfflineOrder(offlineOrder)
+            setAllowNavigation(true)
+            showTempMessage('success', 'Заказ сохранен локально')
+            clearOfflineDraftLocalId()
+            navigate('/offline-orders')
+            return
+          }
+
+          // Онлайн режим
           const payload = mapFormToCreateDto(values)
           await createMutation.mutateAsync(payload)
+          return
         }
 
         if (mode === 'edit' && orderId) {
@@ -278,10 +321,7 @@ export function OrderFormProvider({
           if (!currentUser) return
 
           const isOwnOrder = currentUser.id === managerId
-
-          const isAdmin =
-            currentUser.role === 'Admin' ||
-            currentUser.role === 'SuperAdmin'
+          const isAdmin = currentUser.role === 'Admin' || currentUser.role === 'SuperAdmin'
 
           if (isOwnOrder || isAdmin) {
             const payload = mapFormToUpdateDto(
@@ -294,11 +334,10 @@ export function OrderFormProvider({
               id: orderId,
               payload,
             })
-
             return
           }
 
-          // ❗ только для чужих заказов
+          // Только для чужих заказов
           setPendingValues(values)
           setIsCommentOpen(true)
           return
@@ -323,7 +362,8 @@ export function OrderFormProvider({
     <OrderFormContext.Provider
       value={{
         mode,
-        orderId
+        orderId,
+        draftLocalId: draftLocalIdRef.current
       }}
     >
       <FormProvider {...methods}>

@@ -47,8 +47,7 @@ export function PlotsFilterBar({
         <div className={toolbar.row}>
           <div className={toolbar.titleBlock}>
             <p className={toolbar.description}>
-              Поиск и быстрый доступ к участкам, адресам и действиям в таком же
-              аккуратном контуре, как на странице пользователей.
+              Поиск и быстрый доступ к участкам, адресам и действиям.
             </p>
           </div>
 

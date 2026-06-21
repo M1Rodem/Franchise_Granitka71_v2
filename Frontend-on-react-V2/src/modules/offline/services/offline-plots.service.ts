@@ -1,5 +1,6 @@
 import { plotsApi } from '@/modules/plots/api/plots.api'
 import { offlinePlotsStore } from '@/modules/offline/storage/offline-plots.store'
+import { tilePrecacheService } from '@/modules/pwa/services/tilePrecache.service'
 import type { CachedPlot, SyncPlotsResult } from '@/modules/offline/types/offline-plots.types'
 import type { PlotDto } from '@/modules/plots/types/plots.types'
 
@@ -46,7 +47,43 @@ export const offlinePlotsService = {
         }
       }
 
+      // Сохраняем участки в IndexedDB
       await offlinePlotsStore.savePlots(cachedPlots)
+      
+      // ===== НОВОЕ: Запускаем кеширование тайлов для участков =====
+      // Запускаем асинхронно, не блокируя основной поток
+      // Используем активные участки для кеширования
+      const activePlots = cachedPlots.filter(p => p.isActive !== false)
+      
+      if (activePlots.length > 0) {
+        // Проверяем, не закешировано ли уже
+        if (!tilePrecacheService.isPrecached()) {
+          console.log(`[SyncPlots] Запуск кеширования тайлов для ${activePlots.length} участков`)
+          
+          // Запускаем без await, чтобы не блокировать синхронизацию
+          tilePrecacheService.precachePlots(
+            activePlots,
+            (loaded, total) => {
+              // Обновляем прогресс в localStorage для компонента
+              localStorage.setItem('tile_precache_loaded', String(loaded))
+              localStorage.setItem('tile_precache_total', String(total))
+              localStorage.setItem('tile_precache_active', 'true')
+            },
+            () => {
+              localStorage.setItem('tile_precache_active', 'false')
+              localStorage.setItem('tile_precache_complete', 'true')
+            },
+            (error) => {
+              console.error('[TilePrecache] Ошибка:', error)
+              localStorage.setItem('tile_precache_active', 'false')
+            }
+          )
+        } else {
+          console.log('[SyncPlots] Тайлы уже закешированы, пропускаем')
+        }
+      } else {
+        console.log('[SyncPlots] Нет активных участков для кеширования')
+      }
       
       return {
         added,

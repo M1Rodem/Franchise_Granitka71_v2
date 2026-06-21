@@ -4,6 +4,8 @@ import { useFormContext, Controller } from 'react-hook-form'
 import { usePlots } from '@/modules/plots/hooks/use-plots'
 import { AnimatedSelect } from '@/shared/ui/AnimatedSelect'
 import type { OrderFormModel } from '../order-form.schema'
+import { useYandexLoader } from '@/shared/lib/yandex-map/hooks/useYandexLoader'
+import { AppIcon } from '@/shared/ui/AppIcon'
 
 import { useEffect, useRef, useState, useCallback } from 'react'
 import {
@@ -36,6 +38,8 @@ export function LocationSection() {
 
   const [destination, setDestination] =
     useState<[number, number] | null>(null)
+
+  const { shouldShowBanner } = useYandexLoader()
 
   // очистка при смене участка
   useEffect(() => {
@@ -151,6 +155,23 @@ export function LocationSection() {
         Местоположение
       </h2>
 
+      {shouldShowBanner && (
+        <div className={styles.limitedBanner}>
+          <AppIcon name="warning" className={styles.limitedBannerIcon} />
+          <div className={styles.limitedBannerContent}>
+            <div className={styles.limitedBannerTitle}>
+              Карта работает в ограниченном режиме
+            </div>
+            <div className={styles.limitedBannerText}>
+              Нет доступа к интернету. Координаты будут сохранены.
+            </div>
+            <div className={styles.limitedBannerText}>
+              После синхронизации проверьте маршрут и расстояние.
+            </div>
+          </div>
+        </div>
+      )}
+      
       <div className={layout.grid2}>
         <div className={layout.field}>
           <label className={layout.label}>

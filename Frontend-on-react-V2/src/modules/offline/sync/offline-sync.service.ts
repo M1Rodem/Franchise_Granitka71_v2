@@ -6,6 +6,7 @@ import axios from 'axios'
 import { env } from '@/shared/config/env'
 import { calculateDistanceViaYmaps } from '@/shared/lib/yandex-map/utils/calculateDistance'
 import { connectivityService } from '../services/connectivity.service'
+import { tempMessage } from '@/shared/ui/temp-message.service'
 
 function createAuthenticatedClient(token: string) {
   return axios.create({
@@ -148,9 +149,25 @@ export const offlineSyncService = {
       total: userOrders.length,
     }
 
+    const syncedOrders: Array<{ 
+      displayId: string; 
+      localId: string;
+      hasZeroDistance: boolean;
+    }> = []
+
     let processed = 0
 
     for (const order of userOrders) {
+      const hasZeroDistance = order.payload.workItems.some(
+        w => w.isDistanceWork === true && w.distanceKm === 0
+      )
+      
+      syncedOrders.push({
+        displayId: order.displayId || order.localId,
+        localId: order.localId,
+        hasZeroDistance
+      })
+
       try {
         await this.syncOrder(order.localId, authToken)
         results.success++
@@ -162,6 +179,38 @@ export const offlineSyncService = {
         if (onProgress) {
           onProgress(processed, userOrders.length)
         }
+      }
+    }
+
+    if (syncedOrders.length > 0) {
+      const orderNumbers = syncedOrders
+        .map(o => `№${o.displayId}`)
+        .join(', ')
+      
+      const hasAnyZeroDistance = syncedOrders.some(o => o.hasZeroDistance)
+      
+      if (hasAnyZeroDistance) {
+        tempMessage.warning(
+          `Заказы ${orderNumbers} синхронизированы. Проверьте маршрут и расстояние.`,
+          {
+            durationMs: 8000,
+            position: 'topRight',
+            showProgress: true,
+            closable: true,
+          }
+        )
+        console.log(`[Sync] Заказы с нулевым расстоянием:`, 
+          syncedOrders.filter(o => o.hasZeroDistance).map(o => o.displayId).join(', '))
+      } else {
+        tempMessage.success(
+          `Заказы ${orderNumbers} успешно синхронизированы.`,
+          {
+            durationMs: 5000,
+            position: 'topRight',
+            showProgress: true,
+            closable: true,
+          }
+        )
       }
     }
 

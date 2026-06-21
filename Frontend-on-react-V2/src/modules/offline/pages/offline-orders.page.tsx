@@ -15,7 +15,7 @@ import { showTempMessage } from '@/shared/ui/temp-message.service'
 import surface from '@/shared/ui/surface.module.css'
 import table from '@/shared/ui/table-base.module.css'
 import buttons from '@/shared/ui/button.module.css'
-
+import toolbar from '@/shared/ui/page-toolbar.module.css'
 import styles from './offline-orders-page.module.css'
 
 const GRID_TEMPLATE = '220px 220px 90px 90px 220px 1fr'
@@ -135,6 +135,10 @@ export default function OfflineOrdersPage() {
   return (
     <>
       <div className={surface.surface} style={{ marginBottom: '24px' }}>
+        <p className={toolbar.description}>
+                Управляйте сотрудниками и системными сущностями из единой
+                административной панели.
+        </p>
         <div className={styles.header} style={{ flexDirection: 'row-reverse' }}>
           <button
             type="button"

@@ -1,6 +1,6 @@
 type ConnectivityListener = (isOnline: boolean) => void
 
-const PROBE_INTERVAL_MS = 60000
+const PROBE_INTERVAL_MS = 10000
 const PROBE_TIMEOUT_MS = 5000
 const CONSECUTIVE_ERRORS_THRESHOLD = 3
 
@@ -11,7 +11,7 @@ class ConnectivityService {
   private intervalId: ReturnType<typeof setInterval> | null = null
   private isProbing = false
   private consecutiveErrors = 0
-  private lastKnownState: boolean = false  // ← ИСПРАВЛЕНО
+  private lastKnownState: boolean = false 
 
   isOnline() {
     return this.browserOnline && this.backendAvailable

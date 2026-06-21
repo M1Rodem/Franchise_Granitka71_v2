@@ -64,8 +64,7 @@ export function UsersFilterBar({
         <div className={toolbar.row}>
           <div className={toolbar.titleBlock}>
             <p className={toolbar.description}>
-              Поиск, фильтрация и быстрый доступ к карточкам сотрудников в одном
-              аккуратном контуре.
+              Поиск, фильтрация и быстрый доступ к карточкам сотрудников.
             </p>
           </div>
 

@@ -18,7 +18,6 @@ export default function AdminPage() {
         <div className={toolbar.shell}>
           <div className={toolbar.row}>
             <div className={toolbar.titleBlock}>
-              <span className={toolbar.eyebrow}>Administration</span>
               <h1 className={toolbar.heading}>Центр управления CRM</h1>
               <p className={toolbar.description}>
                 Управляйте сотрудниками и системными сущностями из единой

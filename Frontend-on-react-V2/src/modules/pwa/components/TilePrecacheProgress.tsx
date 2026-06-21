@@ -1,7 +1,5 @@
 import { useState, useEffect } from 'react'
-
 import { tilePrecacheService } from '../services/tilePrecache.service'
-
 import styles from './tile-precache-progress.module.css'
 
 export function TilePrecacheProgress() {
@@ -10,43 +8,115 @@ export function TilePrecacheProgress() {
     total: 0,
     isActive: false,
   })
-
   const [show, setShow] = useState(false)
+  const [isComplete, setIsComplete] = useState(false)
 
   useEffect(() => {
+    // Если уже закешировано — ничего не показываем
     if (tilePrecacheService.isPrecached()) {
+      setIsComplete(true)
       return
     }
 
-    const timer = setTimeout(() => {
+    // Проверяем, запущен ли процесс кеширования
+    const currentProgress = tilePrecacheService.getProgress()
+    
+    if (currentProgress.isActive) {
       setShow(true)
+      setProgress(currentProgress)
+    } else {
+      // Иначе ждем 5 секунд и запускаем
+      const timer = setTimeout(() => {
+        setShow(true)
 
-      tilePrecacheService.startPrecache(
-        (loaded, total) => {
-          setProgress({
-            loaded,
-            total,
-            isActive: true,
-          })
-        },
-        () => {
-          setProgress({
-            loaded: 0,
-            total: 0,
-            isActive: false,
-          })
+        tilePrecacheService.precachePlots(
+          undefined,
+          (loaded, total) => {
+            setProgress({
+              loaded,
+              total,
+              isActive: true,
+            })
+          },
+          () => {
+            // Кеширование завершено
+            setProgress({
+              loaded: 0,
+              total: 0,
+              isActive: false,
+            })
+            setIsComplete(true)
 
+            // Скрываем через 3 секунды
+            setTimeout(() => {
+              setShow(false)
+            }, 3000)
+          },
+          (error) => {
+            console.error('[TilePrecacheProgress] Ошибка:', error)
+            setProgress({
+              loaded: 0,
+              total: 0,
+              isActive: false,
+            })
+            
+            setTimeout(() => {
+              setShow(false)
+            }, 5000)
+          }
+        )
+      }, 5000)
+
+      return () => clearTimeout(timer)
+    }
+  }, [])
+
+  // ===== ВТОРОЙ ЭФФЕКТ: опрос прогресса и проверка завершения =====
+  useEffect(() => {
+    const interval = setInterval(() => {
+      // Проверяем, не завершилось ли кеширование
+      if (tilePrecacheService.isPrecached()) {
+        setIsComplete(true)
+        setTimeout(() => {
+          setShow(false)
+        }, 3000)
+        return
+      }
+
+      const currentProgress = tilePrecacheService.getProgress()
+      setProgress(currentProgress)
+      
+      if (currentProgress.isActive) {
+        setShow(true)
+      }
+      
+      // Если total > 0 и loaded === total, но isActive еще true
+      // Значит кеширование завершилось, но onComplete еще не вызван
+      if (
+        currentProgress.total > 0 &&
+        currentProgress.loaded === currentProgress.total &&
+        !currentProgress.isActive
+      ) {
+        // Проверяем, действительно ли завершено
+        if (tilePrecacheService.isPrecached()) {
+          setIsComplete(true)
           setTimeout(() => {
             setShow(false)
           }, 3000)
         }
-      )
-    }, 5000)
-
-    return () => clearTimeout(timer)
+      }
+    }, 500)
+    
+    return () => clearInterval(interval)
   }, [])
 
-  if (!show) {
+  // Не показываем если завершено
+  if (!show || isComplete) {
+    return null
+  }
+
+  // Если нет прогресса и не активно — не показываем
+  if (!progress.isActive && progress.total === 0) {
     return null
   }
 

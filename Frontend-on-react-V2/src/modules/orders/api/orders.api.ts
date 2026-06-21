@@ -7,6 +7,10 @@ import {
   type OrderDetailsDto,
 } from '@/modules/orders/types/orders.types';
 import { normalizeOrdersListParams } from '@/modules/orders/lib/orders-filters';
+import type {
+  SubmitForReviewRequest,
+  SubmitForReviewResponse,
+} from '@/modules/orders/types/orders.types'
 
 export interface OrderUpdateRequestResponse {
   success: boolean;
@@ -38,22 +42,17 @@ export interface CreateOrderRequestDto {
 
   workItems: {
     id?: number;
-
     workDescription: string;
     price: number;
-
     quantity?: number;
-
     routes?: number;
     distanceKm?: number;
-
     isDistanceWork?: boolean;
-
     note?: string;
   }[];
 
   payments: {
-    id?: number
+    id?: number;
     amount: number;
     paymentDate: string;
     paymentType: string;
@@ -62,6 +61,8 @@ export interface CreateOrderRequestDto {
 
   tempPhotoIds: number[];
   tempVideoIds: number[];
+  
+  ownerUserId?: number;
 }
 
 export interface UpdateOrderRequestDto {
@@ -136,6 +137,18 @@ export const ordersApi = {
     return ordersPagedResultSchema.parse(response.data);
   },
 
+  async submitForReview(
+    id: number,
+    payload: SubmitForReviewRequest
+  ): Promise<SubmitForReviewResponse> {
+    const response = await httpClient.post(
+      `/orders/${id}/submit-for-review`,
+      payload
+    )
+
+    return response.data
+  },
+
   async printOrderHtml(id: number, type: 'default' | 'worker' = 'default'): Promise<Blob> {
     const response = await httpClient.get(`/Print/order/${id}/html-print`, {
       params: { type },
@@ -152,6 +165,15 @@ export const ordersApi = {
     })
 
     return response.data
+  },
+
+  async printOrderWithPhotos(id: number, type: 'default' | 'worker', photoIds: number[]): Promise<Blob> {
+    const photoIdsParam = photoIds.join(',');
+    const response = await httpClient.get(`/Print/order/${id}/download`, {
+      params: { type, photoIds: photoIdsParam },
+      responseType: 'blob',
+    });
+    return response.data;
   },
 
   async getById(id: number): Promise<OrderDetailsDto> {

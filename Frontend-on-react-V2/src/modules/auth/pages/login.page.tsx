@@ -2,8 +2,28 @@ import { motion } from 'framer-motion';
 import { useLoginForm } from '@/modules/auth/hooks/use-login-form';
 import styles from '@/modules/auth/pages/login.page.module.css';
 import surface from '@/shared/ui/surface.module.css'
+import { useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useConnectivity } from '@/modules/offline/hooks/use-connectivity';
+import { offlineEmployeesService } from '@/modules/offline/services/offline-employees.service';
 
 export default function LoginPage() {
+  const navigate = useNavigate();
+  const { isOnline } = useConnectivity();
+
+  useEffect(() => {
+    const checkOffline = async () => {
+      // Если нет интернета и есть кеш сотрудников → редирект на оффлайн-логин
+      if (!isOnline) {
+        const hasEmployees = await offlineEmployeesService.hasEmployees();
+        if (hasEmployees) {
+          navigate('/offline-login', { replace: true });
+        }
+      }
+    };
+    checkOffline();
+  }, [isOnline, navigate]);
+  
   const { form, onSubmit, isSubmitting, lockRemainingMs } = useLoginForm();
   const {
     register,

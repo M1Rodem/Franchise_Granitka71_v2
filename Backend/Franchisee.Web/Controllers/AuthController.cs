@@ -386,6 +386,16 @@ namespace Franchisee.Web.Controllers
             var token = tokenHandler.CreateToken(tokenDescriptor);
             var tokenString = tokenHandler.WriteToken(token);
 
+            if (!user.RefreshTokenExpiryTime.HasValue)
+            {
+                _logger.LogWarning(
+                    "Token refresh failed: RefreshTokenExpiryTime is null for UserId: {UserId}, IP: {IP}",
+                    user.Id,
+                    clientIp
+                );
+                return Unauthorized();
+            }
+
             Response.Cookies.Append(
                 "refreshToken",
                 newRefreshToken,

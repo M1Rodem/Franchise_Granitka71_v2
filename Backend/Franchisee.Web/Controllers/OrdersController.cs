@@ -1,20 +1,22 @@
 ﻿using DocumentFormat.OpenXml.Wordprocessing;
 using Franchisee.Web.Configuration;
+using Franchisee.Web.Models.DTOs.Orders;
+using Franchisee.Web.Models.Entities.Orders;
+using Franchisee.Web.Models.Requests.Orders;
+using Franchisee.Web.Services.Media.Core;
+using Franchisee.Web.Services.Notifications.Builders;
+using Franchisee.Web.Services.Notifications.Core;
+using Franchisee.Web.Services.Notifications.Dispatch;
+using Franchisee.Web.Services.Orders.Repositories;
+using Franchisee.Web.Services.Plots.Repositories;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
 using System.Text.Json;
 using System.Text.RegularExpressions;
-using Microsoft.AspNetCore.Hosting;
-using Franchisee.Web.Models.Entities.Orders;
-using Franchisee.Web.Models.DTOs.Orders;
-using Franchisee.Web.Models.Requests.Orders;
-using Franchisee.Web.Services.Notifications.Core;
-using Franchisee.Web.Services.Orders.Repositories;
-using Franchisee.Web.Services.Media.Core;
-using Franchisee.Web.Services.Plots.Repositories;
-using Franchisee.Web.Services.Notifications.Builders;
 
 namespace Franchisee.Web.Controllers
 {
@@ -25,11 +27,12 @@ namespace Franchisee.Web.Controllers
     {
         private readonly ApplicationDbContext _context;
         private readonly IOrderRepository _orderRepository;
-        private readonly IMediaService _mediaService; // Изменено с IPhotoService
+        private readonly IMediaService _mediaService; 
         private readonly INotificationService _notificationService;
         private readonly ILogger<OrdersController> _logger;
-        private readonly IPlotRepository _plotRepository; // Новая зависимость
+        private readonly IPlotRepository _plotRepository;
         private readonly IWebHostEnvironment _env;
+        private readonly IHubContext<NotificationHub, INotificationClient> _hubContext;
 
         public OrdersController(
             ApplicationDbContext context,
@@ -38,7 +41,8 @@ namespace Franchisee.Web.Controllers
             INotificationService notificationService,
             ILogger<OrdersController> logger,
             IPlotRepository plotRepository,
-            IWebHostEnvironment env) // ← Добавь этот параметр
+            IWebHostEnvironment env,
+            IHubContext<NotificationHub, INotificationClient> hubContext)
         {
             _context = context;
             _orderRepository = orderRepository;
@@ -46,7 +50,8 @@ namespace Franchisee.Web.Controllers
             _notificationService = notificationService;
             _logger = logger;
             _plotRepository = plotRepository;
-            _env = env; // ← Добавь эту строку
+            _env = env;
+            _hubContext = hubContext;
         }
 
         [HttpGet]
@@ -137,6 +142,32 @@ namespace Franchisee.Web.Controllers
             var userId = GetCurrentUserId();
             _logger.LogInformation("Создание заказа для пользователя {UserId}", userId);
 
+            if (request.OwnerUserId.HasValue && request.OwnerUserId.Value <= 0)
+            {
+                return BadRequest(new { message = "OwnerUserId должен быть положительным числом" });
+            }
+
+            if (request.OwnerUserId.HasValue && request.OwnerUserId.Value != userId && !IsAdminOrHigher())
+            {
+                _logger.LogWarning("Пользователь {UserId} пытается создать заказ от имени {OwnerUserId} без прав администратора", 
+                    userId, request.OwnerUserId.Value);
+                return StatusCode(403, new { message = "Недостаточно прав для создания заказа от имени другого пользователя" });
+            }
+
+            if (!string.IsNullOrEmpty(request.ClientGeneratedId))
+            {
+                var existingOrder = await _context.Orders
+                    .FirstOrDefaultAsync(o => o.ClientGeneratedId == request.ClientGeneratedId);
+                
+                if (existingOrder != null)
+                {
+                    _logger.LogInformation("Заказ с ClientGeneratedId {ClientGeneratedId} уже существует, возвращаем существующий", request.ClientGeneratedId);
+                    
+                    var existingDto = MapToResponseDto(existingOrder);
+                    return Ok(existingDto);
+                }
+            }
+
             using var transaction = await _context.Database.BeginTransactionAsync();
 
             try
@@ -151,6 +182,7 @@ namespace Franchisee.Web.Controllers
                 var order = new Order
                 {
                     OrderNumber = orderNumber,
+                    ClientGeneratedId = request.ClientGeneratedId,
                     Place = request.Place,
                     DiscountPercent = request.DiscountPercent,
                     InspectionPlace = request.InspectionPlace ?? string.Empty,
@@ -169,8 +201,8 @@ namespace Franchisee.Web.Controllers
                     MonumentType = request.MonumentType,
                     MonumentSize = request.MonumentSize,
                     AdditionalInfo = request.AdditionalInfo ?? string.Empty,
-                    Status = OrderStatus.Новый,
-                    ManagerId = userId,
+                    Status = OrderStatus.ВРаботе,
+                    ManagerId = request.OwnerUserId ?? userId,
                     CreatedAt = DateTime.UtcNow,
                     UpdatedAt = DateTime.UtcNow,
                     WorkItems = request.WorkItems?.Select(w => new OrderWorkItem
@@ -747,6 +779,177 @@ namespace Franchisee.Web.Controllers
             }
         }
 
+        // Отправка на проверку (Менеджер → SuperAdmin)
+        // POST: api/orders/{id}/submit-for-review
+        [HttpPost("{id}/submit-for-review")]
+        [Authorize]
+        public async Task<ActionResult<SubmitForReviewResponse>> SubmitForReview(
+            int id,
+            [FromBody] SubmitForReviewRequest request)
+        {
+            var userId = GetCurrentUserId();
+            var isSuperAdmin = IsSuperAdmin();
+            _logger.LogInformation("SubmitForReview: OrderId={OrderId}, UserId={UserId}, IsSuperAdmin={IsSuperAdmin}", id, userId, isSuperAdmin);
+
+            // 1. Получаем заказ
+            var order = await _context.Orders
+                .Include(o => o.Photos)
+                .FirstOrDefaultAsync(o => o.Id == id);
+
+            if (order == null)
+                return NotFound(new { message = $"Заказ {id} не найден" });
+
+            // 2. Проверка прав (только свои заказы для менеджеров)
+            if (!IsAdminOrHigher() && order.ManagerId != userId)
+            {
+                _logger.LogWarning("Пользователь {UserId} попытался отправить чужой заказ {OrderId}", userId, id);
+                return StatusCode(403, new { message = "Только владелец заказа или администратор может отправить заказ на проверку" });
+            }
+            
+            // 3. Проверка статуса
+            if (order.Status != OrderStatus.ВРаботе && order.Status != OrderStatus.НаДоработке)
+                return BadRequest(new { message = $"Невозможно отправить на проверку заказ в статусе {order.Status}" });
+
+            // 4. Проверка медиа (макс 3 фото + 1 видео)
+            var tempUploads = await _context.TempUploads
+                .Where(t => request.TempMediaIds.Contains(t.Id) && t.UploaderId == userId)
+                .ToListAsync();
+
+            var photoCount = tempUploads.Count(t => t.MediaType == MediaType.Photo);
+            var videoCount = tempUploads.Count(t => t.MediaType == MediaType.Video);
+
+            if (photoCount > 3)
+                return BadRequest(new { message = "Максимум 3 фото для отправки на проверку" });
+
+            if (videoCount > 1)
+                return BadRequest(new { message = "Максимум 1 видео для отправки на проверку" });
+
+            if (photoCount == 0 && videoCount == 0)
+                return BadRequest(new { message = "Необходимо прикрепить хотя бы одно фото или видео" });
+
+            try
+            {
+                // ========== 1. ПОЛУЧАЕМ ФИО ОТПРАВИТЕЛЯ ==========
+                var senderName = (await _context.Managers.FindAsync(userId))?.FullName ?? "Неизвестно";
+                
+                // ========== 2. ПЕРЕМЕЩАЕМ МЕДИА ==========
+                var committedCount = await _mediaService.CommitTempToCompletionAsync(
+                    order.Id, request.TempMediaIds, userId);
+                
+                if (committedCount == 0)
+                    return BadRequest(new { message = "Не удалось переместить медиафайлы" });
+
+                // ========== 3. ОБНОВЛЯЕМ ЗАКАЗ ==========
+                order.CompletionNote = request.Note;
+                order.SubmittedForReviewAt = DateTime.UtcNow;
+                order.SubmittedBy = senderName;  // ← СОХРАНЯЕМ ОТПРАВИТЕЛЯ
+                order.UpdatedAt = DateTime.UtcNow;
+
+                // ========== 4. ЕСЛИ SUPERADMIN — СРАЗУ ВЫПОЛНЯЕМ ==========
+                if (isSuperAdmin)
+                {
+                    order.Status = OrderStatus.Выполнено;
+                    order.ReviewedAt = DateTime.UtcNow;
+                    order.ReviewedBy = userId;
+                    order.CompletedAt = DateTime.UtcNow;
+                    
+                    await _orderRepository.UpdateAsync(order);
+                    
+                    _logger.LogInformation("SubmitForReview: OrderId={OrderId} completed by SuperAdmin={UserId}", order.Id, userId);
+                    
+                    return Ok(new SubmitForReviewResponse
+                    {
+                        Success = true,
+                        Message = "Заказ выполнен",
+                        NewStatus = order.Status
+                    });
+                }
+                
+                // ========== 5. ЕСЛИ НЕ SUPERADMIN — ОБЫЧНЫЙ ФЛОУ ==========
+                order.Status = OrderStatus.ОжидаетПодтверждения;
+                await _orderRepository.UpdateAsync(order);
+                
+                // 6. СОЗДАЁМ УВЕДОМЛЕНИЕ ДЛЯ SUPERADMIN
+                var notificationId = await _notificationService.CreateCompletionRequestAsync(
+                    order.Id, userId, request.Note, request.TempMediaIds);
+                
+                // 7. ФОРМИРУЕМ ДАННЫЕ ДЛЯ SIGNALR
+                var notification = await _context.Notifications
+                    .FirstOrDefaultAsync(n => n.Id == notificationId);
+                
+                CompletionNotificationDataDto? notificationData = null;
+                if (notification != null)
+                {
+                    var jsonOptions = new JsonSerializerOptions
+                    {
+                        PropertyNameCaseInsensitive = true,
+                        Converters = { new System.Text.Json.Serialization.JsonStringEnumConverter() }
+                    };
+                    
+                    var data = JsonSerializer.Deserialize<JsonElement>(notification.Data);
+                    
+                    var photosList = new List<OrderMediaDto>();
+                    if (data.TryGetProperty("photos", out var photosProp))
+                    {
+                        photosList = JsonSerializer.Deserialize<List<OrderMediaDto>>(photosProp.GetRawText(), jsonOptions) 
+                                    ?? new List<OrderMediaDto>();
+                    }
+                    
+                    OrderMediaDto? videoItem = null;
+                    if (data.TryGetProperty("video", out var videoProp))
+                    {
+                        videoItem = JsonSerializer.Deserialize<OrderMediaDto>(videoProp.GetRawText(), jsonOptions);
+                    }
+                    
+                    string? completionComment = null;
+                    if (data.TryGetProperty("comment", out var commentProp))
+                    {
+                        completionComment = commentProp.GetString();
+                    }
+                    else if (data.TryGetProperty("completionNote", out var noteProp))
+                    {
+                        completionComment = noteProp.GetString();
+                    }
+                    
+                    notificationData = new CompletionNotificationDataDto
+                    {
+                        OrderId = order.Id,
+                        OrderNumber = order.OrderNumber,
+                        InitiatorName = senderName,  // ← используем полученное имя
+                        InitiatorId = userId,
+                        Note = completionComment,
+                        Comment = completionComment,
+                        Photos = photosList,
+                        Video = videoItem,
+                        CreatedAt = DateTime.UtcNow
+                    };
+                }
+                
+                // 8. ОТПРАВЛЯЕМ SIGNALR ВСЕМ SUPERADMIN
+                if (notificationData != null)
+                {
+                    await _hubContext.Clients.Group("SuperAdmins").CompletionRequestReceived(notificationData);
+                }
+                
+                _logger.LogInformation(
+                    "SubmitForReview: OrderId={OrderId} submitted by UserId={UserId}, NotificationId={NotificationId}",
+                    order.Id, userId, notificationId);
+                
+                return Ok(new SubmitForReviewResponse
+                {
+                    Success = true,
+                    Message = "Заказ отправлен на проверку",
+                    NotificationId = notificationId,
+                    NewStatus = order.Status
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "SubmitForReview error: OrderId={OrderId}", id);
+                return StatusCode(500, new { message = "Ошибка при отправке заказа на проверку" });
+            }
+        }
+
         #region Private Helpers
 
         private int GetCurrentUserId()
@@ -1170,6 +1373,69 @@ namespace Franchisee.Web.Controllers
                 order.Payments?.Sum(p => p.Amount) ?? 0m
             );
 
+            // ========== НОВОЕ: Формируем Completion блок ==========
+            OrderCompletionInfoDto? completionInfo = null;
+            
+            // Если заказ когда-либо отправлялся на проверку
+            if (order.SubmittedForReviewAt.HasValue)
+            {
+                completionInfo = new OrderCompletionInfoDto
+                {
+                    SubmittedAt = order.SubmittedForReviewAt,
+                    SubmittedNote = order.CompletionNote,
+                    ReviewedAt = order.ReviewedAt,
+                    ReviewComment = order.ReviewComment,
+                    Status = order.Status == OrderStatus.Выполнено ? "Approved" 
+                        : order.Status == OrderStatus.НаДоработке ? "Rejected" 
+                        : order.Status == OrderStatus.ОжидаетПодтверждения ? "Pending"
+                        : null
+                };
+                
+                // ========== ИСПРАВЛЕНО: используем сохранённого отправителя ==========
+                completionInfo.SubmittedBy = order.SubmittedBy ?? order.Manager?.FullName ?? "Неизвестно";
+                
+                if (order.ReviewedAt.HasValue && order.ReviewedBy.HasValue)
+                {
+                    var reviewer = _context.Managers
+                        .Where(m => m.Id == order.ReviewedBy)
+                        .Select(m => m.FullName)
+                        .FirstOrDefault();
+                    completionInfo.ReviewedBy = reviewer ?? "Неизвестно";
+                }
+                
+                // Находим медиафайлы в папке completion
+                var completionMedia = order.Photos
+                    .Where(p => p.IsCompletionMedia)
+                    .Select(p => new OrderMediaDto
+                    {
+                        Id = p.Id,
+                        Url = $"/api/Media/{p.Id}/file",
+                        OriginalFileName = p.OriginalFileName,
+                        Size = p.Size,
+                        UploadedAt = p.UploadedAt,
+                        Width = p.Width ?? 0,
+                        Height = p.Height ?? 0,
+                        MediaType = p.MediaType
+                    }).ToList();
+
+                // Обычные фото (исключаем completion)
+                var regularPhotos = order.Photos
+                    .Where(p => !p.IsCompletionMedia)
+                    .Select(p => new OrderMediaDto
+                    {
+                        Id = p.Id,
+                        Url = $"/api/Media/{p.Id}/file",
+                        OriginalFileName = p.OriginalFileName,
+                        Size = p.Size,
+                        UploadedAt = p.UploadedAt,
+                        Width = p.Width ?? 0,
+                        Height = p.Height ?? 0,
+                        MediaType = p.MediaType
+                    }).ToList();
+                
+                completionInfo.Media = completionMedia;
+            }
+
             return new OrderResponseDto
             {
                 Id = order.Id,
@@ -1204,6 +1470,7 @@ namespace Franchisee.Web.Controllers
 
                 ManagerId = order.ManagerId,
                 ManagerFullName = order.Manager?.FullName ?? string.Empty,
+                
                 WorkItems = order.WorkItems.Select(w =>
                 {
                     var dto = new OrderWorkItemDto
@@ -1227,6 +1494,7 @@ namespace Franchisee.Web.Controllers
 
                     return dto;
                 }).ToList(),
+                
                 Payments = (order.Payments ?? new List<OrderPayment>())
                     .Select(p => new OrderPaymentDto
                     {
@@ -1236,17 +1504,23 @@ namespace Franchisee.Web.Controllers
                         PaymentType = p.PaymentType,
                         Note = p.Note
                     }).ToList(),
-                Photos = order.Photos.Select(p => new OrderMediaDto
-                {
-                    Id = p.Id,
-                    Url = $"/api/Media/{p.Id}/file",
-                    OriginalFileName = p.OriginalFileName,
-                    Size = p.Size,
-                    UploadedAt = p.UploadedAt,
-                    Width = p.Width ?? 0,
-                    Height = p.Height ?? 0,
-                    MediaType = p.MediaType
-                }).ToList(),
+                
+                Photos = order.Photos
+                    .Where(p => !p.IsCompletionMedia)
+                    .Select(p => new OrderMediaDto
+                    {
+                        Id = p.Id,
+                        Url = $"/api/Media/{p.Id}/file",
+                        OriginalFileName = p.OriginalFileName,
+                        Size = p.Size,
+                        UploadedAt = p.UploadedAt,
+                        Width = p.Width ?? 0,
+                        Height = p.Height ?? 0,
+                        MediaType = p.MediaType
+                    }).ToList(),
+                
+                Completion = completionInfo,
+                
                 IsDeleted = order.IsDeleted,
                 DeletedAt = order.DeletedAt,
                 PaymentStatus = paymentStatus

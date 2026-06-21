@@ -8,11 +8,15 @@ import { AuthLayout } from '@/app/layouts/AuthLayout'
 import { RequireAuth, RequireRole } from '@/app/router/guards'
 import { RootLayout } from './root-layout'
 
-// Ленивая загрузка страниц
+import CreateOrderPage from '@/modules/orders/pages/create-order.page'
+import OfflineOrdersPage from '@/modules/offline/pages/offline-orders.page'
+import OfflineOrderDetailsPage from '@/modules/offline/pages/offline-order-details.page'
+import OfflineLoginPage from '@/modules/offline/pages/offline-login.page'
+
+// Ленивая загрузка для остальных страниц
 const LoginPage = lazy(() => import('@/modules/auth/pages/login.page'))
-const OrdersListPage = lazy(() => import('@/modules/orders/pages/orders-list.page'))
+import OrdersListPage from '@/modules/orders/pages/orders-list.page'
 const OrderDetailsPage = lazy(() => import('@/modules/orders/pages/order-details.page'))
-const CreateOrderPage = lazy(() => import('@/modules/orders/pages/create-order.page'))
 const ArchivedOrdersPage = lazy(() => import('@/modules/orders/pages/archived-orders.page'))
 const NotificationsPage = lazy(() => import('@/modules/notifications/pages/notifications.page'))
 const ProfilePage = lazy(() => import('@/modules/profile/pages/profile.page'))
@@ -22,6 +26,9 @@ const PlotsPage = lazy(() => import('@/modules/plots/pages/plots.page'))
 const EditOrderPage = lazy(() => import('@/modules/orders/pages/edit-order.page'))
 const ArchivedOrderDetailsPage = lazy(
   () => import('@/modules/orders/pages/archived-order-details.page')
+)
+const ManagerFinancePage = lazy(
+  () => import('@/modules/reports/pages/manager-finance.page')
 )
 
 // Компонент загрузки с анимацией
@@ -90,6 +97,14 @@ const router = createBrowserRouter([
         ),
       },
       {
+        path: '/offline-login',
+        element: (
+          <AuthLayout>
+            <OfflineLoginPage />
+          </AuthLayout>
+        ),
+      },
+      {
         element: <RequireAuth />,
         children: [
           {
@@ -98,20 +113,26 @@ const router = createBrowserRouter([
               {
                 path: '/orders',
                 element: (
-                  <PageWrapper>
-                    <OrdersListPage />
-                  </PageWrapper>
+                  <OrdersListPage />
                 ),
               },
               {
                 path: '/orders/new',
                 element: (
                   <OrderBlockingGuard>
-                    <PageWrapper>
-                      <CreateOrderPage />
-                    </PageWrapper>
+                    <CreateOrderPage />
                   </OrderBlockingGuard>
                 ),
+              },
+              {
+                path: '/offline-orders',
+                element: (
+                  <OfflineOrdersPage />
+                ),
+              },
+              {
+                path: '/offline-orders/:localId',
+                element: <OfflineOrderDetailsPage />,
               },
               {
                 path: '/orders/:id/edit',
@@ -192,6 +213,15 @@ const router = createBrowserRouter([
                     element: (
                       <PageWrapper>
                         <PlotsPage />
+                      </PageWrapper>
+                    ),
+                  },
+
+                  {
+                    path: '/admin/manager-finance',
+                    element: (
+                      <PageWrapper>
+                        <ManagerFinancePage />
                       </PageWrapper>
                     ),
                   },

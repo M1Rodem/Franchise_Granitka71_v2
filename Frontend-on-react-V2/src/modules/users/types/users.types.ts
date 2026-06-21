@@ -51,3 +51,9 @@ export type UpdateUserDto = {
 export type ChangeRoleDto = {
   role: UserRole
 }
+
+export interface OfflineEmployeeDto {
+  id: number
+  username: string
+  fullName: string
+}

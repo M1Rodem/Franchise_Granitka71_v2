@@ -32,7 +32,7 @@ export function MediaItem({ item, onClick }: Props) {
     }
   }, [item.url, src])
 
-  // ⚠️ хук вызывается ВСЕГДА
+  // хук вызывается ВСЕГДА
   const thumbnail = useVideoThumbnail(video ? src : null)
 
   return (

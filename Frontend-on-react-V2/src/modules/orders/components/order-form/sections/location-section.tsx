@@ -4,6 +4,8 @@ import { useFormContext, Controller } from 'react-hook-form'
 import { usePlots } from '@/modules/plots/hooks/use-plots'
 import { AnimatedSelect } from '@/shared/ui/AnimatedSelect'
 import type { OrderFormModel } from '../order-form.schema'
+import { useYandexLoader } from '@/shared/lib/yandex-map/hooks/useYandexLoader'
+import { AppIcon } from '@/shared/ui/AppIcon'
 
 import { useEffect, useRef, useState, useCallback } from 'react'
 import {
@@ -37,6 +39,8 @@ export function LocationSection() {
   const [destination, setDestination] =
     useState<[number, number] | null>(null)
 
+  const { shouldShowBanner } = useYandexLoader()
+
   // очистка при смене участка
   useEffect(() => {
     if (!selectedPlot || !mapRef.current) return
@@ -46,7 +50,7 @@ export function LocationSection() {
       selectedPlot.longitude,
     ]
 
-    mapRef.current.setCenter(plotCoords, 15)
+    mapRef.current.setCenter(plotCoords, 14)
 
     const lat = watch('latitude')
     const lng = watch('longitude')
@@ -151,6 +155,23 @@ export function LocationSection() {
         Местоположение
       </h2>
 
+      {shouldShowBanner && (
+        <div className={styles.limitedBanner}>
+          <AppIcon name="warning" className={styles.limitedBannerIcon} />
+          <div className={styles.limitedBannerContent}>
+            <div className={styles.limitedBannerTitle}>
+              Карта работает в ограниченном режиме
+            </div>
+            <div className={styles.limitedBannerText}>
+              Нет доступа к интернету. Координаты будут сохранены.
+            </div>
+            <div className={styles.limitedBannerText}>
+              После синхронизации проверьте маршрут и расстояние.
+            </div>
+          </div>
+        </div>
+      )}
+      
       <div className={layout.grid2}>
         <div className={layout.field}>
           <label className={layout.label}>
@@ -196,7 +217,8 @@ export function LocationSection() {
         <div className={styles.mapContainer}>
           <YandexMapProvider>
             <MapView
-              center={plotCoords ?? [55.75, 37.57]}
+              center={plotCoords ?? [53.9320, 37.9197]}
+              zoom={14}
               onReady={(map: any) => {
                 mapRef.current = map
 

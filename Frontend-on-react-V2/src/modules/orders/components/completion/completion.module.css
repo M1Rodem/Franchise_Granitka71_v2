@@ -1,0 +1,235 @@
+.commentBlock {
+  display: flex;
+  flex-direction: column;
+  gap: var(--size-10);
+
+  padding: var(--size-16);
+  border-radius: var(--size-16);
+
+  border: var(--size-1) solid var(--border-subtle);
+
+  background: var(--tone-rgb-8-18-29-48);
+}
+
+.commentLabel {
+  font-size: var(--size-11);
+  font-weight: 700;
+
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+
+  color: var(--text-muted);
+}
+
+.commentText {
+  font-size: var(--size-14);
+  line-height: 1.6;
+  color: var(--text-secondary);
+
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.mediaSection {
+  display: flex;
+  flex-direction: column;
+  gap: var(--size-14);
+}
+
+.mediaHeader {
+  font-size: var(--size-12);
+  font-weight: 700;
+
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+
+  color: var(--text-muted);
+}
+
+.commentBlock {
+  display: flex;
+  flex-direction: column;
+  gap: var(--size-10);
+  padding: var(--size-16);
+  border-radius: var(--size-16);
+  border: var(--size-1) solid var(--border-subtle);
+  background: var(--tone-rgb-8-18-29-48);
+}
+
+.commentLabel {
+  font-size: var(--size-11);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.commentText {
+  font-size: var(--size-14);
+  line-height: 1.6;
+  color: var(--text-secondary);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.mediaSection {
+  display: flex;
+  flex-direction: column;
+  gap: var(--size-14);
+}
+
+.mediaHeader {
+  font-size: var(--size-12);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+/* ===== NEW: UPLOAD GRID ===== */
+
+.uploadGrid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--size-12);
+  align-items: flex-start;
+}
+
+.uploadButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 120px;
+  min-height: var(--size-42);
+  padding: 0 var(--size-16);
+  border-radius: var(--size-14);
+  border: var(--size-1) solid var(--border-soft);
+  background: var(--glass-button-surface);
+  color: var(--text-secondary);
+  font-size: var(--size-14);
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.18s ease;
+}
+
+.uploadButton:hover {
+  background: var(--glass-button-surface-hover);
+  border-color: var(--tone-rgb-184-212-237-22);
+  transform: translateY(-1px);
+  color: var(--text-primary);
+}
+
+.previewCard {
+  position: relative;
+  width: 120px;
+  height: 120px;
+  border-radius: var(--size-14);
+  overflow: hidden;
+  border: var(--size-1) solid var(--border-soft);
+  background: var(--tone-rgb-8-18-29-48);
+  cursor: pointer;
+  transition: all 0.18s ease;
+}
+
+.previewCard:hover {
+  border-color: var(--tone-rgb-119-175-233-22);
+  transform: scale(1.02);
+}
+
+.previewImage {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* ===== REMOVE BUTTON (как в create-orders) ===== */
+
+.removeButton {
+  position: absolute;
+  top: var(--size-6);
+  right: var(--size-6);
+  width: var(--size-26);
+  height: var(--size-26);
+  border-radius: 50%;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(var(--size-6));
+  color: #fff;
+  transition: all 0.15s ease;
+  padding: 0;
+}
+
+.removeButton:hover {
+  background: rgba(220, 38, 38, 0.8);
+  transform: scale(1.05);
+}
+
+.removeIcon {
+  width: var(--size-14);
+  height: var(--size-14);
+  stroke-width: 2;
+}
+
+/* ===== UPLOAD BUTTON (как в create-orders) ===== */
+
+.uploadButton {
+  min-width: 120px;
+  min-height: var(--size-42);
+  padding: 0 var(--size-16);
+  border-radius: var(--size-14);
+  font-size: var(--size-14);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+/* ===== PREVIEW CARD ===== */
+
+.previewCard {
+  position: relative;
+  width: 120px;
+  height: 120px;
+  border-radius: var(--size-14);
+  overflow: hidden;
+  border: var(--size-1) solid var(--tone-rgb-125-162-219-25);
+  background: var(--tone-rgb-10-29-57-60);
+  cursor: pointer;
+  transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+}
+
+.previewCard:hover {
+  transform: translateY(-3px);
+  border-color: var(--tone-rgb-150-190-255-45);
+  box-shadow:
+    0 var(--size-8) var(--size-22) var(--tone-rgb-6-18-40-45),
+    0 0 0 var(--size-1) var(--tone-rgb-150-190-255-08);
+}
+
+.previewImage {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+/* ===== HIDDEN INPUT ===== */
+
+.hiddenInput {
+  display: none;
+}
+
+/* ===== UPLOAD GRID ===== */
+
+.uploadGrid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--size-12);
+  align-items: flex-start;
+}
+
+.hiddenInput {
+  display: none;
+}

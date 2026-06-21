@@ -2,12 +2,22 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
+
   min-height: var(--size-28);
   padding: 0 var(--size-10);
+
   border-radius: var(--radius-pill);
+
   font-size: var(--size-12);
   font-weight: 700;
   line-height: 1;
+
   border: var(--size-1) solid var(--border-neutral-soft);
+
   backdrop-filter: blur(var(--size-8));
+
+  transition:
+    border-color 0.18s ease,
+    background 0.18s ease,
+    color 0.18s ease;
 }

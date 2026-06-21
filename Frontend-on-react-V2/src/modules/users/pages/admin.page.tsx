@@ -18,7 +18,6 @@ export default function AdminPage() {
         <div className={toolbar.shell}>
           <div className={toolbar.row}>
             <div className={toolbar.titleBlock}>
-              <span className={toolbar.eyebrow}>Administration</span>
               <h1 className={toolbar.heading}>Центр управления CRM</h1>
               <p className={toolbar.description}>
                 Управляйте сотрудниками и системными сущностями из единой
@@ -71,6 +70,31 @@ export default function AdminPage() {
                 <div className={styles.cardTitle}>Участки</div>
                 <div className={styles.cardDescription}>
                   Добавление, изменение и удаление участков в системе.
+                </div>
+              </button>
+            )}
+            {user?.role === 'SuperAdmin' && (
+              <button
+                type="button"
+                className={`${button.btn} ${button.btnGlass} ${styles.adminCard}`}
+                onClick={() => navigate('/admin/manager-finance')}
+              >
+                <div className={styles.cardTop}>
+                  <div className={styles.iconWrapper}>
+                    <AppIcon name="info" />
+                  </div>
+
+                  <span className={styles.cardPill}>
+                    Аналитика
+                  </span>
+                </div>
+
+                <div className={styles.cardTitle}>
+                  Финансы менеджеров
+                </div>
+
+                <div className={styles.cardDescription}>
+                  Анализ продаж, оплат и задолженности менеджеров за выбранный период.
                 </div>
               </button>
             )}

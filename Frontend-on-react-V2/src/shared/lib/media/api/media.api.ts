@@ -3,9 +3,14 @@ import { compressImage } from '@/shared/lib/media/compress-image'
 
 export interface TempUploadDto {
   id: number
+
   originalFileName: string
+
   size: number
-  previewUrl: string
+
+  previewUrl?: string
+  url?: string
+
   width: number
   height: number
 }

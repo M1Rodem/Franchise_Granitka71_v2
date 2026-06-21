@@ -6,14 +6,15 @@ namespace Franchisee.Web.Services.Media.Core
 {
     public interface IMediaService
     {
-        Task<TempUploadDto?> UploadTempAsync(IFormFile file, int uploaderId, MediaType mediaType);
+        Task<TempUploadDto?> UploadTempAsync(IFormFile file, int uploaderId, MediaType mediaType, string source = "completion");
         Task<int> CommitTempToOrderAsync(int orderId, List<int> tempIds, int uploaderId, MediaType mediaType);
         Task DeleteMediaFilesAsync(int mediaId);
         Task CleanupExpiredTempsAsync();
         Task<OrderMediaDto?> GetMediaDtoAsync(int mediaId);
         string GetTempPreviewUrl(int tempId);
         string GetMediaUrl(int mediaId, bool isThumb = false);
-
+        Task<int> CommitTempToCompletionAsync(int orderId, List<int> tempIds, int uploaderId);
+        Task<bool> DeleteCompletionFolderAsync(int orderId);
         Task<string?> SaveVideoFileAsync(IFormFile file, string fileName, string contentType);
     }
 }

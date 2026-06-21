@@ -63,11 +63,8 @@ export function UsersFilterBar({
       <div className={toolbar.shell}>
         <div className={toolbar.row}>
           <div className={toolbar.titleBlock}>
-            <span className={toolbar.eyebrow}>Users</span>
-            <h1 className={toolbar.heading}>Пользователи CRM</h1>
             <p className={toolbar.description}>
-              Поиск, фильтрация и быстрый доступ к карточкам сотрудников в одном
-              аккуратном контуре.
+              Поиск, фильтрация и быстрый доступ к карточкам сотрудников.
             </p>
           </div>
 

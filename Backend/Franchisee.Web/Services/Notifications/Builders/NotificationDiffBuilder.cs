@@ -263,7 +263,7 @@ public static class NotificationDiffBuilder
                 Price = price,
                 Routes = routes,
                 Quantity = calculatedQuantity,
-                Note = note,
+                Note = note ?? string.Empty,
                 DistanceKm = distanceKm,
                 IsDistanceWork = true
             };
@@ -277,7 +277,7 @@ public static class NotificationDiffBuilder
             WorkDescription = workDescription,
             Price = price,
             Quantity = quantityValue,
-            Note = note,
+            Note = note ?? string.Empty,
             Routes = 1,
             DistanceKm = null,
             IsDistanceWork = false

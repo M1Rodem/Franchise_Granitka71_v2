@@ -7,7 +7,8 @@ type HeaderMode =
   | 'orderCreate'
   | 'orderEdit'
   | 'plots'
-  | "users";
+  | "users"
+  | 'managerFinance';
 
 interface HeaderState {
   mode: HeaderMode;

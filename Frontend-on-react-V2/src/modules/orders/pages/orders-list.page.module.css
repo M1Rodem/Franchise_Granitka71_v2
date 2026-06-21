@@ -22,7 +22,7 @@
 
 .filterSurface {
   position: relative;
-  z-index: 20;
+  z-index: 1;
   gap: var(--size-22);
 }
 

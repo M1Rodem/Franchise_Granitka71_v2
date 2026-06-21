@@ -14,6 +14,8 @@ import { useAuthStore } from '@/shared/store/auth.store'
 if (import.meta.env.DEV) {
   // @ts-ignore
   window.showTempMessage = showTempMessage;
+  // @ts-ignore
+  window.tilePrecacheService = tilePrecacheService
 }
 
 ReactDOM.createRoot(document.getElementById('root')!).render(

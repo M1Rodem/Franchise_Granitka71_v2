@@ -1,36 +1,38 @@
 import type { UserRole } from '@/shared/types/auth';
 
 export type AppIconName =
-  | 'orders'
-  | 'create'
-  | 'archive'
-  | 'notifications'
-  | 'profile'
-  | 'admin'
-  | 'eye'
-  | 'eyeOff'
-  | 'success'
-  | 'error'
-  | 'warning'
-  | 'info'
-  | 'close'
-  | 'check'
-  | 'realtimeConnected'
-  | 'realtimeDisconnected'
-  | 'print'
-  | 'download'
-  | 'excel'
-  | 'arrowLeft'
-  | 'arrowRight';
+  | 'orders'           // заказы
+  | 'create'           // создать
+  | 'archive'          // архив
+  | 'notifications'    // уведомления
+  | 'profile'          // профиль
+  | 'admin'            // админ
+  | 'eye'              // показать пароль
+  | 'eyeOff'           // скрыть пароль
+  | 'success'          // успех
+  | 'error'            // ошибка
+  | 'warning'          // предупреждение
+  | 'info'             // информация
+  | 'close'            // закрыть
+  | 'check'            // галочка
+  | 'realtimeConnected'   // соединение установлено
+  | 'realtimeDisconnected' // соединение потеряно
+  | 'print'            // печать
+  | 'download'         // скачать
+  | 'excel'            // Excel
+  | 'arrowLeft'        // стрелка влево
+  | 'arrowRight'      // стрелка вправо
+  | 'offlineOrders';
 
 export interface NavigationItem {
-  id: string;
-  label: string;
-  path: string;
-  icon: AppIconName;
-  title: string;
-  match: string[];
-  roles?: UserRole[];
+  id: string;          
+  label: string;      
+  path: string;       
+  icon: AppIconName;   
+  title: string;       
+  match: string[];   
+  roles?: UserRole[];  
+  offlineOnly?: boolean; 
 }
 
 export const navigationConfig: NavigationItem[] = [
@@ -49,6 +51,7 @@ export const navigationConfig: NavigationItem[] = [
     icon: 'create',
     title: 'Создать заказ',
     match: ['/orders/new'],
+    offlineOnly: true,
   },
   {
     id: 'orders-archived',
@@ -81,13 +84,23 @@ export const navigationConfig: NavigationItem[] = [
     icon: 'admin',
     title: 'Админ панель',
     match: ['/admin', '/users', '/admin/plots'],
-    roles: ['Admin', 'SuperAdmin'],
+    roles: ['Admin', 'SuperAdmin'],  
+  },
+  {
+    id: 'offline-orders',
+    label: 'Оффлайн заказы',
+    path: '/offline-orders',
+    icon: 'offlineOrders',
+    title: 'Оффлайн заказы',
+    match: ['/offline-orders'],
+    offlineOnly: true,
   },
 ];
 
 export const routeTitles: Record<string, string> = {
   '/orders': 'Заказы',
   '/orders/new': 'Создать заказ',
+  '/offline-orders': 'Оффлайн заказы',
   '/orders/archived': 'Архив заказов',
   '/notifications': 'Уведомления',
   '/profile': 'Профиль',

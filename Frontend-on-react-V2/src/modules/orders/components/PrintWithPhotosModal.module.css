@@ -1,0 +1,217 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: var(--size-20);
+}
+
+/* Radio Label - кастомные стили, которых нет в глобальных */
+.radioLabel {
+  display: flex;
+  align-items: center;
+  gap: var(--size-14);
+  padding: var(--size-14) var(--size-18);
+  border-radius: var(--size-16);
+  border: var(--size-1) solid var(--border-subtle);
+  background: var(--tone-rgb-8-18-29-48);
+  cursor: pointer;
+  transition: all 0.18s ease;
+}
+
+.radioLabel:hover {
+  border-color: var(--tone-rgb-119-175-233-22);
+  background: var(--tone-rgb-8-18-29-62);
+  transform: translateY(-1px);
+}
+
+.radioSelected {
+  border-color: var(--tone-rgb-108-165-235-48);
+  background: var(--tone-rgb-108-165-235-10);
+}
+
+.radioLabel input[type="radio"] {
+  width: var(--size-18);
+  height: var(--size-18);
+  cursor: pointer;
+  margin: 0;
+  accent-color: var(--accent-primary);
+}
+
+.radioLabel div {
+  display: flex;
+  flex-direction: column;
+  gap: var(--size-4);
+  flex: 1;
+}
+
+.radioLabel strong {
+  font-size: var(--size-14);
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.radioLabel span {
+  font-size: var(--size-12);
+  color: var(--text-muted);
+}
+
+/* Photos Header */
+.photosHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--size-16);
+  flex-wrap: wrap;
+  gap: var(--size-12);
+}
+
+/* Empty State */
+.emptyPhotos {
+  text-align: center;
+  padding: var(--size-48) var(--size-24);
+  border-radius: var(--size-18);
+  border: var(--size-1) dashed var(--border-strong);
+  background: var(--tone-rgb-8-18-29-28);
+}
+
+.emptyPhotos p {
+  margin: 0 0 var(--size-8) 0;
+  color: var(--text-secondary);
+  font-size: var(--size-14);
+}
+
+.emptyPhotos span {
+  color: var(--text-muted);
+  font-size: var(--size-12);
+}
+
+/* Photos Grid */
+.photosGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: var(--size-16);
+  max-height: 460px;
+  overflow-y: auto;
+  padding: var(--size-4);
+}
+
+/* Photo Card */
+.photoCard {
+  position: relative;
+  border-radius: var(--size-16);
+  overflow: hidden;
+  cursor: pointer;
+  transition: all 0.18s ease;
+  background: var(--tone-rgb-8-18-29-48);
+  border: var(--size-1) solid var(--border-subtle);
+}
+
+.photoCard:hover {
+  transform: translateY(-2px);
+  border-color: var(--tone-rgb-119-175-233-28);
+  box-shadow: 0 var(--size-12) var(--size-24) var(--tone-rgb-0-0-0-22);
+}
+
+.photoCard.selected {
+  border-color: var(--accent-primary);
+  background: var(--tone-rgb-108-165-235-08);
+}
+
+.checkboxWrapper {
+  position: absolute;
+  top: var(--size-10);
+  left: var(--size-10);
+  z-index: 2;
+  background: var(--tone-rgb-8-18-29-82);
+  border-radius: var(--size-10);
+  padding: var(--size-4);
+  backdrop-filter: blur(var(--size-4));
+  border: var(--size-1) solid var(--border-soft);
+}
+
+.checkboxWrapper input {
+  width: var(--size-18);
+  height: var(--size-18);
+  cursor: pointer;
+  margin: 0;
+  accent-color: var(--accent-primary);
+}
+
+.photoPreview {
+  width: 100%;
+  height: 160px;
+  object-fit: cover;
+  background: var(--tone-rgb-17-24-39-92);
+}
+
+.photoInfo {
+  padding: var(--size-10) var(--size-12);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--size-8);
+  font-size: var(--size-11);
+  background: var(--tone-rgb-8-18-29-62);
+  border-top: var(--size-1) solid var(--border-faint);
+}
+
+.photoName {
+  color: var(--text-secondary);
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.photoSize {
+  color: var(--text-muted);
+  flex-shrink: 0;
+  font-size: var(--size-10);
+}
+
+/* Selection Info */
+.selectionInfo {
+  margin-top: var(--size-16);
+  padding: var(--size-12) var(--size-16);
+  border-radius: var(--size-14);
+  text-align: center;
+  font-size: var(--size-13);
+  font-weight: 500;
+  background: var(--tone-rgb-108-165-235-10);
+  border: var(--size-1) solid var(--tone-rgb-108-165-235-22);
+  color: var(--tone-dbeafe);
+}
+
+/* Footer */
+.footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--size-12);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .photosGrid {
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    max-height: 380px;
+  }
+
+  .photoPreview {
+    height: 130px;
+  }
+}
+
+@media (max-width: 480px) {
+  .photosGrid {
+    grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  }
+
+  .photoPreview {
+    height: 110px;
+  }
+
+  .photoInfo {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--size-4);
+  }
+}

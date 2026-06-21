@@ -63,14 +63,7 @@
   color: var(--tone-9fb4d9);
 }
 
-@media (max-width: 768px) {
-
-  :global(.table-base-module__dataRow) span::before {
-    content: none !important;
-    font-size: var(--size-16);
-    font-weight: 600;
-  }
-  
+@media (max-width: 768px) {  
   .totalItem {
     grid-template-columns: 1fr;
     gap: var(--size-6);

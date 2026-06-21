@@ -8,5 +8,6 @@ namespace Franchisee.Web.Services.Print.Core
     {
         Task<PrintOrderResponse> GenerateOrderDocumentAsync(int orderId, PrintType type = PrintType.Default);
         Task<string> GenerateOrderHtmlAsync(int orderId, PrintType type = PrintType.Default);
+        Task<string> GenerateOrderHtmlWithPhotosAsync(int orderId, List<int> selectedPhotoIds, PrintType type = PrintType.Default);
     }
 }

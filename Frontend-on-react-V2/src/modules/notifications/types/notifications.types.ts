@@ -1,4 +1,4 @@
-import type { NotificationType } from '@/shared/lib/signalr/signalr.types'
+import type { NotificationType, CompletionDataDto } from '@/shared/lib/signalr/signalr.types'
 
 // ===== ENUMS =====
 
@@ -48,6 +48,7 @@ export interface NotificationResponseDto {
   minutesUntilReturn: number
   isActionRequired: boolean
   canPostpone: boolean
+  completionData?: CompletionDataDto | null
   isImpactForCurrentUser: boolean
 }
 
@@ -61,6 +62,7 @@ export interface NotificationDetailsDto {
   order: OrderShortDto
   initiator: InitiatorDto
   comment?: string | null
+  completionData?: CompletionDataDto | null
   changes: NotificationChangesDto
 }
 

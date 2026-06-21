@@ -282,6 +282,33 @@ export function AppIcon({ name, className }: AppIconProps) {
           />
         </svg>
       )
+    case 'offlineOrders':
+      return (
+        <svg
+          className={className}
+          viewBox="0 0 24 24"
+          fill="none"
+          aria-hidden="true"
+        >
+          <path
+            d="M6.5 18h11
+              a4.5 4.5 0 0 0 .5-9
+              a6 6 0 0 0-11.5 1
+              A4 4 0 0 0 6.5 18Z"
+            stroke="currentColor"
+            strokeWidth="1.8"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+
+          <path
+            d="M5.5 6L20 19"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+          />
+        </svg>
+      )
     default:
       return null;
   }

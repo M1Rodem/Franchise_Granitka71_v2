@@ -16,3 +16,43 @@
   border-radius: var(--size-16);
   overflow: hidden;
 }
+
+.limitedBanner {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 16px 20px;
+  border-radius: 16px;
+  border: 1px solid var(--border-primary, rgba(119, 175, 233, 0.2));
+  background: var(--surface-gradient, rgba(255, 255, 255, 0.05));
+  backdrop-filter: blur(var(--glass-blur, 12px));
+  box-shadow: var(--glass-highlight, none), var(--glass-shadow, none);
+  margin-bottom: 4px;
+}
+
+.limitedBannerIcon {
+  flex-shrink: 0;
+  width: 24px;
+  height: 24px;
+  color: #f59e0b;
+  margin-top: 2px;
+}
+
+.limitedBannerContent {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.limitedBannerTitle {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-primary, #1a1a2e);
+}
+
+.limitedBannerText {
+  font-size: 14px;
+  color: var(--text-secondary, #4a4a6a);
+  line-height: 1.5;
+}

@@ -12,7 +12,6 @@ using System.Security.Claims;
 
 namespace Franchisee.Web.Controllers
 {
-    [Authorize(Policy = "Admin")]
     [ApiController]
     [Route("api/[controller]")]
     public class UsersController : ControllerBase
@@ -64,6 +63,7 @@ namespace Franchisee.Web.Controllers
             return UserRole.Manager;
         }
 
+        [Authorize(Policy = "Admin")]
         [HttpGet]
         public async Task<ActionResult<IEnumerable<ManagerResponseDto>>> GetAll()
         {
@@ -80,6 +80,33 @@ namespace Franchisee.Web.Controllers
             return Ok(response);
         }
 
+        /// <summary>
+        /// Получение списка сотрудников для оффлайн режима.
+        /// Доступно для любой авторизованной роли.
+        /// Возвращает только ID, логин и ФИО.
+        /// Исключает SuperAdmin и заблокированных.
+        /// </summary>
+        [Authorize] // Без политики Admin - доступно всем авторизованным
+        [HttpGet("employees-for-offline")]
+        public async Task<ActionResult<IEnumerable<OfflineEmployeeDto>>> GetEmployeesForOffline()
+        {
+            _logger.LogInformation("Получение списка сотрудников для оффлайн режима");
+
+            var managers = await _managerRepository.GetAllAsync(activeOnly: true);
+            
+            var response = managers
+                .Where(m => m.Role != UserRole.SuperAdmin) // Исключаем SuperAdmin
+                .Select(m => new OfflineEmployeeDto
+                {
+                    Id = m.Id,
+                    Username = m.Username,
+                    FullName = m.FullName
+                });
+
+            return Ok(response);
+        }
+
+        [Authorize(Policy = "Admin")]
         [HttpGet("{id}")]
         public async Task<ActionResult<ManagerDetailsDto>> GetById(int id)
         {
@@ -105,6 +132,7 @@ namespace Franchisee.Web.Controllers
             return Ok(response);
         }
 
+        [Authorize(Policy = "Admin")]
         [HttpGet("paged")]
         public async Task<ActionResult<PagedResponse<ManagerResponseDto>>> GetPaged(
         [FromQuery] int page = 1,
@@ -139,6 +167,7 @@ namespace Franchisee.Web.Controllers
             return Ok(pagedResponse);
         }
 
+        [Authorize(Policy = "Admin")]
         [HttpPost]
         public async Task<ActionResult<ManagerResponseDto>> Create([FromBody] CreateManagerDto createDto)
         {
@@ -193,6 +222,7 @@ namespace Franchisee.Web.Controllers
             }
         }
 
+        [Authorize(Policy = "Admin")]
         [HttpPut("{id}")]
         public async Task<ActionResult<ManagerResponseDto>> Update(int id, [FromBody] UpdateManagerDto updateDto)
         {
@@ -237,7 +267,7 @@ namespace Franchisee.Web.Controllers
             }
         }
 
-        // Изменить роль менеджера
+        [Authorize(Policy = "Admin")]
         [HttpPost("{id}/change-role")]
         public async Task<ActionResult> ChangeRole(int id, [FromBody] ChangeRoleDto changeRoleDto)
         {
@@ -284,6 +314,7 @@ namespace Franchisee.Web.Controllers
             }
         }
 
+        [Authorize(Policy = "Admin")]
         [HttpPost("{id}/block")]
         public async Task<ActionResult> Block(int id)
         {
@@ -313,6 +344,7 @@ namespace Franchisee.Web.Controllers
             return Ok("Пользователь заблокирован");
         }
 
+        [Authorize(Policy = "Admin")]
         [HttpPost("{id}/unblock")]
         public async Task<ActionResult> Unblock(int id)
         {
@@ -342,6 +374,7 @@ namespace Franchisee.Web.Controllers
             return Ok("Пользователь разблокирован");
         }
 
+        [Authorize(Policy = "Admin")]
         [HttpDelete("{id}")]
         public async Task<ActionResult> Delete(int id)
         {

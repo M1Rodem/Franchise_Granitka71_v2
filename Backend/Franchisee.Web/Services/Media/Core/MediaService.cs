@@ -25,6 +25,8 @@ namespace Franchisee.Web.Services.Media.Core
         private readonly long _maxVideoSize;
         
         private const int MaxDimension = 4096;
+        private const int MaxCompletionPhotos = 3;   // Максимум фото для completion
+        private const int MaxCompletionVideos = 1;   // Максимум видео для completion
 
         private static readonly string[] AllowedImageMimeTypes = {
             "image/jpeg",
@@ -73,7 +75,7 @@ namespace Franchisee.Web.Services.Media.Core
                 _maxFileSize, _maxPhotosPerOrder, _maxVideosPerOrder, _maxVideoSize);
         }
 
-        public async Task<TempUploadDto?> UploadTempAsync(IFormFile file, int uploaderId, MediaType mediaType)
+        public async Task<TempUploadDto?> UploadTempAsync(IFormFile file, int uploaderId, MediaType mediaType, string source = "completion")
         {
             _logger.LogInformation("UploadTempAsync: Файл получен - Имя: {Name}, Размер: {Size}B, Тип: {Type}, MediaType: {MediaType}",
                 file?.FileName ?? "null", file?.Length ?? 0, file?.ContentType ?? "null", mediaType);
@@ -110,18 +112,194 @@ namespace Franchisee.Web.Services.Media.Core
             // Для фото обрабатываем изображения, для видео просто сохраняем файл
             if (mediaType == MediaType.Photo)
             {
-                return await ProcessImageUploadAsync(file, uploaderId, fileContentType);
+                return await ProcessImageUploadAsync(file, uploaderId, fileContentType, source);
             }
             else
             {
-                return await ProcessVideoUploadAsync(file, uploaderId, fileContentType);
+                return await ProcessVideoUploadAsync(file, uploaderId, fileContentType, source);
+            }
+        }
+
+        /// <summary>
+        /// Переместить временные файлы в папку completion заказа
+        /// </summary>
+        public async Task<int> CommitTempToCompletionAsync(int orderId, List<int> tempIds, int uploaderId)
+        {
+            _logger.LogInformation(
+                "CommitTempToCompletionAsync: OrderId={OrderId}, TempIdsCount={Count}, UploaderId={UploaderId}",
+                orderId, tempIds.Count, uploaderId);
+
+            // 1. Получаем заказ
+            var order = await _context.Orders
+                .Include(o => o.Photos)
+                .FirstOrDefaultAsync(o => o.Id == orderId);
+
+            if (order == null)
+            {
+                _logger.LogWarning("CommitTempToCompletionAsync: заказ {OrderId} не найден", orderId);
+                return 0;
+            }
+
+            // 2. Получаем временные файлы, принадлежащие загрузившему пользователю
+            var temps = await _context.TempUploads
+                .Where(t => tempIds.Contains(t.Id) && t.UploaderId == uploaderId)
+                .ToListAsync();
+
+            if (!temps.Any())
+            {
+                _logger.LogWarning("CommitTempToCompletionAsync: временные файлы не найдены для OrderId={OrderId}", orderId);
+                return 0;
+            }
+
+            // 3. Проверяем лимиты для completion
+            var photoCount = temps.Count(t => t.MediaType == MediaType.Photo);
+            var videoCount = temps.Count(t => t.MediaType == MediaType.Video);
+
+            if (photoCount > MaxCompletionPhotos)
+            {
+                _logger.LogWarning("CommitTempToCompletionAsync: превышен лимит фото ({Current} > {Max})",
+                    photoCount, MaxCompletionPhotos);
+                return 0;
+            }
+
+            if (videoCount > MaxCompletionVideos)
+            {
+                _logger.LogWarning("CommitTempToCompletionAsync: превышен лимит видео ({Current} > {Max})",
+                    videoCount, MaxCompletionVideos);
+                return 0;
+            }
+
+            var committed = 0;
+
+            foreach (var temp in temps)
+            {
+                try
+                {
+                    // 4. Создаём папку completion/photo или completion/video
+                    var completionDir = Path.Combine(
+                        _env.WebRootPath,
+                        "uploads",
+                        "orders",
+                        orderId.ToString(),
+                        "completion",
+                        temp.MediaType == MediaType.Photo ? "photo" : "video");
+
+                    Directory.CreateDirectory(completionDir);
+
+                    // 5. Генерируем новое имя файла
+                    var ext = Path.GetExtension(temp.OriginalFileName ?? "")?.ToLowerInvariant();
+                    if (string.IsNullOrEmpty(ext))
+                    {
+                        ext = temp.MediaType == MediaType.Photo ? ".jpg" : ".mp4";
+                    }
+
+                    var newFileName = $"{Guid.NewGuid():N}{ext}";
+                    var newPath = Path.Combine(completionDir, newFileName);
+
+                    // 6. Перемещаем файл (копируем + удаляем оригинал, т.к. может быть на разных дисках)
+                    if (File.Exists(temp.FilePath))
+                    {
+                        // Копируем в новое место
+                        using (var sourceStream = new FileStream(temp.FilePath, FileMode.Open, FileAccess.Read))
+                        using (var destStream = new FileStream(newPath, FileMode.Create, FileAccess.Write))
+                        {
+                            await sourceStream.CopyToAsync(destStream);
+                        }
+
+                        // Удаляем оригинал
+                        File.Delete(temp.FilePath);
+                    }
+                    else
+                    {
+                        _logger.LogWarning("CommitTempToCompletionAsync: временный файл не найден {FilePath}", temp.FilePath);
+                        continue;
+                    }
+
+                    // 7. Создаём запись OrderMedia
+                    var media = new OrderMedia
+                    {
+                        OrderId = orderId,
+                        FilePath = newPath,
+                        ContentType = temp.ContentType,
+                        Checksum = temp.Checksum,
+                        Width = temp.Width,
+                        Height = temp.Height,
+                        OriginalFileName = temp.OriginalFileName ?? "unknown",
+                        Size = temp.Size,
+                        MediaType = temp.MediaType,
+                        UploaderId = uploaderId,
+                        UploadedAt = DateTime.UtcNow,
+                        IsCompletionMedia = true
+                    };
+
+                    _context.OrderPhotos.Add(media);
+
+                    // 8. Удаляем временную запись
+                    _context.TempUploads.Remove(temp);
+
+                    committed++;
+                    _logger.LogDebug(
+                        "CommitTempToCompletionAsync: перемещён файл {TempId} -> {NewPath}, Type={MediaType}",
+                        temp.Id, newPath, temp.MediaType);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "CommitTempToCompletionAsync: ошибка при перемещении файла {TempId}", temp.Id);
+                }
+            }
+
+            if (committed > 0)
+            {
+                await _context.SaveChangesAsync();
+                _logger.LogInformation(
+                    "CommitTempToCompletionAsync: перемещено {Count} файлов для заказа {OrderId}",
+                    committed, orderId);
+            }
+
+            return committed;
+        }
+
+        public async Task<bool> DeleteCompletionFolderAsync(int orderId)
+        {
+            var completionDir = Path.Combine(_env.WebRootPath, "uploads", "orders", orderId.ToString(), "completion");
+
+            if (!Directory.Exists(completionDir))
+            {
+                _logger.LogDebug("DeleteCompletionFolderAsync: папка не существует {Path}", completionDir);
+                return false;
+            }
+
+            try
+            {
+                // Удаляем все файлы из OrderMedia, связанные с completion папкой
+                var completionMedia = await _context.OrderPhotos
+                    .Where(m => m.OrderId == orderId && m.FilePath.Contains("/completion/"))
+                    .ToListAsync();
+
+                if (completionMedia.Any())
+                {
+                    _context.OrderPhotos.RemoveRange(completionMedia);
+                    await _context.SaveChangesAsync();
+                }
+
+                // Удаляем физическую папку
+                Directory.Delete(completionDir, true);
+
+                _logger.LogInformation("DeleteCompletionFolderAsync: удалена папка {Path}", completionDir);
+                return true;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "DeleteCompletionFolderAsync: ошибка при удалении папки {Path}", completionDir);
+                return false;
             }
         }
 
         private async Task<TempUploadDto?> ProcessImageUploadAsync(
             IFormFile file,
             int uploaderId,
-            string contentType)
+            string contentType,
+            string source = "completion")
         {
             using var tempStream = file.OpenReadStream();
 
@@ -194,19 +372,29 @@ namespace Franchisee.Web.Services.Media.Core
                 tempStream.Position = 0;
                 var checksum = await ComputeSha256Async(tempStream);
 
+                TimeSpan ttl;
+                if (source == "offline")
+                {
+                    ttl = TimeSpan.FromHours(1);   // 1 час для оффлайн
+                }
+                else
+                {
+                    ttl = TimeSpan.FromDays(20);   // 20 дней для completion
+                }
+
                 var tempUpload = new TempUpload
                 {
                     FilePath = filePath,
-                    ContentType = "image/jpeg", // фикс
+                    ContentType = "image/jpeg",
                     Checksum = checksum,
-                    Width = image.Width,   // после resize
+                    Width = image.Width,
                     Height = image.Height,
                     OriginalFileName = file.FileName,
                     Size = savedSize,
                     MediaType = MediaType.Photo,
                     UploaderId = uploaderId,
                     UploadedAt = DateTime.UtcNow,
-                    ExpiresAt = DateTime.UtcNow.AddDays(14)
+                    ExpiresAt = DateTime.UtcNow.Add(ttl)  // ← изменено
                 };
 
                 _context.TempUploads.Add(tempUpload);
@@ -244,7 +432,8 @@ namespace Franchisee.Web.Services.Media.Core
         private async Task<TempUploadDto?> ProcessVideoUploadAsync(
             IFormFile file,
             int uploaderId,
-            string contentType)
+            string contentType,
+            string source = "completion")
         {
             if (file.Length > _maxVideoSize)
             {
@@ -278,6 +467,16 @@ namespace Franchisee.Web.Services.Media.Core
                     Math.Round(file.Length / 1024.0 / 1024.0, 2)
                 );
 
+                TimeSpan ttl;
+                if (source == "offline")
+                {
+                    ttl = TimeSpan.FromHours(1);   // 1 час для оффлайн
+                }
+                else
+                {
+                    ttl = TimeSpan.FromDays(20);   // 20 дней для completion
+                }
+
                 var tempUpload = new TempUpload
                 {
                     FilePath = filePath,
@@ -290,8 +489,9 @@ namespace Franchisee.Web.Services.Media.Core
                     MediaType = MediaType.Video,
                     UploaderId = uploaderId,
                     UploadedAt = DateTime.UtcNow,
-                    ExpiresAt = DateTime.UtcNow.AddDays(14)
+                    ExpiresAt = DateTime.UtcNow.Add(ttl)  // ← изменено
                 };
+
 
                 _context.TempUploads.Add(tempUpload);
                 await _context.SaveChangesAsync();

@@ -22,6 +22,9 @@ import { AdditionalInfoSection } from '@/modules/orders/components/order-details
 import { ArchivedOrderActions } from '@/modules/orders/components/order-details/ArchivedOrderActions'
 import { ArchivedOrderBanner } from '@/modules/orders/components/order-details/ArchivedOrderBanner'
 import { OrdersTableSkeleton } from '@/modules/orders/components/OrdersTableSkeleton'
+import {
+  CompletionInfoBlock,
+} from '@/modules/orders/components/completion/CompletionInfoBlock'
 
 import styles from './order-details.page.module.css'
 
@@ -129,6 +132,14 @@ export default function ArchivedOrderDetailsPage() {
     <div className={styles.page}>
 
       <ArchivedOrderBanner deletedAt={data.deletedAt} />
+
+      {data.completion && (
+        <CompletionInfoBlock
+          completion={data.completion}
+        />
+      )}
+      
+
 
       <ClientSection
         fullName={data.customerFullName}

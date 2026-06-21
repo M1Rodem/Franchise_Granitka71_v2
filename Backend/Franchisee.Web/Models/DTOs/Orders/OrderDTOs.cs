@@ -49,8 +49,7 @@ namespace Franchisee.Web.Models.DTOs.Orders
         public List<OrderWorkItemDto> WorkItems { get; set; } = new();
         public List<OrderPaymentDto> Payments { get; set; } = new();
         public List<OrderMediaDto> Photos { get; set; } = new();
-
-        // НОВОЕ ПОЛЕ - статус оплаты
+        public OrderCompletionInfoDto? Completion { get; set; }
         public PaymentStatus PaymentStatus { get; set; }
     }
     public class OrderWorkItemDto

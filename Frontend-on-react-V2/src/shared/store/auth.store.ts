@@ -22,7 +22,6 @@ interface AuthStoreState {
     token: string
   }) => void
   
-  // ДОБАВЛЕНО: для обновления после refresh
   updateSession: (payload: {
     user: AuthUser
     token: string
@@ -30,6 +29,8 @@ interface AuthStoreState {
 
   hydrateSession: () => void
   clearSession: () => void
+
+  setOfflineSession: (user: AuthUser) => void
 }
 
 export const useAuthStore = create<AuthStoreState>((set) => ({
@@ -122,6 +123,13 @@ export const useAuthStore = create<AuthStoreState>((set) => ({
       isAuthenticated: false,
       isHydrated: true,
       sessionExpiresAt: null,
+    })
+  },
+  setOfflineSession: (user: AuthUser) => {
+    set({
+      user,
+      isAuthenticated: true,
+      isHydrated: true,
     })
   },
 }))

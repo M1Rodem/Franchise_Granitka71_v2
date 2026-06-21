@@ -50,6 +50,30 @@
   background: var(--surface-gradient-strong);
   box-shadow: var(--shadow-lg);
   backdrop-filter: blur(var(--size-20));
+
+  max-height: min(360px, 60vh);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+
+  scrollbar-width: thin;
+  scrollbar-color: rgba(126, 164, 220, 0.45) transparent;
+}
+
+.portalDropdown::-webkit-scrollbar {
+  width: 6px;
+}
+
+.portalDropdown::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.portalDropdown::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: rgba(126, 164, 220, 0.45);
+}
+
+.portalDropdown::-webkit-scrollbar-thumb:hover {
+  background: rgba(126, 164, 220, 0.65);
 }
 
 .dropdown {

@@ -1,0 +1,44 @@
+.wrapper {
+  display: flex;
+  justify-content: center;
+}
+
+.financeGrid {
+  display: grid;
+
+  width: fit-content;
+
+  grid-template-columns:
+    220px
+    220px
+    320px
+    180px;
+
+  gap: var(--size-12);
+
+  align-items: end;
+}
+
+.financeGrid label {
+  display: grid;
+  gap: var(--size-8);
+}
+
+.financeGrid span {
+  color: var(--text-muted);
+  font-size: var(--size-12);
+  font-weight: 600;
+  letter-spacing: 0.03em;
+}
+
+@media (max-width: 1200px) {
+  .wrapper {
+    display: block;
+  }
+
+  .financeGrid {
+    width: 100%;
+    grid-template-columns:
+      repeat(auto-fit, minmax(220px, 1fr));
+  }
+}

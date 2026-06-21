@@ -19,9 +19,11 @@ import { MediaSection } from '@/modules/orders/components/order-details/MediaSec
 import { OrderActions } from '@/modules/orders/components/order-details/OrderActions';
 import { AdditionalInfoSection } from '@/modules/orders/components/order-details/AdditionalInfoSection';
 import { AppIcon } from '@/shared/ui/AppIcon'
+import {
+  CompletionInfoBlock,
+} from '@/modules/orders/components/completion/CompletionInfoBlock'
 
 import styles from './order-details.page.module.css';
-
 
 export default function OrderDetailsPage() {
   const { id } = useParams<{ id: string }>();
@@ -143,6 +145,12 @@ export default function OrderDetailsPage() {
 
   return (
     <div className={styles.page}>
+      {data.completion && (
+        <CompletionInfoBlock
+          completion={data.completion}
+        />
+      )}
+
       <ClientSection
         fullName={data.customerFullName}
         email={data.customerEmail}
@@ -203,7 +211,10 @@ export default function OrderDetailsPage() {
       <AdditionalInfoSection
         additionalInfo={(data.additionalInfo as string) ?? ''}
       />
-      <OrderActions orderId={data.id} />
+      <OrderActions
+        orderId={data.id}
+        status={Number(data.status)}
+      />
     </div>
   );
 }

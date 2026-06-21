@@ -17,6 +17,7 @@ namespace Franchisee.Web.Models.Entities.Orders
     {
         [Key] public int Id { get; set; }
         public string OrderNumber { get; set; } = string.Empty;
+        public string? ClientGeneratedId { get; set; } 
         public string Place { get; set; } = string.Empty;
         public DateTime OrderDate { get; set; } = DateTime.UtcNow;
         [StringLength(200)] public string InspectionPlace { get; set; } = string.Empty;

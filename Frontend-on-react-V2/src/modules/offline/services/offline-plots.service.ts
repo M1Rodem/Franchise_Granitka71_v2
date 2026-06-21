@@ -10,11 +10,8 @@ const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms))
 
 export const offlinePlotsService = {
   async syncPlots(retryCount: number = 0): Promise<SyncPlotsResult> {
-    try {
-      console.log(`[SyncPlots] Attempt ${retryCount + 1}/${MAX_RETRIES + 1}`)
-      
+    try {     
       const plots = await plotsApi.getAllPlots()
-      console.log(`[SyncPlots] Fetched ${plots.length} plots from API`)
 
       const cachedPlots: CachedPlot[] = plots.map((plot: PlotDto) => ({
         id: plot.id,
@@ -51,9 +48,6 @@ export const offlinePlotsService = {
 
       await offlinePlotsStore.savePlots(cachedPlots)
       
-      const savedCount = await offlinePlotsStore.count()
-      console.log(`[SyncPlots] Saved ${savedCount} plots to IndexedDB`)
-
       return {
         added,
         updated,
@@ -63,7 +57,6 @@ export const offlinePlotsService = {
       console.error(`[SyncPlots] Error (attempt ${retryCount + 1}):`, error)
       
       if (retryCount < MAX_RETRIES) {
-        console.log(`[SyncPlots] Retrying in ${RETRY_DELAY_MS}ms...`)
         await delay(RETRY_DELAY_MS)
         return this.syncPlots(retryCount + 1)
       }
@@ -74,7 +67,6 @@ export const offlinePlotsService = {
 
   async getCachedPlots(): Promise<CachedPlot[]> {
     const allPlots = await offlinePlotsStore.getAllPlots()
-    console.log('[offlinePlotsService] getAllPlots returned:', allPlots.length)
     return allPlots
   },
 

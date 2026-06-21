@@ -27,5 +27,6 @@ namespace Franchisee.Web.Models.DTOs.Reports
         public decimal TotalPrice { get; init; }
         public decimal PaidAmount { get; init; }
         public decimal DebtAmount { get; init; }
+        public int Status { get; set; }
     }
 }

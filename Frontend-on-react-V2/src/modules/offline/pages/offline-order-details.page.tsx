@@ -61,7 +61,7 @@ function mapOfflineOrderToDetails(order: any) {
 
   return {
     id: order.localId,
-    orderNumber: order.clientGeneratedId,
+    orderNumber: order.displayId,
     place: order.payload.place,
     inspectionPlace: order.payload.inspectionPlace,
     orderDate: order.createdAt,
@@ -148,7 +148,7 @@ export default function OfflineOrderDetailsPage() {
   const handleDelete = async () => {
     if (!order) return
 
-    const confirmed = confirm(`Удалить заказ ${order.clientGeneratedId}?`)
+    const confirmed = confirm(`Удалить заказ ${order.displayId}?`)
     if (!confirmed) return
 
     try {

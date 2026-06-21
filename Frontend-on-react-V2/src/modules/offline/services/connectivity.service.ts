@@ -1,9 +1,8 @@
-import { httpClient } from '@/shared/api/http-client'
-
 type ConnectivityListener = (isOnline: boolean) => void
 
-const PROBE_INTERVAL_MS = 15000
+const PROBE_INTERVAL_MS = 60000
 const PROBE_TIMEOUT_MS = 5000
+const CONSECUTIVE_ERRORS_THRESHOLD = 3
 
 class ConnectivityService {
   private backendAvailable = false
@@ -11,6 +10,8 @@ class ConnectivityService {
   private listeners = new Set<ConnectivityListener>()
   private intervalId: ReturnType<typeof setInterval> | null = null
   private isProbing = false
+  private consecutiveErrors = 0
+  private lastKnownState: boolean = false  // ← ИСПРАВЛЕНО
 
   isOnline() {
     return this.browserOnline && this.backendAvailable
@@ -67,6 +68,7 @@ class ConnectivityService {
 
   private handleBrowserOnline = () => {
     this.browserOnline = true
+    this.consecutiveErrors = 0
     this.notify()
     void this.probeBackend()
   }
@@ -74,6 +76,7 @@ class ConnectivityService {
   private handleBrowserOffline = () => {
     this.browserOnline = false
     this.backendAvailable = false
+    this.consecutiveErrors = 0
     this.notify()
   }
 
@@ -83,27 +86,35 @@ class ConnectivityService {
     if (typeof navigator !== 'undefined' && !navigator.onLine) {
       this.browserOnline = false
       this.backendAvailable = false
+      this.consecutiveErrors = 0
       this.notify()
       return
     }
 
     this.isProbing = true
+    this.browserOnline = true
 
     try {
-      this.browserOnline = true
-
-      const response = await httpClient.get('/orders/list', {
-        params: {
-          Page: 1,
-          PageSize: 1,
-        },
-        timeout: PROBE_TIMEOUT_MS,
-        validateStatus: () => true,
+      const response = await fetch('/health', {
+        signal: AbortSignal.timeout(PROBE_TIMEOUT_MS),
       })
 
-      this.backendAvailable = response.status >= 200 && response.status < 500
+      const isAvailable = response.ok
+
+      if (isAvailable) {
+        this.consecutiveErrors = 0
+        this.backendAvailable = true
+      } else {
+        this.consecutiveErrors++
+        if (this.consecutiveErrors >= CONSECUTIVE_ERRORS_THRESHOLD) {
+          this.backendAvailable = false
+        }
+      }
     } catch {
-      this.backendAvailable = false
+      this.consecutiveErrors++
+      if (this.consecutiveErrors >= CONSECUTIVE_ERRORS_THRESHOLD) {
+        this.backendAvailable = false
+      }
     } finally {
       this.isProbing = false
       this.notify()
@@ -111,11 +122,14 @@ class ConnectivityService {
   }
 
   private notify() {
-    const value = this.isOnline()
+    const currentState = this.isOnline()
 
-    this.listeners.forEach((listener) => {
-      listener(value)
-    })
+    if (this.lastKnownState !== currentState) {
+      this.lastKnownState = currentState
+      this.listeners.forEach((listener) => {
+        listener(currentState)
+      })
+    }
   }
 }
 

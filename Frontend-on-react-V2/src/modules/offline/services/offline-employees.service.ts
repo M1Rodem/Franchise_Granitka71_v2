@@ -10,11 +10,8 @@ const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms))
 
 export const offlineEmployeesService = {
   async syncEmployees(retryCount: number = 0): Promise<SyncEmployeesResult> {
-    try {
-      console.log(`[SyncEmployees] Attempt ${retryCount + 1}/${MAX_RETRIES + 1}`)
-      
+    try {      
       const employees: OfflineEmployeeDto[] = await usersApi.getEmployeesForOffline()
-      console.log(`[SyncEmployees] Fetched ${employees.length} employees from API`)
 
       const cachedEmployees: CachedEmployee[] = employees.map((employee: OfflineEmployeeDto) => ({
         id: employee.id,
@@ -43,10 +40,6 @@ export const offlineEmployeesService = {
       }
 
       await offlineEmployeesStore.saveEmployees(cachedEmployees)
-      
-      const savedCount = await offlineEmployeesStore.count()
-      console.log(`[SyncEmployees] Saved ${savedCount} employees to IndexedDB`)
-
       return {
         added,
         updated,
@@ -56,7 +49,6 @@ export const offlineEmployeesService = {
       console.error(`[SyncEmployees] Error (attempt ${retryCount + 1}):`, error)
       
       if (retryCount < MAX_RETRIES) {
-        console.log(`[SyncEmployees] Retrying in ${RETRY_DELAY_MS}ms...`)
         await delay(RETRY_DELAY_MS)
         return this.syncEmployees(retryCount + 1)
       }

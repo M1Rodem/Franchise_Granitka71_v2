@@ -8,9 +8,9 @@ import { authApi } from '@/modules/auth/api/auth.api';
 import { useAuthStore } from '@/shared/store/auth.store';
 import { showTempMessage } from '@/shared/ui/temp-message.service';
 import { useEffect, useState } from 'react';
-import { offlineEmployeesService } from '@/modules/offline/services/offline-employees.service';
 import { useOfflineSessionStore } from '@/modules/offline/store/offline-session.store';
-import { offlinePlotsService } from '@/modules/offline/services/offline-plots.service'
+import { offlineEmployeesService } from '@/modules/offline/services/offline-employees.service';
+import { offlinePlotsService } from '@/modules/offline/services/offline-plots.service';
 
 const loginSchema = z.object({
   username: z.string().min(1, 'Введите логин'),
@@ -59,7 +59,7 @@ export function useLoginForm() {
       
       showTempMessage('info', 'Загрузка данных для оффлайн режима...');
 
-      // Синхронизация сотрудников (ждем)
+      // Синхронизация сотрудников
       try {
         const employeesResult = await offlineEmployeesService.syncEmployees();
         console.log('[Sync] Employees:', employeesResult);
@@ -68,7 +68,7 @@ export function useLoginForm() {
         showTempMessage('warning', 'Не удалось загрузить список сотрудников');
       }
 
-      // Синхронизация участков (ждем)
+      // Синхронизация участков
       try {
         const plotsResult = await offlinePlotsService.syncPlots();
         console.log('[Sync] Plots:', plotsResult);

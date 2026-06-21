@@ -11,6 +11,7 @@ namespace Franchisee.Web.Models.Requests.Orders
         public string InspectionPlace { get; set; } = string.Empty;
 
         public DateTime OrderDate { get; set; } = DateTime.UtcNow;
+        public string? ClientGeneratedId { get; set; }
 
         public double? Latitude { get; set; }
         public double? Longitude { get; set; }

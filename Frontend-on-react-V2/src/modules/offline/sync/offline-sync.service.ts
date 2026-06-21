@@ -1,13 +1,28 @@
-import { ordersApi } from '@/modules/orders/api/orders.api'
 import { offlineRepository } from '@/modules/offline/repositories/offline.repository'
 import { offlineMediaRepository } from '@/modules/offline/repositories/offline-media.repository'
 import { offlineSyncQueueStore } from '@/modules/offline/storage/offline-sync-queue.store'
-import { mediaApi } from '@/shared/lib/media/api/media.api'
-import { httpClient } from '@/shared/api/http-client'
+import { offlinePlotsService } from '@/modules/offline/services/offline-plots.service'
+import axios from 'axios'
+import { env } from '@/shared/config/env'
+import { calculateDistanceViaYmaps } from '@/shared/lib/yandex-map/utils/calculateDistance'
+import { connectivityService } from '../services/connectivity.service'
 
+function createAuthenticatedClient(token: string) {
+  return axios.create({
+    baseURL: env.apiBaseUrl,
+    timeout: 30000,
+    headers: {
+      'Authorization': `Bearer ${token}`
+    }
+  })
+}
 
 export const offlineSyncService = {
   async syncOrder(orderLocalId: string, authToken: string) {
+    if (!authToken) {
+      throw new Error('Токен авторизации обязателен для синхронизации')
+    }
+
     const order = await offlineRepository.getOfflineOrder(orderLocalId)
 
     if (!order) {
@@ -16,36 +31,83 @@ export const offlineSyncService = {
 
     await offlineSyncQueueStore.markSyncing(orderLocalId)
 
-    // Создаем временный httpClient с токеном пользователя
-    const tempClient = httpClient
-    const originalToken = tempClient.defaults.headers.common['Authorization']
+    const client = createAuthenticatedClient(authToken)
     
     try {
-      // Подменяем токен
-      tempClient.defaults.headers.common['Authorization'] = `Bearer ${authToken}`
-
       const media = await offlineMediaRepository.getOrderMedia(orderLocalId)
 
       const photoTempIds: number[] = []
       const videoTempIds: number[] = []
 
       for (const item of media) {
+        const formData = new FormData()
         const file = new File([item.blob], item.fileName, {
           type: item.mimeType,
           lastModified: Date.now(),
         })
+        formData.append('file', file)
+
+        const uploadResponse = await client.post(`/media/upload-temp?type=${item.type}&source=offline`, formData, {
+          headers: { 'Content-Type': 'multipart/form-data' }
+        })
 
         if (item.type === 'photo') {
-          const uploaded = await mediaApi.uploadTemp(file, 'photo')
-          photoTempIds.push(uploaded.id)
+          photoTempIds.push(uploadResponse.data.id)
         } else {
-          const uploaded = await mediaApi.uploadTemp(file, 'video')
-          videoTempIds.push(uploaded.id)
+          videoTempIds.push(uploadResponse.data.id)
         }
       }
 
-      await ordersApi.createOrder({
+      // ===== ПЕРЕСЧЁТ РАССТОЯНИЯ ЧЕРЕЗ JS API =====
+      let updatedWorkItems = order.payload.workItems
+
+      const isOnline = connectivityService.isOnline()
+      
+      const distanceWorkIndex = order.payload.workItems.findIndex(
+        w => w.isDistanceWork === true && w.distanceKm === 0
+      )
+
+      if (distanceWorkIndex !== -1 && isOnline) {
+        const plotId = order.payload.plotId
+        const lat = order.payload.latitude
+        const lng = order.payload.longitude
+
+        if (plotId && lat && lng) {
+          try {
+            const plots = await offlinePlotsService.getCachedPlots()
+            const plot = plots.find(p => p.id === plotId)
+
+            if (plot) {
+              const distanceKm = await calculateDistanceViaYmaps(
+                plot.latitude,
+                plot.longitude,
+                lat,
+                lng
+              )
+
+              if (distanceKm > 0) {
+                updatedWorkItems = order.payload.workItems.map((w, index) => {
+                  if (index === distanceWorkIndex) {
+                    return { ...w, distanceKm }
+                  }
+                  return w
+                })
+              } else {
+                console.warn(`[Sync] Получено нулевое расстояние, оставляем 0`)
+              }
+            } else {
+              console.warn(`[Sync] Участок с id ${plotId} не найден в кеше`)
+            }
+          } catch (error) {
+            console.warn(`[Sync] Не удалось пересчитать расстояние через JS API:`, error)
+          }
+        }
+      }
+
+      await client.post('/orders', {
         ...order.payload,
+        workItems: updatedWorkItems,
+        clientGeneratedId: order.clientGeneratedId,
         tempPhotoIds: photoTempIds,
         tempVideoIds: videoTempIds,
         ownerUserId: order.ownerUserId,
@@ -61,22 +123,19 @@ export const offlineSyncService = {
     } catch (error) {
       await offlineSyncQueueStore.markFailed(orderLocalId)
       throw error
-    } finally {
-      // Восстанавливаем оригинальный токен
-      if (originalToken) {
-        tempClient.defaults.headers.common['Authorization'] = originalToken
-      } else {
-        delete tempClient.defaults.headers.common['Authorization']
-      }
     }
   },
 
-  // Синхронизация заказов конкретного пользователя
-  async syncUserOrders(userId: number, authToken: string) {
-    // Получаем все оффлайн заказы
+  async syncUserOrders(
+    userId: number,
+    authToken: string,
+    onProgress?: (current: number, total: number) => void
+  ) {
+    if (!authToken) {
+      throw new Error('Токен авторизации обязателен')
+    }
+
     const allOrders = await offlineRepository.getOfflineOrders()
-    
-    // Фильтруем только заказы этого пользователя
     const userOrders = allOrders.filter((order) => order.ownerUserId === userId)
     
     if (userOrders.length === 0) {
@@ -89,6 +148,8 @@ export const offlineSyncService = {
       total: userOrders.length,
     }
 
+    let processed = 0
+
     for (const order of userOrders) {
       try {
         await this.syncOrder(order.localId, authToken)
@@ -96,6 +157,11 @@ export const offlineSyncService = {
       } catch (error) {
         console.error(`Failed to sync order ${order.localId}:`, error)
         results.failed++
+      } finally {
+        processed++
+        if (onProgress) {
+          onProgress(processed, userOrders.length)
+        }
       }
     }
 
@@ -103,46 +169,13 @@ export const offlineSyncService = {
   },
 
   async syncAll() {
-    const queue = await offlineSyncQueueStore.getPending()
-
-    const results = {
-      success: 0,
-      failed: 0,
-    }
-
-    for (const item of queue) {
-      try {
-        await this.syncOrder(item.orderLocalId, '')
-        results.success++
-      } catch {
-        results.failed++
-      }
-    }
-
-    return results
+    throw new Error('syncAll не поддерживается. Используйте syncUserOrders с токеном пользователя.')
   },
 
   async retryFailed() {
-    const failedOrders = await offlineSyncQueueStore.getByStatus('failed')
-
-    const results = {
-      success: 0,
-      failed: 0,
-    }
-
-    for (const item of failedOrders) {
-      try {
-        await this.syncOrder(item.orderLocalId, '')
-        results.success++
-      } catch {
-        results.failed++
-      }
-    }
-
-    return results
+    throw new Error('retryFailed не поддерживается. Используйте syncUserOrders с токеном пользователя.')
   },
 
-  // Получить группировку заказов по сотрудникам
   async getOrdersGroupedByOwner() {
     const allOrders = await offlineRepository.getOfflineOrders()
     const grouped = new Map<number, { fullName: string; count: number }>()

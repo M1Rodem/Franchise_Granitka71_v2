@@ -23,21 +23,16 @@ export function usePlots() {
 
   return useQuery<PlotDto[]>({
     queryKey: ['plots', 'all'],
-    queryFn: async () => {
-      console.log('[usePlots] queryFn called, isOnline:', isOnline)
-      
+    queryFn: async () => {      
       // Принудительно при оффлайн - берем из кеша
       if (!isOnline || !navigator.onLine) {
-        console.log('[usePlots] OFFLINE - fetching from cache')
         const cachedPlots = await offlinePlotsService.getCachedPlots()
         if (cachedPlots.length === 0) {
-          console.log('[usePlots] No cached plots found')
           return []
         }
         return cachedPlots.map(mapCachedToPlotDto)
       }
-      
-      console.log('[usePlots] ONLINE - fetching from API')
+
       const plots = await plotsApi.getAllPlots()
       return plots
     },

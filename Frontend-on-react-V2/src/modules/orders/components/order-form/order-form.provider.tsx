@@ -501,7 +501,7 @@ function mapFormToUpdateDto(values: OrderFormModel, _: any, defaultValues?: Orde
       note: p.note,
     }))
   }
-  console.log(payload)
+  
   return payload
 }
 

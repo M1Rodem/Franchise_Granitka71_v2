@@ -80,13 +80,26 @@ export default defineConfig({
         navigateFallback: '/index.html',
         runtimeCaching: [
           {
-            urlPattern: /^https:\/\/api-maps\.yandex\.ru\/.*/,
-            handler: 'StaleWhileRevalidate',
+            urlPattern: ({ url }) => {
+              return url.hostname === 'core-renderer-tiles.maps.yandex.net'
+            },
+            handler: 'CacheFirst',
             options: {
-              cacheName: 'yandex-maps-api',
+              cacheName: 'yandex-maps-tiles',
               expiration: {
-                maxEntries: 10,
-                maxAgeSeconds: 60 * 60 * 24 * 7
+                maxEntries: 10000,
+                maxAgeSeconds: 60 * 60 * 24 * 30
+              }
+            }
+          },
+          {
+            urlPattern: /^https:\/\/core-renderer-tiles\.maps\.yandex\.net\/.*/,
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'yandex-maps-tiles',
+              expiration: {
+                maxEntries: 5000,
+                maxAgeSeconds: 60 * 60 * 24 * 30
               }
             }
           },
@@ -155,7 +168,11 @@ export default defineConfig({
       '/uploads': {
         target: 'http://localhost:5000',
         changeOrigin: true,
-      }
+      },
+      '/health': {
+        target: 'http://localhost:5000',
+        changeOrigin: true,
+      },
     },
   },
 })

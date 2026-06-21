@@ -40,7 +40,6 @@ export const offlinePlotsStore = {
           return activePlots
         }
       } catch (e) {
-        console.log('Index isActive not found, getting all plots')
       }
       // Если нет индекса или нет активных - возвращаем все
       return wrapRequest<CachedPlot[]>(store.getAll())

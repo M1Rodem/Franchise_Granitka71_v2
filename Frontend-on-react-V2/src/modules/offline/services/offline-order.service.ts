@@ -1,6 +1,7 @@
 import type { OrderFormModel } from '@/modules/orders/components/order-form/order-form.schema'
 import type { OfflineCreateOrderPayload, OfflineOrder, OfflineStatus } from '@/modules/offline/types/offline.types'
-import { generateOfflineClientGeneratedId } from '@/modules/offline/utils/offline-id'
+
+import { generateDisplayId, generateClientGeneratedId } from '@/modules/offline/utils/offline-id'
 
 export const OFFLINE_CREATE_DRAFT_STORAGE_KEY = 'offline-create-draft-local-id'
 
@@ -8,10 +9,10 @@ export interface CreateOfflineOrderInput {
   localId: string
   payload: OfflineCreateOrderPayload
   clientGeneratedId?: string
+  displayId?: string
   createdAt?: string
   updatedAt?: string
   status?: OfflineStatus
-  // Владелец
   ownerUserId: number
   ownerUsername: string
   ownerFullName: string
@@ -20,7 +21,8 @@ export interface CreateOfflineOrderInput {
 export function createOfflineOrderDraft({
   localId,
   payload,
-  clientGeneratedId = generateOfflineClientGeneratedId(),
+  clientGeneratedId = generateClientGeneratedId(),
+  displayId = generateDisplayId(),
   createdAt = new Date().toISOString(),
   updatedAt = createdAt,
   status = 'pending',
@@ -31,6 +33,7 @@ export function createOfflineOrderDraft({
   return {
     localId,
     clientGeneratedId,
+    displayId,
     createdAt,
     updatedAt,
     status,

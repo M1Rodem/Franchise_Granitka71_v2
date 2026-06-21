@@ -70,7 +70,8 @@ namespace Franchisee.Web.Controllers
         [Consumes("multipart/form-data")]
         public async Task<ActionResult<TempUploadDto>> UploadTemp(
             IFormFile file,
-            [FromQuery] MediaType type = MediaType.Photo)
+            [FromQuery] MediaType type = MediaType.Photo,
+            [FromQuery] string source = "completion")
         {
             try
             {
@@ -90,7 +91,7 @@ namespace Franchisee.Web.Controllers
                     file.FileName ?? "unknown", file.Length, file.ContentType, type);
 
                 var uploaderId = GetCurrentUserId();
-                var dto = await _mediaService.UploadTempAsync(file, uploaderId, type);
+                var dto = await _mediaService.UploadTempAsync(file, uploaderId, type, source);
 
                 if (dto == null)
                 {

@@ -15,6 +15,7 @@ export type ManagerFinanceOrderDto = {
   totalPrice: number
   paidAmount: number
   debtAmount: number
+  status: number
 }
 
 export type ManagerFinanceReportResponse = {

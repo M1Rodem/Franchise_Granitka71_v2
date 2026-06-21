@@ -10,6 +10,7 @@ export type OfflineCreateOrderPayload = Omit<
 export interface OfflineOrder {
   localId: string
   clientGeneratedId: string
+  displayId: string
   createdAt: string
   updatedAt: string
   status: OfflineStatus

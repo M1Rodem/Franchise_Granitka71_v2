@@ -5,6 +5,7 @@ import type { OfflineOrder, OfflineStatus } from '@/modules/offline/types/offlin
 
 export interface OfflineOrderListItem {
   localId: string
+  displayId: string
   clientGeneratedId: string
   createdAt: string
   status: OfflineStatus
@@ -33,6 +34,7 @@ export function useOfflineOrders() {
 
           return {
             localId: order.localId,
+            displayId: order.displayId,
             clientGeneratedId: order.clientGeneratedId,
             createdAt: order.createdAt,
             status: order.status,

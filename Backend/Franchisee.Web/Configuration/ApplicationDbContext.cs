@@ -126,6 +126,7 @@ namespace Franchisee.Web.Configuration
                     .OnDelete(DeleteBehavior.SetNull);
 
                 entity.HasIndex(o => o.PlotId);
+                entity.HasIndex(o => o.ClientGeneratedId).IsUnique();
 
                 // Связь с Manager
                 entity.HasOne(o => o.Manager)

@@ -6,7 +6,7 @@ namespace Franchisee.Web.Services.Media.Core
 {
     public interface IMediaService
     {
-        Task<TempUploadDto?> UploadTempAsync(IFormFile file, int uploaderId, MediaType mediaType);
+        Task<TempUploadDto?> UploadTempAsync(IFormFile file, int uploaderId, MediaType mediaType, string source = "completion");
         Task<int> CommitTempToOrderAsync(int orderId, List<int> tempIds, int uploaderId, MediaType mediaType);
         Task DeleteMediaFilesAsync(int mediaId);
         Task CleanupExpiredTempsAsync();

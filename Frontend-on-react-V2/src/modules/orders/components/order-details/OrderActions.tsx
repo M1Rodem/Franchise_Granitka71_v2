@@ -34,15 +34,6 @@ export function OrderActions({
     typeof status === 'string'
       ? Number(status)
       : status
-
-  console.log(
-    '[ORDER STATUS DEBUG]',
-    {
-      raw: status,
-      normalized: normalizedStatus,
-      type: typeof status,
-    }
-  )
   
   const canSubmitForReview =
     normalizedStatus === 1 ||

@@ -35,7 +35,7 @@ function getAllTilesForZoom(
   
   for (let x = topLeft.x; x <= bottomRight.x; x++) {
     for (let y = topLeft.y; y <= bottomRight.y; y++) {
-      const url = `${YANDEX_TILE_URL}?l=map&x=${x}&y=${y}&z=${zoom}&scale=1&lang=ru_RU`
+      const url = `${YANDEX_TILE_URL}?l=map&x=${x}&y=${y}&z=${zoom}&scale=1&lang=ru_RU&apikey=${env.yandexMapApiKey}&ads=enabled`
       tiles.push({ x, y, url })
     }
   }
@@ -53,7 +53,6 @@ function getAllTiles(): string[] {
       TULA_BOUNDS.west, TULA_BOUNDS.east,
       zoom
     )
-    console.log(`[TilePrecache] Zoom ${zoom}: ${tiles.length} тайлов`)
     allTiles.push(...tiles.map(t => t.url))
   }
   
@@ -78,13 +77,11 @@ class TilePrecacheService {
     // Проверяем, не закешировано ли уже
     const precached = localStorage.getItem(PRECACHE_KEY)
     if (precached === PRECACHE_VERSION) {
-      console.log('[TilePrecache] Тайлы уже закешированы')
       onComplete?.()
       return
     }
 
     if (this.isPrecaching) {
-      console.log('[TilePrecache] Уже в процессе загрузки')
       return
     }
 
@@ -95,8 +92,6 @@ class TilePrecacheService {
 
     const allTiles = getAllTiles()
     this.totalTiles = allTiles.length
-
-    console.log(`[TilePrecache] Начинаем загрузку ${this.totalTiles} тайлов для Тульской области`)
 
     // Загружаем тайлы чанками по 20 штук
     const chunkSize = 20
@@ -138,12 +133,10 @@ class TilePrecacheService {
 
     // Кешируем Yandex Maps API
     try {
-      console.log('[TilePrecache] Кешируем Yandex Maps API...')
       const apiCache = await caches.open('yandex-maps-api')
       const apiResponse = await fetch(YANDEX_API_URL)
       if (apiResponse.ok) {
         await apiCache.put(YANDEX_API_URL, apiResponse)
-        console.log('[TilePrecache] Yandex Maps API cached')
       } else {
         console.warn('[TilePrecache] Failed to cache API, status:', apiResponse.status)
       }
@@ -154,7 +147,6 @@ class TilePrecacheService {
     // Завершаем
     localStorage.setItem(PRECACHE_KEY, PRECACHE_VERSION)
     this.isPrecaching = false
-    console.log('[TilePrecache] Загрузка завершена!')
     this.onCompleteCallback?.()
   }
 

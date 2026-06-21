@@ -492,8 +492,8 @@ namespace Franchisee.Web.Services.Orders.Repositories
 
             foreach (var order in orders)
             {
-                var actualTotalPrice = order.WorkItems?.Sum(w => w.Price * w.Quantity) ?? 0;
                 var paidAmount = order.Payments?.Sum(p => p.Amount) ?? 0;
+                var actualTotalPrice = order.TotalPrice;
 
                 totalSold += actualTotalPrice;
                 totalPaid += paidAmount;
@@ -506,7 +506,8 @@ namespace Franchisee.Web.Services.Orders.Repositories
                     CustomerName = order.CustomerFullName,
                     TotalPrice = actualTotalPrice,
                     PaidAmount = paidAmount,
-                    DebtAmount = actualTotalPrice - paidAmount
+                    DebtAmount = actualTotalPrice - paidAmount,
+                    Status = (int)order.Status
                 });
             }
 
@@ -515,8 +516,6 @@ namespace Franchisee.Web.Services.Orders.Repositories
 
         public async Task<string> GenerateOrderNumberAsync()
         {
-            // Используем адаптивную блокировку без явной транзакции
-            // EF Core 6+ позволяет использовать FOR UPDATE в рамках существующей транзакции
             const int maxRetries = 3;
             int retryCount = 0;
 

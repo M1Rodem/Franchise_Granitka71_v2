@@ -154,6 +154,20 @@ namespace Franchisee.Web.Controllers
                 return StatusCode(403, new { message = "Недостаточно прав для создания заказа от имени другого пользователя" });
             }
 
+            if (!string.IsNullOrEmpty(request.ClientGeneratedId))
+            {
+                var existingOrder = await _context.Orders
+                    .FirstOrDefaultAsync(o => o.ClientGeneratedId == request.ClientGeneratedId);
+                
+                if (existingOrder != null)
+                {
+                    _logger.LogInformation("Заказ с ClientGeneratedId {ClientGeneratedId} уже существует, возвращаем существующий", request.ClientGeneratedId);
+                    
+                    var existingDto = MapToResponseDto(existingOrder);
+                    return Ok(existingDto);
+                }
+            }
+
             using var transaction = await _context.Database.BeginTransactionAsync();
 
             try
@@ -168,6 +182,7 @@ namespace Franchisee.Web.Controllers
                 var order = new Order
                 {
                     OrderNumber = orderNumber,
+                    ClientGeneratedId = request.ClientGeneratedId,
                     Place = request.Place,
                     DiscountPercent = request.DiscountPercent,
                     InspectionPlace = request.InspectionPlace ?? string.Empty,

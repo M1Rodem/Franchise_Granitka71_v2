@@ -10,16 +10,16 @@ export function YandexMapProvider({ children }: Props) {
 
   if (!isLoaded) {
     return (
-      <div style={{ 
-        width: '100%', 
-        height: '100%', 
+      <div style={{
+        width: '100%',
+        height: '100%',
         minHeight: 200,
-        display: 'flex', 
-        alignItems: 'center', 
+        display: 'flex',
+        alignItems: 'center',
         justifyContent: 'center',
-        backgroundColor: '#f5f5f5',
+        backgroundColor: 'rgba(8, 19, 31, 0.4)',
         borderRadius: '12px',
-        color: '#999'
+        color: '#8fa4bd'
       }}>
         Загрузка карты...
       </div>

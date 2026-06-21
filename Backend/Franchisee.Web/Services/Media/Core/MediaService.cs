@@ -75,7 +75,7 @@ namespace Franchisee.Web.Services.Media.Core
                 _maxFileSize, _maxPhotosPerOrder, _maxVideosPerOrder, _maxVideoSize);
         }
 
-        public async Task<TempUploadDto?> UploadTempAsync(IFormFile file, int uploaderId, MediaType mediaType)
+        public async Task<TempUploadDto?> UploadTempAsync(IFormFile file, int uploaderId, MediaType mediaType, string source = "completion")
         {
             _logger.LogInformation("UploadTempAsync: Файл получен - Имя: {Name}, Размер: {Size}B, Тип: {Type}, MediaType: {MediaType}",
                 file?.FileName ?? "null", file?.Length ?? 0, file?.ContentType ?? "null", mediaType);
@@ -112,11 +112,11 @@ namespace Franchisee.Web.Services.Media.Core
             // Для фото обрабатываем изображения, для видео просто сохраняем файл
             if (mediaType == MediaType.Photo)
             {
-                return await ProcessImageUploadAsync(file, uploaderId, fileContentType);
+                return await ProcessImageUploadAsync(file, uploaderId, fileContentType, source);
             }
             else
             {
-                return await ProcessVideoUploadAsync(file, uploaderId, fileContentType);
+                return await ProcessVideoUploadAsync(file, uploaderId, fileContentType, source);
             }
         }
 
@@ -298,7 +298,8 @@ namespace Franchisee.Web.Services.Media.Core
         private async Task<TempUploadDto?> ProcessImageUploadAsync(
             IFormFile file,
             int uploaderId,
-            string contentType)
+            string contentType,
+            string source = "completion")
         {
             using var tempStream = file.OpenReadStream();
 
@@ -371,19 +372,29 @@ namespace Franchisee.Web.Services.Media.Core
                 tempStream.Position = 0;
                 var checksum = await ComputeSha256Async(tempStream);
 
+                TimeSpan ttl;
+                if (source == "offline")
+                {
+                    ttl = TimeSpan.FromHours(1);   // 1 час для оффлайн
+                }
+                else
+                {
+                    ttl = TimeSpan.FromDays(20);   // 20 дней для completion
+                }
+
                 var tempUpload = new TempUpload
                 {
                     FilePath = filePath,
-                    ContentType = "image/jpeg", // фикс
+                    ContentType = "image/jpeg",
                     Checksum = checksum,
-                    Width = image.Width,   // после resize
+                    Width = image.Width,
                     Height = image.Height,
                     OriginalFileName = file.FileName,
                     Size = savedSize,
                     MediaType = MediaType.Photo,
                     UploaderId = uploaderId,
                     UploadedAt = DateTime.UtcNow,
-                    ExpiresAt = DateTime.UtcNow.AddDays(14)
+                    ExpiresAt = DateTime.UtcNow.Add(ttl)  // ← изменено
                 };
 
                 _context.TempUploads.Add(tempUpload);
@@ -421,7 +432,8 @@ namespace Franchisee.Web.Services.Media.Core
         private async Task<TempUploadDto?> ProcessVideoUploadAsync(
             IFormFile file,
             int uploaderId,
-            string contentType)
+            string contentType,
+            string source = "completion")
         {
             if (file.Length > _maxVideoSize)
             {
@@ -455,6 +467,16 @@ namespace Franchisee.Web.Services.Media.Core
                     Math.Round(file.Length / 1024.0 / 1024.0, 2)
                 );
 
+                TimeSpan ttl;
+                if (source == "offline")
+                {
+                    ttl = TimeSpan.FromHours(1);   // 1 час для оффлайн
+                }
+                else
+                {
+                    ttl = TimeSpan.FromDays(20);   // 20 дней для completion
+                }
+
                 var tempUpload = new TempUpload
                 {
                     FilePath = filePath,
@@ -467,8 +489,9 @@ namespace Franchisee.Web.Services.Media.Core
                     MediaType = MediaType.Video,
                     UploaderId = uploaderId,
                     UploadedAt = DateTime.UtcNow,
-                    ExpiresAt = DateTime.UtcNow.AddDays(14)
+                    ExpiresAt = DateTime.UtcNow.Add(ttl)  // ← изменено
                 };
+
 
                 _context.TempUploads.Add(tempUpload);
                 await _context.SaveChangesAsync();

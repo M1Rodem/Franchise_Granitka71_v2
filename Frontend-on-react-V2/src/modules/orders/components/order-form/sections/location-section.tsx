@@ -46,7 +46,7 @@ export function LocationSection() {
       selectedPlot.longitude,
     ]
 
-    mapRef.current.setCenter(plotCoords, 15)
+    mapRef.current.setCenter(plotCoords, 14)
 
     const lat = watch('latitude')
     const lng = watch('longitude')
@@ -197,6 +197,7 @@ export function LocationSection() {
           <YandexMapProvider>
             <MapView
               center={plotCoords ?? [53.9320, 37.9197]}
+              zoom={14}
               onReady={(map: any) => {
                 mapRef.current = map
 

@@ -66,15 +66,6 @@ export function Sidebar() {
     }
   }
 
-  let displayName = user?.fullName
-  if (!isFullSidebar && currentEmployee) {
-    displayName = currentEmployee.fullName
-  }
-
-  const showEmployeeSelector = !isFullSidebar
-
-  const showLogoutButton = isFullSidebar
-
   return (
     <aside
       className={[
@@ -112,11 +103,6 @@ export function Sidebar() {
       <nav className={styles.nav} aria-label="Main navigation">
         {visibleItems.map((item) => {
           const isActive = isNavigationItemActive(location.pathname, item)
-
-          let label = item.label
-          if (!isSidebarCollapsed && item.id === 'offline-orders' && offlineOrdersCount > 0) {
-            label = `${item.label} (${offlineOrdersCount})`
-          }
 
           return (
             <motion.div

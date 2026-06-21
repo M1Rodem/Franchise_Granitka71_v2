@@ -11,10 +11,11 @@ import { RootLayout } from './root-layout'
 import CreateOrderPage from '@/modules/orders/pages/create-order.page'
 import OfflineOrdersPage from '@/modules/offline/pages/offline-orders.page'
 import OfflineOrderDetailsPage from '@/modules/offline/pages/offline-order-details.page'
+import OfflineLoginPage from '@/modules/offline/pages/offline-login.page'
 
 // Ленивая загрузка для остальных страниц
 const LoginPage = lazy(() => import('@/modules/auth/pages/login.page'))
-const OrdersListPage = lazy(() => import('@/modules/orders/pages/orders-list.page'))
+import OrdersListPage from '@/modules/orders/pages/orders-list.page'
 const OrderDetailsPage = lazy(() => import('@/modules/orders/pages/order-details.page'))
 const ArchivedOrdersPage = lazy(() => import('@/modules/orders/pages/archived-orders.page'))
 const NotificationsPage = lazy(() => import('@/modules/notifications/pages/notifications.page'))
@@ -96,6 +97,14 @@ const router = createBrowserRouter([
         ),
       },
       {
+        path: '/offline-login',
+        element: (
+          <AuthLayout>
+            <OfflineLoginPage />
+          </AuthLayout>
+        ),
+      },
+      {
         element: <RequireAuth />,
         children: [
           {
@@ -104,9 +113,7 @@ const router = createBrowserRouter([
               {
                 path: '/orders',
                 element: (
-                  <PageWrapper>
-                    <OrdersListPage />
-                  </PageWrapper>
+                  <OrdersListPage />
                 ),
               },
               {

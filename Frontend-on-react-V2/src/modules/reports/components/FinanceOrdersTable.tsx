@@ -1,5 +1,7 @@
 import table from '@/shared/ui/table-base.module.css'
-import surface from '@/shared/ui/surface.module.css';
+import surface from '@/shared/ui/surface.module.css'
+import { StatusBadge } from '@/shared/ui/status'
+import { getOrderStatusInfo } from '@/modules/orders/lib/order-status'
 
 import type {
   ManagerFinanceOrderDto,
@@ -13,8 +15,7 @@ interface FinanceOrdersTableProps {
   summary: ManagerFinanceSummaryDto
 }
 
-const GRID_TEMPLATE =
-  '140px 120px 1.6fr 160px 160px 160px'
+const GRID_TEMPLATE = '140px 120px 1.3fr 160px 160px 160px 170px'
 
 const formatMoney = (value: number) =>
   new Intl.NumberFormat('ru-RU').format(value)
@@ -38,6 +39,7 @@ export function FinanceOrdersTable({
           <span>Продано</span>
           <span>Получено</span>
           <span>Остаток</span>
+          <span>Статус</span>  {/* ← добавить */}
         </div>
 
         {orders.length === 0 && (
@@ -46,51 +48,59 @@ export function FinanceOrdersTable({
           </div>
         )}
 
-        {orders.map(order => (
+        {orders.map(order => {
+          const statusInfo = getOrderStatusInfo(order.status)
+
+          return (
             <div
-                key={order.orderId}
-                className={table.dataRow}
-                style={{
+              key={order.orderId}
+              className={table.dataRow}
+              style={{
                 gridTemplateColumns: GRID_TEMPLATE,
                 cursor: 'pointer',
-                }}
-                onClick={() =>
+              }}
+              onClick={() =>
                 navigate(`/orders/${order.orderId}`)
-                }
+              }
             >
-            <span
-              data-label="Заказ"
-              className={table.primaryCell}
-            >
-              {order.orderNumber}
-            </span>
+              <span
+                data-label="Заказ"
+                className={table.primaryCell}
+              >
+                {order.orderNumber}
+              </span>
 
-            <span data-label="Дата">
-              {new Date(
-                order.orderDate
-              ).toLocaleDateString('ru-RU')}
-            </span>
+              <span data-label="Дата">
+                {new Date(order.orderDate).toLocaleDateString('ru-RU')}
+              </span>
 
-            <span
-              data-label="Клиент"
-              className={table.primaryCell}
-            >
-              {order.customerName}
-            </span>
+              <span
+                data-label="Клиент"
+                className={table.primaryCell}
+              >
+                {order.customerName}
+              </span>
 
-            <span data-label="Продано">
-              {formatMoney(order.totalPrice)}
-            </span>
+              <span data-label="Продано">
+                {formatMoney(order.totalPrice)}
+              </span>
 
-            <span data-label="Получено">
-              {formatMoney(order.paidAmount)}
-            </span>
+              <span data-label="Получено">
+                {formatMoney(order.paidAmount)}
+              </span>
 
-            <span data-label="Остаток">
-              {formatMoney(order.debtAmount)}
-            </span>
-          </div>
-        ))}
+              <span data-label="Остаток">
+                {formatMoney(order.debtAmount)}
+              </span>
+
+              <span data-label="Статус">
+                <StatusBadge style={statusInfo.style}>
+                  {statusInfo.label}
+                </StatusBadge>
+              </span>
+            </div>
+          )
+        })}
       </div>
     </>
   )

@@ -43,9 +43,7 @@ export function PrintWithPhotosModal({
   };
 
   const handlePrint = () => {
-    if (selectedPhotoIds.size === 0) {
-      return;
-    }
+    // ✅ Разрешаем печать даже без выбранных фото
     onPrint(Array.from(selectedPhotoIds), printType);
   };
 
@@ -63,9 +61,14 @@ export function PrintWithPhotosModal({
         type="button"
         className={`${button.btn} ${button.btnPrimary}`}
         onClick={handlePrint}
-        disabled={isLoading || selectedPhotoIds.size === 0}
+        disabled={isLoading}
       >
-        {isLoading ? 'Печать...' : `Распечатать (${selectedPhotoIds.size})`}
+        {isLoading 
+          ? 'Печать...' 
+          : selectedPhotoIds.size > 0 
+            ? `Распечатать (${selectedPhotoIds.size})` 
+            : 'Распечатать бланк'
+        }
       </button>
     </div>
   );
@@ -73,7 +76,7 @@ export function PrintWithPhotosModal({
   return (
     <FormModal
       isOpen={isOpen}
-      title="Печать заказа с фотографиями"
+      title="Печать заказа"
       onClose={onClose}
       footer={footer}
       size="lg"
@@ -128,49 +131,51 @@ export function PrintWithPhotosModal({
           {photos.length === 0 ? (
             <div className={styles.emptyPhotos}>
               <p>У заказа нет фотографий</p>
-              <span>Вы можете распечатать заказ без фото, используя обычную печать</span>
+              <span>Будет распечатан только бланк заказа</span>
             </div>
           ) : (
-            <div className={styles.photosGrid}>
-              {photos.map((photo) => (
-                <div
-                  key={photo.id}
-                  className={`${styles.photoCard} ${selectedPhotoIds.has(photo.id) ? styles.selected : ''}`}
-                  onClick={() => handleTogglePhoto(photo.id)}
-                >
-                  <div className={styles.checkboxWrapper}>
-                    <input
-                      type="checkbox"
-                      checked={selectedPhotoIds.has(photo.id)}
-                      onChange={() => {}}
-                      onClick={(e) => e.stopPropagation()}
+            <>
+              <div className={styles.photosGrid}>
+                {photos.map((photo) => (
+                  <div
+                    key={photo.id}
+                    className={`${styles.photoCard} ${selectedPhotoIds.has(photo.id) ? styles.selected : ''}`}
+                    onClick={() => handleTogglePhoto(photo.id)}
+                  >
+                    <div className={styles.checkboxWrapper}>
+                      <input
+                        type="checkbox"
+                        checked={selectedPhotoIds.has(photo.id)}
+                        onChange={() => {}}
+                        onClick={(e) => e.stopPropagation()}
+                      />
+                    </div>
+                    <img
+                      src={photo.url}
+                      alt={photo.originalFileName}
+                      className={styles.photoPreview}
+                      loading="lazy"
                     />
+                    <div className={styles.photoInfo}>
+                      <span className={styles.photoName}>
+                        {photo.originalFileName.length > 35
+                          ? photo.originalFileName.slice(0, 32) + '...'
+                          : photo.originalFileName}
+                      </span>
+                      <span className={styles.photoSize}>
+                        {Math.round(photo.size / 1024)} KB
+                      </span>
+                    </div>
                   </div>
-                  <img
-                    src={photo.url}
-                    alt={photo.originalFileName}
-                    className={styles.photoPreview}
-                    loading="lazy"
-                  />
-                  <div className={styles.photoInfo}>
-                    <span className={styles.photoName}>
-                      {photo.originalFileName.length > 35
-                        ? photo.originalFileName.slice(0, 32) + '...'
-                        : photo.originalFileName}
-                    </span>
-                    <span className={styles.photoSize}>
-                      {Math.round(photo.size / 1024)} KB
-                    </span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-
-          {selectedPhotoIds.size > 0 && (
-            <div className={styles.selectionInfo}>
-              Выбрано фото: {selectedPhotoIds.size}
-            </div>
+                ))}
+              </div>
+              <div className={styles.selectionInfo}>
+                {selectedPhotoIds.size > 0 
+                  ? `Выбрано фото: ${selectedPhotoIds.size}` 
+                  : 'Фото не выбраны. Будет распечатан только бланк заказа.'
+                }
+              </div>
+            </>
           )}
         </div>
       </div>

@@ -267,64 +267,68 @@ namespace Franchisee.Web.Services.Print.Builders
             if (page.DistanceItems.Any())
             {
                 sb.AppendLine(@"
-<table class='work-table work-distance'>
-    <colgroup>
-        <col style='width: 5%'><col style='width: 30%'><col style='width: 10%'>
-        <col style='width: 8%'><col style='width: 8%'><col style='width: 8%'>
-        <col style='width: 11%'><col style='width: 20%'>
-    </colgroup>
-    <thead>
-        <tr>
-            <th>№</th><th>Работа</th><th>Цена</th><th>Км</th><th>Рейсы</th><th>Кол-во</th><th>Итого</th><th>Примечание</th>
-        </tr>
-    </thead>
-    <tbody>");
+        <table class='work-table work-distance'>
+            <colgroup>
+                <col style='width: 5%'><col style='width: 30%'><col style='width: 10%'>
+                <col style='width: 8%'><col style='width: 8%'><col style='width: 8%'>
+                <col style='width: 11%'><col style='width: 20%'>
+            </colgroup>
+            <thead>
+                <tr>
+                    <th>№</th><th>Работа</th><th>Цена</th><th>Км</th><th>Рейсы</th><th>Кол-во</th><th>Итого</th><th>Примечание</th>
+                </tr>
+            </thead>
+            <tbody>");
 
                 foreach (var item in page.DistanceItems)
                 {
                     sb.AppendLine($@"
-        <tr>
-            <td>{currentNumber}.</td>
-            <td>{item.Description}</td>
-            <td>{FormatPrice(item.Price, item.ShowPrice)}</td>
-            <td>{item.DistanceKm}</td>
-            <td>{item.Routes}</td>
-            <td>{FormatQuantity(item.CalculatedQuantity)}</td>
-            <td>{FormatPrice(item.Total, item.ShowPrice)}</td>
-            <td>{item.Note}</td>
-        </tr>");
+                <tr>
+                    <td>{currentNumber}.</td>
+                    <td>{item.Description}</td>
+                    <td>{FormatPrice(item.Price, item.ShowPrice)}</td>
+                    <td>{item.DistanceKm}</td>
+                    <td>{item.Routes}</td>
+                    <td>{FormatQuantity(item.CalculatedQuantity)}</td>
+                    <td>{FormatPrice(item.Total, item.ShowPrice)}</td>
+                    <td>{item.Note}</td>
+                </tr>");
                     currentNumber++;
                 }
                 sb.AppendLine("    </tbody>\n</table>");
             }
 
-            // Таблица обычных работ
+            // ===== ИЗМЕНЕНО: Таблица обычных работ с добавленным столбцом "Итого" =====
             if (page.RegularItems.Any())
             {
                 sb.AppendLine(@"
-<table class='work-table work-regular'>
-    <colgroup>
-        <col style='width: 5%'><col style='width: 45%'>
-        <col style='width: 10%'><col style='width: 10%'>
-        <col style='width: 30%'>
-    </colgroup>
-    <thead>
-        <tr>
-            <th>№</th><th>Работа</th><th>Кол-во</th><th>Цена</th><th>Примечание</th>
-        </tr>
-    </thead>
-    <tbody>");
+        <table class='work-table work-regular'>
+            <colgroup>
+                <col style='width: 5%'><col style='width: 35%'>
+                <col style='width: 8%'><col style='width: 10%'>
+                <col style='width: 12%'><col style='width: 30%'>
+            </colgroup>
+            <thead>
+                <tr>
+                    <th>№</th><th>Работа</th><th>Кол-во</th><th>Цена</th><th>Итого</th><th>Примечание</th>
+                </tr>
+            </thead>
+            <tbody>");
 
                 foreach (var item in page.RegularItems)
                 {
+                    // Вычисляем итого для строки
+                    var total = item.Price * item.Quantity;
+                    
                     sb.AppendLine($@"
-        <tr>
-            <td>{currentNumber}.</td>
-            <td>{item.Description}</td>
-            <td>{FormatQuantity(item.Quantity)}</td>
-            <td>{FormatPrice(item.Price, item.ShowPrice)}</td>
-            <td>{item.Note}</td>
-        </tr>");
+                <tr>
+                    <td>{currentNumber}.</td>
+                    <td>{item.Description}</td>
+                    <td>{FormatQuantity(item.Quantity)}</td>
+                    <td>{FormatPrice(item.Price, item.ShowPrice)}</td>
+                    <td>{FormatPrice(total, item.ShowPrice)}</td>
+                    <td>{item.Note}</td>
+                </tr>");
                     currentNumber++;
                 }
                 sb.AppendLine("    </tbody>\n</table>");

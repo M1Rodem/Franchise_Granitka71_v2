@@ -62,26 +62,29 @@ export function AppHeader() {
       return
     }
 
-    if (!photoIds.length) {
-      tempMessage.warning('Выберите хотя бы одно фото')
-      return
-    }
-
     setIsPrintingWithPhotos(true)
 
     try {
-      const blob = await ordersApi.printOrderWithPhotos(orderId, type, photoIds)
+      let blob: Blob;
+
+      if (!photoIds.length) {
+        blob = await ordersApi.printOrderHtml(orderId, type);
+      } else {
+        blob = await ordersApi.printOrderWithPhotos(orderId, type, photoIds);
+      }
+
       const url = URL.createObjectURL(blob)
       window.open(url, '_blank')
       setTimeout(() => URL.revokeObjectURL(url), 5000)
     } catch (e) {
       console.error(e)
-      tempMessage.error('Ошибка при печати с фото')
+      tempMessage.error('Ошибка при печати')
     } finally {
       setIsPrintingWithPhotos(false)
       setPrintWithPhotosModalOpen(false)
     }
   }
+
 
   useEffect(() => {
     const unsub = signalRService.subscribeStatus((s) => {

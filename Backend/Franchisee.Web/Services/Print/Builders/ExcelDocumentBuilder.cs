@@ -280,7 +280,7 @@ namespace Franchisee.Web.Services.Print.Builders
             var distanceForPage = workItems.Where(x => x.DistanceKm.HasValue).ToList();
             var regularForPage = workItems.Where(x => !x.DistanceKm.HasValue).ToList();
 
-            // ===== ТАБЛИЦА 1: ДИСТАНЦИОННЫЕ РАБОТЫ =====
+            // ===== ТАБЛИЦА 1: ДИСТАНЦИОННЫЕ РАБОТЫ (без изменений) =====
             if (distanceForPage.Any())
             {
                 // Заголовок
@@ -315,27 +315,34 @@ namespace Franchisee.Web.Services.Print.Builders
                 }
             }
 
-            // ===== ТАБЛИЦА 2: ОБЫЧНЫЕ РАБОТЫ =====
+            // ===== ИЗМЕНЕНО: ТАБЛИЦА 2: ОБЫЧНЫЕ РАБОТЫ (добавлен столбец "Итого") =====
+            // Заголовок
             ws.Cell($"A{row}").Value = "№";
             ws.Range($"B{row}:C{row}").Merge();
             SetBold(ws, $"B{row}", "Работа");
             SetBold(ws, $"D{row}", "Кол-во");
             SetBold(ws, $"E{row}", "Цена");
-            ws.Range($"F{row}:H{row}").Merge();
-            SetBold(ws, $"F{row}", "Примечание");
+            SetBold(ws, $"F{row}", "Итого"); // НОВЫЙ СТОЛБЕЦ
+            ws.Range($"G{row}:H{row}").Merge();
+            SetBold(ws, $"G{row}", "Примечание");
             row++;
 
             foreach (var item in regularForPage)
             {
-                ws.Cell($"A{row}").Value = $"{currentNumber}.";
-                ws.Range($"B{row}:C{row}").Merge().Value = item.Description;
                 var quantityValue = item.Quantity;
                 var displayQuantity = Math.Abs(quantityValue - Math.Floor(quantityValue)) < 0.001m
                     ? (int)quantityValue
                     : quantityValue;
+                
+                // Вычисляем итого для строки
+                var total = item.Price * item.Quantity;
+
+                ws.Cell($"A{row}").Value = $"{currentNumber}.";
+                ws.Range($"B{row}:C{row}").Merge().Value = item.Description;
                 ws.Cell($"D{row}").Value = displayQuantity; // Кол-во
-                ws.Cell($"E{row}").Value = item.ShowPrice ? FormatPrice(item.Price) : "";  // Цена
-                ws.Range($"F{row}:H{row}").Merge().Value = item.Note;
+                ws.Cell($"E{row}").Value = item.ShowPrice ? FormatPrice(item.Price) : ""; // Цена
+                ws.Cell($"F{row}").Value = item.ShowPrice ? FormatPrice(total) : ""; // Итого (НОВЫЙ)
+                ws.Range($"G{row}:H{row}").Merge().Value = item.Note; // Примечание (смещено)
 
                 currentNumber++;
                 row++;
@@ -349,7 +356,7 @@ namespace Franchisee.Web.Services.Print.Builders
                 {
                     ws.Cell($"A{row}").Value = $"{currentNumber}.";
                     ws.Range($"B{row}:C{row}").Merge();
-                    ws.Range($"F{row}:H{row}").Merge();
+                    ws.Range($"G{row}:H{row}").Merge();
                     currentNumber++;
                     row++;
                 }

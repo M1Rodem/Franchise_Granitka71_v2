@@ -424,8 +424,6 @@ namespace Franchisee.Web.Services.Print.Builders
 
         private void BuildPaymentsHeader(IXLWorksheet ws, ref int row)
         {
-            // Убираем лишний row++ в начале
-
             ws.Range($"A{row}:H{row}").Merge();
             SetBoldCentered(ws, row, "ПЛАТЕЖИ");
             ws.Cell($"A{row}").Style.Fill.BackgroundColor = XLColor.LightGray;
@@ -434,45 +432,29 @@ namespace Franchisee.Web.Services.Print.Builders
             SetBold(ws, $"A{row}", "Тип платежа:");
             SetBold(ws, $"B{row}", "Сумма:");
             SetBold(ws, $"C{row}", "Дата:");
-            SetBold(ws, $"D{row}", "Подпись:");
+            SetBold(ws, $"D{row}", "Подпись:");     
             SetBold(ws, $"E{row}", "Тип платежа:");
             SetBold(ws, $"F{row}", "Сумма:");
             SetBold(ws, $"G{row}", "Дата:");
-            SetBold(ws, $"H{row}", "Подпись:");
+            SetBold(ws, $"H{row}", "Подпись:");      
             row++;
         }
 
         private void BuildPaymentsPage(IXLWorksheet ws, ref int row, List<PaymentInfo> payments)
         {
-            int paymentIndex = 0;
-
-            // Ровно 3 строки (как в HTML)
-            for (int paymentRow = 0; paymentRow < PAYMENT_ROWS_PER_PAGE; paymentRow++)
+            for (int i = 0; i < payments.Count; i += 2)
             {
-                var left = paymentIndex < payments.Count ? payments[paymentIndex] : null;
-                paymentIndex++;
-
-                var right = paymentIndex < payments.Count ? payments[paymentIndex] : null;
-                paymentIndex++;
+                var left = payments[i];
+                var right = (i + 1) < payments.Count ? payments[i + 1] : null;
 
                 // Левая колонка
-                if (left != null)
+                ws.Cell($"A{row}").Value = left.PaymentType;
+                if (left.ShowAmount)
                 {
-                    ws.Cell($"A{row}").Value = left.PaymentType;
-                    if (left.ShowAmount)
-                    {
-                        ws.Cell($"B{row}").Value = FormatPrice(left.Amount);
-                        ws.Cell($"C{row}").Value = left.PaymentDate.ToString("dd.MM.yyyy");
-                    }
-                    ws.Cell($"D{row}").Value = ""; // Подпись
+                    ws.Cell($"B{row}").Value = FormatPrice(left.Amount);
+                    ws.Cell($"C{row}").Value = left.PaymentDate.ToString("dd.MM.yyyy");
                 }
-                else
-                {
-                    ws.Cell($"A{row}").Value = "";
-                    ws.Cell($"B{row}").Value = "";
-                    ws.Cell($"C{row}").Value = "";
-                    ws.Cell($"D{row}").Value = "";
-                }
+                ws.Cell($"D{row}").Value = ""; // Подпись (пусто)
 
                 // Правая колонка
                 if (right != null)
@@ -483,10 +465,11 @@ namespace Franchisee.Web.Services.Print.Builders
                         ws.Cell($"F{row}").Value = FormatPrice(right.Amount);
                         ws.Cell($"G{row}").Value = right.PaymentDate.ToString("dd.MM.yyyy");
                     }
-                    ws.Cell($"H{row}").Value = ""; // Подпись
+                    ws.Cell($"H{row}").Value = ""; // Подпись (пусто)
                 }
                 else
                 {
+                    // Если платежей нечетное количество — правую часть оставляем пустой
                     ws.Cell($"E{row}").Value = "";
                     ws.Cell($"F{row}").Value = "";
                     ws.Cell($"G{row}").Value = "";

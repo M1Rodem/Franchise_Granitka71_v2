@@ -405,42 +405,34 @@ namespace Franchisee.Web.Services.Print.Builders
         {
             var sb = new StringBuilder();
             sb.AppendLine(@"
-<table class='payments'>
-    <colgroup>
-        <col style='width: 20%'><col style='width: 12%'><col style='width: 12%'>
-        <col style='width: 20%'><col style='width: 12%'><col style='width: 12%'>
-    </colgroup>
-    <thead>
-        <tr><th colspan='6'>ПЛАТЕЖИ</th></tr>
-        <tr>
-            <th>Тип платежа:</th><th>Сумма:</th><th>Дата:</th>
-            <th>Тип платежа:</th><th>Сумма:</th><th>Дата:</th>
-        </tr>
-    </thead>
-    <tbody>");
+        <table class='payments'>
+            <colgroup>
+                <col style='width: 14%'><col style='width: 10%'><col style='width: 10%'><col style='width: 10%'>
+                <col style='width: 14%'><col style='width: 10%'><col style='width: 10%'><col style='width: 10%'>
+            </colgroup>
+            <thead>
+                <tr><th colspan='8'>ПЛАТЕЖИ</th></tr>
+                <tr>
+                    <th>Тип платежа:</th><th>Сумма:</th><th>Дата:</th><th>Подпись:</th>
+                    <th>Тип платежа:</th><th>Сумма:</th><th>Дата:</th><th>Подпись:</th>
+                </tr>
+            </thead>
+            <tbody>");
 
-            // 3 строки по 2 платежа
-            int paymentIndex = 0;
             var payments = page.Payments;
 
-            for (int row = 0; row < 3; row++)
+            for (int i = 0; i < payments.Count; i += 2)
             {
-                var left = paymentIndex < payments.Count ? payments[paymentIndex++] : null;
-                var right = paymentIndex < payments.Count ? payments[paymentIndex++] : null;
+                var left = payments[i];
+                var right = (i + 1) < payments.Count ? payments[i + 1] : null;
 
                 sb.AppendLine("        <tr>");
 
                 // Левая колонка
-                if (left != null)
-                {
-                    sb.AppendLine($"            <td>{left.PaymentType}</td>");
-                    sb.AppendLine($"            <td>{FormatPrice(left.Amount, left.ShowAmount)}</td>");
-                    sb.AppendLine($"            <td>{left.PaymentDate:dd.MM.yyyy}</td>");
-                }
-                else
-                {
-                    sb.AppendLine("            <td></td><td></td><td></td>");
-                }
+                sb.AppendLine($"            <td>{left.PaymentType}</td>");
+                sb.AppendLine($"            <td>{FormatPrice(left.Amount, left.ShowAmount)}</td>");
+                sb.AppendLine($"            <td>{left.PaymentDate:dd.MM.yyyy}</td>");
+                sb.AppendLine($"            <td></td>");
 
                 // Правая колонка
                 if (right != null)
@@ -448,10 +440,12 @@ namespace Franchisee.Web.Services.Print.Builders
                     sb.AppendLine($"            <td>{right.PaymentType}</td>");
                     sb.AppendLine($"            <td>{FormatPrice(right.Amount, right.ShowAmount)}</td>");
                     sb.AppendLine($"            <td>{right.PaymentDate:dd.MM.yyyy}</td>");
+                    sb.AppendLine($"            <td></td>");
                 }
                 else
                 {
-                    sb.AppendLine("            <td></td><td></td><td></td>");
+                    // Если платежей нечетное количество — правую часть оставляем пустой
+                    sb.AppendLine("            <td></td><td></td><td></td><td></td>");
                 }
 
                 sb.AppendLine("        </tr>");

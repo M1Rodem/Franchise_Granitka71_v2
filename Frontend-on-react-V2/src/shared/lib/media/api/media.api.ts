@@ -3,14 +3,10 @@ import { compressImage } from '@/shared/lib/media/compress-image'
 
 export interface TempUploadDto {
   id: number
-
   originalFileName: string
-
   size: number
-
   previewUrl?: string
   url?: string
-
   width: number
   height: number
 }
@@ -51,6 +47,35 @@ export const mediaApi = {
     )
 
     return response.data
+  },
+
+  async uploadOriginal(
+    file: File,
+    onProgress?: (percent: number) => void
+  ): Promise<TempUploadDto> {
+    const formData = new FormData()
+    formData.append('file', file)
+
+    const response = await httpClient.post<TempUploadDto>(
+      '/media/upload-original',
+      formData,
+      {
+        timeout: 0,
+        maxBodyLength: Infinity,
+        maxContentLength: Infinity,
+        onUploadProgress: (event) => {
+          if (!event.total) return
+          const percent = Math.round((event.loaded * 100) / event.total)
+          onProgress?.(percent)
+        },
+      }
+    )
+
+    return response.data
+  },
+
+  async moveOriginalToOrder(orderId: number, tempIds: number[]): Promise<void> {
+    await httpClient.post(`/media/move-original-to-order/${orderId}`, tempIds)
   },
 
   async deleteTemp(tempId: number) {

@@ -27,5 +27,6 @@ namespace Franchisee.Web.Models.Entities.Orders
         public virtual Manager? Uploader { get; set; }
         public DateTime UploadedAt { get; set; } = DateTime.UtcNow;
         public bool IsCompletionMedia { get; set; } = false;
+        public bool IsOriginal { get; set; } = false;
     }
 }

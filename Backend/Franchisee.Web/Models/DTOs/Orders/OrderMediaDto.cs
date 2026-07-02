@@ -12,8 +12,7 @@ namespace Franchisee.Web.Models.DTOs.Orders
         public DateTime UploadedAt { get; set; }
         public int Width { get; set; } = 0;
         public int Height { get; set; } = 0;
-
-        // Новое поле для типа медиа
+        public bool IsOriginal { get; set; }
         public MediaType MediaType { get; set; } = MediaType.Photo;
     }
 

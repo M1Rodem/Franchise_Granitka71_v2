@@ -23,7 +23,7 @@ namespace Franchisee.Web.Models.Requests.Orders
         [Required] public string Address { get; set; } = string.Empty;
 
         public string Phone { get; set; } = string.Empty;
-
+        public List<int> TempOriginalPhotoIds { get; set; } = new();
         public string MonumentType { get; set; } = string.Empty;
         public string MonumentSize { get; set; } = string.Empty;
         public string? AdditionalInfo { get; set; }

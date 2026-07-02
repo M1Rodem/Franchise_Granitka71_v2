@@ -179,6 +179,7 @@ const mediaCamelSchema = z.object({
   width: z.number(),
   height: z.number(),
   mediaType: z.union([z.number(), z.string()]),
+  isOriginal: z.boolean().optional(),
 }).passthrough();
 
 const mediaPascalSchema = z.object({
@@ -190,6 +191,7 @@ const mediaPascalSchema = z.object({
   Width: z.number(),
   Height: z.number(),
   MediaType: z.union([z.number(), z.string()]),
+  IsOriginal: z.boolean().optional(),
 }).passthrough().transform((v) => ({
   id: v.Id,
   url: v.Url,
@@ -199,6 +201,7 @@ const mediaPascalSchema = z.object({
   width: v.Width,
   height: v.Height,
   mediaType: v.MediaType,
+  isOriginal: v.IsOriginal
 }));
 
 export const mediaSchema = z.union([mediaCamelSchema, mediaPascalSchema]);

@@ -411,6 +411,7 @@ function mapFormToUpdateDto(values: OrderFormModel, _: any, defaultValues?: Orde
 
     tempPhotoIds: values.media.tempPhotoIds,
     tempVideoIds: values.media.tempVideoIds,
+    tempOriginalPhotoIds: values.media.tempOriginalPhotoIds,
     removedPhotoIds: values.media.removedPhotoIds,
     removedVideoIds: values.media.removedVideoIds,
   }
@@ -517,7 +518,6 @@ function normalizePhone(phone: string): string {
 
 function mapFormToCreateDto(values: OrderFormModel) {
   return {
-
     place: values.inspectionPlace,
     inspectionPlace: values.inspectionPlace,
     orderDate: values.orderDate,
@@ -538,6 +538,9 @@ function mapFormToCreateDto(values: OrderFormModel) {
 
     discountPercent: values.discountPercent,
 
+    tempPhotoIds: values.media.tempPhotoIds,
+    tempVideoIds: values.media.tempVideoIds,
+    tempOriginalPhotoIds: values.media.tempOriginalPhotoIds,
 
     workItems: values.works.map((w) => {
       const isDistance = w.isDistanceWork === true
@@ -568,9 +571,6 @@ function mapFormToCreateDto(values: OrderFormModel) {
       paymentType: p.paymentType,
       note: p.note,
     })),
-
-    tempPhotoIds: values.media.tempPhotoIds,
-    tempVideoIds: values.media.tempVideoIds,
   }
 }
 

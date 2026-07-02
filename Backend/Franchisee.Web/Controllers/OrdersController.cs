@@ -267,10 +267,18 @@ namespace Franchisee.Web.Controllers
                 {
                     var committedCount = await _mediaService.CommitTempToOrderAsync(
                         order.Id, request.TempPhotoIds, userId, MediaType.Photo);
-                    _logger.LogInformation("Коммитнуто {Count} фото для заказа {OrderId}", committedCount, order.Id);
+                    _logger.LogInformation("Коммитнуто {Count} обычных фото для заказа {OrderId}", committedCount, order.Id);
                 }
 
-                // 4. Видео (новое)
+                // 4. Оригинальные фото (НОВЫЙ БЛОК)
+                if (request.TempOriginalPhotoIds?.Any() == true)
+                {
+                    var committedCount = await _mediaService.CommitOriginalToOrderAsync(
+                        order.Id, request.TempOriginalPhotoIds, userId);
+                    _logger.LogInformation("Коммитнуто {Count} оригинальных фото для заказа {OrderId}", committedCount, order.Id);
+                }
+
+                // 5. Видео (перенумеровать)
                 if (request.TempVideoIds?.Any() == true)
                 {
                     var committedCount = await _mediaService.CommitTempToOrderAsync(
@@ -620,11 +628,19 @@ namespace Franchisee.Web.Controllers
 
                     await _context.SaveChangesAsync();
 
+                    // Обычные фото
                     if (request.TempPhotoIds?.Any() == true)
                     {
                         await _mediaService.CommitTempToOrderAsync(id, request.TempPhotoIds, userId, MediaType.Photo);
                     }
 
+                    // Оригинальные фото (НОВЫЙ БЛОК)
+                    if (request.TempOriginalPhotoIds?.Any() == true)
+                    {
+                        await _mediaService.CommitOriginalToOrderAsync(id, request.TempOriginalPhotoIds, userId);
+                    }
+
+                    // Видео
                     if (request.TempVideoIds?.Any() == true)
                     {
                         await _mediaService.CommitTempToOrderAsync(id, request.TempVideoIds, userId, MediaType.Video);
@@ -1516,7 +1532,8 @@ namespace Franchisee.Web.Controllers
                         UploadedAt = p.UploadedAt,
                         Width = p.Width ?? 0,
                         Height = p.Height ?? 0,
-                        MediaType = p.MediaType
+                        MediaType = p.MediaType,
+                        IsOriginal = p.IsOriginal
                     }).ToList(),
                 
                 Completion = completionInfo,

@@ -40,6 +40,8 @@ export interface CreateOrderRequestDto {
 
   discountPercent: number;
 
+  tempOriginalPhotoIds: number[];
+
   workItems: {
     id?: number;
     workDescription: string;
@@ -83,7 +85,7 @@ export interface UpdateOrderRequestDto {
   monumentType?: string
   monumentSize?: string
   additionalInfo?: string
-
+  tempOriginalPhotoIds?: number[];
   discountPercent?: number
 
   workItems?: {

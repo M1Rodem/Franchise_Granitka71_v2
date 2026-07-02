@@ -113,9 +113,9 @@ namespace Franchisee.Web.Controllers
         // POST: api/media/move-temp-to-order/{orderId}?type=photo|video
         [HttpPost("move-temp-to-order/{orderId}")]
         public async Task<ActionResult> MoveTempToOrder(
-    int orderId,
-    [FromBody] List<int> tempIds,
-    [FromQuery] MediaType type = MediaType.Photo)
+        int orderId,
+        [FromBody] List<int> tempIds,
+        [FromQuery] MediaType type = MediaType.Photo)
         {
             if (tempIds == null || !tempIds.Any())
                 return BadRequest("Нет файлов для перемещения");
@@ -147,6 +147,103 @@ namespace Franchisee.Web.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error moving temp media to order {OrderId}", orderId);
+                return Problem("Ошибка перемещения файлов");
+            }
+        }
+
+        // POST: api/media/upload-original
+        [HttpPost("upload-original")]
+        [Consumes("multipart/form-data")]
+        public async Task<ActionResult<TempUploadDto>> UploadOriginal(IFormFile file)
+        {
+            try
+            {
+                if (file == null || file.Length == 0)
+                {
+                    _logger.LogWarning("UploadOriginal: Файл не предоставлен");
+                    return BadRequest("Файл не предоставлен");
+                }
+
+                if (file.Length > MaxFileSize)
+                {
+                    _logger.LogWarning("UploadOriginal: Файл слишком большой {Size} > {Max}B", file.Length, MaxFileSize);
+                    return BadRequest($"Файл слишком большой (max {MaxFileSize / 1024 / 1024}MB)");
+                }
+
+                // Проверяем MIME тип
+                var contentType = file.ContentType?.ToLowerInvariant() ?? "";
+                var allowedTypes = new[] { "image/jpeg", "image/png", "image/gif", "image/webp" };
+                if (!allowedTypes.Contains(contentType))
+                {
+                    return BadRequest("Поддерживаются только изображения: JPEG, PNG, GIF, WebP");
+                }
+
+                _logger.LogInformation("UploadOriginal: Файл - {Name}, {Size}B", file.FileName ?? "unknown", file.Length);
+
+                var uploaderId = GetCurrentUserId();
+                var dto = await _mediaService.UploadOriginalAsync(file, uploaderId);
+
+                if (dto == null)
+                {
+                    _logger.LogWarning("UploadOriginal: Валидация не пройдена для {Name}", file.FileName ?? "unknown");
+                    return BadRequest("Недопустимый файл.");
+                }
+
+                _logger.LogInformation("UploadOriginal: Успех, Id: {Id}", dto.Id);
+                return Ok(dto);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "UploadOriginal: Неожиданная ошибка");
+                return StatusCode(500, "Внутренняя ошибка сервера");
+            }
+        }
+
+        // POST: api/media/move-original-to-order/{orderId}
+        [HttpPost("move-original-to-order/{orderId}")]
+        public async Task<ActionResult> MoveOriginalToOrder(
+            int orderId,
+            [FromBody] List<int> tempIds)
+        {
+            if (tempIds == null || !tempIds.Any())
+                return BadRequest("Нет файлов для перемещения");
+
+            var order = await _context.Orders
+                .FirstOrDefaultAsync(o => o.Id == orderId && !o.IsDeleted);
+
+            if (order == null)
+                return NotFound("Заказ не найден");
+
+            // Проверяем, сколько уже есть оригиналов
+            var originalsDir = Path.Combine(_environment.WebRootPath, "uploads", "orders", orderId.ToString(), "originals");
+            var existingCount = Directory.Exists(originalsDir) ? Directory.GetFiles(originalsDir).Length : 0;
+
+            if (existingCount + tempIds.Count > 2)
+            {
+                return BadRequest("Можно загрузить не более 2 фотографий в оригинальном качестве");
+            }
+
+            try
+            {
+                var uploaderId = GetCurrentUserId();
+                var committedCount = await _mediaService.CommitOriginalToOrderAsync(orderId, tempIds, uploaderId);
+
+                if (committedCount == 0)
+                {
+                    return BadRequest("Не удалось переместить файлы");
+                }
+
+                _logger.LogInformation("Moved {Count} original photos to order {OrderId}", committedCount, orderId);
+
+                return Ok(new
+                {
+                    message = $"Перемещено {committedCount} оригинальных фото",
+                    addedCount = committedCount
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error moving original photos to order {OrderId}", orderId);
                 return Problem("Ошибка перемещения файлов");
             }
         }
@@ -200,7 +297,8 @@ namespace Franchisee.Web.Controllers
                         UploadedAt = p.UploadedAt,
                         Width = p.Width.GetValueOrDefault(),
                         Height = p.Height.GetValueOrDefault(),
-                        MediaType = p.MediaType
+                        MediaType = p.MediaType,
+                        IsOriginal = p.IsOriginal
                     })
                     .ToListAsync();
 

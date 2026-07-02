@@ -57,9 +57,7 @@ export const offlinePlotsService = {
       
       if (activePlots.length > 0) {
         // Проверяем, не закешировано ли уже
-        if (!tilePrecacheService.isPrecached()) {
-          console.log(`[SyncPlots] Запуск кеширования тайлов для ${activePlots.length} участков`)
-          
+        if (!tilePrecacheService.isPrecached()) {          
           // Запускаем без await, чтобы не блокировать синхронизацию
           tilePrecacheService.precachePlots(
             activePlots,
@@ -79,10 +77,8 @@ export const offlinePlotsService = {
             }
           )
         } else {
-          console.log('[SyncPlots] Тайлы уже закешированы, пропускаем')
         }
       } else {
-        console.log('[SyncPlots] Нет активных участков для кеширования')
       }
       
       return {

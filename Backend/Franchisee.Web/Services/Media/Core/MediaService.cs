@@ -229,7 +229,8 @@ namespace Franchisee.Web.Services.Media.Core
                         MediaType = temp.MediaType,
                         UploaderId = uploaderId,
                         UploadedAt = DateTime.UtcNow,
-                        IsCompletionMedia = true
+                        IsCompletionMedia = true,
+                        IsOriginal = false
                     };
 
                     _context.OrderPhotos.Add(media);
@@ -573,7 +574,8 @@ namespace Franchisee.Web.Services.Media.Core
                     Size = temp.Size,
                     MediaType = mediaType,
                     UploaderId = uploaderId,
-                    UploadedAt = DateTime.UtcNow
+                    UploadedAt = DateTime.UtcNow,
+                    IsOriginal = false
                 };
 
                 _context.OrderPhotos.Add(media);
@@ -594,6 +596,172 @@ namespace Franchisee.Web.Services.Media.Core
 
             _context.OrderPhotos.Remove(media);
             await _context.SaveChangesAsync();
+        }
+
+        /// <summary>
+        /// Загрузка фотографии в оригинальном качестве (без сжатия)
+        /// </summary>
+        public async Task<TempUploadDto?> UploadOriginalAsync(IFormFile file, int uploaderId)
+        {
+            _logger.LogInformation("UploadOriginalAsync: Файл - {Name}, {Size}B", file?.FileName ?? "null", file?.Length ?? 0);
+
+            if (file == null || file.Length == 0)
+            {
+                _logger.LogWarning("UploadOriginalAsync: Файл null или пустой");
+                return null;
+            }
+
+            // Проверяем, что это изображение
+            var contentType = file.ContentType?.ToLowerInvariant() ?? "";
+            if (!AllowedImageMimeTypes.Contains(contentType))
+            {
+                _logger.LogWarning("UploadOriginalAsync: Недопустимый MIME тип '{Type}'", contentType);
+                return null;
+            }
+
+            // Проверяем расширение
+            var ext = Path.GetExtension(file.FileName).ToLowerInvariant();
+            var allowedExt = new[] { ".jpg", ".jpeg", ".png", ".gif", ".webp", ".bmp", ".tiff", ".tif" };
+            if (!allowedExt.Contains(ext))
+            {
+                _logger.LogWarning("UploadOriginalAsync: Недопустимое расширение '{Ext}'", ext);
+                return null;
+            }
+
+            // Сохраняем во временную папку originals
+            var tempDir = Path.Combine(_env.WebRootPath, "uploads", "temp", "originals");
+            Directory.CreateDirectory(tempDir);
+
+            var fileName = $"{Guid.NewGuid():N}{ext}";
+            var filePath = Path.Combine(tempDir, fileName);
+
+            // Копируем файл без изменений
+            await using (var stream = new FileStream(filePath, FileMode.Create))
+            {
+                await file.CopyToAsync(stream);
+            }
+
+            // Вычисляем контрольную сумму
+            await using (var readStream = new FileStream(filePath, FileMode.Open, FileAccess.Read))
+            {
+                var checksum = await ComputeSha256Async(readStream);
+
+                var tempUpload = new TempUpload
+                {
+                    FilePath = filePath,
+                    ContentType = contentType,
+                    Checksum = checksum,
+                    Width = null,
+                    Height = null,
+                    OriginalFileName = file.FileName,
+                    Size = file.Length,
+                    MediaType = MediaType.Photo,
+                    UploaderId = uploaderId,
+                    UploadedAt = DateTime.UtcNow,
+                    ExpiresAt = DateTime.UtcNow.AddDays(30)
+                };
+
+                _context.TempUploads.Add(tempUpload);
+                await _context.SaveChangesAsync();
+
+                _logger.LogInformation("UploadOriginalAsync: Файл сохранен без сжатия: {Path}, Размер: {Size}B", filePath, file.Length);
+
+                return new TempUploadDto
+                {
+                    Id = tempUpload.Id,
+                    OriginalFileName = tempUpload.OriginalFileName,
+                    Size = tempUpload.Size,
+                    PreviewUrl = $"/api/Media/temp-preview/{tempUpload.Id}",
+                    Width = 0,
+                    Height = 0
+                };
+            }
+        }
+
+        /// <summary>
+        /// Переместить оригинальные фото в папку заказа
+        /// </summary>
+        public async Task<int> CommitOriginalToOrderAsync(int orderId, List<int> tempIds, int uploaderId)
+        {
+            _logger.LogInformation("CommitOriginalToOrderAsync: OrderId={OrderId}, TempIdsCount={Count}", orderId, tempIds.Count);
+
+            var order = await _context.Orders.FindAsync(orderId);
+            if (order == null)
+            {
+                _logger.LogWarning("CommitOriginalToOrderAsync: заказ {OrderId} не найден", orderId);
+                return 0;
+            }
+
+            var temps = await _context.TempUploads
+                .Where(t => tempIds.Contains(t.Id) && t.UploaderId == uploaderId)
+                .ToListAsync();
+
+            if (!temps.Any())
+            {
+                _logger.LogWarning("CommitOriginalToOrderAsync: временные файлы не найдены");
+                return 0;
+            }
+
+            // Проверяем лимит (не более 2 оригиналов)
+            var originalsDir = Path.Combine(_env.WebRootPath, "uploads", "orders", orderId.ToString(), "originals");
+            var existingFiles = Directory.Exists(originalsDir) ? Directory.GetFiles(originalsDir) : Array.Empty<string>();
+            
+            if (existingFiles.Length + temps.Count > 2)
+            {
+                _logger.LogWarning("CommitOriginalToOrderAsync: превышен лимит (2) для заказа {OrderId}", orderId);
+                return 0;
+            }
+
+            Directory.CreateDirectory(originalsDir);
+            var committed = 0;
+
+            foreach (var temp in temps)
+            {
+                try
+                {
+                    var ext = Path.GetExtension(temp.OriginalFileName ?? "")?.ToLowerInvariant();
+                    if (string.IsNullOrEmpty(ext)) ext = ".jpg";
+
+                    var newFileName = $"{Guid.NewGuid():N}{ext}";
+                    var newPath = Path.Combine(originalsDir, newFileName);
+
+                    // Перемещаем файл
+                    System.IO.File.Move(temp.FilePath, newPath);
+
+                    // Создаем запись в OrderPhotos (как обычное фото, но с пометкой)
+                    var media = new OrderMedia
+                    {
+                        OrderId = orderId,
+                        FilePath = newPath,
+                        ContentType = temp.ContentType,
+                        Checksum = temp.Checksum,
+                        Width = null,
+                        Height = null,
+                        OriginalFileName = temp.OriginalFileName ?? "unknown",
+                        Size = temp.Size,
+                        MediaType = MediaType.Photo,
+                        UploaderId = uploaderId,
+                        UploadedAt = DateTime.UtcNow,
+                        IsOriginal = true
+                    };
+
+                    _context.OrderPhotos.Add(media);
+                    _context.TempUploads.Remove(temp);
+                    committed++;
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "CommitOriginalToOrderAsync: ошибка при перемещении файла {TempId}", temp.Id);
+                }
+            }
+
+            if (committed > 0)
+            {
+                await _context.SaveChangesAsync();
+                _logger.LogInformation("CommitOriginalToOrderAsync: перемещено {Count} оригиналов для заказа {OrderId}", committed, orderId);
+            }
+
+            return committed;
         }
 
         public async Task<OrderMediaDto?> GetMediaDtoAsync(int mediaId)

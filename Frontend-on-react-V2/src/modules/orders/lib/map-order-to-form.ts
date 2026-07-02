@@ -86,6 +86,7 @@ export function mapOrderToForm(
     media: {
       tempPhotoIds: [],
       tempVideoIds: [],
+      tempOriginalPhotoIds: [],
       removedPhotoIds: [],
       removedVideoIds: [],
     },

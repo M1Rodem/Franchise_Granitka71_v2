@@ -16,5 +16,7 @@ namespace Franchisee.Web.Services.Media.Core
         Task<int> CommitTempToCompletionAsync(int orderId, List<int> tempIds, int uploaderId);
         Task<bool> DeleteCompletionFolderAsync(int orderId);
         Task<string?> SaveVideoFileAsync(IFormFile file, string fileName, string contentType);
+        Task<TempUploadDto?> UploadOriginalAsync(IFormFile file, int uploaderId);
+        Task<int> CommitOriginalToOrderAsync(int orderId, List<int> tempIds, int uploaderId);
     }
 }

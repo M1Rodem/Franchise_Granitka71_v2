@@ -124,8 +124,6 @@ class TilePrecacheService {
         return
       }
 
-      console.log(`[TilePrecache] Начинаем кеширование ${this.totalTiles} тайлов для ${cachedPlots.length} участков`)
-
       // Загружаем тайлы чанками по 10 штук (меньше нагрузка на сеть)
       const chunkSize = 10
       let loadedCount = 0
@@ -175,8 +173,6 @@ class TilePrecacheService {
       localStorage.setItem(PRECACHE_PLOTS_KEY, 'true')
       this.isPrecaching = false
       this.onCompleteCallback?.()
-      
-      console.log(`[TilePrecache] Кеширование завершено. Загружено ${this.loadedTiles} из ${this.totalTiles} тайлов + API`)
     } catch (error) {
       this.isPrecaching = false
       const err = error instanceof Error ? error : new Error('Ошибка кеширования тайлов')
@@ -190,7 +186,6 @@ class TilePrecacheService {
     const API_URL = `https://api-maps.yandex.ru/2.1/?apikey=${env.yandexMapApiKey}&lang=ru_RU`
     
     try {
-      console.log('[TilePrecache] Кешируем API скрипт...')
       const apiCache = await caches.open('yandex-maps-api')
       const cachedApi = await apiCache.match(API_URL)
       
@@ -202,7 +197,6 @@ class TilePrecacheService {
         
         if (response.ok) {
           await apiCache.put(API_URL, response)
-          console.log('[TilePrecache] API скрипт закеширован')
         } else {
           console.warn('[TilePrecache] Не удалось закешировать API:', response.status)
         }
@@ -257,7 +251,6 @@ class TilePrecacheService {
       }
       
       localStorage.removeItem(PRECACHE_PLOTS_KEY)
-      console.log('[TilePrecache] Кеш очищен')
     } catch (error) {
       console.error('[TilePrecache] Ошибка очистки кеша:', error)
     }

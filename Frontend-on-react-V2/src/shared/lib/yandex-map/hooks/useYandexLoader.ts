@@ -47,7 +47,6 @@ async function loadApiViaFetch(): Promise<void> {
     const cachedResponse = await cache.match(url);
     
     if (cachedResponse) {
-      console.log('[YandexLoader] Загрузка API из кеша');
       const scriptText = await cachedResponse.text();
       const script = document.createElement('script');
       script.textContent = scriptText;
@@ -76,7 +75,6 @@ async function loadApiViaFetch(): Promise<void> {
   }
   
   // Если нет в кеше — грузим с сервера
-  console.log('[YandexLoader] Загрузка API с сервера');
   const response = await fetch(url);
   if (!response.ok) throw new Error(`Failed to fetch API: ${response.status}`);
   const scriptText = await response.text();
@@ -146,7 +144,6 @@ export function useYandexLoader() {
     // Подписка на статус офлайн
     const unsubscribe = connectivityService.subscribe((isOnline) => {
       setIsOffline(!isOnline);
-      console.log('[useYandexLoader] Статус сети:', isOnline ? 'online' : 'offline');
     });
 
     // Проверяем доступность Яндекс.API
@@ -154,10 +151,8 @@ export function useYandexLoader() {
       try {
         const available = await checkApiAvailability();
         setIsYandexApiReachable(available);
-        console.log('[useYandexLoader] Яндекс.API доступен:', available);
       } catch {
         setIsYandexApiReachable(false);
-        console.log('[useYandexLoader] Яндекс.API НЕ доступен');
       }
     };
 
@@ -195,7 +190,6 @@ export function useYandexLoader() {
     isApiCached().then((cached) => {
       setHasCachedApi(cached);
       if (cached) {
-        console.log('[YandexLoader] API найден в кеше');
       }
     });
 
@@ -227,7 +221,6 @@ export function useYandexLoader() {
               isApiCached().then((cached) => {
                 if (cached) {
                   // Если есть кеш, но загрузка не удалась — пробуем еще раз
-                  console.log('[YandexLoader] Есть кеш API, пробуем загрузить еще раз');
                   loaderPromise = null;
                   loadAttemptedRef.current = false;
                 } else {
@@ -255,13 +248,6 @@ export function useYandexLoader() {
   const isApiUnavailable = !isApiAvailable && !window.ymaps;
 
   const shouldShowBanner = isFullOffline || isApiUnavailable;
-
-  console.log('[useYandexLoader] shouldShowBanner:', shouldShowBanner, {
-    isFullOffline,
-    isApiUnavailable,
-    isApiAvailable,
-    hasYmaps: !!window.ymaps
-  });
 
   return { 
     isLoaded, 

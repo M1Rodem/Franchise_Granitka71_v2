@@ -7,6 +7,7 @@ export interface MediaDto {
   width: number;
   height: number;
   mediaType: number | string;
+  isOriginal?: boolean;
 }
 
 export type ViewerMediaDto = {
@@ -14,4 +15,5 @@ export type ViewerMediaDto = {
   url: string
   originalFileName: string
   mediaType: number
+  isOriginal?: boolean
 }

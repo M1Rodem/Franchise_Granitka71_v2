@@ -1,0 +1,125 @@
+.header {
+  margin-bottom: var(--size-20);
+}
+
+.description {
+  margin: var(--size-6) 0 0;
+
+  max-width: 720px;
+
+  font-size: var(--size-13);
+  line-height: 1.55;
+
+  color: var(--text-secondary);
+}
+
+.section + .section {
+  margin-top: var(--size-24);
+  padding-top: var(--size-24);
+
+  border-top: var(--size-1) solid var(--border-primary);
+}
+
+.sectionHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--size-12);
+
+  margin-bottom: var(--size-6);
+}
+
+.sectionTitle {
+  margin: 0;
+
+  font-size: var(--size-15);
+  font-weight: 600;
+
+  color: var(--text-primary);
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  min-width: var(--size-28);
+  height: var(--size-28);
+
+  padding: 0 var(--size-10);
+
+  border: var(--size-1) solid var(--border-primary);
+  border-radius: 999px;
+
+  background: var(--surface-secondary);
+
+  color: var(--text-secondary);
+
+  font-size: var(--size-12);
+  font-weight: 600;
+}
+
+.sectionDescription {
+  margin: 0 0 var(--size-16);
+
+  font-size: var(--size-13);
+  line-height: 1.5;
+
+  color: var(--text-secondary);
+}
+
+.empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+
+  padding: var(--size-40) var(--size-20);
+
+  text-align: center;
+
+  border: var(--size-1) dashed var(--border-primary);
+  border-radius: var(--radius-lg);
+
+  background: var(--surface-secondary);
+}
+
+.empty h3 {
+  margin: 0;
+
+  font-size: var(--size-16);
+  font-weight: 600;
+
+  color: var(--text-primary);
+}
+
+.empty p {
+  margin: var(--size-8) 0 0;
+
+  max-width: 360px;
+
+  font-size: var(--size-13);
+  line-height: 1.5;
+
+  color: var(--text-secondary);
+}
+
+@media (max-width: 768px) {
+  .sectionHeader {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .badge {
+    align-self: flex-start;
+  }
+
+  .description,
+  .sectionDescription {
+    font-size: var(--size-12);
+  }
+
+  .empty {
+    padding: var(--size-28) var(--size-16);
+  }
+}

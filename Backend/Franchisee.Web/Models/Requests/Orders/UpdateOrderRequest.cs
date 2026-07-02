@@ -22,7 +22,7 @@ namespace Franchisee.Web.Models.Requests.Orders
         public string? MonumentSize { get; set; }
         public string? AdditionalInfo { get; set; }
         public OrderStatus? Status { get; set; }
-
+        public List<int> TempOriginalPhotoIds { get; set; } = new();
         public decimal? DiscountPercent { get; set; }
         public decimal? DiscountAmount { get; set; }
 

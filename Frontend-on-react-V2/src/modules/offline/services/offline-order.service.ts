@@ -87,6 +87,7 @@ export function mapFormToOfflineCreatePayload(values: OrderFormModel): OfflineCr
     monumentSize: values.monument.size,
     additionalInfo: values.additionalInfo,
     discountPercent: values.discountPercent,
+    tempOriginalPhotoIds: values.media.tempOriginalPhotoIds,
     workItems: values.works.map((w) => {
       const isDistance = w.isDistanceWork === true
 

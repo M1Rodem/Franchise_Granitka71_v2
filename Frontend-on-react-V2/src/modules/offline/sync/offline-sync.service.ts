@@ -7,6 +7,7 @@ import { env } from '@/shared/config/env'
 import { calculateDistanceViaYmaps } from '@/shared/lib/yandex-map/utils/calculateDistance'
 import { connectivityService } from '../services/connectivity.service'
 import { tempMessage } from '@/shared/ui/temp-message.service'
+import { tilePrecacheService } from '@/modules/pwa/services/tilePrecache.service'
 
 function createAuthenticatedClient(token: string) {
   return axios.create({
@@ -180,6 +181,12 @@ export const offlineSyncService = {
           onProgress(processed, userOrders.length)
         }
       }
+    }
+
+    try {
+      await tilePrecacheService.refreshYandexApiIfNeeded()
+    } catch (error) {
+      console.warn('[Sync] Не удалось обновить API кеш:', error)
     }
 
     if (syncedOrders.length > 0) {

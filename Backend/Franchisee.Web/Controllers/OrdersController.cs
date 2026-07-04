@@ -486,7 +486,6 @@ namespace Franchisee.Web.Controllers
 
                             if (existing != null)
                             {
-                                // Общие поля для всех WorkItems
                                 if (!string.IsNullOrEmpty(wi.WorkDescription))
                                     existing.WorkDescription = wi.WorkDescription;
 
@@ -496,17 +495,14 @@ namespace Franchisee.Web.Controllers
                                 if (!string.IsNullOrEmpty(wi.Note))
                                     existing.Note = wi.Note;
 
-                                // ЯВНАЯ ЛОГИКА ПО ФЛАГУ
                                 if (wi.IsDistanceWork)
                                 {
-                                    // Только для работ с флагом IsDistanceWork = true
                                     if (wi.Routes > 0)
                                         existing.Routes = wi.Routes;
 
                                     if (wi.DistanceKm.HasValue && wi.DistanceKm > 0)
                                         existing.DistanceKm = wi.DistanceKm;
 
-                                    // Пересчитываем quantity
                                     if (existing.DistanceKm.HasValue && existing.DistanceKm > 0 && existing.Routes > 0)
                                     {
                                         existing.Quantity = (decimal)(existing.DistanceKm.Value * existing.Routes);
@@ -514,18 +510,15 @@ namespace Franchisee.Web.Controllers
                                 }
                                 else
                                 {
-                                    // Обычные работы
                                     if (wi.Quantity > 0)
                                         existing.Quantity = wi.Quantity;
 
-                                    // Очищаем маршрутные поля (на всякий случай)
                                     existing.Routes = 1;
                                     existing.DistanceKm = null;
                                 }
                             }
                             else if (wi.Id == 0)
                             {
-                                // Новый WorkItem
                                 var newItem = new OrderWorkItem
                                 {
                                     OrderId = id,
@@ -555,7 +548,6 @@ namespace Franchisee.Web.Controllers
                             }
                         }
 
-                        // Удаляем те, что не пришли
                         var requestedIds = request.WorkItems.Where(w => w.Id > 0).Select(w => w.Id).ToList();
                         var toDelete = existingWorkItems.Where(w => !requestedIds.Contains(w.Id)).ToList();
                         if (toDelete.Any())
@@ -566,7 +558,7 @@ namespace Franchisee.Web.Controllers
 
                     order.RecalculateTotals();
 
-                    // Payments - полная замена (как было)
+                    // Payments - полная замена
                     if (request.Payments != null)
                     {
                         var existingPayments = await _context.OrderPayments
@@ -591,7 +583,27 @@ namespace Franchisee.Web.Controllers
 
                     await _orderRepository.UpdateAsync(order);
 
-                    // Обработка фото и видео (как было)
+                    // ================================================================
+                    // 1. СНАЧАЛА УДАЛЯЕМ ПОМЕЧЕННЫЕ ОРИГИНАЛЫ (ДО ПРОВЕРКИ ЛИМИТА)
+                    // ================================================================
+                    if (request.RemovedOriginalIds?.Any() == true)
+                    {
+                        var originalsToRemove = await _context.OrderPhotos
+                            .Where(p => request.RemovedOriginalIds.Contains(p.Id) &&
+                                        p.OrderId == id &&
+                                        p.IsOriginal == true)
+                            .ToListAsync();
+
+                        foreach (var original in originalsToRemove)
+                        {
+                            if (System.IO.File.Exists(original.FilePath))
+                                System.IO.File.Delete(original.FilePath);
+
+                            _context.OrderPhotos.Remove(original);
+                        }
+                    }
+
+                    // Удаляем обычные фото
                     if (request.RemovedPhotoIds?.Any() == true)
                     {
                         var photosToRemove = await _context.OrderPhotos
@@ -609,6 +621,7 @@ namespace Franchisee.Web.Controllers
                         }
                     }
 
+                    // Удаляем видео
                     if (request.RemovedVideoIds?.Any() == true)
                     {
                         var videosToRemove = await _context.OrderPhotos
@@ -626,18 +639,33 @@ namespace Franchisee.Web.Controllers
                         }
                     }
 
+                    // ================================================================
+                    // 2. СОХРАНЯЕМ УДАЛЕНИЯ (ЧТОБЫ ЛИМИТ СЧИТАЛСЯ ПРАВИЛЬНО)
+                    // ================================================================
                     await _context.SaveChangesAsync();
+
+                    // ================================================================
+                    // 3. ТЕПЕРЬ ПРОВЕРЯЕМ ЛИМИТ И ДОБАВЛЯЕМ НОВЫЕ ОРИГИНАЛЫ
+                    // ================================================================
+                    if (request.TempOriginalPhotoIds?.Any() == true)
+                    {
+                        // Считаем только актуальные оригиналы (после удаления)
+                        var currentOriginalsCount = await _context.OrderPhotos
+                            .Where(p => p.OrderId == id && p.IsOriginal == true)
+                            .CountAsync();
+
+                        if (currentOriginalsCount + request.TempOriginalPhotoIds.Count > 2)
+                        {
+                            return BadRequest("Можно загрузить не более 2 фотографий в оригинальном качестве");
+                        }
+
+                        await _mediaService.CommitOriginalToOrderAsync(id, request.TempOriginalPhotoIds, userId);
+                    }
 
                     // Обычные фото
                     if (request.TempPhotoIds?.Any() == true)
                     {
                         await _mediaService.CommitTempToOrderAsync(id, request.TempPhotoIds, userId, MediaType.Photo);
-                    }
-
-                    // Оригинальные фото (НОВЫЙ БЛОК)
-                    if (request.TempOriginalPhotoIds?.Any() == true)
-                    {
-                        await _mediaService.CommitOriginalToOrderAsync(id, request.TempOriginalPhotoIds, userId);
                     }
 
                     // Видео

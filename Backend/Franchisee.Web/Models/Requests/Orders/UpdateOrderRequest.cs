@@ -34,7 +34,8 @@ namespace Franchisee.Web.Models.Requests.Orders
         public List<int> TempVideoIds { get; set; } = new();
         public List<int> RemovedPhotoIds { get; set; } = new();
         public List<int> RemovedVideoIds { get; set; } = new();
-
+        public List<int> RemovedOriginalIds { get; set; } = new();
+        
         public string? ChangeComment { get; set; }
     }
 }

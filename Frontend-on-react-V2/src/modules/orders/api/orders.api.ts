@@ -117,6 +117,7 @@ export interface UpdateOrderRequestDto {
 
   removedPhotoIds?: number[]
   removedVideoIds?: number[]
+  removedOriginalIds?: number[]
 }
 
 export const ordersApi = {

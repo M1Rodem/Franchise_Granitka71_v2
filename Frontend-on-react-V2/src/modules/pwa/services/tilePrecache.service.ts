@@ -4,8 +4,10 @@ import type { CachedPlot } from '@/modules/offline/types/offline-plots.types'
 
 const YANDEX_TILE_URL = 'https://core-renderer-tiles.maps.yandex.net/tiles'
 
-// Новый ключ для версионирования кеша участков
-const PRECACHE_PLOTS_KEY = 'tiles_precached_plots_v1'
+// ===== ВЕРСИОНИРОВАНИЕ КЕША =====
+const PRECACHE_PLOTS_KEY = 'tiles_precached_plots_v2' // ← Увеличил версию, чтобы старый кеш не мешал
+const API_CACHE_DATE_KEY = 'yandex_api_cache_date'
+const API_CACHE_TTL_MS = 2 * 60 * 60 * 1000 // 2 часа
 
 // Функция для конвертации lat/lng в X/Y тайла
 function deg2num(lat: number, lng: number, zoom: number) {
@@ -79,6 +81,55 @@ class TilePrecacheService {
   private onCompleteCallback?: () => void
   private onErrorCallback?: (error: Error) => void
 
+  // ===== ПРОВЕРКА: Нужно ли обновить API =====
+  private shouldRefreshApi(): boolean {
+    const cacheDate = localStorage.getItem(API_CACHE_DATE_KEY)
+    if (!cacheDate) return true
+    
+    const age = Date.now() - Number(cacheDate)
+    return age > API_CACHE_TTL_MS
+  }
+
+  // ===== ОБНОВЛЕНИЕ API КЕША =====
+  async refreshYandexApiIfNeeded(): Promise<void> {
+    if (!this.shouldRefreshApi()) {
+      return
+    }
+    
+    try {
+      const API_URL = `https://api-maps.yandex.ru/2.1/?apikey=${env.yandexMapApiKey}&lang=ru_RU`
+      const apiCache = await caches.open('yandex-maps-api')
+      
+      // Принудительно удаляем старый кеш
+      const oldKeys = await apiCache.keys()
+      for (const key of oldKeys) {
+        await apiCache.delete(key)
+      }
+      
+      // Загружаем свежий скрипт с параметром времени (чтобы не брать из кеша)
+      const freshUrl = `${API_URL}&_t=${Date.now()}`
+      const response = await fetch(freshUrl, {
+        mode: 'cors',
+        credentials: 'omit',
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
+        }
+      })
+      
+      if (response.ok) {
+        // Сохраняем с оригинальным URL (без _t), чтобы при загрузке совпадало
+        await apiCache.put(API_URL, response)
+        localStorage.setItem(API_CACHE_DATE_KEY, String(Date.now()))
+        console.log('[TilePrecache] API скрипт обновлен')
+      } else {
+        console.warn('[TilePrecache] Не удалось обновить API:', response.status)
+      }
+    } catch (e) {
+      console.warn('[TilePrecache] Не удалось обновить API:', e)
+    }
+  }
+
   async precachePlots(
     plots?: CachedPlot[],
     onProgress?: (loaded: number, total: number) => void,
@@ -88,6 +139,8 @@ class TilePrecacheService {
     // Проверяем, не закешировано ли уже (по версии)
     const precached = localStorage.getItem(PRECACHE_PLOTS_KEY)
     if (precached === 'true') {
+      // Даже если кеш есть, проверяем API (обновляем если нужно)
+      await this.refreshYandexApiIfNeeded()
       onComplete?.()
       return
     }
@@ -123,6 +176,8 @@ class TilePrecacheService {
         onComplete?.()
         return
       }
+
+      console.log(`[TilePrecache] Начинаем кеширование ${this.totalTiles} тайлов для ${cachedPlots.length} участков`)
 
       // Загружаем тайлы чанками по 10 штук (меньше нагрузка на сеть)
       const chunkSize = 10
@@ -166,13 +221,15 @@ class TilePrecacheService {
         await new Promise(resolve => setTimeout(resolve, 50))
       }
 
-      // ===== НОВОЕ: КЕШИРУЕМ API СКРИПТ =====
+      // ===== КЕШИРУЕМ API СКРИПТ =====
       await this.cacheYandexApi()
 
       // Сохраняем отметку о завершении
       localStorage.setItem(PRECACHE_PLOTS_KEY, 'true')
       this.isPrecaching = false
       this.onCompleteCallback?.()
+      
+      console.log(`[TilePrecache] Кеширование завершено. Загружено ${this.loadedTiles} из ${this.totalTiles} тайлов + API`)
     } catch (error) {
       this.isPrecaching = false
       const err = error instanceof Error ? error : new Error('Ошибка кеширования тайлов')
@@ -181,28 +238,56 @@ class TilePrecacheService {
     }
   }
 
-  // ===== НОВЫЙ МЕТОД: Кеширование API скрипта =====
+  // ===== КЕШИРОВАНИЕ API СКРИПТА =====
   private async cacheYandexApi() {
     const API_URL = `https://api-maps.yandex.ru/2.1/?apikey=${env.yandexMapApiKey}&lang=ru_RU`
     
     try {
+      console.log('[TilePrecache] Кешируем API скрипт...')
       const apiCache = await caches.open('yandex-maps-api')
-      const cachedApi = await apiCache.match(API_URL)
       
-      if (!cachedApi) {
-        const response = await fetch(API_URL, {
-          mode: 'cors',
-          credentials: 'omit'
-        })
-        
-        if (response.ok) {
-          await apiCache.put(API_URL, response)
-        } else {
-          console.warn('[TilePrecache] Не удалось закешировать API:', response.status)
-        }
-      } else {
-        console.log('[TilePrecache] API скрипт уже в кеше')
+      // Удаляем старый кеш
+      const oldKeys = await apiCache.keys()
+      for (const key of oldKeys) {
+        await apiCache.delete(key)
       }
+      
+      // Загружаем через скрипт (обход CORS)
+      const freshUrl = `${API_URL}&_t=${Date.now()}`
+      
+      return new Promise<void>((resolve) => {
+        const script = document.createElement('script')
+        script.src = freshUrl
+        
+        script.onload = async () => {
+          try {
+            // Пробуем загрузить и сохранить в кеш
+            const response = await fetch(API_URL, {
+              cache: 'reload',
+            })
+            
+            if (response.ok) {
+              // Сохраняем в Cache Storage
+              const cacheResponse = response.clone()
+              await apiCache.put(API_URL, cacheResponse)
+              localStorage.setItem(API_CACHE_DATE_KEY, String(Date.now()))
+              console.log('[TilePrecache] API скрипт закеширован')
+            } else {
+              console.warn('[TilePrecache] Не удалось сохранить API в кеш, статус:', response.status)
+            }
+          } catch (error) {
+            console.warn('[TilePrecache] Не удалось сохранить API в кеш:', error)
+          }
+          resolve()
+        }
+        
+        script.onerror = () => {
+          console.warn('[TilePrecache] Не удалось загрузить API скрипт')
+          resolve()
+        }
+        
+        document.head.appendChild(script)
+      })
     } catch (e) {
       console.error('[TilePrecache] Ошибка кеширования API:', e)
     }
@@ -235,7 +320,7 @@ class TilePrecacheService {
     return localStorage.getItem(PRECACHE_PLOTS_KEY) === 'true'
   }
 
-  // Очистка кеша тайлов (для отладки или принудительного обновления)
+  // Очистка кеша (для отладки или принудительного обновления)
   async clearCache() {
     try {
       const tileCache = await caches.open('yandex-maps-tiles')
@@ -251,6 +336,9 @@ class TilePrecacheService {
       }
       
       localStorage.removeItem(PRECACHE_PLOTS_KEY)
+      localStorage.removeItem(API_CACHE_DATE_KEY)
+      
+      console.log('[TilePrecache] Кеш очищен')
     } catch (error) {
       console.error('[TilePrecache] Ошибка очистки кеша:', error)
     }

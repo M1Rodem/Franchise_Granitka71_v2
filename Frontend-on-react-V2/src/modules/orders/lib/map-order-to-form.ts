@@ -89,6 +89,7 @@ export function mapOrderToForm(
       tempOriginalPhotoIds: [],
       removedPhotoIds: [],
       removedVideoIds: [],
+      removedOriginalIds: [],
     },
   }
   return result

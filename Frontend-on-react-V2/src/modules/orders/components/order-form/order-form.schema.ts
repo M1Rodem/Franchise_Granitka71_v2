@@ -78,6 +78,7 @@ export const orderFormSchema = z
       tempOriginalPhotoIds: z.array(z.number()),
       removedPhotoIds: z.array(z.number()),
       removedVideoIds: z.array(z.number()),
+      removedOriginalIds: z.array(z.number()),
     }),
   })
   .refine((data) => data.plotId !== null, {

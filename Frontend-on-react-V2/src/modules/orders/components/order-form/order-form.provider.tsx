@@ -414,6 +414,7 @@ function mapFormToUpdateDto(values: OrderFormModel, _: any, defaultValues?: Orde
     tempOriginalPhotoIds: values.media.tempOriginalPhotoIds,
     removedPhotoIds: values.media.removedPhotoIds,
     removedVideoIds: values.media.removedVideoIds,
+    removedOriginalIds: values.media.removedOriginalIds,
   }
   const worksChanged = values.works.some((w, i) => {
     const old = defaultValues?.works?.[i]

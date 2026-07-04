@@ -209,16 +209,17 @@ namespace Franchisee.Web.Controllers
                 return BadRequest("Нет файлов для перемещения");
 
             var order = await _context.Orders
+                .Include(o => o.Photos)
                 .FirstOrDefaultAsync(o => o.Id == orderId && !o.IsDeleted);
 
             if (order == null)
                 return NotFound("Заказ не найден");
 
-            // Проверяем, сколько уже есть оригиналов
-            var originalsDir = Path.Combine(_environment.WebRootPath, "uploads", "orders", orderId.ToString(), "originals");
-            var existingCount = Directory.Exists(originalsDir) ? Directory.GetFiles(originalsDir).Length : 0;
+            var existingOriginalsCount = order.Photos
+                .Where(p => p.IsOriginal == true)
+                .Count();
 
-            if (existingCount + tempIds.Count > 2)
+            if (existingOriginalsCount + tempIds.Count > 2)
             {
                 return BadRequest("Можно загрузить не более 2 фотографий в оригинальном качестве");
             }

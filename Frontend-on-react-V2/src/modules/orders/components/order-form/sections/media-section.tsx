@@ -56,6 +56,8 @@ type OriginalItem = {
   size: number
   previewUrl: string
   uploadedAt: string
+  markedForDelete?: boolean
+  isNew?: boolean
 }
 
 interface Props {
@@ -67,16 +69,34 @@ export function MediaSection({ existing = [] }: Props) {
   const { setValue,  } = useFormContext<OrderFormModel>()
   const { mode, draftLocalId, orderId } = useOrderForm()
 
+  // Инициализация media (только обычные фото)
   const [media, setMedia] = useState<MediaItem[]>(() =>
-    existing.map((m) => ({
-      kind: 'existing',
-      id: m.id,
-      previewUrl: m.url,
-      name: m.originalFileName,
-      type: m.mediaType === 1 ? 'video' : 'photo',
-      isOriginal: m.isOriginal || false,
-    }))
+    existing
+      .filter((m) => !m.isOriginal)
+      .map((m) => ({
+        kind: 'existing',
+        id: m.id,
+        previewUrl: m.url,
+        name: m.originalFileName,
+        type: m.mediaType === 1 ? 'video' : 'photo',
+        isOriginal: false,
+      }))
   )
+
+  const [originals, setOriginals] = useState<OriginalItem[]>(() =>
+    existing
+      .filter((m) => m.isOriginal)
+      .map((m) => ({
+        id: m.id,
+        tempId: m.id,
+        name: m.originalFileName,
+        size: 0,
+        previewUrl: m.url,
+        uploadedAt: new Date().toISOString(),
+        isNew: false,
+      }))
+  )
+
   const [uploading, setUploading] = useState(false)
   const [previewIndex, setPreviewIndex] = useState<number | null>(null)
 
@@ -90,7 +110,6 @@ export function MediaSection({ existing = [] }: Props) {
   const [previewUrls, setPreviewUrls] = useState<Record<string, string>>({})
 
   // Состояние для оригинальных фото
-  const [originals, setOriginals] = useState<OriginalItem[]>([])
   const [uploadingOriginal, setUploadingOriginal] = useState(false)
 
   const isEditMode = existing.length > 0
@@ -139,7 +158,10 @@ export function MediaSection({ existing = [] }: Props) {
 
     const files = Array.from(fileList)
 
-    if (originals.length + files.length > 2) {
+    // Считаем только НЕ помеченные на удаление оригиналы
+    const activeOriginals = originals.filter(o => !o.markedForDelete)
+
+    if (activeOriginals.length + files.length > 2) {
       showTempMessage('warning', 'Можно загрузить не более 2 фотографий в оригинальном качестве')
       return
     }
@@ -157,6 +179,7 @@ export function MediaSection({ existing = [] }: Props) {
             size: dto.size,
             previewUrl: dto.previewUrl || URL.createObjectURL(file),
             uploadedAt: new Date().toISOString(),
+            isNew: true,
           }
         })
       )
@@ -164,9 +187,7 @@ export function MediaSection({ existing = [] }: Props) {
       setOriginals(prev => [...prev, ...uploads])
 
       if (isEditMode && orderId) {
-        const tempIds = uploads.map(u => u.tempId)
-        await mediaApi.moveOriginalToOrder(orderId, tempIds)
-        showTempMessage('success', `${uploads.length} фото сохранено в оригинальном качестве`)
+        showTempMessage('success', `${uploads.length} фото загружено в оригинальном качестве (сохранится при отправке)`)
       } else if (mode === 'create' && draftLocalId) {
         showTempMessage('success', `${uploads.length} фото загружено в оригинальном качестве`)
       }
@@ -185,19 +206,27 @@ export function MediaSection({ existing = [] }: Props) {
   }
 
   // Удаление оригинального фото
-  const handleDeleteOriginal = async (index: number) => {
+  const handleDeleteOriginal = (index: number) => {
     const item = originals[index]
 
-    if (item.tempId) {
-      try {
-        await mediaApi.deleteTemp(item.tempId)
-      } catch (e) {
-        console.warn('Failed to delete temp original:', e)
+    // При создании заказа (не редактирование) — удаляем сразу
+    if (!isEditMode) {
+      if (item.tempId) {
+        mediaApi.deleteTemp(item.tempId).catch(() => {})
       }
+      setOriginals(prev => prev.filter((_, i) => i !== index))
+      showTempMessage('info', 'Фото удалено')
+      return
     }
 
-    setOriginals(prev => prev.filter((_, i) => i !== index))
-    showTempMessage('info', 'Фото удалено')
+    // При редактировании — переключаем флаг markedForDelete
+    setOriginals(prev =>
+      prev.map((m, i) =>
+        i === index
+          ? { ...m, markedForDelete: !m.markedForDelete }
+          : m
+      )
+    )
   }
 
   const handleFiles = async (fileList: FileList | null) => {
@@ -305,8 +334,10 @@ export function MediaSection({ existing = [] }: Props) {
       )
       .map((m) => m.id)
 
-    // Оригиналы
-    const originalIds = originals.map((o) => o.tempId)
+    // Оригиналы (новые)
+    const originalIds = originals
+      .filter((o) => !o.markedForDelete && o.isNew === true)
+      .map((o) => o.tempId)
 
     // Видео
     const videoIds = media
@@ -316,7 +347,7 @@ export function MediaSection({ existing = [] }: Props) {
       )
       .map((m) => m.id)
 
-    // Удаленные
+    // Удаленные обычные фото
     const removedPhotos = media
       .filter(
         (m): m is Extract<MediaItem, { kind: 'existing' }> =>
@@ -335,11 +366,17 @@ export function MediaSection({ existing = [] }: Props) {
       )
       .map((m) => m.id)
 
+    // Удаленные оригиналы ← НОВОЕ
+    const removedOriginalIds = originals
+      .filter((o) => o.markedForDelete === true)
+      .map((o) => o.id)
+
     setValue('media.tempPhotoIds', photoIds, { shouldDirty: true })
     setValue('media.tempVideoIds', videoIds, { shouldDirty: true })
     setValue('media.tempOriginalPhotoIds', originalIds, { shouldDirty: true })
     setValue('media.removedPhotoIds', removedPhotos, { shouldDirty: true })
     setValue('media.removedVideoIds', removedVideos, { shouldDirty: true })
+    setValue('media.removedOriginalIds', removedOriginalIds, { shouldDirty: true }) 
   }, [media, originals, removedPhotos, removedVideos])
 
   useEffect(() => {
@@ -397,6 +434,22 @@ export function MediaSection({ existing = [] }: Props) {
     })
   }, [media])
   
+  // Загрузка preview для оригиналов
+  useEffect(() => {
+    originals.forEach((item) => {
+      const mediaId = String(item.id)
+      if (previewUrls[mediaId]) return
+
+      loadMedia(item.previewUrl).then((url) => {
+        if (!url) return
+        setPreviewUrls((prev) => ({
+          ...prev,
+          [mediaId]: url,
+        }))
+      })
+    })
+  }, [originals])
+  
   const previewItems: ViewerMediaDto[] = [
     ...media.map((m) => ({
       id: typeof m.id === 'number' ? m.id : Number.MAX_SAFE_INTEGER,
@@ -426,7 +479,7 @@ export function MediaSection({ existing = [] }: Props) {
         <label className={layout.label} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           Оригинальные фото (без сжатия)
           <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
-            {originals.length}/2
+            {originals.filter(o => !o.markedForDelete).length}/2
           </span>
         </label>
 
@@ -452,12 +505,12 @@ export function MediaSection({ existing = [] }: Props) {
             accept="image/*"
             hidden
             onChange={(e) => handleOriginalFiles(e.target.files)}
-            disabled={originals.length >= 2}
+            disabled={originals.filter(o => !o.markedForDelete).length >= 2}
           />
 
           {uploadingOriginal
             ? 'Загрузка...'
-            : originals.length >= 2
+            : originals.filter(o => !o.markedForDelete).length >= 2
               ? 'Достигнут лимит (2 фото)'
               : 'Выберите фото для загрузки без сжатия'}
         </label>
@@ -471,61 +524,64 @@ export function MediaSection({ existing = [] }: Props) {
               marginTop: '12px',
             }}
           >
-            {originals.map((item, index) => (
-              <div
-                key={item.id}
-                onClick={() => {
-                  const originalIndex = media.length + index;
-                  setPreviewIndex(originalIndex);
-                }}
-                style={{
-                  position: 'relative',
-                  width: '120px',
-                  height: '120px',
-                  borderRadius: '10px',
-                  overflow: 'hidden',
-                  border: '1px solid rgba(251,191,36,0.3)',
-                  cursor: 'pointer',
-                }}
-              >
-                <img
-                  src={item.previewUrl}
-                  alt={item.name}
+            {originals.map((item, index) => {
+              const originalIndex = media.length + index
+              return (
+                <div
+                  key={item.id}
+                  onClick={() => setPreviewIndex(originalIndex)}
                   style={{
-                    width: '100%',
-                    height: '100%',
-                    objectFit: 'cover',
-                  }}
-                />
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    handleDeleteOriginal(index)
-                  }}
-                  style={{
-                    position: 'absolute',
-                    top: '6px',
-                    right: '6px',
-                    width: '26px',
-                    height: '26px',
-                    borderRadius: '50%',
-                    border: 'none',
+                    position: 'relative',
+                    width: '120px',
+                    height: '120px',
+                    borderRadius: '10px',
+                    overflow: 'hidden',
+                    border: '1px solid rgba(251,191,36,0.3)',
                     cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    fontSize: '14px',
-                    color: '#fff',
-                    background: 'rgba(0,0,0,0.55)',
-                    backdropFilter: 'blur(6px)',
-                    transition: 'all 0.15s ease',
+                    filter: isEditMode && item.markedForDelete
+                      ? 'grayscale(1) opacity(0.45)'
+                      : 'none',
                   }}
                 >
-                  <AppIcon name="close" />
-                </button>
-              </div>
-            ))}
+                  <img
+                    src={previewUrls[item.id] || item.previewUrl}
+                    alt={item.name}
+                    style={{
+                      width: '100%',
+                      height: '100%',
+                      objectFit: 'cover',
+                    }}
+                  />
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      handleDeleteOriginal(index)
+                    }}
+                    style={{
+                      position: 'absolute',
+                      top: '6px',
+                      right: '6px',
+                      width: '26px',
+                      height: '26px',
+                      borderRadius: '50%',
+                      border: 'none',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: '14px',
+                      color: '#fff',
+                      background: 'rgba(0,0,0,0.55)',
+                      backdropFilter: 'blur(6px)',
+                      transition: 'all 0.15s ease',
+                    }}
+                  >
+                    <AppIcon name={item.markedForDelete ? 'check' : 'close'} />
+                  </button>
+                </div>
+              )
+            })}
           </div>
         )}
       </div>

@@ -58,6 +58,7 @@ export const createOrderDefaultValues = (): OrderFormModel => {
       tempOriginalPhotoIds: [],
       removedPhotoIds: [],
       removedVideoIds: [],
+      removedOriginalIds: [],
     },
   }
 }

@@ -91,43 +91,61 @@ class TilePrecacheService {
   }
 
   // ===== ОБНОВЛЕНИЕ API КЕША =====
-  async refreshYandexApiIfNeeded(): Promise<void> {
-    if (!this.shouldRefreshApi()) {
-      return
-    }
-    
-    try {
-      const API_URL = `https://api-maps.yandex.ru/2.1/?apikey=${env.yandexMapApiKey}&lang=ru_RU`
-      const apiCache = await caches.open('yandex-maps-api')
-      
-      // Принудительно удаляем старый кеш
-      const oldKeys = await apiCache.keys()
-      for (const key of oldKeys) {
-        await apiCache.delete(key)
+  async refreshYandexApiIfNeeded(): Promise<boolean> {
+      if (!this.shouldRefreshApi()) {
+          return false
       }
       
-      // Загружаем свежий скрипт с параметром времени (чтобы не брать из кеша)
-      const freshUrl = `${API_URL}&_t=${Date.now()}`
-      const response = await fetch(freshUrl, {
-        mode: 'cors',
-        credentials: 'omit',
-        headers: {
-          'Cache-Control': 'no-cache, no-store, must-revalidate',
-          'Pragma': 'no-cache',
-        }
-      })
-      
-      if (response.ok) {
-        // Сохраняем с оригинальным URL (без _t), чтобы при загрузке совпадало
-        await apiCache.put(API_URL, response)
-        localStorage.setItem(API_CACHE_DATE_KEY, String(Date.now()))
-        console.log('[TilePrecache] API скрипт обновлен')
-      } else {
-        console.warn('[TilePrecache] Не удалось обновить API:', response.status)
+      try {
+          const API_URL = `https://api-maps.yandex.ru/2.1/?apikey=${env.yandexMapApiKey}&lang=ru_RU`
+          const apiCache = await caches.open('yandex-maps-api')
+          
+          // Удаляем старый кеш
+          const oldKeys = await apiCache.keys()
+          for (const key of oldKeys) {
+              await apiCache.delete(key)
+          }
+          
+          // Загружаем свежий API через скрипт
+          const freshUrl = `${API_URL}&_t=${Date.now()}`
+          
+          await new Promise<void>((resolve) => {
+              const script = document.createElement('script')
+              script.src = freshUrl
+              
+              script.onload = async () => {
+                  try {
+                      const response = await fetch(API_URL, { cache: 'reload' })
+                      if (response.ok) {
+                          await apiCache.put(API_URL, response)
+                          localStorage.setItem(API_CACHE_DATE_KEY, String(Date.now()))
+                          console.log('[TilePrecache] API скрипт обновлен')
+                          
+                          if (window.ymaps) {
+                              console.log('[TilePrecache] Удаляем старый ymaps, требуется перезагрузка')
+                              // Помечаем, что требуется перезагрузка
+                              localStorage.setItem('ymaps_requires_reload', 'true')
+                          }
+                      }
+                  } catch (error) {
+                      console.warn('[TilePrecache] Не удалось сохранить API в кеш:', error)
+                  }
+                  resolve()
+              }
+              
+              script.onerror = () => {
+                  console.warn('[TilePrecache] Не удалось загрузить API скрипт')
+                  resolve()
+              }
+              
+              document.head.appendChild(script)
+          })
+          
+          return true
+      } catch (e) {
+          console.warn('[TilePrecache] Не удалось обновить API:', e)
+          return false
       }
-    } catch (e) {
-      console.warn('[TilePrecache] Не удалось обновить API:', e)
-    }
   }
 
   async precachePlots(

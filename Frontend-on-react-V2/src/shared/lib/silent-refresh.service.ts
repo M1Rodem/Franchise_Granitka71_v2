@@ -23,7 +23,6 @@ export async function performRefresh(): Promise<void> {
     if (refreshPromise) {
       return refreshPromise
     }
-
     return
   }
 
@@ -32,8 +31,8 @@ export async function performRefresh(): Promise<void> {
   refreshPromise = (async () => {
     try {
       lastRefreshTime = now
-
       const store = useAuthStore.getState()
+
       const res = await httpClient.post(
         '/auth/refresh',
         {},
@@ -55,6 +54,7 @@ export async function performRefresh(): Promise<void> {
         user: currentUser,
         token,
       })
+
     } catch (error) {
       let status: number | null = null
 
@@ -113,11 +113,11 @@ function scheduleRefresh(expiresAt: number) {
 
   if (timeout <= 1000) {
     refreshTimer = setTimeout(() => {
-      checkAndRefreshIfNeeded().catch(() => { })
+      checkAndRefreshIfNeeded().catch(() => {})
     }, 100)
   } else {
     refreshTimer = setTimeout(() => {
-      checkAndRefreshIfNeeded().catch(() => { })
+      checkAndRefreshIfNeeded().catch(() => {})
     }, timeout)
   }
 }
@@ -135,7 +135,7 @@ export const silentRefreshService = {
     if (!checkInterval) {
       checkInterval = setInterval(() => {
         if (isServiceActive && !isRefreshing) {
-          checkAndRefreshIfNeeded().catch(() => { })
+          checkAndRefreshIfNeeded().catch(() => {})
         }
       }, CHECK_INTERVAL_MS)
     }

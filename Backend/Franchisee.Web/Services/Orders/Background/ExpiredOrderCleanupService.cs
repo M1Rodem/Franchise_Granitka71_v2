@@ -56,14 +56,14 @@ public class ExpiredOrderCleanupService : BackgroundService
         foreach (var days in daysThresholds)
         {
             // Заказы, которые будут удалены через days дней
-            var warningDate = now.AddDays(365 - days);
-            
+            var warningDate = now.AddDays(days);
+    
             var ordersToWarn = await context.Orders
                 .IgnoreQueryFilters()
-                .Where(o => o.Status == OrderStatus.Выполнено &&
-                            o.CompletedAt.HasValue &&
-                            o.CompletedAt < warningDate &&
-                            (o.LastExpirationWarningSentAt == null || 
+                .Where(o => o.Status == OrderStatus.Выполнено &&       // ← ОСТАВИТЬ
+                            o.CompletedAt.HasValue &&                   // ← ОСТАВИТЬ
+                            o.CompletedAt.Value.AddDays(365) <= warningDate && // ← ПРАВИЛЬНО
+                            (o.LastExpirationWarningSentAt == null ||   // ← ВЕРНУТЬ (защита от дублей)
                             o.LastExpirationWarningSentAt.Value.Date < now.Date))
                 .ToListAsync();
             

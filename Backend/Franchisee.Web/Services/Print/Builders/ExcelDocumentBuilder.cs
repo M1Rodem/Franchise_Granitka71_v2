@@ -366,17 +366,26 @@ namespace Franchisee.Web.Services.Print.Builders
         private void BuildTotals(IXLWorksheet ws, ref int row, PrintDataModel data)
         {
             if (data.Type == PrintType.Worker) return;
+            if (!data.Financials.ShowFinancials) return;
 
-            var total = data.WorkItems.Sum(w => w.Total);
+            var fin = data.Financials;
 
+            // Скидка — только если есть
+            if (fin.DiscountPercent > 0 || fin.DiscountAmount > 0)
+            {
+                ws.Range($"A{row}:D{row}").Merge();
+                SetBold(ws, $"A{row}", $"Скидка {fin.DiscountPercent:0.##}%:");
+                ws.Range($"E{row}:H{row}").Merge();
+                ws.Cell($"E{row}").Value = $"-{FormatPrice(fin.DiscountAmount)}";
+                row++;
+            }
+
+            // ИТОГО — с учётом скидки
             ws.Range($"A{row}:D{row}").Merge();
             SetBold(ws, $"A{row}", "ИТОГО:");
-
             ws.Range($"E{row}:H{row}").Merge();
-            if (data.Financials.ShowFinancials)
-            {
-                ws.Cell($"E{row}").Value = FormatPrice(total);
-            }
+            ws.Cell($"E{row}").Value = FormatPrice(fin.Total);
+            ws.Cell($"E{row}").Style.Font.Bold = true;
             row++;
         }
 

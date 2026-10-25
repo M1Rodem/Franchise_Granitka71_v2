@@ -128,7 +128,7 @@ namespace Franchisee.Web.Services.Print.Builders
                     OrderNumber = data.Header.OrderNumber,
                     SequenceStartNumber = pageNum * MAX_WORK_ITEMS_PER_PAGE + 1,
                     Data = data,
-                    TotalAmount = data.WorkItems.Sum(w => w.Total),
+                    TotalAmount = data.Financials.Total,
                     PrintType = data.Type
                 };
 

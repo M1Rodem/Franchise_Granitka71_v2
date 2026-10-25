@@ -339,19 +339,37 @@ namespace Franchisee.Web.Services.Print.Builders
 
         private string BuildTotalsTable(HtmlPageModel page)
         {
-            return $@"
-<table class='totals'>
-    <colgroup>
-        <col style='width: 50%'>
-        <col style='width: 50%'>
-    </colgroup>
-    <tbody>
-        <tr>
-            <td><strong>ИТОГО:</strong></td>
-            <td><strong>{FormatPrice(page.TotalAmount, true)}</strong></td>
-        </tr>
-    </tbody>
-</table>";
+            var fin = page.Data?.Financials;
+            if (fin == null) return "";
+
+            var sb = new StringBuilder();
+            sb.AppendLine(@"
+        <table class='totals'>
+            <colgroup>
+                <col style='width: 50%'>
+                <col style='width: 50%'>
+            </colgroup>
+            <tbody>");
+
+            // Скидка — только если есть
+            if (fin.DiscountPercent > 0 || fin.DiscountAmount > 0)
+            {
+                sb.AppendLine($@"
+                <tr>
+                    <td>Скидка {fin.DiscountPercent:0.##}%:</td>
+                    <td>-{FormatPrice(fin.DiscountAmount, true)}</td>
+                </tr>");
+            }
+
+            // ИТОГО — с учётом скидки
+            sb.AppendLine($@"
+                <tr>
+                    <td><strong>ИТОГО:</strong></td>
+                    <td><strong>{FormatPrice(fin.Total, true)}</strong></td>
+                </tr>");
+
+            sb.AppendLine("    </tbody>\n</table>");
+            return sb.ToString();
         }
 
         private string BuildAdditionalInfo(PrintDataModel data)
